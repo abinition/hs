@@ -12,6 +12,9 @@
 *.pat2 text
 *.pat3 text
 *.pat4 text
+*.hyp text
+*.hs text
+*.scr text
 *.txt text
 *.ac text
 *.scan text
@@ -34,4 +37,8 @@
 *.pdf binary
 *.vsd binary
 *.odg binary
+*.olb binary
+*.lib binary
+*.exe binary
+
 
