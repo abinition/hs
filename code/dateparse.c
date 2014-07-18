@@ -11,6 +11,9 @@
  * Modifications:
  *
  *	$Log: dateparse.c,v $
+ *	Revision 1.4  2004/10/16 04:34:24  bergsma
+ *	Removed external variable 'daylight'.  Not used.
+ *	
  *	Revision 1.3  2003/07/27 00:55:53  bergsma
  *	For FreeBSD, the timezone variable is already defined for ANSI_SOURCE
  *	
@@ -88,7 +91,7 @@ extern void qsort(void *base, size_t nmemb, size_t size,
 extern long timezone;
 #endif
 
-extern int daylight ;
+/*extern int daylight ;*/
 
 #ifndef AS_VMS
 #define bzero(p, n) memset(p, 0, n)

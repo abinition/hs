@@ -3,6 +3,9 @@
  * Modifications:
  *
  * $Log: promis.h,v $
+ * Revision 1.7  2004/10/16 04:50:00  bergsma
+ * No change.
+ *
  * Revision 1.6  2004/07/28 00:49:18  bergsma
  * Version 3.3.0
  *

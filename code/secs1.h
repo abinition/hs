@@ -2,6 +2,9 @@
  * Modifications:
  *
  * $Log: secs1.h,v $
+ * Revision 1.6  2004/10/16 05:03:22  bergsma
+ * Added gHyp_secs1_getHttp function.
+ *
  * Revision 1.5  2004/06/13 14:11:03  bergsma
  * For write operations, detect EAGAIN/EWOULDBLOCK, return 0 instead of -1
  *

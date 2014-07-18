@@ -10,6 +10,9 @@
  * Modifications:
  *
  *   $Log: load.c,v $
+ *   Revision 1.17  2004/10/16 04:46:20  bergsma
+ *   Better truncation warning message/
+ *
  *   Revision 1.16  2004/09/18 21:45:20  bergsma
  *   New functions ssl_getSession, ssl_setSession, http_binary, unmap
  *

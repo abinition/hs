@@ -10,6 +10,9 @@
  * Modifications:
  *
  * $Log: secs2.c,v $
+ * Revision 1.10  2004/10/16 05:04:36  bergsma
+ * Improve dubious handling of byte-order sensitive operations.
+ *
  * Revision 1.9  2004/04/29 02:21:18  bergsma
  * Device id is sWORD, not int.
  *

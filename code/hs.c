@@ -11,6 +11,9 @@
  * Modifications:
  *
  * $Log: hs.c,v $
+ * Revision 1.16  2004/10/16 04:43:11  bergsma
+ * Fixed memory access violation in JNI calls.
+ *
  * Revision 1.15  2004/07/23 18:47:16  bergsma
  * fixed bug in JAVA->HS interface where gpClass global variable was not being freed.
  *
@@ -145,20 +148,23 @@ JNIEXPORT jboolean JNICALL Java_Abinition_initJNI
   return TRUE ;
 }
 
-static lHyp_hs_jeval ( char *token )
+static void lHyp_hs_jeval ( char *token )
 {
-  jstring jtoken = (*gpEnv)->NewStringUTF(gpEnv, token );
+  jstring jtoken ;  
+  if ( gpEnv == NULL ) return ;
+  jtoken = (*gpEnv)->NewStringUTF(gpEnv, token );
   (*gpEnv)->CallVoidMethod( gpEnv, gpObject, gpMID_jeval, jtoken );
-  (*gpEnv) ->ReleaseStringUTFChars(gpEnv, jtoken, token ) ;
+  /*(*gpEnv) ->ReleaseStringUTFChars(gpEnv, jtoken, token ) ;*/
 }
 
 
 void gHyp_hs_output ( char *token )
 {
   jstring jtoken ;
+  if ( gpEnv == NULL ) return ;
   jtoken = (*gpEnv)->NewStringUTF(gpEnv, token );
   (*gpEnv)->CallVoidMethod( gpEnv, gpObject, gpMID_output, jtoken );
-  (*gpEnv) ->ReleaseStringUTFChars(gpEnv, jtoken, token ) ;
+  /*(*gpEnv) ->ReleaseStringUTFChars(gpEnv, jtoken, token ) ;*/
 
 }
 
@@ -225,6 +231,9 @@ JNIEXPORT jboolean JNICALL Java_Abinition_writeLoopback
   nBytes = gHyp_sock_writeJNI (  gsSocket, 
 				 (char*) pCmd, 
 				  strlen(pCmd) );
+
+  (*env) ->ReleaseStringUTFChars( env, jCmd, pCmd ) ;
+
   if ( nBytes <= 0 ) 
     return FALSE ;
   else

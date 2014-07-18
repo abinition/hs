@@ -4,6 +4,12 @@
  * Modifications:
  *
  * $Log: data.h,v $
+ * Revision 1.7  2004/10/16 00:51:29  bergsma
+ * New function names replace cryptic data functions:
+ * gHyp_data_setStr<n>
+ * gHyp_data_getStr<n>
+ * gHyp_data_newConstant<n>
+ *
  * Revision 1.6  2003/04/04 16:42:19  bergsma
  * Added moveValues function, to assist when detaching variables from
  * the method being executed.

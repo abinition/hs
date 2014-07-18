@@ -11,6 +11,12 @@
  * Modifications:
  *
  *   $Log: secs1.c,v $
+ *   Revision 1.13  2004/11/19 03:51:01  bergsma
+ *   Initialize TID on port message to random8 instead of 0000001
+ *
+ *   Revision 1.12  2004/10/16 05:02:48  bergsma
+ *   Bug fixes and added support for HTTP protocol
+ *
  *   Revision 1.11  2004/07/23 18:41:02  bergsma
  *   - for secs and hsms connections, an incoming connection request
  *   reassigns ALL device id's into the new socket, not just one.
@@ -2342,18 +2348,18 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
      * all the data until we get the complete record.
      */
     buffer[nBytes] = '\0' ;
+    pBuf = buffer ;
+    pEndBuf = pBuf + nBytes ;
     
-    
-    /*
+    if ( nBytes == 16414 ) {
       gHyp_util_debug("%d bytes",nBytes);
+    }
+    /*
     gHyp_util_debug("---------------------------------------------");
     gHyp_util_debug("%s",pBuf);
     gHyp_util_debug("---------------------------------------------");
     */
     
-    pEndBuf = pBuf + nBytes ;
-
-
     /******************************************************************
      * PORT-FORWARD IF REQUESTED
      ******************************************************************/
@@ -3243,7 +3249,7 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
 		mode,
 		method,
 		sender,
-		"00000001",
+		gHyp_util_random8(),
 		gHyp_util_timeStamp ( gsCurTime ),
 		pTV ) ;
 

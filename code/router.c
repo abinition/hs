@@ -10,6 +10,13 @@
 /* Modifications: 
  *
  * $Log: router.c,v $
+ * Revision 1.20  2004/12/13 04:54:24  bergsma
+ * Don't memmove unless required.
+ *
+ * Revision 1.19  2004/10/16 05:01:16  bergsma
+ * Fixed problems with message buffering.
+ * Changed memcpy to memmove,
+ *
  * Revision 1.18  2004/07/23 18:45:43  bergsma
  * fixed bug where query would not return failure if the target host could not be resolved.
  *
@@ -965,9 +972,13 @@ int gHyp_router_process ( sConcept *pConcept,
 
   /* Process all messages in the buffer */
   eob = pMsgOff + nBytes ;
+  *eob = '\0' ;
+
   do {
   
-    /* Point to start of next message */
+    /* Point to start of next message. When this function
+     * starts, pNextMsg is always the beginning of the buffer/
+     */
     
     pMsg = pNextMsg ;
     /* Divide the messages in buffer where ever there is more than |||
@@ -983,13 +994,13 @@ int gHyp_router_process ( sConcept *pConcept,
 
     /* Skip across multiple | characters */
     while ( *(pMsg+1) == '|' ) pMsg++ ; 
+
+    /* Careful, we might be done */
+    if ( pMsg >= eob ) break ;
     
     /* Find the end of the message in the buffer */
     eom = strstr ( pMsg, d3 ) ;
-    if ( eom ) {
-      /* Found it. Null terminate the message, replacing the last delimiter.*/
-      eom += 3 ;
-    }
+    if ( eom ) eom += 3 ;
   
     /* Find the next message, if it exists. */
     if ( eom ) {
@@ -1000,16 +1011,15 @@ int gHyp_router_process ( sConcept *pConcept,
       msgLen = eom - pMsg ;
 
       /* See if another message follows. (is appended). */
-        
-      /* Advance past newlines, if they exist */
-      while ( (eom < eob) && !isprint(*eom) ) eom++ ;
+      pNextMsg = eom ;  
       
-      /* If there remains a printable character, assume its a new message, */
-      if ( (eom < eob) && isprint ( *eom ) )
-        pNextMsg = eom ;
-      else
-        pNextMsg = NULL ;
-
+      /* Advance past newlines and other garbage, if it's present */
+      while ( (pNextMsg < eob) && !isprint(*pNextMsg) ) pNextMsg++ ;
+      
+      /* As long as we are not at the end of the buffer, its probably
+       * the start of a new message
+     , */
+      if ( pNextMsg >= eob ) pNextMsg = NULL ;
     }
     else {
     
@@ -1020,13 +1030,14 @@ int gHyp_router_process ( sConcept *pConcept,
 
       /* Not all of the message was received.
        * (The read filled the buffer and another read is necessary 
-       *  to get the remainder of of the message).
+       *  to get the remainder ofthe message).
        */
       
       if ( msgLen <= MAX_MESSAGE_SIZE ) {
 	
 	/* Shift the truncated message to the start of the buffer */
-	strncpy ( pMsgBuf, pMsg, msgLen ) ;
+        /*gHyp_util_debug ( "Left shifting %d bytes, reading again", msgLen ) ;*/
+	if ( pMsg > pMsgBuf ) memmove ( pMsgBuf, pMsg, msgLen ) ;
 	
 	/* Remember where the next read will start from. */
 	pMsgBuf += msgLen ;
@@ -1055,6 +1066,9 @@ int gHyp_router_process ( sConcept *pConcept,
     }	
     else if ( pMsg ) {
 
+      /* We need to null terminate the message, but this will
+       * overwrite the start of the next message, so save the character.
+       */
       saveChar = *eom ;
       *eom = '\0' ;
 

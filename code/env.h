@@ -2,6 +2,9 @@
  * Modifications:
  *
  * $Log: env.h,v $
+ * Revision 1.7  2004/10/16 04:40:45  bergsma
+ * Added unmap() function
+ *
  * Revision 1.6  2004/07/28 00:49:18  bergsma
  * Version 3.3.0
  *

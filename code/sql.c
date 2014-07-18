@@ -12,9 +12,29 @@
  *
  *
  * Modified:
- *  4/13/2004:Yockey:Add PostgreSQL support,work in process
  *
  * $Log: sql.c,v $
+ * Revision 1.17  2004/12/13 04:53:23  bergsma
+ * Let strings be longer than VALUE_SIZE bytes.
+ *
+ * Revision 1.16  2004/11/02 23:00:24  bergsma
+ * (char*) mismatch with (sBYTE*)
+ *
+ * Revision 1.15  2004/10/27 18:24:07  bergsma
+ * HS 3.3.2
+ * 1. Fix bug with SQL read when str size is > 512 bytes, use _data_ blobs
+ * 2. Fix bug with XML output, forgetting ";" in unicode output.
+ * 3. In |TOKEN|VALUE|VALUE| part of message, use unparse on TOKEN
+ * as well as VALUE.
+ * 4. Add utility function util_breakStream.
+ *
+ * Revision 1.14  2004/10/16 05:10:06  bergsma
+ * MySql bug, improper return value from sql_query.
+ * -1 = error
+ * 0 = no rows processed or retrieved
+ * >1 number of rows processed or retrieved
+ *
+ *
  * Revision 1.12  2004/07/28 00:49:18  bergsma
  * Version 3.3.0
  *
@@ -442,12 +462,6 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
                       switch ( colTypes[i] ) {
 
-                      case SQLCHAR :
-                      case SQLTEXT :
-                      case SQLIMAGE :
-                        gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
-                        break ;
-
                       case SQLBINARY :
                         if ( n == 1 )
                           gHyp_data_newConstant_raw ( pData, TYPE_BINARY, pBytes ) ;
@@ -475,12 +489,32 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
                         gHyp_data_newConstant_raw ( pData, TYPE_DOUBLE, pBytes ) ;
                         break ;
 
+                      case SQLCHAR :
+                      case SQLTEXT :
+
+                        n = gHyp_util_parseString ( (char*) pBytes ) ;
+
+			/*if ( n <= VALUE_SIZE ) {*/
+                          gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
+                          break ;
+			/*} ;*/
+
+                      case SQLIMAGE :
+
+			gHyp_data_setVariable ( pData, "_data_", TYPE_STRING ) ;
+			gHyp_util_breakStream ( (char*) pBytes, n, pData, TRUE ) ;
+			break ;
+
                       default :
                         n = dbconvert ( dbproc,colTypes[i],pBytes,n,SQLCHAR,value,VALUE_SIZE);
-                        if ( n > 0 )
-                          gHyp_data_setStr_n ( pData, (char*) value, n ) ;
-                        else
+			if ( n == 0 ) 
                           gHyp_data_setStr_n (pData, "NULL", 4 ) ;
+                        else if ( n <= VALUE_SIZE )
+                          gHyp_data_setStr_n ( pData, (char*) value, n ) ;
+			else {
+  			  gHyp_data_setVariable ( pData, "_data_", TYPE_STRING ) ;
+			  gHyp_util_breakStream ( (char*) pBytes, n, pData, TRUE ) ;
+			}
                         break ;
 
                       }
@@ -531,18 +565,6 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
                       switch ( colTypes[i] ) {
 
-                      case FIELD_TYPE_STRING :
-                      case FIELD_TYPE_VAR_STRING :
-                        gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
-                        break ;
-
-                      case FIELD_TYPE_BLOB :
-                        if ( n == 1 )
-                          gHyp_data_newConstant_raw ( pData, TYPE_BINARY, pBytes ) ;
-                        else
-                          gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
-                        break ;
-
                       case FIELD_TYPE_TINY :
                         gHyp_data_newConstant_scanf ( pData, TYPE_BYTE, (char*)pBytes, n ) ;
                         break ;
@@ -563,9 +585,27 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
                         gHyp_data_newConstant_scanf ( pData, TYPE_DOUBLE, (char*)pBytes, n ) ;
                         break ;
 
-                      default :
-                        gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
-                        break ;
+                      case FIELD_TYPE_STRING :
+                      case FIELD_TYPE_VAR_STRING :
+
+                        n = gHyp_util_parseString ( (char*) pBytes ) ;
+
+			/*if ( n <= VALUE_SIZE ) {*/
+                          gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
+                          break ;
+			/*}*/
+
+                      case FIELD_TYPE_BLOB :
+
+                        if ( n == 1 ) {
+                          gHyp_data_newConstant_raw ( pData, TYPE_BINARY, pBytes ) ;
+                          break ;
+			}
+
+		      default:
+
+			gHyp_data_setVariable ( pData, "_data_", TYPE_STRING ) ;
+			gHyp_util_breakStream ( (char*) pBytes, n, pData, TRUE ) ;
 
                       }
                     }
@@ -624,16 +664,9 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
                         break ;
 
-                      case 17 :
-                        /* Text, use util_parseString to internalize */
-                        /* Convert the string to internal form */
-                        n = gHyp_util_parseString ( pBytes ) ;
-                        gHyp_data_setStr_n ( pData, pBytes, n ) ;
-                        break ;
-
                       case 18 :
                         /* TYPE_CHAR */
-                        gHyp_data_newConstant_raw ( pData, TYPE_BYTE, (char*)pBytes ) ;
+                        gHyp_data_newConstant_raw ( pData, TYPE_CHAR, (char*)pBytes ) ;
                         break ;
 
                       case 21 :
@@ -668,9 +701,22 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
                           gHyp_data_newConstant_scanf ( pData, TYPE_DOUBLE, (char*)pBytes, n ) ;
                         break ;
 
+                      case 17 :
+
+                        /* Text, use util_parseString to internalize */
+                        /* Convert the string to internal form */
+                        n = gHyp_util_parseString ( (char*) pBytes ) ;
+
+			/*if ( n <= VALUE_SIZE ) {*/
+                          gHyp_data_setStr_n ( pData, pBytes, n ) ;
+                          break ;
+			/*}*/
+
                       case 25 :
                       default :
-                        gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
+
+			gHyp_data_setVariable ( pData, "_data_", TYPE_STRING ) ;
+			gHyp_util_breakStream ( (char*) pBytes, n, pData, TRUE ) ;
                         break ;
 
                     }

@@ -11,6 +11,9 @@
  * Modifications:
  *
  *	$Log: system.c,v $
+ *	Revision 1.11  2004/10/16 05:10:55  bergsma
+ *	Remove warning in xml() function.
+ *	
  *	Revision 1.10  2004/04/29 02:18:11  bergsma
  *	Random number too small from 'random' function when used in VMS and WINDOWS.
  *	
@@ -1131,8 +1134,10 @@ void gHyp_system_xparse ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 				      pp,
 				      pAI ) ;
 	if ( pStream == NULL ) {
+	  /*
 	  gHyp_instance_warning ( pAI, STATUS_XML, 
 			         "Failed to parse XML from file '%s'", pFileSpec ) ;
+	  */
 	  break ;
 	}
 	else if ( !*pStream ) 

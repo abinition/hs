@@ -10,6 +10,9 @@
  * Modifications:
  *
  *	$Log: stmt.c,v $
+ *	Revision 1.9  2004/11/19 03:51:26  bergsma
+ *	Implement list indexing using {}
+ *	
  *	Revision 1.8  2004/07/28 00:49:18  bergsma
  *	Version 3.3.0
  *	
@@ -561,16 +564,28 @@ void gHyp_stmt_bList ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       *pArgs,
       *pValue,
       *pValue2,
+      *pNext,
+      *pChild,
       *pList ;
 
     sLOGICAL
+      pushList,
       isVector1,
       isVector2 ;
 
     sBYTE
       dataType ;
 
+    char
+      *pAttr,
+      *pLabel,
+      value[VALUE_SIZE+1],
+      value2[VALUE_SIZE+1] ;
+
     int
+      os,
+      i,
+      len,
       ss1,
       ss2,
       context1,
@@ -634,8 +649,102 @@ void gHyp_stmt_bList ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 			      "Subscript is out of bounds in {}") ;
       }
     }
-    gHyp_stack_push ( pStack, pList ) ;
-    
+
+    /* What's on the stack? */    
+    pushList = TRUE ;
+
+    pValue = gHyp_stack_peek(pStack) ;
+    if ( pValue &&
+	 gHyp_data_tokenType (pValue) == TOKEN_REFERENCE &&
+	 gHyp_data_getTokenType (pValue) == TOKEN_VARIABLE &&
+         gHyp_data_getDataType (pValue) == TYPE_LIST &&
+	 gHyp_parse_isListCall ( pParse ) ) {
+
+      pValue2 = gHyp_data_getValue ( pList, gHyp_data_getSubScript ( pList ), TRUE ) ;
+
+
+      /* See if we should be executing a method */
+      if ( gHyp_data_getObjectType ( pValue ) == DATA_OBJECT_METHOD ) {
+
+	/* Object pointed to has an enclosed method - execute it */ 
+	pValue2 = gHyp_data_new ( "_parms_" ) ;
+	gHyp_data_append ( pValue2, pList ) ;
+	pList = pValue2 ;
+	gHyp_instance_setMethodCall ( pAI ) ;
+
+      } 
+      else if ( pValue2 && gHyp_data_getParent ( pValue2 ) != pValue ) {
+
+        if ( gHyp_data_getDataType (pValue2) == TYPE_ATTR  &&
+	     gHyp_data_getTokenType(pValue2) == TOKEN_VARIABLE ) {
+
+	  len = MIN ( VALUE_SIZE , gHyp_data_bufferLen ( pValue2, 0 ) ) ;
+	  memcpy ( value, gHyp_data_buffer(pValue2,0), len ) ;
+	  value[len] = '\0' ;
+	  
+          pAttr = gHyp_data_getLabel(pValue2) ;
+
+  	  pValue2 = gHyp_data_getReference ( pValue ) ;
+  	  pLabel = gHyp_data_getLabel ( pValue2 ) ;
+
+	  pNext = pValue2 ;
+	  do {
+
+	    if ( strcmp ( gHyp_data_getLabel ( pNext ), pLabel ) == 0 ) {
+
+	      pChild = gHyp_data_getChildByName ( pNext, pAttr ) ;
+
+	      if ( pChild ) {
+
+    	        len = MIN ( VALUE_SIZE , gHyp_data_bufferLen ( pChild, 0 ) ) ;
+	        memcpy ( value2, gHyp_data_buffer(pChild,0), len ) ;
+  	        value2[len] = '\0' ;
+
+		if ( strcmp ( value, value2 ) == 0 ) {
+	       
+		  /* Found it */
+    		  gHyp_data_setReference ( pValue, gHyp_data_getLabel ( pValue ), pNext ) ;
+	          pushList = FALSE ;
+		  break ;
+		}
+	      }
+	    }
+	    pNext = gHyp_data_getNext ( pNext ) ;
+	  }
+	  while ( pNext != pValue2 ) ;
+
+	}
+        else  {
+
+          os = gHyp_data_getInt ( pValue2, -1, FALSE ) ;
+
+  	  pValue2 = gHyp_data_getReference ( pValue ) ;
+  	  pLabel = gHyp_data_getLabel ( pValue2 ) ;
+
+	  pNext = pValue2 ;
+	  i = 0 ;
+	  do {
+	    if ( strcmp ( gHyp_data_getLabel ( pNext ), pLabel ) == 0 ) {
+	      if ( i == os ) {
+		/* Found it */
+    		gHyp_data_setReference ( pValue, gHyp_data_getLabel ( pValue ), pNext ) ;
+		pushList = FALSE ;
+		break ;
+	      }
+	    }
+	    pNext = gHyp_data_getNext ( pNext ) ;
+	    i++ ;
+	  }
+	  while ( pNext != pValue2 ) ;
+	}
+      }
+    }
+
+    if ( pushList ) 
+      gHyp_stack_push ( pStack, pList ) ;
+    else
+      gHyp_data_delete ( pList ) ;
+
     /* Delete the temporary holding variable */
     gHyp_data_delete ( pArgs ) ;
   }

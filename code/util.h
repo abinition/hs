@@ -3,6 +3,19 @@
  * Modifications:
  *
  * $Log: util.h,v $
+ * Revision 1.9  2004/10/27 18:24:06  bergsma
+ * HS 3.3.2
+ * 1. Fix bug with SQL read when str size is > 512 bytes, use _data_ blobs
+ * 2. Fix bug with XML output, forgetting ";" in unicode output.
+ * 3. In |TOKEN|VALUE|VALUE| part of message, use unparse on TOKEN
+ * as well as VALUE.
+ * 4. Add utility function util_breakStream.
+ *
+ * Revision 1.8  2004/10/16 05:13:12  bergsma
+ * Added gHyp_util_readStream.
+ * Renamed getToken2 to getToken_okDash
+ * Renamed getToken3 to getToken_okDot
+ *
  * Revision 1.7  2004/07/01 02:02:34  bergsma
  * Added 'specialChars' argument to the toexternal() function.
  *
@@ -70,4 +83,6 @@ extern char *gHyp_util_readStream (  char *pStream,
 				    int ss,
 				    sLOGICAL isVector,
 				    FILE *pp )  ;
+
+extern void gHyp_util_breakStream ( char *buffer, int bufLen, sData *pParent, sLOGICAL isLineBased ) ;
 

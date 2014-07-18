@@ -11,6 +11,9 @@
  * Modifications:
  *
  *	$Log: sock.c,v $
+ *	Revision 1.26  2004/10/16 05:05:39  bergsma
+ *	Rework handling of SSL protocol to allow reads up to 16K bytes.
+ *	
  *	Revision 1.25  2004/07/06 00:28:45  bergsma
  *	Syntax error fixed for VMS compile
  *	
@@ -4955,9 +4958,10 @@ static int lHyp_sock_select_read_hosts ( sConcept *pConcept, sData *pClients, sD
 	  return COND_SILENT ;
 
 	}
-	else
+	else {
 
           /* Process/route the message */
+          gHyp_util_logInfo ( "==Net Read==\n" ) ;
           return gHyp_router_process ( pConcept,
 				       pClients,
 				       pHosts,
@@ -4966,6 +4970,7 @@ static int lHyp_sock_select_read_hosts ( sConcept *pConcept, sData *pClients, sD
 				       nBytes, 
 				       gHyp_channel_maxMsgSize (pChannel),
 				       gHyp_channel_path (pChannel)) ;
+	}
       }
       else {
         if ( nBytes < 0 ) {
@@ -5370,7 +5375,7 @@ int gHyp_sock_select ( sConcept* pConcept,
   }
   else {
     giOffset = giOffset - WAIT_OBJECT_0 ;
-    /*gHyp_util_debug("I/O available at offset %d",giOffset);*/
+    /*gHyp_util_debug("I/O available for %d objects at offset %d",giNumSelectEvents,giOffset);*/
     timeout = 0 ;
   }
 #else  /* UNIX and VMS */

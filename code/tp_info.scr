@@ -1,0 +1,108 @@
+!+ TP_INFO.SCR
+!
+! Description:	This script file contains embedded hyperscript functions
+!		that perform specific PROMIS transactions for PROMIS
+!		operations at Santa Clara
+!
+!		Each hyperscript function that corresponds to a PROMIS
+!		transaction must be enabled in the CONNECT method.
+! 
+!		Do not add transactions that use PROMIS functions that
+!		are not part of MUCHMAIN. (Hyperscript cannot survive
+!		between image activations.  You must use a different
+!		hyperscript file which activates the appropriate image).
+! 
+!-
+! The following 2 lines ensures that the MUCHMAIN image is activated. 
+! (When PROMIS starts up the default image is MEPMAIN)
+quit eq view
+EXIT
+set nopage
+!
+! Enable HyperScript.  The Hyperscript program will be loaded into 
+! memory.  Make sure all TP functions are enabled in the CONNECT method.
+##
+CONNECT()
+{
+  enable DISCONNECT ;
+  enable ABORT ;
+  enable MESSAGE ;
+
+  /* TP methods */
+  enable GET_EQPID_STATUS ;
+
+  /* Enable timestamps */
+  timestamp (1);
+
+  /* Make immortal (disable death timer) */
+  lifetime (0) ;
+
+  /* Wait for requests */
+  idle () ;
+}
+
+GET_EQPID_STATUS()
+{
+  /* Required tokens and values:
+   *
+   *   EQPID
+   *
+   * Reply Tokens:
+   *   STATUS   - PROMIS equipment status
+   */
+
+  /* *****************************************************************
+   *                         INITIALIZE
+   *******************************************************************/
+  /* Check arguments */
+  if ( !exists ( EQPID ) || !count ( EQPID ) )
+    return DONE_GET_EQPID_STATUS ({ "%PROMIS: Invalid args ", args } ) ;
+
+  /* *****************************************************************
+   *                   PERFORM EQUIPMENT STATUS
+   *******************************************************************/
+  EQPID = toupper trim EQPID ;
+  pclose("eqps");
+  ret = pget("eqps.eqpskey","ge",EQPID) ;
+  if ( !ret || 
+       trim eqps.eqpid != EQPID ||
+       eqps.rectype != "C" )
+    return DONE_GET_EQPID_STATUS ( { "%PROMIS: no such equipment: ",EQPID });
+   
+  return DONE_GET_EQPID_STATUS ( eqps.status ) ;
+}
+
+DONE_GET_EQPID_STATUS( str TEXT )
+{
+  puts TEXT ;
+  EXIT_FUNCTION() ;
+  QUIT_FUNCTION() ;
+  undef EQPID ;
+  return TEXT ;
+}
+
+EXIT_FUNCTION()
+{
+  pexec("EXIT") ;
+}
+
+QUIT_FUNCTION()
+{
+  pexec("QUIT") ;
+}  
+
+MESSAGE() { return ; }
+
+ABORT() { exit(); }
+
+DISCONNECT() { exit(); }
+
+! The CONNECT method must be enabled after the program loads.
+enable CONNECT ;
+! Begin the HyperScript program.  
+CONNECT();
+!
+! If we get here, then there's either an error in the Hyperscript or the
+! HyperScript has called the exit() function. At this point, we are
+! back executing a normal PROMIS script, and so we should exit MUCHMAIN
+QUIT RETURN

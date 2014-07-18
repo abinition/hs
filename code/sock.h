@@ -3,6 +3,9 @@
  * Modifications:
  *
  * $Log: sock.h,v $
+ * Revision 1.6  2004/10/16 05:06:06  bergsma
+ * Added getSessionand setSession functions
+ *
  * Revision 1.5  2004/07/01 02:18:28  bergsma
  * Functions without stdout to use with JNI interface
  *

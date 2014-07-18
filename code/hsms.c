@@ -11,6 +11,9 @@
  * Modifications:
  *
  * $Log: hsms.c,v $
+ * Revision 1.9  2004/10/16 04:43:49  bergsma
+ * Use memmove rather than strncpy for shifting next message.
+ *
  * Revision 1.8  2004/07/23 18:41:02  bergsma
  * - for secs and hsms connections, an incoming connection request
  * reassigns ALL device id's into the new socket, not just one.
@@ -216,7 +219,7 @@ int gHyp_hsms_nextMessage ( sHsms *pHsms, sConcept *pConcept, sInstance *pAI )
 
       /* Shift the truncated message to the start of the buffer */
       if ( pHsms->inbuf < pHsms->pNextMsg )
-	strncpy ( (char*)pHsms->inbuf, (const char*)pHsms->pNextMsg, nBytes);
+	memmove ( (char*)pHsms->inbuf, (const char*)pHsms->pNextMsg, nBytes);
 	
       /* Set the position where the next read will start from. */
       pHsms->pNextMsg = pHsms->inbuf + nBytes ;
@@ -243,7 +246,7 @@ int gHyp_hsms_nextMessage ( sHsms *pHsms, sConcept *pConcept, sInstance *pAI )
 
       /* Shift the truncated message to the start of the buffer */
       if ( pHsms->inbuf < pHsms->pNextMsg )
-	strncpy ( (char*)pHsms->inbuf, (const char*)pHsms->pNextMsg, nBytes ) ;
+	memmove ( (char*)pHsms->inbuf, (const char*)pHsms->pNextMsg, nBytes ) ;
 	
       /* Set the position where the next read will start from. */
       pHsms->pNextMsg = pHsms->inbuf + nBytes ;

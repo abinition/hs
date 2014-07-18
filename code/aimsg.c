@@ -11,6 +11,30 @@
  * Modifications:
  *
  *	$Log: aimsg.c,v $
+ *	Revision 1.16  2004/12/13 04:56:42  bergsma
+ *	In unparse, when processing tokens, must strcpy to token variable
+ *	before doing util_parse on it.
+ *	
+ *	Revision 1.15  2004/11/19 03:43:02  bergsma
+ *	Initialize transaction id of new message to random8.
+ *	
+ *	Revision 1.14  2004/10/27 18:24:07  bergsma
+ *	HS 3.3.2
+ *	1. Fix bug with SQL read when str size is > 512 bytes, use _data_ blobs
+ *	2. Fix bug with XML output, forgetting ";" in unicode output.
+ *	3. In |TOKEN|VALUE|VALUE| part of message, use unparse on TOKEN
+ *	as well as VALUE.
+ *	4. Add utility function util_breakStream.
+ *	
+ *	Revision 1.13  2004/10/21 04:08:19  bergsma
+ *	Also apply util_unparse to TOKEN contents.
+ *	
+ *	Revision 1.12  2004/10/16 00:53:10  bergsma
+ *	New function names replace cryptic data functions:
+ *	gHyp_data_setStr<n>
+ *	gHyp_data_getStr<n>
+ *	gHyp_data_newConstant<n>
+ *	
  *	Revision 1.11  2003/04/23 22:40:32  bergsma
  *	Values created from a incoming message data was not retaining
  *	unprintable characters if for example, the string ended in \000.
@@ -123,7 +147,7 @@ static void lHyp_aimsg_init ( sAImsg * pAImsg )
   pAImsg->senderParent[0] = '\0' ;
   pAImsg->senderRoot[0] = '\0' ;
   pAImsg->senderHost[0] = '\0' ;
-  pAImsg->transactionId[0] = '\0' ;
+  strcpy ( pAImsg->transactionId, gHyp_util_random8() ) ;
   pAImsg->timeStamp[0] = '\0' ;
   pAImsg->tokensValues[0] = '\0' ;
 
@@ -857,7 +881,7 @@ char* gHyp_aimsg_unparse ( sAImsg *pAImsg )
 						&context1,
 						ss1 ))) {
 
-      if ( (tokenlen = gHyp_data_getStr ( pThisToken, 
+      if ( (tokenlen = gHyp_data_getStr_msg ( pThisToken, 
 					  value1, 
 					  VALUE_SIZE, 
 					  context1,
@@ -962,6 +986,7 @@ sLOGICAL gHyp_aimsg_parse ( sAImsg * pAImsg, char *pMsg )
     *pStr,
     target[TARGET_SIZE+1],
     sender[SENDER_SIZE+1],
+    token[TOKEN_SIZE+1],
     message[MAX_MESSAGE_SIZE+1] ;
 
   int
@@ -1102,7 +1127,11 @@ sLOGICAL gHyp_aimsg_parse ( sAImsg * pAImsg, char *pMsg )
 	state++ ;
 	if ( !pTV ) break ;
 	pToken = gHyp_data_new ( NULL ) ;
-	gHyp_data_setVariable ( pToken, pElement, TYPE_STRING ) ;
+	/* Convert the string to internal form */
+	strcpy ( token, pElement ) ;
+	n = gHyp_util_parseString ( token ) ;
+	token[n] = '\0' ;
+	gHyp_data_setVariable ( pToken, token, TYPE_STRING ) ;
 	gHyp_data_append ( pTV, pToken ) ;
 	break ;
 

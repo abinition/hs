@@ -1,0 +1,45 @@
+
+			Release Notes for HS 3.3.1
+
+Bugs Fixed:
+
+
+	1. When using PROMIS pget interface, when the key is a date, such
+	   as hist.reltime, allow use of MM/DD/YYYY HH:MM:SS instead of 
+	   just the MM/DD/YYYY date part.
+	2. PROMIS TLOG.  Use TRANSACT as file name so that logical name can be used
+	   to open the tlog.  Normally, TRANSACT = FIL_TLOG:TRANSACT.DAT
+	3. Fix bug where long XML streams could be truncated.
+	4. Fixed memory access violation in JNI calls.
+	5. Use memmove rather than strncpy for shifting next message to the start of the buffer.
+	6. Three memory leaks fixed.
+	7. Better return values for sql_query (-1, 0, and >1).
+
+New Functions:
+    
+	unmap()		- reverse of map()
+	setSession()	- set SSL session id
+	getSession()	- get SSL session id
+	http_binary()	- force binary (do not break at \n")
+
+Features:
+
+	1. Added AUTOPORT logical for VMS, this is the port number for router.
+	2. Make third argument optional in strext ( str, offset, length ) ;
+	3. Allow port, secs1, and http socket functions to be used interchangably.
+Interfaces
+
+
+Miscellaneous:
+
+	More descriptive function names for:
+
+		gHyp_data_getStr<n>
+		gHyp_data_setStr<n>
+		gHyp_setConstant<n>
+		gHyp_util_getToken<n>
+
+
+
+
+

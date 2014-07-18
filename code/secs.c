@@ -11,6 +11,9 @@
  * Modifications:
  *
  * $Log: secs.c,v $
+ * Revision 1.12  2004/10/16 05:01:51  bergsma
+ * Allow secs1 socket to take over from http or port sockets.
+ *
  * Revision 1.11  2004/07/23 18:46:11  bergsma
  * fixed traceback in secs_query/secs_event when socket does not exist
  *

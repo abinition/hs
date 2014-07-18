@@ -1,0 +1,33 @@
+
+			Release Notes for HS 3.2.2
+
+Bugs Fixed:
+
+     For write operations, detect EAGAIN/EWOULDBLOCK, return 0 instead of -1
+
+     For PROMIS, in the CONFIG_TEMPLATE.COM, an invalid username sets the 
+     automation logicals to default values - JOB only, not GROUP.
+
+     For data coming into a port, set it to REPLY data only if there is
+     and outstanding query on the same port.
+
+     For line-based HTTP data (text/plan, text/xml, text/html), provide
+     knitting of lines between chunks of data read, also accomodate lines
+     larger than INTERNAL_VALUE_SIZE if they really would be represented
+     externall in VALUE_SIZE space.
+
+
+Features:
+
+	JAVA JNI interface
+	DLL interface loadeingcvs dif
+	Abinition.java provides bridge between JAVASCROPT and HYPERSCRIPT
+
+
+New HyperScript Functions:
+
+    localhost()  - returns host name of the localhost
+    localaddr()  - returns IP address of the localhost
+    jeval() - evaluates JAVASCRIPT code
+
+

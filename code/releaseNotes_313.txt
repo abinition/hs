@@ -1,0 +1,48 @@
+Release Notes HyperScript V3.1.3
+
+Modifications:
+	$Log: releaseNotes_313.txt,v $
+	Revision 1.2  2003/04/27 23:53:13  bergsma
+	Bug in detach().
+	
+	Revision 1.1  2003/04/23 22:57:43  bergsma
+	Release 3.1.3 - Bug fixes for the PROMIS web interface.
+	
+
+Unprintable Characters in Strings
+---------------------------------
+Values created from a incoming message data was not retaining unprintable characters
+if for example, the string ended in \000.  
+Values created from parsed XML also need to retain unprintable characters.
+When a character value is above ~, then consider this "unprintable".
+
+Bugs in Functions
+-----------------
+1. In strtok(), the setToken() was replaced with setStr2
+2. In load(), an extra argument specifies the maximum number of lines to load.
+3. In sdescribe() and xsdescribe(), extra spaces are removed from the output.
+4. In detach(), after moving the values from a source variable into a 
+destination variable, the source variable must be detached before it is
+deleted. 
+5. For all functions that use data_moveValues, the destination values
+are deleted before the new ones are moved in.
+
+Messages
+--------
+When incoming messages contained structured variables, the dereference function broke
+because the FRAME_GLOBAL_MSGARGS flag did not get reset.
+
+Parsing XML
+-----------
+The xml  parse function was broke.  The argument pValue in gHyp_cgi_parseXML needed to
+be a pointer so that it can be updated within the recursion of the parsing.  This 
+bug affected only parsing of XML strings, xsdescribe(), xml()
+
+PROMIS
+-----
+1. Needed to separate MAX_OUTPUT_LENGTH from PROMIS restriction of
+MAX_TERMINAL_LENGTH, which can only be 256.  This limitation caused
+problems in code where MAX_OUTPUT_LENGTH was used.
+2. Remove hardcoding of "MBX" in START.COM, replace with AUTOFIFO translation.
+3. When parsing TRES, the status return value was not being tested properly,
+as a result the tres varables would not be exposed.

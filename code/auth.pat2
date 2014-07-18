@@ -1,0 +1,49 @@
+>BS
+	value(16) = UAF_M_NOUSER2					!#9582
+>BE
+>IS
+!B-HS!
+	value(17) = UAF_M_HYPERSCRIPT
+!E-HS!
+>IE
+>ES									!E-#9244
+        !TXT AUTHFLAGS1 'SUPERUSER'
+	table(1) = txt_fetch(TX_AUTHFLAGS1)		!SUPERUSER
+        !TXT AUTHFLAGS2 'GENERIC'
+>EE
+>BS
+	table(16) = txt_Fetch(TX_AUTHFLAGS16)		!No user-defined i/f 2	!#9582
+>BE
+>IS
+!B-HS!
+	table(17) = 'HYPERSCRIPT'
+!E-HS!
+>IE
+>ES
+	do while ( .true. )
+>EE
+>BS
+	masks(16)= UAF_M_NOUSER2					!#9582
+>BE
+>IS
+!B-HS!
+	masks(17) = UAF_M_HYPERSCRIPT
+!E-HS!	
+>IE
+>ES
+        !TXT FLAGSNAME1 'Superuser'
+	names(1) = txt_fetch(TX_FLAGSNAME1)
+>EE
+>BS
+	names(16) = txt_fetch(TX_FLAGSNAME16)				!#9582
+>BE
+>IS
+!B-HS!
+	names(17) = 'HyperScript'
+!E-HS!
+>IE
+>ES
+	linelen = 0
+        !TXT FLAGSTITLE 'Flags             :'
+	header = txt_fetch(TX_FLAGSTITLE)
+>EE

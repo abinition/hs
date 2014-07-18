@@ -10,6 +10,9 @@
  * Modifications:
  *
  *   $Log: parse.c,v $
+ *   Revision 1.10  2004/11/19 03:48:04  bergsma
+ *   HS 3.4.0.   Added list indexing with {}.
+ *
  *   Revision 1.9  2003/02/06 00:09:22  bergsma
  *   Modified condition for gHyp_parse_isMethodArgs, expDepth must be > 0
  *
@@ -181,6 +184,12 @@ sLOGICAL gHyp_parse_isIndexCall ( sParse *pParse )
 {
   return (sLOGICAL) (pParse->flag & PARSE_INDEX_CALL) ;
 }
+
+sLOGICAL gHyp_parse_isListCall ( sParse *pParse ) 
+{
+  return (pParse->flag & PARSE_LIST_CALL) ? TRUE:FALSE ;
+}
+
 
 sLOGICAL gHyp_parse_isPointerDeref ( sParse *pParse ) 
 {
@@ -1182,6 +1191,14 @@ void gHyp_parse_loop (	sParse *pParse,
 	      if ( guDebugFlags & DEBUG_PARSE )
 		 gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PARSE, 
 				      "parse: subscript []");
+	    }
+	    else if ( exprTokenType == TOKEN_BLIST ) {
+
+	      /* Got to be an list "call", ie:  a{i} */
+	      pParse->flag |= PARSE_LIST_CALL ;
+	      if ( guDebugFlags & DEBUG_PARSE )
+		 gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PARSE, 
+				      "parse: list subscript {}");
 	    }
 	  }
 	  else if ( pParse->exprCount > 1 ) {

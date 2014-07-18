@@ -10,6 +10,10 @@
  * Modifications:
  *
  *   $Log: function.c,v $
+ *   Revision 1.9  2004/10/16 04:42:19  bergsma
+ *   Allow third argument (length) in strext to be optional.
+ *   Fix bug in strok which returned extra "" element for whitespace.
+ *
  *   Revision 1.8  2004/07/01 02:02:34  bergsma
  *   Added 'specialChars' argument to the toexternal() function.
  *
@@ -958,7 +962,7 @@ void gHyp_function_strtok ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 	  gHyp_data_setNull ( pValue ) ;
 	
       }
-      else  {
+      else if ( pValStart < pBufEnd ) {
 	
 	/* Found a CONSTANT. Find end. */
 	pValEnd = pValStart + strcspn ( pValStart, separator ) ;
@@ -971,6 +975,8 @@ void gHyp_function_strtok ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 	else
 	  gHyp_data_setNull ( pValue ) ;
       }
+      else
+	break ;
     
       /* Append value to list. */
       gHyp_data_append ( pResult, pValue ) ;

@@ -11,6 +11,12 @@
  * Modifications:
  *
  * $Log: data.c,v $
+ * Revision 1.19  2004/12/13 04:55:35  bergsma
+ * In lHyp_data_getStr, be consistent about using pStr variable.
+ *
+ * Revision 1.18  2004/10/16 04:33:30  bergsma
+ * Renamed getStr, setStr, and setConstant functions.
+ *
  * Revision 1.17  2004/07/28 00:49:18  bergsma
  * Version 3.3.0
  *
@@ -2138,7 +2144,7 @@ static int lHyp_data_getStr ( sData *pData,
   case TYPE_STRING :
   case TYPE_LIST :
     if ( isExternal ) {
-      strLen = gHyp_util_unparseString ( pStrBuf, 
+      strLen = gHyp_util_unparseString ( pStr, 
 					 pValue->pStrVal, 
 					 pValue->strlen, 
 					 maxlen,

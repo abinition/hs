@@ -10,6 +10,27 @@
  * Modifications:
  *
  *	$Log: util.c,v $
+ *	Revision 1.24  2004/12/13 04:52:50  bergsma
+ *	Don't null terminate string processes by util_parseString, because in
+ *	aimsg.c, strtok will have unpredicatable results.
+ *	
+ *	Revision 1.23  2004/11/19 03:42:26  bergsma
+ *	Don't interpret \u or \x as unicode or hex, digits are required.
+ *	
+ *	Revision 1.22  2004/11/02 23:00:24  bergsma
+ *	(char*) mismatch with (sBYTE*)
+ *	
+ *	Revision 1.21  2004/10/27 18:24:06  bergsma
+ *	HS 3.3.2
+ *	1. Fix bug with SQL read when str size is > 512 bytes, use _data_ blobs
+ *	2. Fix bug with XML output, forgetting ";" in unicode output.
+ *	3. In |TOKEN|VALUE|VALUE| part of message, use unparse on TOKEN
+ *	as well as VALUE.
+ *	4. Add utility function util_breakStream.
+ *	
+ *	Revision 1.20  2004/10/16 05:12:22  bergsma
+ *	Added gHyp_util_readStream
+ *	
  *	Revision 1.19  2004/07/23 18:41:37  bergsma
  *	fixed bug in util_uparseString where '\0' was not be externalized after change to toexternal()
  *	
@@ -1732,8 +1753,7 @@ int gHyp_util_parseString ( char *pStr )
           pStr = pStr2 ;
         }
         else
-          *pAnchor++ = 'x' ;
-
+          *pAnchor++ = '\\' ;
         break ;
 
       case 'u' :
@@ -1756,9 +1776,9 @@ int gHyp_util_parseString ( char *pStr )
 
           pStr = pStr2 ;
         }
-        else
-          *pAnchor++ = 'u' ;
-
+        else 
+          *pAnchor++ = '\\' ;
+	
         break ;
 
       default:
@@ -1785,7 +1805,8 @@ int gHyp_util_parseString ( char *pStr )
     else
       *pAnchor++ = *pStr ;
   }
-  *pAnchor = '\0' ;
+  /* Don't NULL Terminate */
+  /*****     *pAnchor = '\0' ;  ****/
   return ( pAnchor - pStart ) ;
 
 }
@@ -2500,7 +2521,7 @@ char *gHyp_util_readStream (  char *pStream,
   if ( pStream > pAnchor ) {
 
     /* Shift the remaining stream back to the anchor position */
-    strcpy ( pAnchor, pStream ) ;
+    memmove ( pAnchor, pStream, strlen ( pStream ) ) ;
 
     /* Calculate new end of stream, where we will append data. */
     pEndOfStream = pAnchor + (pEndOfStream - pStream) ;
@@ -2535,7 +2556,7 @@ char *gHyp_util_readStream (  char *pStream,
 
 	if ( gHyp_data_dataType ( pValue ) > TYPE_STRING ) {
 
-	  pBuf = gHyp_data_buffer ( pValue, *pContext ) ;
+	  pBuf = (char*) gHyp_data_buffer ( pValue, *pContext ) ;
 	  n = gHyp_data_bufferLen ( pValue, *pContext ) ;
 
 	  memcpy ( pEndOfStream, pBuf, n ) ;
@@ -2570,4 +2591,62 @@ char *gHyp_util_readStream (  char *pStream,
     }
   }
   return pStream ;
+}
+
+void gHyp_util_breakStream ( char *buffer, int bufLen, sData *pParent, sLOGICAL isLineBased )
+{
+  char 
+    *pBuf ;
+
+  sData
+    *pValue ;
+
+  int 
+    i,
+    width,
+    width2,
+    width3;
+
+  pBuf = buffer ;
+  while ( bufLen > 0 ) {
+
+    width = MIN ( bufLen, INTERNAL_VALUE_SIZE ) ;
+
+    if ( isLineBased ) {
+
+      /* The data should be logically divided by line feeds. */
+
+      /* Get the length of the next line */
+      width2 = strcspn ( pBuf, "\r\n" ) ;
+
+      /* Keep the lf and cr */
+      width2 += strspn ( pBuf+width2, "\r\n" ) ;
+	    
+      if ( width2 > 0 ) {
+	  
+	if ( width2 < width ) {
+
+	  /* Shorter is ok */
+	  width = width2 ;
+	}
+	else if ( width2 > width ) { 
+
+	  /* We'd like to store longer, but will it fit? */
+
+	  width3 = width2 ;
+	  for ( i=0;i<width2;i++ ) if ( !isprint(pBuf[i]) ) width3+=3;
+	  if ( width3 <= VALUE_SIZE ) 
+	     /* Yes, it will fit - adjust size */
+	     width = width2 ;
+	}
+      }
+    }
+
+    pValue = gHyp_data_new ( NULL ) ;
+    gHyp_data_setStr_n ( pValue, (char*) pBuf, width ) ;
+    gHyp_data_append ( pParent, pValue ) ;
+
+    bufLen -= width ;
+    pBuf += width ;
+  }
 }

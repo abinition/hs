@@ -9,6 +9,9 @@
 /* Modifications: 
  *
  * $Log: concept.c,v $
+ * Revision 1.22  2004/11/19 03:45:58  bergsma
+ * New gpsTempData2 variable to catch memoiry leaks.
+ *
  * Revision 1.21  2004/07/01 02:18:48  bergsma
  * Log message changes
  *
@@ -144,6 +147,7 @@ char            gzLocalAddr[MAX_PATH_SIZE+1] ;
 
 /* HyperScript code variables */
 sData*		gpsTempData ;	/* If defined, its a leak */
+sData*		gpsTempData2 ;	/* If defined, its a leak */
 int             giMaxExprSize ; /* Heap allocation for expression */
 int             giMaxStackDepth ; /* Heap allocation for stack */
 sConcept*       gpsConcept ;    /* Global reference to concept */
@@ -568,6 +572,7 @@ sLOGICAL gHyp_concept_init ( sConcept *pConcept,
   giMaxExprSize = maxExprSize ;
   giMaxStackDepth = giMaxExprSize * 2 ;
   gpsTempData = NULL ;
+  gpsTempData2 = NULL ;
 
   pConcept->link.hasRegistered = FALSE ;
 
@@ -1020,6 +1025,10 @@ void gHyp_concept_delete ( sConcept * pConcept )
   if ( gpsTempData ) { 
     gHyp_data_delete ( gpsTempData ) ; 
     gpsTempData = NULL ; 
+  }
+  if ( gpsTempData2 ) { 
+    gHyp_data_delete ( gpsTempData2 ) ; 
+    gpsTempData2 = NULL ; 
   }
 
   return ;

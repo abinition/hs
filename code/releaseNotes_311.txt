@@ -1,0 +1,100 @@
+Release Notes HyperScript V3.1.1
+Modifications:
+	$Log: releaseNotes_311.txt,v $
+	Revision 1.2  2003/04/11 02:05:51  bergsma
+	Last needed changes....
+	
+	Revision 1.1  2003/04/07 02:11:03  bergsma
+	Release notes for version 3.1.1
+	
+Default Timeouts
+----------------
+Define The Idle Interval To 3 Minutes, From 1 Minute.
+
+Stuck Mailboxes
+---------------
+After Idle Interval time, the router will now send an ABORT message to the channel
+its about to close that has been idle for more than 3 minutes.
+
+PROMIS
+------
+When PROMIS switches images, hyperscript is forced to exit.  In the exit handler, make
+sure any outstanding reply messages are sent.
+
+Describing Data
+---------------
+When describing a literal, the literal must be in external format, and depending on whether
+or not the literal is for XML, a message, or normal.
+
+Memory Leaks
+------------
+Found and patched a memory leak when an error occurs while parsing  a  { ... } expression.
+
+Messaging
+---------
+1. In the message format "||TOKEN|VALUE|VALUE||",  the TOKEN is considered at token if and only if
+the TOKEN is value is not a key word ( list, int, do, etc ) and is of the form
+"token" or "token.value".  Otherwise, the TOKEN+VALUE+VALUE is evaluated as an expression. 
+Example 1: |$ACTL.LOTID|S4502.1| is a token/value sequence.
+Example 2: |list lot = {|"S4502.1"|};||  is executable.
+
+2. In messages when the "||TOKEN|VALUE|VALUE||" is an expression to execute,
+such as ||list 'a' = {|list 'b' = {|1,2,3|}|}||, then the expression is
+dereferenced to get the value, ie:  list 'a' = { list 'b' = {1,2,3}} ;
+However, if the expression is an argument for a method such as M( list x ),
+then the dereferenced expression becomes:
+     merge( list x, list a = {list b = {1,2,3}} ) ;
+so that the passed value 'a' will merge into the argument 'x'.
+3. Increased VALUE_SIZE from 256 to 512.
+
+Cleaning Clients : Stuck FIFO's and Mailboxes 
+---------------------------------------------
+The cleanClient function would crash the router if a socket was cleaned.
+Clean sockets that are idle for more than CLEANCLIENT interval and which start
+with 8 hexadecimal digits. 
+
+
+Functions
+-------------
+Added plogopen(filespec)
+Added plogclose()
+Added strip()
+Fixed next(), it was doing prev()
+Fixed remove(), it was doing chop()
+
+
+XML
+---
+When using <b>, <i>, etc, don't start new lines when xdescribing.
+
+
+Statisitics
+-----------
+Added stats.c and stats.com to analyze router.log messages for Excel spreadsheet.
+
+
+FIFO's and MAILBOXes and MailSlots
+----------------------------------
+On UNIX, delete the FIFO if if fails to open.  This provides better cleanup so
+that restarts are possible after unexpected crashes or failures.
+
+On VMS, a client was closing its reader mailbox whenever the heartbeat 
+alarm occurred.  
+It then had to be re-opened each time new message activity was required.
+
+Alarms and signals
+------------------
+When a signal occurred that generated a special ||SIG*||| message on the 
+loopback channel, the special was not being filtered out - it was getting
+processed as a message and causing a warning error.
+
+
+PROMIS
+------
+1. Added plogopen and plogclose functions.
+2. When more than one instance exists, doing a pexec() would cause
+infinite looping because the state of instance was not getting reset back
+to PARSE properly. 
+3. Increased size of PROMIS result to 120, same as symbuffer in gettoken.for 
+and inquire.for.
+

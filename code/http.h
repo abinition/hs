@@ -2,6 +2,9 @@
  * Modifications:
  *
  * $Log: http.h,v $
+ * Revision 1.3  2004/10/16 04:45:41  bergsma
+ * Added http_binary() function.
+ *
  * Revision 1.2  2004/06/13 14:06:51  bergsma
  * Recognize plain/text as flag.
  *

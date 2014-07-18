@@ -11,6 +11,9 @@
  * Modifications:
  *
  *	$Log: type.c,v $
+ *	Revision 1.9  2004/10/16 05:11:43  bergsma
+ *	data_setStr and data_getStr function calls renamed
+ *	
  *	Revision 1.8  2004/07/06 00:28:14  bergsma
  *	Added 'valueof()' function.
  *	

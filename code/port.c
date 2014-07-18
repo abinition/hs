@@ -10,6 +10,9 @@
 /* Modifications:
  * 
  * $Log: port.c,v $
+ * Revision 1.13  2004/10/16 04:48:21  bergsma
+ * Allow port function to be used on objects intially create for http.
+ *
  * Revision 1.12  2004/07/23 18:43:14  bergsma
  * Fixed compile warnings about 'id' being an (sWORD).
  *

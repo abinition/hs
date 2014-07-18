@@ -11,6 +11,9 @@
  * Modifications:
  *
  *	$Log: instance.c,v $
+ *	Revision 1.21  2004/11/19 03:49:18  bergsma
+ *	New gpsTempData2 variable for memory leak detection.
+ *	
  *	Revision 1.20  2004/07/28 00:49:18  bergsma
  *	Version 3.3.0
  *	
@@ -2943,6 +2946,10 @@ void gHyp_instance_error ( sInstance *pAI, char *status, char *fmt, ... )
   if ( gpsTempData ) { 
     gHyp_data_delete ( gpsTempData ) ; 
     gpsTempData = NULL ; 
+  }
+  if ( gpsTempData2 ) { 
+    gHyp_data_delete ( gpsTempData2 ) ; 
+    gpsTempData2 = NULL ; 
   }
 
   /* Exit the current frame. */

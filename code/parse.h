@@ -3,6 +3,9 @@
  * Modifications:
  *
  * $Log: parse.h,v $
+ * Revision 1.4  2004/11/19 03:48:04  bergsma
+ * HS 3.4.0.   Added list indexing with {}.
+ *
  * Revision 1.3  2003/01/12 05:13:00  bergsma
  * Added gHyp_parse_exprRank(), the depth of "(" in an expression.
  * Added gHyp_parse_isSubVariable(), whether an indentifier follows a "."
@@ -32,6 +35,7 @@ extern sLOGICAL         gHyp_parse_isMethodDef ( sParse *pParse ) ;
 extern sLOGICAL		gHyp_parse_isMethodDeferred ( sParse *pParse ) ;
 extern sLOGICAL		gHyp_parse_isMethodDeprecated ( sParse *pParse ) ;
 extern sLOGICAL		gHyp_parse_isIndexCall ( sParse * ) ;
+extern sLOGICAL		gHyp_parse_isListCall ( sParse * ) ;
 extern sLOGICAL		gHyp_parse_isExprBegin ( sParse * ) ;
 extern void gHyp_parse_completeExpression ( sParse *pParse,
 				     sInstance *pAI,

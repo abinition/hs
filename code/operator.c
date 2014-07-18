@@ -10,6 +10,13 @@
  * Modifications:
  *
  *   $Log: operator.c,v $
+ *   Revision 1.11  2004/12/05 02:53:52  bergsma
+ *   Protect binary operations from empty undefined variables.  Also missing
+ *   was initialization of len2.
+ *
+ *   Revision 1.10  2004/10/16 04:49:06  bergsma
+ *   Fix memory leak.
+ *
  *   Revision 1.9  2004/04/29 02:14:13  bergsma
  *   Fix 'divide by zero' error when using modulus '%'
  *
@@ -154,6 +161,7 @@ static sData *lHyp_operator_binaryOp (	sInstance	*pAI,
 	gHyp_instance_error ( pAI, STATUS_BOUNDS, 
 	    "Subscript '%d' is out of bounds in first argument",ss1) ;
       }
+      isEmpty1 = ( pNextValue1 == NULL ) ;
     }
     
     if ( pNextValue2 ) {
@@ -169,9 +177,10 @@ static sData *lHyp_operator_binaryOp (	sInstance	*pAI,
 	gHyp_instance_error ( pAI, STATUS_BOUNDS, 
 	       "Subscript '%d' is out of bounds in second argument",ss2);
       }
+      isEmpty2 = ( pNextValue2 == NULL ) ;
     }
 
-    /* If both lists are exhausted of values, and we have ad least one result,
+    /* If both lists are exhausted of values, and we have at least one result,
      * then we're done 
      */
     if ( !pNextValue1 && !pNextValue2 && pTmp ) break ;
@@ -236,6 +245,7 @@ static sData *lHyp_operator_binaryOp (	sInstance	*pAI,
 	double2 = 0 ;
 	bool2 = 0 ;
 	strcpy ( value2, "" ) ;
+	len2 = 0 ;
 	context2 = -1 ;
       }
       else {

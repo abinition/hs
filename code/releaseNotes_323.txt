@@ -1,0 +1,32 @@
+
+			Release Notes for HS 3.2.3
+
+Bugs Fixed:
+
+     - In Build_hs.com, stats.c was being put in the library.
+     - fixed traceback in detach() error logging function.
+     - Remove trailing nulls from PROMIS string field values.
+     - For Mysql, Make Sure -1 Means Sql Error, 0 Means No Rows Affected. 
+
+
+New Functions:
+
+    - 'valueof()' function gets the natural value of a string.
+
+Features:
+
+	Added optional 'specialChars' argument to toexternal() function.
+
+
+Interfaces
+
+	In support of JNI connect, cannot have stdout.
+		Added gHyp_tcp_requestJNI
+		Added gHyp_sock_readJNI
+		Added gHyp_sock_writeJNI
+
+
+
+
+
+

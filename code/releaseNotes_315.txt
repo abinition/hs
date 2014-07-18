@@ -1,0 +1,42 @@
+Release Notes HyperScript V3.1.5
+
+Modifications:
+	$Log: releaseNotes_315.txt,v $
+	Revision 1.2  2003/07/27 01:11:14  bergsma
+	Typo, these are V3.1.5 notes
+	
+	Revision 1.1  2003/06/05 22:16:22  bergsma
+	Release notes for Version 3.1.5
+	
+
+Functions
+--------------------
+Problem with merge() and autoincrement feature, was not auto-incrementing properly.
+
+Language Features
+-----------------
+Added new binary operator **, example: 5**3 == 125
+
+Unicode support
+---------------
+Added new typedef 'unicode', UTF-16.
+Required for new unicode type:
+1. New data type in data object
+2. Special unicode output for xdescribe function
+3. New TYPE_UNICODE in hypdef.h
+4. New token 0uNNNNN format, like 0xNNNNN and 0oNNNNN
+5. New function unicode()
+6. New SECS II data type.
+
+
+Bug Fixes
+---------
+pValue1 and pValue2 need to be set to NULL after warnings so that
+the loop in operator_binary will break out.
+
+PROMIS
+------
+Added stats.c to build_hs.com
+In the batch function, fix the problem whereby the OPTION_AUTO process 
+logical gets set to NO and then it is never deleted, so that the next
+time the batch function is run, automation does no come up.

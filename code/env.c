@@ -10,6 +10,12 @@
 /* Modifications:
  *
  * $Log: env.c,v $
+ * Revision 1.20  2004/11/19 03:45:33  bergsma
+ * Comment change
+ *
+ * Revision 1.19  2004/10/16 04:40:35  bergsma
+ * Reworked map() function.  Added unmap() function
+ *
  * Revision 1.18  2004/07/28 00:49:18  bergsma
  * Version 3.3.0
  *
@@ -2328,10 +2334,10 @@ sData* gHyp_env_mergeData ( sData *pDst,
 				  pSrcValue, 
 				  ssv ) ;
 	  gHyp_data_append ( pResult, pValue ) ;
-	}
+	}  
 	else {
 
-	  /* Destination is a list or string variable and destination is a list or string */
+	  /* Destination is a list or string variable and source is a list or string */
 	  if ( countDst == 1 && countSrc > 1 && isDataMerge ) 
 	    counter2 = 1 ;
 	  else

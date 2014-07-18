@@ -10,6 +10,9 @@
  * Modifications:
  *
  *   $Log: stack.c,v $
+ *   Revision 1.5  2004/10/16 05:07:29  bergsma
+ *   Detect sub-variables that exceed TOKEN_SIZE
+ *
  *   Revision 1.4  2004/04/29 02:19:32  bergsma
  *   Added comment in gHyp_stack_popRdata.
  *

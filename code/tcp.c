@@ -10,6 +10,10 @@
  * Modifications:
  *
  *	$Log: tcp.c,v $
+ *	Revision 1.13  2004/10/21 04:06:41  bergsma
+ *	Use gethostbyaddr instead of gethostbyname for connection requests to
+ *	IP addresses.
+ *	
  *	Revision 1.12  2004/07/01 02:18:28  bergsma
  *	Functions without stdout to use with JNI interface
  *	
@@ -532,7 +536,13 @@ SOCKET gHyp_tcp_request ( char* pHost, int port )
     sock ;
 
   SOCKET
-		s ;
+	s ;
+
+  sLOGICAL
+    inAddrForm ;
+
+  unsigned long
+    i ;
 
   int
     sockLen ;
@@ -552,11 +562,30 @@ SOCKET gHyp_tcp_request ( char* pHost, int port )
 
   /* Get the address of the requested host */ 
   /* Request a tcp/ip socket connection on a remote host */
-  gHyp_util_logInfo ( "GetHostByName: %s",pHost ) ;
 			
-  if ( (hp = gethostbyname ( pHost ) ) == NULL ) {
-    gHyp_util_logError(	"(%s) for host '%s'", lHyp_tcp_herror(), pHost ) ;
-    return INVALID_SOCKET ;
+  inAddrForm = ( (i = inet_addr ( pHost ) ) != INADDR_NONE ) ; 
+
+  if ( inAddrForm ) {
+
+    gHyp_util_logInfo("GetHostByAddr: %s",pHost) ;
+    hp = gethostbyaddr(  	(char*)&i,
+				sizeof(i),
+				AF_INET ) ;
+
+    if ( !hp ) {
+       gHyp_util_logError (	"(%s) for address '%s'",
+      				lHyp_tcp_herror(), 
+				pHost ) ;
+       return INVALID_SOCKET ;
+    }
+  }
+  else {
+
+    gHyp_util_logInfo ( "GetHostByName: %s",pHost ) ;
+    if ( (hp = gethostbyname ( pHost ) ) == NULL ) {
+      gHyp_util_logError(	"(%s) for host '%s'", lHyp_tcp_herror(), pHost ) ;
+      return INVALID_SOCKET ;
+    }
   }
 
   /* Copy hostent structure to safe place */
@@ -677,7 +706,7 @@ SOCKET gHyp_tcp_make ( char *pService, char *pLocalAddr, sLOGICAL bindAll )
    *
    * Arguments:
    *
-   *	none
+   *	
    *
    * Return value:
    *
@@ -735,7 +764,9 @@ SOCKET gHyp_tcp_make ( char *pService, char *pLocalAddr, sLOGICAL bindAll )
   hp = NULL ;
   isLocalAddr = FALSE ;
   inAddrForm = FALSE ;
+
   if ( pLocalAddr ) inAddrForm = ( (i = inet_addr ( pLocalAddr ) ) != INADDR_NONE ) ; 
+
   if ( inAddrForm ) {
 
     if ( strncmp ( pLocalAddr, "127.", 4 ) == 0 ) {

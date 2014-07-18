@@ -6,11 +6,25 @@
 !          ***** Program property of Ab Initio Software                       !
 !                                                                             !
 !*****************************************************************************/
-#define 	VERSION_HYPERSCRIPT	"3.3.1"
+#define 	VERSION_HYPERSCRIPT	"3.4.0"
 
 /* Modification history:
  *
  * $Log: hypdef.h,v $
+ * Revision 1.32  2004/11/19 03:47:22  bergsma
+ * HS 3.4.0.   Added list indexing with {}.
+ *
+ * Revision 1.31  2004/11/02 22:58:37  bergsma
+ * V 3.3.3
+ *
+ * Revision 1.30  2004/10/27 18:24:07  bergsma
+ * HS 3.3.2
+ * 1. Fix bug with SQL read when str size is > 512 bytes, use _data_ blobs
+ * 2. Fix bug with XML output, forgetting ";" in unicode output.
+ * 3. In |TOKEN|VALUE|VALUE| part of message, use unparse on TOKEN
+ * as well as VALUE.
+ * 4. Add utility function util_breakStream.
+ *
  * Revision 1.29  2004/09/18 21:51:49  bergsma
  * SSL buffer size can be 16K
  * SSL timeout increased from 1 to 1.5 seconds
@@ -433,6 +447,7 @@
 #define		PARSE_METHOD_DEFERRED	64
 #define		PARSE_METHOD_DEPRECATED	128
 #define		PARSE_SUBVARIABLE	256
+#define		PARSE_LIST_CALL		512
 
 /* State transition parameters for Hyperscript grammer */
 #define		G_PROGRAM_STMT		0

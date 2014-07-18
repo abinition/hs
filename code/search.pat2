@@ -1,0 +1,26 @@
+>BS
+	flagmask(16) = UAF_M_NOUSER2					!#9582
+>BE
+>IS
+!B-HS!
+	flagmask(17) = UAF_M_HYPERSCRIPT
+!E-HS!
+>IE
+>ES
+	! Initialize text table; used to validate flag value input by user and 
+	! output in the screen header.
+>EE
+>BS
+	flagtable(16) = txt_Fetch(TX_AUTHFLAGS16)	!NO User2
+>BE
+>IS
+!B-HS!
+	flagtable(17) = 'HYPERSCRIPT'
+!E-HS!
+>IE
+>ES
+	!Initialize the disable flag
+
+	!TXT DISABLE 'DISABLED '
+	disable = txt_fetch(TX_DISABLE)
+>EE

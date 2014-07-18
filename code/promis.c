@@ -11,6 +11,18 @@
  * Modifications:
  *
  *	$Log: promis.c,v $
+ *	Revision 1.20  2004/12/10 22:35:47  bergsma
+ *	After changing memcpy to memmove, the section of code that dealt
+ *	with unterminated PROMIS token strings stopped working.  The logic
+ *	was wrong to being with.
+ *	
+ *	Revision 1.19  2004/11/02 23:13:06  bergsma
+ *	Extra argument in load_fromStream
+ *	
+ *	Revision 1.18  2004/10/16 04:51:07  bergsma
+ *	1. Memove instead of strcoy
+ *	2. Fix memory leak in pnext()
+ *	
  *	Revision 1.17  2004/09/18 21:48:06  bergsma
  *	- warning, not error, when DCOP has 4 or more dimensions
  *	- DcOp prompt strings need externalizing
@@ -1768,8 +1780,10 @@ sLOGICAL gHyp_promis_hs (	sDescr*		token_d,
     terminator = *pStream ;	
     
     /* Shift the part that wasn't loaded to the front of the buffer */
-    strcpy ( stream, pStream ) ;
-    pStream = stream + strlen ( stream ) ;
+    i = strlen ( pStream ) ;
+    memmove ( stream, pStream, i ) ;
+    pStream = stream + i ;
+    *pStream = '\0' ;
   }
   else {
     /* There is no outstanding stream to load. */
@@ -2130,7 +2144,6 @@ void gHyp_promis_pnext ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       gHyp_instance_error ( 	pAI, STATUS_PROMIS, 
       				"PROMIS key cannot be null" ) ;
         
-    pResult = gHyp_data_new ( NULL ) ;
     lHyp_promis_getnext ( pAI, pFrame, pKey ) ;
     gHyp_instance_pushSTATUS ( pAI, pStack ) ;
   }	

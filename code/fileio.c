@@ -11,6 +11,20 @@
  * Modifications:
  *
  *	$Log: fileio.c,v $
+ *	Revision 1.21  2004/11/02 22:57:58  bergsma
+ *	When displaying &#nnnn; unicode characters, do no add trailing space.
+ *	
+ *	Revision 1.20  2004/10/27 18:24:07  bergsma
+ *	HS 3.3.2
+ *	1. Fix bug with SQL read when str size is > 512 bytes, use _data_ blobs
+ *	2. Fix bug with XML output, forgetting ";" in unicode output.
+ *	3. In |TOKEN|VALUE|VALUE| part of message, use unparse on TOKEN
+ *	as well as VALUE.
+ *	4. Add utility function util_breakStream.
+ *	
+ *	Revision 1.19  2004/10/16 04:38:52  bergsma
+ *	Fixes to describe() for data that is for transported in a message.
+ *	
  *	Revision 1.18  2004/07/01 02:02:34  bergsma
  *	Added 'specialChars' argument to the toexternal() function.
  *	
@@ -358,9 +372,8 @@ static int lHyp_fileio_describe2 ( sData *pParent,
       if ( isXML ) {
 	if ( parentDataType == TYPE_UNICODE ) {
 	  newOffset = sprintf ( newOutput,
-			        "&#%05hu%s", 
-			        gHyp_data_getInt ( pParent, parentContext, TRUE ),
-			        suffixStr ) ;
+			        "&#%05hu;", 
+			        gHyp_data_getInt ( pParent, parentContext, TRUE ) ) ;
 	}
 	else {
 	  newOffset = sprintf ( newOutput,
@@ -397,8 +410,12 @@ static int lHyp_fileio_describe2 ( sData *pParent,
 			      parentContext,
 			      isParentVector ) ;
       pValue = value ;
-      if ( isXML )
-        newOffset = sprintf ( newOutput, "%s%s", pValue, suffixStr ) ;
+      if ( isXML ) {
+	if ( parentDataType == TYPE_UNICODE )
+	  newOffset = sprintf ( newOutput, "%s", pValue ) ;
+        else
+  	  newOffset = sprintf ( newOutput, "%s%s", pValue, suffixStr ) ;
+      }
       else
 	newOffset = sprintf ( newOutput, "%s%s", pValue, suffixStr ) ;
 

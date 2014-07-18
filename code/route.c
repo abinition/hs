@@ -11,6 +11,9 @@
  * Modifications:
  *
  * $Log: route.c,v $
+ * Revision 1.10  2004/10/16 05:00:17  bergsma
+ * Fixed memory leak.
+ *
  * Revision 1.9  2004/07/23 18:43:14  bergsma
  * Fixed compile warnings about 'id' being an (sWORD).
  *
@@ -313,7 +316,9 @@ static void lHyp_route_QE (	sInstance 	*pAI,
   if ( argCount == 3 ) isOldStyle = TRUE ;
   
   /* Get tokens and values */
+
   pTV = gHyp_data_new ( "_tv_" ) ;
+  gpsTempData = pTV ; 
 
   if ( isOldStyle ) {
 
@@ -443,6 +448,10 @@ static void lHyp_route_QE (	sInstance 	*pAI,
       strcpy ( target, pVal ) ;
     }	
   }
+
+  /* No longer in danger of leaking pTV */
+  gpsTempData = NULL ; 
+
 
   /* Get Sender and Mode */
   sprintf ( senderPath, gHyp_instance_getTargetPath ( pAI ) ) ;

@@ -10,6 +10,12 @@
 /* Modifications:
  * 
  * $Log: operand.c,v $
+ * Revision 1.7  2004/11/19 03:50:04  bergsma
+ * New gpsTempData2 variable for memory leak detection on failed method calls.
+ *
+ * Revision 1.6  2004/10/16 04:49:30  bergsma
+ * setStr2 to setStr_n
+ *
  * Revision 1.5  2003/02/17 10:05:31  bergsma
  * When the operand token is a literal, it needs to be converted into
  * internal form before it is used.
@@ -108,12 +114,14 @@ void gHyp_operand_token ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 	 */
 	pArgs = gHyp_data_new ( "_parms_" ) ;
 	gpsTempData = pArgs ; 
+	gpsTempData2 = pResult ; 
 	/* Leak of pArgs occurs if popRdata2 fails - must fix with gpsTempData */
 	for (; argCount > 0; argCount--) {
 	  pArg = gHyp_stack_popRdata2 ( pStack, pAI ) ;
 	  gHyp_data_insert ( pArgs, pArg ) ;
 	}
 	gpsTempData = NULL ;
+	gpsTempData2 = NULL ;
 
 	if ( pVariable &&
 	     gHyp_data_getObjectType ( pVariable ) == DATA_OBJECT_METHOD ) {	    

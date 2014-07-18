@@ -10,6 +10,11 @@
 /* Modifications: 
  *
  * $Log: cgi.c,v $
+ * Revision 1.15  2004/10/16 04:31:26  bergsma
+ * 1. Moved lHyp_cgi_readStream to gHyp_util_readStream, now shared by
+ * function map().
+ * 2. Fixed problem with truncated XML streams.
+ *
  * Revision 1.14  2004/07/01 01:57:29  bergsma
  * Minor change to some logError statements.
  *

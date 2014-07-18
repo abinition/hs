@@ -3,6 +3,12 @@
  * Modifications:
  *
  * $Log: auto.h,v $
+ * Revision 1.14  2004/11/19 03:43:25  bergsma
+ * Add another gpsTempData2 variable to catch leaks.
+ *
+ * Revision 1.13  2004/10/16 04:26:05  bergsma
+ * HS331
+ *
  * Revision 1.12  2004/02/29 14:02:49  bergsma
  * Added http.h and ssl.h
  *
@@ -159,6 +165,7 @@ extern char		gzLocalAddr[MAX_PATH_SIZE+1] ;
 
 /* HyperScript code variables */
 extern sData*		gpsTempData ;	/* If defined, its a leak */
+extern sData*		gpsTempData2 ;	/* If defined, its a leak */
 extern int		giMaxExprSize ; /* Heap allocation for expression and stack */
 extern int		giMaxStackDepth ; /* Heap allocation for stack */
 extern sConcept*       	gpsConcept ;    /* Pointer to concept */
