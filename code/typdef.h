@@ -10,6 +10,9 @@
  * Modifications:
  *
  * $Log: typdef.h,v $
+ * Revision 1.4  2004/12/26 17:21:24  jbergsma
+ * Avoid multiple includes
+ *
  * Revision 1.3  2004/04/29 02:02:25  bergsma
  * Added structure for SSL.
  *
@@ -18,6 +21,9 @@
  *
  */
 /**************** Typdefs *************************************************/
+#ifndef __TYPDEF_H_
+#define __TYPDEF_H_
+
 typedef unsigned char		sLOGICAL ;
 typedef unsigned char		sBYTE ;
 typedef unsigned short		sWORD ;
@@ -68,3 +74,5 @@ typedef struct method_t		sMethod ;
 typedef struct label_tt		sLabel ;
 typedef struct ssl_t		sSSL ;
 typedef struct http_t		sHTTP ;
+
+#endif /* __TYPDEF_H_ */

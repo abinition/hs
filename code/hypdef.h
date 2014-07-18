@@ -6,11 +6,18 @@
 !          ***** Program property of Ab Initio Software                       !
 !                                                                             !
 !*****************************************************************************/
+
+#ifndef __HYPDEF_H_
+#define __HYPDEF_H_
+
 #define 	VERSION_HYPERSCRIPT	"3.4.0"
 
 /* Modification history:
  *
  * $Log: hypdef.h,v $
+ * Revision 1.33  2004/12/26 17:21:24  jbergsma
+ * Avoid multiple includes
+ *
  * Revision 1.32  2004/11/19 03:47:22  bergsma
  * HS 3.4.0.   Added list indexing with {}.
  *
@@ -908,3 +915,5 @@
 #else
 #define IsSocketReady(lpOverlapped) ((lpOverlapped)->ioStatus == STATUS_READY)
 #endif
+
+#endif /* __HYPDEF_H_ */

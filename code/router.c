@@ -1036,7 +1036,7 @@ int gHyp_router_process ( sConcept *pConcept,
       if ( msgLen <= MAX_MESSAGE_SIZE ) {
 	
 	/* Shift the truncated message to the start of the buffer */
-        /*gHyp_util_debug ( "Left shifting %d bytes, reading again", msgLen ) ;*/
+        gHyp_util_debug ( "Left shifting %d bytes, reading again", msgLen ) ;
 	if ( pMsg > pMsgBuf ) memmove ( pMsgBuf, pMsg, msgLen ) ;
 	
 	/* Remember where the next read will start from. */

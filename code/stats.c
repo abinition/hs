@@ -3,6 +3,9 @@
  * Modifications:
  *
  *   $Log: stats.c,v $
+ *   Revision 1.2  2004/12/17 17:39:41  jbergsma
+ *   Fixes and ifdefs for AS_ATL (WebPickle) to compile correctly with cpp in the hsx project
+ *
  *   Revision 1.1  2003/04/04 16:01:15  bergsma
  *   The stats.c and stats.com will get statistics from router.log that can
  *   be loaded into excell.
@@ -53,7 +56,13 @@ static char		gzLocalAddr[MAX_PATH_SIZE+1];	/* Local host name */
 #define	R_OK		4	/* readable by caller */
 #endif
 
+#ifndef AS_WINDOWS
+#ifdef __cplusplus
 extern "C" pid_t getpid(void);
+#else
+extern pid_t getpid(void);
+#endif
+#endif
 
 int main ( int argc, char * argv[] )
 {
@@ -74,9 +83,6 @@ int main ( int argc, char * argv[] )
     ss2,
     context1,
     context2 ;
-
-  sData
-    *pMethodVariable ;
   
   FILE
     *pp ;
@@ -96,7 +102,6 @@ int main ( int argc, char * argv[] )
     c,
     token[TOKEN_SIZE+1],
     value[VALUE_SIZE+1],
-    *pStr,
     *pValueStr,
     *pTokenStr,
     tlog[MAX_PATH_SIZE+1],
@@ -189,7 +194,13 @@ int main ( int argc, char * argv[] )
   gpzLocalAddr = gzLocalAddr ;
 
   /* The PID is needed for various functions and applications */
+#ifndef AS_WINDOWS
+  /* Get the PID of the process */
   giPID = getpid() ;
+#else
+  giPID = GetCurrentProcessId();
+; 
+#endif
 
   /* Set default log name if not already set */
   if ( gzLogName[0] ) {

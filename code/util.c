@@ -10,6 +10,9 @@
  * Modifications:
  *
  *	$Log: util.c,v $
+ *	Revision 1.25  2004/12/17 17:41:17  jbergsma
+ *	Output to the ListBox window in the ATL (WebPickle) version
+ *	
  *	Revision 1.24  2004/12/13 04:52:50  bergsma
  *	Don't null terminate string processes by util_parseString, because in
  *	aimsg.c, strtok will have unpredicatable results.
@@ -128,6 +131,10 @@
 
 #ifndef AS_WINDOWS
 #include <pwd.h>
+#endif
+
+#ifdef AS_ATL
+#include <interface.h>
 #endif
 
 /********************** EXTERNAL GLOBAL VARIABLES ****************************/
@@ -417,6 +424,10 @@ static void lHyp_util_out ( char *pStr )
 #elif defined ( AS_JNI )
 
     gHyp_hs_output ( pStr ) ;
+
+#elif defined ( AS_ATL )
+
+	gHyp_hs_output_listbox ( pStr );
 
 #else
 

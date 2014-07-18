@@ -11,6 +11,9 @@
  * Modifications:
  *
  *	$Log: sock.c,v $
+ *	Revision 1.27  2004/12/26 17:22:44  jbergsma
+ *	Notify client when mailslot has been opened
+ *	
  *	Revision 1.26  2004/10/16 05:05:39  bergsma
  *	Rework handling of SSL protocol to allow reads up to 16K bytes.
  *	
@@ -148,6 +151,9 @@
 #include <io.h>
 #include <winsock2.h>
 #define EWOULDBLOCK WSAEWOULDBLOCK
+#ifdef AS_ATL
+#include "interface.h"
+#endif /* AS_ATL */
 #else
 #include <sys/socket.h>         /* Socket structures and functions */
 #endif
@@ -1025,8 +1031,13 @@ HANDLE gHyp_sock_fifo ( char *path,
       gHyp_util_sysError ( "Failed to create mailslot '%s'", path ) ;
       return INVALID_HANDLE_VALUE ;  
     }
-    else
+    else {
+#ifdef AS_ATL
+	/*	Notify CHyperScript2::Eval that the mailslot inBox has been opened */
+	  gHyp_notify_client_mailslot ( ) ;
+#endif /* AS_ATL */     
       return s ;
+	}
   }
   else
     /* Open existing mailslot */
@@ -5086,6 +5097,9 @@ static int lHyp_sock_select_read_listenTCP ( sConcept *pConcept,
   
 static int lHyp_sock_select_FDSET_inbox ( sConcept *pConcept, HANDLE inbox )
 {
+  int
+    offset = 0 ;
+
   if ( inbox == INVALID_HANDLE_VALUE ) return COND_SILENT ;
 
   giOffsetInbox = giNumSelectEvents ;
@@ -5093,7 +5107,8 @@ static int lHyp_sock_select_FDSET_inbox ( sConcept *pConcept, HANDLE inbox )
 #ifdef AS_WINDOWS
   /* Windows overlapped I/O requires that specify the buffer at the FDSET step so we
    * must determine where the buffer read should start */
-  gpzInboxOffset = gzInboxBuf + strlen ( gzInboxBuf ) ;
+  offset = strlen ( gzInboxBuf ) ;
+  gpzInboxOffset = gzInboxBuf + offset ;
 #endif
 
 #if defined ( AS_VMS ) && !defined ( AS_MULTINET )  
@@ -5106,7 +5121,8 @@ static int lHyp_sock_select_FDSET_inbox ( sConcept *pConcept, HANDLE inbox )
   }
 #endif
 
-  /*gHyp_util_debug("Buffer before read = '%s'",gzInboxBuf ) ;*/
+  if ( offset > 0 ) gHyp_util_debug("Buffer before read = '%s'",gzInboxBuf ) ;
+
   giInboxNbytes = 0 ;
   if ( lHyp_sock_read ( (SOCKET) inbox, 
                         gpzInboxOffset, 
@@ -5141,6 +5157,7 @@ static int lHyp_sock_select_read_inbox ( sConcept *pConcept,
 					 int timeout )
 { 
   int
+    offset = 0,
     nBytes = 0 ;
   
   /* If inbox is undefined, then its because we are ROOT and we have no inbox */
@@ -5188,11 +5205,12 @@ static int lHyp_sock_select_read_inbox ( sConcept *pConcept,
 #endif
 
     /* For UNIX and VMS, the buffer offset is needed at this time */
-    gpzInboxOffset = gzInboxBuf + strlen ( gzInboxBuf ) ;
+    offset = strlen ( gzInboxBuf ) ;
+    gpzInboxOffset = gzInboxBuf + offset ;
     
 #endif
 
-    /*gHyp_util_debug("Buffer before read = '%s'",gzInboxBuf ) ;*/
+    if ( offset > 0 ) gHyp_util_debug("Buffer before read = '%s'",gzInboxBuf ) ;
     nBytes = gHyp_sock_read ( (SOCKET) inbox, 
                               gpzInboxOffset,
                               MAX_MESSAGE_SIZE,

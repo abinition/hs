@@ -11,6 +11,9 @@
  * Modifications:
  *
  * $Log: hs.c,v $
+ * Revision 1.17  2004/12/17 17:39:41  jbergsma
+ * Fixes and ifdefs for AS_ATL (WebPickle) to compile correctly with cpp in the hsx project
+ *
  * Revision 1.16  2004/10/16 04:43:11  bergsma
  * Fixed memory access violation in JNI calls.
  *
@@ -533,7 +536,7 @@ void gHyp_hs_jeval ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
 #endif
 
-#ifdef AS_DLL
+#if defined ( AS_DLL ) && !defined ( AS_ATL )
 
 static HINSTANCE ghInstance = NULL;
 
@@ -574,7 +577,7 @@ static int lHyp_hs_exceptionHandler ( int signo )
 }
 #endif
 
-#ifndef AS_DLL
+#if !(defined ( AS_DLL ) || defined ( AS_ATL ))
 int main ( int argc, char * argv[] )
 {
   /* Description:
