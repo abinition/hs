@@ -1,0 +1,1188 @@
+/*****************************************************************************!
+!                HyperScript Software Source Code.                            !
+!                                                                             !
+!          ***** Copyright: (c) 1994 Ab Initio Software                       !
+!          ***** All rights reserved - Licensed Material.                     !
+!          ***** Program property of Ab Initio Software                       !
+!                                                                             !
+!*****************************************************************************/
+/*
+ * Modifications:
+ *
+ *   $Log: load.c,v $
+ *   Revision 1.15  2004/07/23 18:43:29  bergsma
+ *   Added pcapture()
+ *
+ *   Revision 1.14  2004/07/06 00:28:14  bergsma
+ *   Added 'valueof()' function.
+ *
+ *   Revision 1.13  2004/06/13 14:05:41  bergsma
+ *   Functions localhost, localaddr, jeval
+ *
+ *   Revision 1.12  2004/04/29 02:33:10  bergsma
+ *   New functions.
+ *   encode,decode
+ *   ssl_new,ssl_ciphers,ssl_keyFile,ssl_certFile,ssl_CApath,
+ *   ssl_CAfile,ssl_auth,ssl_authClient,ssl_assign,ssl_delete
+ *   http_open,http_service,http_close,http_event,http_query,
+ *   http_reply,http_assign,http_enable
+ *   tunnel,forward,unforward,service,open
+ *   fread,fwrite,load_binary
+ *   on_connect
+ *
+ *
+ *   Revision 1.10  2003/06/05 21:49:40  bergsma
+ *   Added new binary operator **, example: 5**3 == 125
+ *
+ *   Revision 1.9  2003/04/04 16:24:24  bergsma
+ *   New functions plogopen, plogclose, strip
+ *
+ *   Revision 1.8  2003/02/17 10:04:00  bergsma
+ *   Literal tokens, enclosed in "", which contain escape sequences \nnn
+ *   should NOT be converted to internal form before the token is
+ *   hashed in the token lookup table, otherwise values past a \0 character
+ *   would be lost.  Instead, convert the string to its internal form only
+ *   when it is needed as an operand.  See operand.c
+ *
+ *   Revision 1.7  2003/01/12 07:07:16  bergsma
+ *   Added instantiation, children, concept, parent, instance, instances, moveto.
+ *   Removed poll(), same as sleep(0).
+ *
+ *   Revision 1.6  2002/11/29 19:59:01  bergsma
+ *   Removed ^M
+ *
+ *   Revision 1.5  2002/11/29 19:45:12  bergsma
+ *   Added load() function.
+ *
+ *   Revision 1.4  2002/11/19 02:00:46  bergsma
+ *   Removed plogin() again.  It doesn't appear to function correctly on PROMIS.
+ *   VS: ----------------------------------------------------------------------
+ *
+ *   Revision 1.3  2002/11/18 23:08:07  bergsma
+ *   Resurrect the plogin() function, but this time make it executable by
+ *   PROMIS superuser's only.
+ *
+ *   Revision 1.2  2002/11/14 01:29:50  bergsma
+ *   Added instances() function
+ *
+ */
+
+/**********************	HYPERSCRIPT INTERFACE ********************************/
+#include "auto.h"	/* System Interface and Function Prototypes */
+
+/**********************	EXTERNAL FUNCTION DECLARATIONS ***********************/
+
+/**********************	EXTERNAL GLOBAL VARIABLES ****************************/
+
+/**********************	INTERNAL GLOBAL VARIABLES ****************************/
+
+static sLOGICAL	gInComment = FALSE ;	/* Processing a comment */
+
+/********************** INTERNAL OBJECT STRUCTURES ***************************/
+
+/**********************	FUNCTION DEFINITIONS ********************************/
+
+struct keyword_t {
+  sBYTE tokenType ;
+  sBYTE tokenPrecedence ;
+  void	(*function)(sInstance *pAI,sCode *pCode,sLOGICAL isPARSE) ;
+} ;
+
+static sHash *(*gpKeyHash)[MAX_HASH_TABLE_SIZE] ;
+
+
+static void lHyp_load_newKey ( char *kw,
+			       void (*fn)(sInstance *pAI,sCode *pCode,sLOGICAL isPARSE), 
+			       sBYTE tt,
+			       sBYTE tp )
+{
+  sKeyWord
+    *pKeyWord ;
+
+  pKeyWord = (sKeyWord*) AllocMemory ( sizeof ( sKeyWord ) ) ;
+  pKeyWord->tokenType = tt ;
+  pKeyWord->tokenPrecedence = tp ;
+  pKeyWord->function = fn ;
+  gHyp_hash_update ( gpKeyHash, KEYWORD_HASH_TABLE_SIZE, kw, pKeyWord ) ;
+}
+
+void gHyp_load_new ()
+{
+  gpKeyHash = gHyp_hash_new ( KEYWORD_HASH_TABLE_SIZE ) ;
+
+  /* ELSE */
+  lHyp_load_newKey ( "else", gHyp_stmt_else, TOKEN_KEYWORD, PRECEDENCE_EMPTY ) ;
+
+  /* CONTROL STATEMENTS */
+  lHyp_load_newKey ( "if", gHyp_stmt_if, TOKEN_KEYWORD, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "while", gHyp_stmt_while, TOKEN_KEYWORD, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "do", gHyp_stmt_do, TOKEN_KEYWORD, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "for", gHyp_stmt_for, TOKEN_KEYWORD, PRECEDENCE_UNARY ) ;
+
+  /* FUNCTION EXPRESSIONS */
+
+  /* Typecast functions */
+  lHyp_load_newKey ( "int", gHyp_type_int, TOKEN_TYPECAST, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "float" ,  gHyp_type_float, TOKEN_TYPECAST, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "str" ,  gHyp_type_str, TOKEN_TYPECAST, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "short" ,  gHyp_type_short, TOKEN_TYPECAST, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "ushort" ,  gHyp_type_ushort, TOKEN_TYPECAST, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "long" ,  gHyp_type_long, TOKEN_TYPECAST, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "ulong" ,  gHyp_type_ulong, TOKEN_TYPECAST, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "double" ,  gHyp_type_double, TOKEN_TYPECAST, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "byte" ,  gHyp_type_byte, TOKEN_TYPECAST, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "ubyte" ,  gHyp_type_ubyte, TOKEN_TYPECAST, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "char" ,  gHyp_type_char, TOKEN_TYPECAST, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "uchar" ,  gHyp_type_uchar, TOKEN_TYPECAST, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "list" ,  gHyp_type_list, TOKEN_TYPECAST, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "binary" ,  gHyp_type_binary, TOKEN_TYPECAST, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "boolean" ,  gHyp_type_boolean, TOKEN_TYPECAST, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "hex" ,  gHyp_type_hex, TOKEN_TYPECAST, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "octal" ,  gHyp_type_octal, TOKEN_TYPECAST, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "unicode" ,  gHyp_type_unicode, TOKEN_TYPECAST, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "handle" ,  gHyp_type_handle, TOKEN_TYPECAST, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "attr" ,  gHyp_type_attr, TOKEN_TYPECAST, PRECEDENCE_UNARY ) ;
+
+  /* Other Functions */
+  lHyp_load_newKey ( "goto", gHyp_branch_goto, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "return" ,  gHyp_stmt_return, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "continue" ,  gHyp_stmt_continue, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "break" ,  gHyp_stmt_break, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ; 
+    
+  /* Message functions */
+  lHyp_load_newKey ( "query" ,  gHyp_route_query, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "event" ,  gHyp_route_event, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "requeue" ,  gHyp_route_requeue, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "enable" ,  gHyp_route_enable, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "disable" ,  gHyp_route_disable, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "service" ,  gHyp_route_service, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "open",  gHyp_route_open, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+
+  lHyp_load_newKey ( "sender" ,  gHyp_function_sender, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "self" ,  gHyp_function_self, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "mode" ,  gHyp_function_mode, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "method" ,  gHyp_function_method, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "tid" ,  gHyp_function_tid, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "sid" ,  gHyp_function_sid, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "idle" ,  gHyp_env_idle, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "instantiate",  gHyp_env_instantiate, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "instantiation",  gHyp_env_instantiation, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+
+  lHyp_load_newKey ( "children",  gHyp_route_children, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "concept",  gHyp_route_concept, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "parent",  gHyp_route_parent, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "instance",  gHyp_route_instance, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "instances",  gHyp_route_instances, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "moveto",  gHyp_route_moveto, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+
+  /* Handler support functions */
+  lHyp_load_newKey ( "on_message" ,  gHyp_branch_on_message, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ; 
+  lHyp_load_newKey ( "alarm" ,  gHyp_function_alarm, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "on_alarm" ,  gHyp_branch_on_alarm, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ; 
+  lHyp_load_newKey ( "on_error" ,  gHyp_branch_on_error, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "on_interrupt", gHyp_branch_on_interrupt, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "on_pipe", gHyp_branch_on_pipe,  TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "on_hangup", gHyp_branch_on_hangup,  TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "on_connect", gHyp_branch_on_connect,  TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "timeout", gHyp_function_timeout, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "on_timeout",  gHyp_branch_on_timeout,  TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "lifetime" ,  gHyp_function_lifetime, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "on_death" ,  gHyp_branch_on_death, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+
+  /* System functions */
+  lHyp_load_newKey ( "sleep" ,  gHyp_system_sleep, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "exec" ,  gHyp_system_exec, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "system" ,  gHyp_system_system, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "parse" ,  gHyp_system_parse, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "srandom" ,  gHyp_system_srandom, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "random" ,  gHyp_system_random, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "datetime" ,  gHyp_system_datetime, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "time" ,  gHyp_system_time, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "date" ,  gHyp_system_date, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ; 
+  lHyp_load_newKey ( "timestamp" ,  gHyp_system_timestamp, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "parsedate" ,  gHyp_system_parsedate, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "getenv" ,  gHyp_system_getenv, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "setenv" ,  gHyp_system_setenv, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "unsetenv" ,  gHyp_system_unsetenv, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+
+#ifdef AS_PROMIS
+  /* PROMIS functions */
+  lHyp_load_newKey ( "pexec" ,  gHyp_promis_pexec, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "pget" ,  gHyp_promis_pget, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "pnext" ,  gHyp_promis_pnext, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "psnap" ,  gHyp_promis_psnap, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "popen" ,  gHyp_promis_popen, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "pclose" ,  gHyp_promis_pclose, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "plogopen" ,  gHyp_promis_plogopen, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "plogclose" ,  gHyp_promis_plogclose, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "pcapture" ,  gHyp_promis_pcapture, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  /*lHyp_load_newKey ( "plogin" ,  gHyp_promis_plogin, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;*/
+#endif
+
+#ifdef AS_JNI
+  lHyp_load_newKey ( "jeval" ,  gHyp_hs_jeval, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+#endif
+
+  /* Conversion functions */
+  lHyp_load_newKey ( "toupper" ,  gHyp_function_toupper, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "tolower" ,  gHyp_function_tolower, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "toexternal" ,  gHyp_function_toexternal, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "tointernal" ,  gHyp_function_tointernal, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "encode" ,  gHyp_function_encode, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "decode" ,  gHyp_function_decode, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+
+  /* String functions, some like 'C' */
+  lHyp_load_newKey ( "strlen" ,  gHyp_function_strlen, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "strloc" ,  gHyp_function_strloc, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "strext" ,  gHyp_function_strext, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "strtok" ,  gHyp_function_strtok, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "trim" ,  gHyp_function_trim, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "strip" ,  gHyp_function_strip, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+
+
+  /* File functions */
+  lHyp_load_newKey ( "log" ,  gHyp_fileio_log, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "fopen" ,  gHyp_fileio_fopen, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "fclose" ,  gHyp_fileio_fclose, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "fput" ,  gHyp_fileio_fput, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "fputs" ,  gHyp_fileio_fputs, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "fread" ,  gHyp_fileio_fread, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "fwrite" ,  gHyp_fileio_fwrite, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "fget" ,  gHyp_fileio_fget, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "fgets" ,  gHyp_fileio_fgets, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "fdescribe" ,  gHyp_fileio_fdescribe, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "describe",  gHyp_fileio_describe, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "sdescribe",  gHyp_fileio_sdescribe, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "put" ,  gHyp_fileio_put, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "puts" ,  gHyp_fileio_puts, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "get" ,  gHyp_fileio_get, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "gets" ,  gHyp_fileio_gets, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "unlink" ,  gHyp_fileio_unlink, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "echo" ,  gHyp_fileio_echo, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "load" ,  gHyp_fileio_load, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "load_binary" ,  gHyp_fileio_load_binary, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+
+  /* XML Conversion */
+  lHyp_load_newKey ( "xdescribe", gHyp_fileio_xdescribe, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "xsdescribe", gHyp_fileio_xsdescribe, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "xfdescribe", gHyp_fileio_xfdescribe, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "xml", gHyp_cgi_xml, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "xparse" , gHyp_system_xparse, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  
+#ifdef AS_SQL
+#ifndef AS_PROC
+  /* SQL functions */
+  lHyp_load_newKey ( "sql_open",  gHyp_sql_open, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "sql_query", gHyp_sql_query, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "sql_close", gHyp_sql_close, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+#else
+  lHyp_load_newKey ( "sql_open",    gHyp_sql_connect, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "sql_query",   gHyp_sql_query, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "sql_connect", gHyp_sql_connect, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "sql",         gHyp_sql_query, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+#endif
+#endif
+
+  /* SECS functions */
+  lHyp_load_newKey ( "secs_hsms" ,  gHyp_secs_hsms, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "secs_service", gHyp_secs_service, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "secs_open" ,  gHyp_secs_open, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "secs_assign" ,  gHyp_secs_assign, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "secs_enable" ,  gHyp_secs_enable, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "secs_query" ,  gHyp_secs_query, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "secs_event" ,  gHyp_secs_event, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "secs_disable" ,  gHyp_secs_disable, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "secs_close" ,  gHyp_secs_close, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "secs_mlb" ,  gHyp_secs_mlb, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "secs_mhp" ,  gHyp_secs_mhp, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "secs_handle" ,  gHyp_secs_handle, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+
+  /* Port functions */
+  lHyp_load_newKey ( "port_service" ,  gHyp_port_service, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "port_open" ,  gHyp_port_open, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "port_assign" ,  gHyp_port_assign, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "port_enable" ,  gHyp_port_enable, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "port_query" ,  gHyp_port_query, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "port_event" ,  gHyp_port_event, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "port_disable" ,  gHyp_port_disable, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "port_close" ,  gHyp_port_close, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "port_handle" ,  gHyp_port_handle, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+
+  /* Tunneling functions */
+  lHyp_load_newKey ( "tunnel", gHyp_route_tunnel, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "forward" ,  gHyp_route_forward, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "unforward" ,  gHyp_route_unforward, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+
+  /* HTTP functions */
+  lHyp_load_newKey ( "http_service", gHyp_http_service, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "http_open" ,  gHyp_http_open, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "http_assign" ,  gHyp_http_assign, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "http_enable" ,  gHyp_http_enable, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "http_query" ,  gHyp_http_query, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "http_event" ,  gHyp_http_event, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "http_reply" ,  gHyp_http_reply, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "http_disable" ,  gHyp_http_disable, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "http_close" ,  gHyp_http_close, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "http_handle" ,  gHyp_http_handle, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+
+#ifdef AS_SSL
+  /* SSL functions */
+  lHyp_load_newKey ( "ssl_new", gHyp_ssl_new, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "ssl_ciphers",  gHyp_ssl_ciphers, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "ssl_keyFile",  gHyp_ssl_keyFile, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "ssl_certFile",  gHyp_ssl_certFile, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "ssl_CApath",  gHyp_ssl_CApath, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "ssl_CAfile",  gHyp_ssl_CAfile, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "ssl_auth",  gHyp_ssl_auth, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "ssl_authClient",  gHyp_ssl_authClient, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "ssl_assign",  gHyp_ssl_assign, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "ssl_delete", gHyp_ssl_delete, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "ssl_getSession", gHyp_ssl_getSession, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "ssl_setSession", gHyp_ssl_setSession, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+#endif
+
+  /* Environment */
+  lHyp_load_newKey ( "undef" ,  gHyp_env_undef, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "exists" ,  gHyp_env_exists, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "count" ,  gHyp_env_count, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "hashed" ,  gHyp_env_hashed, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "unhashed" ,  gHyp_env_unhashed, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "local" ,  gHyp_env_local, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "global" ,  gHyp_env_global, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "next" ,  gHyp_env_next, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "prev" ,  gHyp_env_prev, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "insert" ,  gHyp_env_insert, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "append" ,  gHyp_env_append, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "remove" ,  gHyp_env_remove, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "chop" ,  gHyp_env_chop, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "detach" ,  gHyp_env_detach, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "map" ,  gHyp_env_map, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "merge" ,  gHyp_env_merge, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "sort" ,  gHyp_env_sort, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "reverse" ,  gHyp_env_reverse, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "debug" ,  gHyp_env_debug, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "exit" ,  gHyp_env_exit, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "quit" ,  gHyp_env_quit, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "quiet" ,  gHyp_env_quiet, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "verify" ,  gHyp_env_verify, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "version" ,  gHyp_env_version, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "typeof" ,  gHyp_type_typeof, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "valueof",  gHyp_type_valueof, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "localhost" ,  gHyp_env_localhost, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "localaddr" ,  gHyp_env_localaddr, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+}
+
+void gHyp_load_delete()
+{
+  sHash 
+    *pNext,
+    *pHash ;
+
+  sKeyWord
+    *pKeyWord ;
+
+  int
+    i ;
+
+  /* Free the secs structures */
+  for ( i=0; i<KEYWORD_HASH_TABLE_SIZE; i++ )
+    for ( pHash = (*gpKeyHash)[i]; pHash; pHash=pNext ) {
+      pNext = gHyp_hash_next ( pHash ) ;
+      pKeyWord = (sKeyWord*) gHyp_hash_object ( pHash ) ;
+      ReleaseMemory ( pKeyWord ) ;
+      gHyp_hash_free ( pHash ) ;
+    }
+  gHyp_hash_delete ( gpKeyHash ) ;
+}
+
+sLOGICAL gHyp_load_isKey ( char *pToken )
+{
+  if ( gHyp_hash_find ( gpKeyHash,
+			KEYWORD_HASH_TABLE_SIZE,
+			pToken ) )
+    return TRUE ;
+  else
+    return FALSE ;
+}
+
+void (*gHyp_load_fun(char *pToken, char *tt, char *tp))
+	 (sInstance* pAI, sCode *pCode, sLOGICAL isPARSE)
+{
+  /* Description:
+   *
+   *	Returns a pointer to a function that executes a HyperScript
+   *	language element token.
+   *
+   * Arguments:
+   *
+   *	pToken						[R]
+   *	- pointer to HyperScript token
+   *
+   *	tt						[W]
+   *	- pointer to char to contain token type
+   *
+   *	tp						[W]
+   *	- pointer to char to contain token precedence
+   *
+   * Return value:
+   *
+   *	Pointer to HyperScript language element token function.
+   *
+   */
+  /* Check for keyword tokens */
+
+  /* Functions are loosely ordered according to frequency of use. */
+  
+  sKeyWord
+    *pKeyWord  = (sKeyWord*) gHyp_hash_find ( gpKeyHash,
+				  KEYWORD_HASH_TABLE_SIZE,
+				  pToken ) ;
+  if ( pKeyWord ) {
+    *tt = pKeyWord->tokenType ;
+    *tp = pKeyWord->tokenPrecedence ;
+    return pKeyWord->function ;
+  }
+  else {
+
+    /* Everything else is either an identifier or a constant. */
+    
+    *tp = PRECEDENCE_OPERAND ;
+    if ( gHyp_util_isIdentifier ( pToken ) )
+      *tt = TOKEN_UNIDENTIFIED ;
+    else
+      *tt = TOKEN_CONSTANT ;
+    return (void (*)(sInstance*,sCode*,sLOGICAL)) gHyp_operand_token ;
+  }
+}
+
+char *gHyp_load_fromStream (	sInstance *pAI,
+				sHyp 	*pHyp,
+				char    *pStream,
+				int    	lineNo )
+{
+  /* Description:
+   *
+   *	Load a line of HyperScript code to the end of the HyperScript program.
+   *	This routine is responsible for recognizing and separating tokens 
+   *	from the input stream.  Just like the UNIX utilities 'lex' and yacc,
+   *	this routine is equivalent to 'lex': lexical processor.
+   *
+   * Arguments:
+   *
+   */
+  char		
+    *pToken,
+    *pStr,
+    *pSearch,
+    ch,
+    tokenType,
+    precedence ;
+
+  int
+    tokenLen,
+    scanLen,
+    stringLen ;
+
+  sLOGICAL
+    wasLoaded,
+    terminated ;
+
+  void
+    (*pf)(sInstance*,sCode*,sLOGICAL) ;
+
+  sConcept
+    *pConcept = gHyp_instance_getConcept ( pAI ) ;
+
+  /* Extract out identifiers - variables, values, constants, strings, 
+   * keywords, and punctuation 
+   */
+  while ( *pStream ) {
+
+    /* Pull out identifiers; they are either keywords, variables,
+     * constants, strings, or labels.
+     */
+    while ( ( scanLen = abs ( gHyp_util_getToken ( 
+			pStream, gHyp_hyp_okUnaryOperator ( pHyp ) ) ) ) ) {
+
+      /* Found a variable, keyword, constant, identifier, or garbage... */
+      if ( !gInComment ) {
+	pToken = (char*) AllocMemory ( scanLen+1 ) ;
+	assert ( pToken ) ;
+        strncpy ( pToken, pStream, scanLen ) ;
+        pToken[scanLen] = '\0' ;
+	/*gHyp_util_debug("TOKEN is %s",pToken);*/
+        pf = gHyp_load_fun ( pToken, &tokenType, &precedence ) ;
+        wasLoaded = gHyp_hyp_load ( 	pAI,
+					pConcept,
+					pHyp, 
+					pToken,
+					tokenType,
+					precedence,
+					lineNo,
+					pf ) ;
+
+	ReleaseMemory ( pToken ) ;
+	if ( !wasLoaded ) return NULL ;
+      }
+      pStream += scanLen ;
+      if ( !(*pStream) ) break ;
+    }
+
+    /* Quit if we're at the end of the string token */
+    if ( !(*pStream) ) break ;
+
+    switch ( *pStream ) {
+
+    case '"' :	/* String */
+    case '\'' :	/* Variable */
+    case '`' : /* Raw character array */
+      
+      if ( gInComment ) { pStream++ ; break ; }
+      
+      /* Start of quoted string. Find end quote */
+      ch = *pStream ;
+      terminated = FALSE ;
+      pSearch = pStream + 1 ;
+      while ( !terminated ) {
+	
+	pStr = strchr ( pSearch, ch ) ;
+	
+	/* If no ending quote, quit, returning pointer to start */
+	if ( pStr == NULL ) return pStream ;
+	
+	/* If the ending quote is preceeded by a single backslash, then its not
+	 * the ending quote.
+	 */
+	if ( *(pStr-1) == '\\' && *(pStr-2) != '\\' ) {
+	  /* Not a correct terminator,  keep searching. */
+	  pSearch = pStr+1 ;
+	}
+	else
+	  terminated = TRUE ;
+      }
+      
+      /* Replace ending quote with terminating character */
+      *pStr = '\0' ;
+      
+      /* Advance past starting quote */
+      pStream++ ;
+      
+      /* Parse the string */
+      stringLen = strlen ( pStream ) ;
+      /***stringLen = gHyp_util_parseString ( pStream ) ;***/
+      
+      /* Extract string - maximum of VALUE_SIZE characters. */
+      tokenLen = MIN ( VALUE_SIZE, stringLen ) ;
+      pToken = (char*) AllocMemory ( tokenLen + 1 ) ;
+      assert ( pToken ) ;
+      if ( tokenLen > 0 ) strncpy ( pToken, pStream, tokenLen ) ;
+      pToken[tokenLen] = '\0' ;
+      if ( stringLen > VALUE_SIZE ) {
+	gHyp_util_logError ( "%c%s...%c was truncated", ch, pToken, ch ) ;
+	guErrorCount++ ;
+      }
+      
+      /* Advance past quoted string. */
+      pStream = pStr + 1 ;
+      
+      /* Load */
+      wasLoaded = gHyp_hyp_load ( pAI,
+				  pConcept,
+				  pHyp, 
+				  pToken,
+				  (sBYTE) ( ch == '"' ? 
+					    TOKEN_LITERAL :
+					    ch == '`' ? 
+					    TOKEN_RAW :
+					    TOKEN_UNIDENTIFIED ),
+				  PRECEDENCE_OPERAND, 
+				  lineNo,
+				  gHyp_operand_token ) ;
+      ReleaseMemory ( pToken ) ;
+      if ( !wasLoaded ) return NULL ;
+      break ;
+      
+    case ';' :	/* End of statement */
+      
+      pStream++ ;
+      if ( gInComment ) break ;
+      if ( !gHyp_hyp_load (	pAI,
+				pConcept,
+				pHyp, 
+				";",
+				TOKEN_EOS, 
+				PRECEDENCE_EOS,
+				lineNo,
+				gHyp_stmt_eos ) ) return NULL ;
+      break ;
+      
+    case '?' :	/* "exp1 ? exp2 : exp3" condition */
+
+      pStream++ ;
+      if ( gInComment ) break ;
+      if ( !gHyp_hyp_load (	pAI,
+				pConcept,
+				pHyp, 
+				"?",
+				TOKEN_CONDITION, 
+				PRECEDENCE_CONDITION,
+				lineNo,
+				gHyp_operator_condition ) ) 
+	return NULL;
+      break ;
+      
+    case ':' :	/* "exp1 ? exp2 : exp3" condition or label marker */
+      
+      pStream++ ;
+      if ( gInComment ) break ;
+      if ( !gHyp_hyp_load (	pAI,
+				pConcept,
+				pHyp, 
+				":",
+				TOKEN_EVAL,
+				PRECEDENCE_EVAL,
+				lineNo,
+				gHyp_operator_eval ) ) return NULL ;
+      break ;
+      
+      
+    case '(' :	/* Begin expression */
+      
+      pStream++ ;
+      if ( gInComment ) break ;
+      if ( !gHyp_hyp_load (	pAI,
+				pConcept,
+				pHyp, 
+				"(",
+				TOKEN_BEXP, 
+				PRECEDENCE_LEFT,
+				lineNo,
+				gHyp_stmt_bExp ) ) return NULL ;
+      break ;
+      
+    case ')' :	/* End expression */
+      
+      pStream++ ;
+      if ( gInComment ) break ;
+      if ( !gHyp_hyp_load ( 	pAI,
+				pConcept,
+				pHyp, 
+				")",
+				TOKEN_EEXP, 
+				PRECEDENCE_RIGHT,
+				lineNo,
+				gHyp_stmt_eExp ) ) return NULL ;
+      break ;
+      
+    case '{' :	/* Begin list */
+      
+      pStream++ ;
+      if ( gInComment ) break ;
+      if ( !gHyp_hyp_load ( 	pAI,
+				pConcept,
+				pHyp, 
+				"{",
+				TOKEN_BLIST, 
+				PRECEDENCE_LEFT,
+				lineNo,
+				gHyp_stmt_bList ) ) return NULL ;
+      break ;
+      
+    case '}' :	/* End list */
+      
+      pStream++ ;
+      if ( gInComment ) break ;
+      if ( !gHyp_hyp_load ( 	pAI,
+				pConcept,
+				pHyp, 
+				"}",
+				TOKEN_ELIST, 
+				PRECEDENCE_RIGHT,
+				lineNo,
+				gHyp_stmt_eList ) ) return NULL ;
+      break ;
+      
+    case ',' :	/* Next in list */
+      
+      pStream++ ;
+      if ( gInComment ) break ;
+      if ( !gHyp_hyp_load ( 	pAI,
+				pConcept,
+				pHyp, 
+				",",
+				TOKEN_LIST, 
+				PRECEDENCE_LIST,
+				lineNo,
+				gHyp_stmt_list ) ) return NULL ;
+      break ;
+      
+    case '.' :	/* Structure separator */
+      
+      pStream++ ;
+      if ( gInComment ) break ;
+      if ( !gHyp_hyp_load ( 	pAI,
+				pConcept,
+				pHyp, 
+				".",
+				TOKEN_DOT, 
+				PRECEDENCE_DOT,
+				lineNo,
+				gHyp_operator_dot ) ) return NULL ;
+      break ;
+      
+    case '[' :	/* Begin subscript */
+      
+      pStream++ ;
+      if ( gInComment ) break ;
+      if ( !gHyp_hyp_load ( 	pAI,
+				pConcept,
+				pHyp, 
+				"[",
+				TOKEN_BSUB, 
+				PRECEDENCE_LEFT,
+				lineNo,
+				gHyp_stmt_bSub ) ) return NULL ;
+      break ;
+      
+    case ']' :	/* End subscript */
+      
+      pStream++ ;
+      if ( gInComment ) break ;
+      if ( !gHyp_hyp_load ( 	pAI,
+				pConcept,
+				pHyp, 
+				"]",
+				TOKEN_ESUB, 
+				PRECEDENCE_RIGHT,
+				lineNo,
+				gHyp_stmt_eSub ) ) return NULL ;
+      break ;
+      
+    case '*' :	/* Multiply, de-reference, power, and end comment */
+      
+      pStream++ ;
+      if ( gInComment ) {
+	if ( *pStream == '/' ) {
+	  pStream++ ;
+	  gInComment = FALSE ;
+	}
+	break ;
+      }
+      if ( gHyp_hyp_okUnaryOperator ( pHyp ) ) {
+	
+	if ( !gHyp_hyp_load (	pAI,
+				pConcept,
+				pHyp, 
+				"*",
+				TOKEN_DEREF, 
+				PRECEDENCE_DEREF,
+				lineNo,
+				gHyp_operator_dereference ) ) return NULL ;
+      }
+      else {
+	
+
+	if ( *pStream == '*' ) {
+	  pStream++ ;
+	  if ( !gHyp_hyp_load ( pAI,
+				pConcept,
+				pHyp, 
+				"**",
+				TOKEN_POW,
+				PRECEDENCE_POW,
+				lineNo,
+				gHyp_operator_binary ) ) return NULL ;
+	}
+	else {
+	  if ( !gHyp_hyp_load (	pAI,
+				pConcept,
+				pHyp, 
+				"*",
+				TOKEN_MUL, 
+				PRECEDENCE_MULDIVMOD,
+				lineNo,
+				gHyp_operator_binary ) ) return NULL ;
+	}
+      }
+      break ;
+      
+    case '/' :	/* Divide and Begin Comment */
+      
+      pStream++ ;
+      if ( gInComment ) break ;
+      if ( *pStream == '/' ) { pStream += strlen ( pStream ) ; break ; }
+      if ( *pStream == '*' ) {
+	gInComment = TRUE ;
+	pStream++ ;
+	break ;
+      }
+      if ( !gHyp_hyp_load (	pAI,
+				pConcept,
+				pHyp, 
+				"/",
+				TOKEN_DIV, 
+				PRECEDENCE_MULDIVMOD,
+				lineNo,
+				gHyp_operator_binary ) ) return NULL ;
+      break ;
+      
+    case '+' :	/* Add, PreInc, PostInc, and Positive */
+      
+      pStream++ ;
+      if ( gInComment ) break ;
+      
+      if ( gHyp_hyp_okUnaryOperator ( pHyp ) ) {
+	
+	if ( *pStream == '+' ) {
+	  pStream++ ;
+	  if ( !gHyp_hyp_load ( pAI,
+				pConcept,
+				pHyp, 
+				"++",
+				TOKEN_PREINC,
+				PRECEDENCE_UNARY,
+				lineNo,
+				gHyp_operator_unary ) ) return NULL ;
+	}
+	else {
+	  if ( !gHyp_hyp_load ( pAI,
+				pConcept,
+				pHyp, 
+				"+",
+				TOKEN_POS, 
+				PRECEDENCE_UNARY,
+				lineNo,
+				gHyp_operator_unary ) ) return NULL ;
+	}	
+      }
+      else {
+	
+	if ( *pStream == '+' ) {
+	  pStream++ ;
+	  if ( !gHyp_hyp_load ( pAI,
+				pConcept,
+				pHyp, 
+				"++",
+				TOKEN_POSTINC,
+				PRECEDENCE_POST_UNARY,
+				lineNo,
+				gHyp_operator_unary ) ) return NULL ;
+	}
+	else {
+	  if ( !gHyp_hyp_load ( pAI,
+				pConcept,
+				pHyp, 
+				"+",
+				TOKEN_ADD, 
+				PRECEDENCE_ADDSUB,
+				lineNo,
+				gHyp_operator_binary ) ) return NULL ;
+	}
+      }
+      break ;
+      
+    case '-' :	/*  Substract, PreDec, PostDec, and Negation */
+      
+      pStream++ ;
+      if ( gInComment ) break ;
+      if ( gHyp_hyp_okUnaryOperator ( pHyp ) ) {
+	
+	if ( *pStream == '-' ) {
+	  pStream++ ;
+	  if ( !gHyp_hyp_load ( pAI,
+				pConcept,
+				pHyp, 
+				"--",
+				TOKEN_PREDEC,
+				PRECEDENCE_UNARY,
+				lineNo,
+				gHyp_operator_unary ) ) return NULL ;
+	}
+	else {
+	  if ( !gHyp_hyp_load ( pAI,
+				pConcept,
+				pHyp, 
+				"-",
+				TOKEN_NEG, 
+				PRECEDENCE_UNARY,
+				lineNo,
+				gHyp_operator_unary ) ) return NULL ;
+	}
+      }
+      else {
+	
+	if ( *pStream == '-' ) {
+	  pStream++ ;
+	  if ( !gHyp_hyp_load ( pAI,
+				pConcept,
+				pHyp, 
+				"--",
+				TOKEN_POSTDEC,
+				PRECEDENCE_POST_UNARY,
+				lineNo,
+				gHyp_operator_unary ) ) return NULL ;
+	}
+	else if ( *pStream == '>' ) {
+	  pStream++ ;
+	  if ( !gHyp_hyp_load ( pAI,
+				pConcept,
+				pHyp, 
+				"->",
+				TOKEN_POINTER,
+				PRECEDENCE_POINTER,
+				lineNo,
+				gHyp_operator_pointer ) ) return NULL ;
+	}
+	else {
+	  if ( !gHyp_hyp_load ( pAI,
+				pConcept,
+				pHyp, 
+				"-",
+				TOKEN_SUB, 
+				PRECEDENCE_ADDSUB,
+				lineNo,
+				gHyp_operator_binary ) ) return NULL ;
+	}
+      }
+      break ;
+      
+    case '%' :	/* Modulus */
+      
+      pStream++ ;
+      if ( gInComment ) break ;
+      if ( !gHyp_hyp_load (	pAI,
+				pConcept,
+				pHyp, 
+				"%",
+				TOKEN_MOD, 
+				PRECEDENCE_MULDIVMOD,
+				lineNo,
+				gHyp_operator_binary ) ) return NULL ;
+      break ;
+      
+    case '<' :	/* < and <= */
+      
+      pStream++ ;
+      if ( gInComment ) break ;
+      if ( *pStream == '=' ) {
+	pStream++ ;
+	if ( !gHyp_hyp_load (	pAI,
+				pConcept,
+				pHyp, 
+				"<=",
+				TOKEN_LE,
+				PRECEDENCE_GTLT,
+				lineNo,
+				gHyp_operator_binary ) ) return NULL ;
+      }
+      else {
+	if ( !gHyp_hyp_load (	pAI,
+				pConcept,
+				pHyp, 
+				"<",
+				TOKEN_LT, 
+				PRECEDENCE_GTLT,
+				lineNo,
+				gHyp_operator_binary ) ) return NULL ;
+      }
+      break ;
+      
+    case '>' :	/* > and >= */
+      
+      pStream++ ;
+      if ( gInComment ) break ;
+      if ( *pStream == '=' ) {
+	pStream++ ;
+	if ( !gHyp_hyp_load (	pAI,
+				pConcept,
+				pHyp, 
+				">=",
+				TOKEN_GE, 
+				PRECEDENCE_GTLT,
+				lineNo,
+				gHyp_operator_binary ) ) return NULL ;
+      }
+      else {
+	if ( !gHyp_hyp_load (	pAI,
+				pConcept,
+				pHyp, 
+				">",
+				TOKEN_GT, 
+				PRECEDENCE_GTLT,
+				lineNo,
+				gHyp_operator_binary ) ) return NULL ;
+      }
+      break ;
+      
+    case '=' :	/* Assignment and Comparision */
+      
+      pStream++ ;
+      if ( gInComment ) break ;
+      if ( *pStream == '=' ) {
+	pStream++ ;
+	if ( !gHyp_hyp_load (	pAI,
+				pConcept,
+				pHyp, 
+				"==",
+				TOKEN_EQ, 
+				PRECEDENCE_EQNE,
+				lineNo,
+				gHyp_operator_binary ) ) return NULL ;
+      }
+      else {
+	if ( !gHyp_hyp_load (	pAI,
+				pConcept,
+				pHyp, 
+				"=",
+				TOKEN_ASSIGN, 
+				PRECEDENCE_ASSIGN,
+				lineNo,
+				gHyp_operator_assign ) ) return NULL ;
+      }
+      break ;
+      
+    case '&' :	/* AND */
+      
+      pStream++ ;
+      if ( gInComment ) break ;
+      if ( *pStream == '&' ) {
+	pStream++ ;
+	if ( !gHyp_hyp_load (	pAI,
+				pConcept,
+				pHyp, 
+				"&&",
+				TOKEN_AND, 
+				PRECEDENCE_ANDOR,
+				lineNo,
+				gHyp_operator_binary ) ) return NULL ;
+      }
+      else if ( gHyp_hyp_okUnaryOperator ( pHyp ) ) {
+	
+	if ( !gHyp_hyp_load (	pAI,
+				pConcept,
+				pHyp, 
+				"&",
+				TOKEN_REF, 
+				PRECEDENCE_UNARY,
+				lineNo,
+				gHyp_operator_reference ) ) return NULL ;
+      }
+      else {
+	
+	if ( !gHyp_hyp_load (	pAI,
+				pConcept,
+				pHyp, 
+				"&",
+				TOKEN_BITAND, 
+				PRECEDENCE_BITAND,
+				lineNo,
+				gHyp_operator_binary ) ) return NULL ;
+      }
+      break ;
+      
+    case '|' :	/* OR */
+      
+      pStream++ ;
+      if ( gInComment ) break ;
+      if ( *pStream == '|' ) {
+	pStream++ ;
+	if ( !gHyp_hyp_load (	pAI,
+				pConcept,
+				pHyp, 
+				"||",
+				TOKEN_OR, 
+				PRECEDENCE_ANDOR,
+				lineNo,
+				gHyp_operator_binary ) ) return NULL ;
+      }
+      else {
+	if ( !gHyp_hyp_load (	pAI,
+				pConcept,
+				pHyp, 
+				"|",
+				TOKEN_BITOR, 
+				PRECEDENCE_BITOR,
+				lineNo,
+				gHyp_operator_binary ) ) return NULL ;
+      }
+      break ;
+      
+    case '^' :	/* XOR */
+      
+      pStream++ ;
+      if ( gInComment ) break ;
+      if ( !gHyp_hyp_load (	pAI,
+				pConcept,
+				pHyp, 
+				"^",
+				TOKEN_BITXOR, 
+				PRECEDENCE_BITXOR,
+				lineNo,
+				gHyp_operator_binary ) ) return NULL ;
+      break ;
+      
+      
+    case '!' :	/* NOT and NOT Equal */
+      
+      pStream++ ;
+      if ( gInComment ) break ;
+      if ( *pStream == '=' ) {
+	pStream++ ;
+	if ( !gHyp_hyp_load (	pAI,
+				pConcept,
+				pHyp, 
+				"!=",
+				TOKEN_NE, 
+				PRECEDENCE_EQNE,
+				lineNo,
+				gHyp_operator_binary ) ) return NULL ;
+      }
+      else {
+	if ( !gHyp_hyp_load ( pAI,
+			      pConcept,
+			      pHyp, 
+			      "!",
+			      TOKEN_NOT, 
+			      PRECEDENCE_UNARY,
+			      lineNo,
+			      gHyp_operator_unary ) ) return NULL ;
+      }
+      break ;
+      
+    case '~' :	/* COMPLEMENT */
+      
+      pStream++ ;
+      if ( gInComment ) break ;
+      if ( !gHyp_hyp_load (	pAI,
+				pConcept,
+				pHyp, 
+				"~",
+				TOKEN_COMPLEMENT, 
+				PRECEDENCE_UNARY,
+				lineNo,
+				gHyp_operator_unary ) ) return NULL ;
+      break ;
+      
+    case ' ' :
+      pStream++ ;
+      break ;
+      
+    case '#' :	/* #! */
+      
+      pStream++ ;
+      if ( gInComment ) break ;
+      if ( *pStream == '!' ) pStream += strlen ( pStream ) ;
+      break ;
+      
+    case '\\' :	/* Reserved */
+    case '@' :	/* Reserved */
+    default:
+      ch = *pStream ;
+      pStream++ ;
+      if ( gInComment || ch < ' ' ) break ; 
+      gHyp_util_logError ( "Ignoring illegal use of character '%c'", ch ) ;
+      guErrorCount++ ;
+    }
+  }
+  return pStream ;
+}

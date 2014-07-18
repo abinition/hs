@@ -1,0 +1,31 @@
+/*
+ * Modifications:
+ *
+ * $Log: tcp.h,v $
+ * Revision 1.5  2004/07/01 02:18:28  bergsma
+ * Functions without stdout to use with JNI interface
+ *
+ * Revision 1.4  2004/04/29 02:13:01  bergsma
+ * Support for 127.*.*.* interfaces.
+ * Do not do gethostbyname or gethostbyaddr unless necessary,
+ * these functions block.
+ *
+ * Revision 1.3  2002/11/14 01:40:45  bergsma
+ * Removed ^M occurances and added Modification section.
+ *
+ * Revision 1.2  2002/09/20 00:03:46  bergsma
+ * gHyp_tcp_createAlias returns sAlias*
+ *
+ */
+extern SOCKET		gHyp_tcp_request ( char *, int ) ;
+extern SOCKET		gHyp_tcp_requestJNI ( char* pHost, int port ) ;
+extern SOCKET  		gHyp_tcp_make ( char *, char *, sLOGICAL ) ;
+extern SOCKET		gHyp_tcp_checkInbound ( SOCKET, char*, char*, sLOGICAL ) ;
+extern sLOGICAL		gHyp_tcp_resolveHost ( char *, char * ) ;
+extern void		gHyp_tcp_createAliasTable() ;
+extern void		gHyp_tcp_deleteAliasTable() ;
+extern sAlias*		gHyp_tcp_newAlias ( char * ) ;
+extern void		gHyp_tcp_deleteAlias ( sAlias* ) ;
+extern sAlias*		gHyp_tcp_createAlias ( char *pHost, char *pAddr ) ;
+extern void		gHyp_tcp_removeAliases ( char* ) ;
+extern void		gHyp_tcp_gethostname ( char *, int  ) ;
