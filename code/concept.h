@@ -3,9 +3,6 @@
  * Modifications:
  *
  * $Log: concept.h,v $
- * Revision 1.5  2007-07-09 05:39:00  bergsma
- * TLOGV3
- *
  * Revision 1.11  2007-02-26 02:35:01  bergsma
  * No longer user NULL_DEVICEID placeholder.  PORT and HTTP
  * autoallocate device ids, HSMS and SECS I are pre-determined.

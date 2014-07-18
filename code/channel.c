@@ -10,8 +10,8 @@
  * Modifications:
  *
  * $Log: channel.c,v $
- * Revision 1.5  2007-07-09 05:39:00  bergsma
- * TLOGV3
+ * Revision 1.7  2008-02-12 23:03:52  bergsma
+ * V3.8.2 (compiled with VS C 2008)
  *
  * Revision 1.6  2006-08-08 20:48:27  bergsma
  * Added setTarget, setPath, setSocket
@@ -359,7 +359,7 @@ void gHyp_channel_displayStats ( sChannel *pChannel, sLOGICAL log )
   
   int   
     t,i,o,
-    elapsedSeconds = pChannel->updateTime - pChannel->createTime,
+    elapsedSeconds = (int) (pChannel->updateTime - pChannel->createTime),
     elapsedTime = elapsedSeconds,
     totalOut = pChannel->outByteCount,
     totalIn = pChannel->inByteCount ;

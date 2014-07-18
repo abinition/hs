@@ -2,9 +2,6 @@
  * Modifications:
  *
  * $Log: tcp.h,v $
- * Revision 1.5  2007-07-09 05:39:00  bergsma
- * TLOGV3
- *
  * Revision 1.8  2007-02-17 01:53:13  bergsma
  * Socket handoff does not work with TRUE64
  *

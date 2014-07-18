@@ -11,8 +11,12 @@
  * Modifications:
  *
  *	$Log: system.c,v $
- *	Revision 1.5  2007-07-09 05:39:00  bergsma
- *	TLOGV3
+ *	Revision 1.31  2008-05-03 21:40:12  bergsma
+ *	When doing shell command, capture all output.
+ *	Make giLineCount the preferred way to know where the code is.
+ *	
+ *	Revision 1.30  2008-02-12 23:31:18  bergsma
+ *	VS 2008 update
  *	
  *	Revision 1.29  2007-06-20 21:09:24  bergsma
  *	Use popRdata, not popRvalue, when subsequently doing a data_getNext
@@ -457,6 +461,7 @@ void gHyp_system_exec ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
 
     /* Construct the message to be sent to the shell. */
+    strcpy ( line, "" );
     pCmd = command ;
     pEndCmd = pCmd + MAX_OUTPUT_LENGTH ;    
     pResult = NULL ;
@@ -486,74 +491,87 @@ void gHyp_system_exec ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 			    "Subscript '%d' is out of bounds in exec()",ss) ;
     *pCmd = '\0' ;
 
-  if ( !(guRunFlags & RUN_RESTRICTED) ) {
-
+    if ( !(guRunFlags & RUN_RESTRICTED) ) {
 
 #ifndef AS_WINDOWS
-    /* Create a pipe for receiving stdout from the child */
-    if ( pipe( pfd ) < 0 ) 
-      gHyp_util_sysError ( "Problem with pipe" ) ;
+
+      pResult = gHyp_data_new ( "_exec_" ) ;
+
+      /* Create a pipe for receiving stdout from the child */
+      if ( pipe( pfd ) < 0 ) 
+        gHyp_util_sysError ( "Problem with pipe" ) ;
 #ifndef AS_TRUE64
-    else if ( (pid = vfork ()) < 0 )
-      gHyp_util_sysError ( "Problem with vfork" ) ;
+      else if ( (pid = vfork ()) < 0 )
+        gHyp_util_sysError ( "Problem with vfork" ) ;
 #else
-    else if ( (pid = fork ()) < 0 )
-      gHyp_util_sysError ( "Problem with fork" ) ;
+      else if ( (pid = fork ()) < 0 )
+        gHyp_util_sysError ( "Problem with fork" ) ;
 #endif
-    else if ( pid == 0 ) {
+      else if ( pid == 0 ) {
       
-      /* Child process */	
+        /* Child process */	
 #ifdef AS_VMS
-      save_stdout = dup ( STDOUT_FILENO ) ;
+        save_stdout = dup ( STDOUT_FILENO ) ;
 #endif
-      close ( pfd[0] ) ;	/* Close read end of pipe */     
-      close ( STDOUT_FILENO ) ;	 
-      dup ( pfd[1] ) ;		/* Redirect stdout to write end of pipe */
+        close ( pfd[0] ) ;	/* Close read end of pipe */     
+        close ( STDOUT_FILENO ) ;	 
+        dup ( pfd[1] ) ;	/* Redirect stdout to write end of pipe */
 
 #ifdef AS_VMS
-      system ( command ) ;
+        system ( command ) ;
 #else
-      execl ( "/bin/sh", "sh", "-c", command, (char *) 0 ) ;
+        execl ( "/bin/sh", "sh", "-c", command, (char *) 0 ) ;
 #endif
-      /* Child exits */	
-      _exit(127);
-    }	
-    else {
+        /* Child exits */	
+        _exit(127);
+      }	
+      else {
      
-      /* Parent. */	
-      close ( pfd[1] ) ;	/* Close write end of pipe */     
-      strcpy ( line, "0" ) ;	/* Initialize result as "0" */
+        /* Parent. */	
+        close ( pfd[1] ) ;	/* Close write end of pipe */     
       
-      /* Read from child until it is done outputing. */
-      if ( (fp = fdopen ( pfd[0], "r" ) ) != NULL )
-        while ( fgets ( line, MAX_INPUT_LENGTH, fp ) != NULL )
-          gHyp_util_log ( line ) ;
-      /* Wait for child to complete */
-      if ( waitpid ( (pid_t) pid, (int *)0, 0 ) != pid ) /* Wait for first child */
-	gHyp_util_sysError ( "Failed to waitpid" ) ;
+        /* Read from child until it is done outputing. */
+        if ( (fp = fdopen ( pfd[0], "r" ) ) != NULL ) {
+  	  while ( fgets ( line, MAX_INPUT_LENGTH, fp ) != NULL ) {
+	    pData = gHyp_data_new ( NULL ) ;
+	    gHyp_data_setStr ( pData, line ) ;
+	    gHyp_data_append ( pResult, pData ) ;
+            gHyp_util_log ( line ) ;
+	  }
+        }
+        else {
+	  /* Some problem */
+	  pData = gHyp_data_new ( NULL ) ;
+	  strcpy ( line, "0" ) ;
+	  gHyp_data_setStr ( pData, line ) ;
+	  gHyp_data_append ( pResult, pData ) ;
+        }
+        /* Wait for child to complete */
+        if ( waitpid ( (pid_t) pid, (int *)0, 0 ) != pid ) 
+ 	  gHyp_util_sysError ( "Failed to waitpid" ) ;
       
-      /* Close read end of pipe */
-      fclose ( fp ) ;
-      close ( pfd[0] ) ;
+        /* Close read end of pipe */
+        fclose ( fp ) ;
+        close ( pfd[0] ) ;
 
 #ifdef AS_VMS
-      dup2 ( save_stdout, STDOUT_FILENO ) ;
+        dup2 ( save_stdout, STDOUT_FILENO ) ;
+#endif
+      }
+      gHyp_stack_push ( pStack, pResult ) ;
+
+#else
+      /* Windows */
+      system ( command ) ;
+      gHyp_instance_pushSTATUS ( pAI, pStack ) ;
+
 #endif
     }
-
-#else
-  /* Windows */
-  system ( command ) ;
-#endif
-  }
-else
-    gHyp_instance_warning ( pAI, STATUS_RESTRICTED, "The exec() function is RESTRICTED" ) ;
-
-
-    /* Result is last line received */
-    pResult = gHyp_data_new ( NULL ) ;
-    gHyp_data_setStr ( pResult, line ) ;
-    gHyp_stack_push ( pStack, pResult ) ;
+    else {
+      gHyp_instance_warning ( pAI, STATUS_RESTRICTED, 
+				"The exec() function is RESTRICTED" ) ;
+      gHyp_instance_pushSTATUS ( pAI, pStack ) ;
+    }
   }
 }
 
@@ -818,7 +836,7 @@ void gHyp_system_sleep ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       gHyp_instance_setState ( pAI, STATE_SLEEP ) ;
       gHyp_frame_setState ( pFrame, STATE_SLEEP ) ;
       gsCurTime = time(NULL);
-      gHyp_instance_setWakeTime ( pAI, gsCurTime+seconds ) ;
+      gHyp_instance_setWakeTime ( pAI, (int)gsCurTime+seconds ) ;
       gHyp_frame_setHypIndex ( pFrame, gHyp_frame_getHypIndex(pFrame) - 1 ) ;
 
       /*gHyp_instance_pushSTATUS ( pAI, pStack ) ;*/
@@ -1027,7 +1045,7 @@ void gHyp_system_timestamp ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     
     pResult = gHyp_data_new ( NULL ) ;
     gsCurTime = time(NULL) ;
-    gHyp_data_setInt ( pResult, gsCurTime ) ;
+    gHyp_data_setInt ( pResult, (int)gsCurTime ) ;
     gHyp_stack_push ( pStack, pResult ) ;
 
   }
@@ -1148,7 +1166,7 @@ void gHyp_system_parsedate ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     pStr = value ;
     timeStamp = gHyp_dateparse_parse ( pStr ) ;
     pResult = gHyp_data_new ( NULL ) ;
-    gHyp_data_setInt ( pResult, timeStamp ) ;
+    gHyp_data_setInt ( pResult, (int)timeStamp ) ;
     gHyp_stack_push ( pStack, pResult ) ;
   }
 }
@@ -1230,7 +1248,8 @@ void gHyp_system_parse ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
      if ( pAI == pAImain && !gHyp_instance_isEND ( pAI ) )
        gHyp_concept_setReturnToStdIn ( gHyp_instance_getConcept(pAI), TRUE ) ;
      gHyp_instance_setState ( pAI, STATE_PARSE ) ;
-
+      strcpy ( fileSpec, "stdin" ) ;
+      pFileSpec = fileSpec ;
     }
     else {
       pFile = gHyp_stack_popRvalue ( pStack, pAI ) ; 
@@ -1252,6 +1271,9 @@ void gHyp_system_parse ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       }
       else {
 
+	/* Reset the line count */
+	giLineCount = 0 ;
+
 	/* Get the current EOS position */
 	pHyp = gHyp_frame_getHyp ( pFrame ) ;
 	eosIndex = gHyp_hyp_getHypCount ( pHyp ) ;
@@ -1267,7 +1289,8 @@ void gHyp_system_parse ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
 	if ( isDereference ) {
 	  /* Load the new code */
-	  pStream = gHyp_load_fromStream ( pAI, pHyp, "{", giProgramCount++ ) ;
+	  giProgramCount++ ;
+	  pStream = gHyp_load_fromStream ( pAI, pHyp, "{", giLineCount++ ) ;
 	  if ( !pStream || *pStream ) {
 	    gHyp_hyp_setHypCount ( pHyp, eosIndex ) ;
 	    gHyp_instance_error ( pAI,
@@ -1276,11 +1299,12 @@ void gHyp_system_parse ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 	  }
 	}
 
- 	while ( gHyp_hyp_source ( pAI, pHyp, pp, FALSE ) >= 0 ) ;
+ 	while ( gHyp_hyp_source ( pAI, pHyp, pp, pFileSpec, FALSE ) >= 0 ) ;
 	fclose ( pp ) ;
 
 	if ( isDereference ) {
-	  pStream = gHyp_load_fromStream ( pAI, pHyp, ";}", giProgramCount++);
+	  giProgramCount++ ;
+	  pStream = gHyp_load_fromStream ( pAI, pHyp, ";}", giLineCount++);
 	  if ( !pStream || *pStream ) {
 	    gHyp_hyp_setHypCount ( pHyp, eosIndex ) ;
 	    gHyp_instance_error ( pAI,
@@ -1592,7 +1616,11 @@ void gHyp_system_setenv ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
 #if defined ( AS_SOLARIS ) || defined ( AS_HPUX ) || defined ( AS_WINDOWS )
     sprintf ( tokenValue, "%s=%s", pToken, pValue ) ;
-    if ( !putenv ( tokenValue ) != -1 ) 
+#ifdef AS_WINDOWS
+    if ( !_putenv ( tokenValue ) != -1 )
+#else
+      if ( !putenv ( tokenValue ) != -1 ) 
+#endif
 #else
     if ( !setenv ( pToken, pValue, 1 ) != -1 )
 #endif
@@ -1665,7 +1693,11 @@ void gHyp_system_unsetenv ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
 #if defined ( AS_SOLARIS ) || defined ( AS_HPUX ) || defined ( AS_WINDOWS )
     sprintf ( tokenValue, "%s=", pToken ) ;
+#ifdef AS_WINDOWS
+    _putenv ( tokenValue ) ; 
+#else
     putenv ( tokenValue ) ; 
+#endif
 #else
     unsetenv ( token ) ;
 #endif

@@ -10,13 +10,45 @@
 #ifndef __HYPDEF_H_
 #define __HYPDEF_H_
 
-#define 	VERSION_HYPERSCRIPT	"3.8.0"
+#define 	VERSION_HYPERSCRIPT	"3.8.2"
 
 /* Modification history:
  *
  * $Log: hypdef.h,v $
- * Revision 1.6  2007-07-09 05:39:00  bergsma
- * TLOGV3
+ * Revision 1.81  2008-05-25 02:30:40  bergsma
+ * OCIlobRead function problems
+ *
+ * Revision 1.80  2008-05-19 03:29:05  bergsma
+ * For ORACLE clob, allow maximum 128K input buffer.
+ *
+ * Revision 1.79  2008-05-19 03:25:16  bergsma
+ * no message
+ *
+ * Revision 1.78  2008-05-19 00:29:03  bergsma
+ * For ORACLE clob, allow maximum 512K input buffer.
+ *
+ * Revision 1.77  2008-05-18 23:54:50  bergsma
+ * For ORACLE clob, allow maximum 64K input buffer.
+ *
+ * Revision 1.76  2008-05-12 17:36:39  bergsma
+ * Increase MAX_SECSII_CODE size, as the following error was encountered
+ * with the amt-p when doing a S1F3 empty list
+ * 20080511:112408:amt-p2_equip:%ERROR: SecsII code size of 262144 exceeds maximum size of 131072"
+ *
+ * Revision 1.75  2008-05-06 02:14:15  bergsma
+ * Increase initial heap size
+ *
+ * Revision 1.74  2008-03-05 22:55:43  bergsma
+ * Functions UNARY_RAD2DEG and UNARY_DEG2RAD
+ *
+ * Revision 1.73  2008-02-12 23:34:48  bergsma
+ * VS 2008 update
+ *
+ * Revision 1.72  2007-09-03 06:21:09  bergsma
+ * HS3.8.1
+ *
+ * Revision 1.71  2007-07-11 18:34:09  mhohimer
+ * added defaults for tagIndex lengths: MAX_TAG_INDEX_SIZE, TAG_INDEX_BUFLEN
  *
  * Revision 1.70  2007-05-26 22:08:43  bergsma
  * ADD -w "Ward" flag
@@ -270,7 +302,7 @@
  *
  */
 
-#define		MAX_STACK_DEPTH		128  		    /* HyperScript stack */
+#define		MAX_STACK_DEPTH		256  		    /* HyperScript stack */
 #define		MAX_EXPRESSION		MAX_STACK_DEPTH * 2 /* Twice the expression length */
 #define		MAX_FRAME_DEPTH		MAX_STACK_DEPTH	    /* Same as stack depth */
 
@@ -345,6 +377,8 @@
 #define 	DEFAULT_DELIMITER 	'|'
 #define		OVERFLOW_READ_SIZE	16*1024	
 #define		CRC_BUFLEN (1 << 16)
+#define     MAX_TAG_INDEX_SIZE 65535 /* a.k.a. curly-bracket-index size */
+#define     TAG_INDEX_BUFLEN 5+2 /* length of MAX_TAG_INDEX_SIZE plus '{' and '}' */ 
 
 
 /* Minimum message size, must contain space for TARGET, MODE, METHOD, SENDER,
@@ -522,7 +556,8 @@
 #define		UNARY_SQRT	      80
 #define		UNARY_TAN	      81
 #define		UNARY_EXP	      82
-
+#define		UNARY_RAD2DEG	      83
+#define		UNARY_DEG2RAD	      84
 
 /* Precedence assignments 
  *
@@ -867,7 +902,7 @@
 #define		MAX_SECS2_BLKSIZE	244
 #define		MAX_SECS1_BUFFER	257
 #define		DEFAULT_SECSII_CODE	256
-#define		MAX_SECSII_CODE		DEFAULT_SECSII_CODE << 9
+#define		MAX_SECSII_CODE		DEFAULT_SECSII_CODE << 10
 #define		SECS_INCOMING		0
 #define		SECS_OUTGOING		1
 #define		SECS_MINIMUM_HSMS_PORT	4000
@@ -1069,6 +1104,7 @@
 #define		MAX_SQL_NAME_LENGTH	MAX_SQL_DATABASE_LENGTH	
 #define		MAX_SQL_USER_LENGTH	MAX_SQL_USERNAME_LENGTH
 #define		SQL_DATETIME_SIZE	1+4+1+2+1+2+1+2+1+2+1+2+1
+#define		MAX_SQL_BUFFER_SIZE	16 * 1024
 
 /* Macros */
 

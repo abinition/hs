@@ -10,8 +10,14 @@
 /* Modifications:
  * 
  * $Log: port.c,v $
- * Revision 1.5  2007-07-09 05:39:00  bergsma
- * TLOGV3
+ * Revision 1.36  2008-03-05 22:21:10  bergsma
+ * Try and get recvmsg and sendmsg working for TRU64
+ *
+ * Revision 1.35  2008-02-12 23:19:07  bergsma
+ * VS 2008 update
+ *
+ * Revision 1.34  2007-09-25 17:50:19  bergsma
+ * Integrate SOCK_UNIX_LISTEN with SOCK_LISTEN
  *
  * Revision 1.33  2007-05-08 01:27:12  bergsma
  * Used deleteFd rather than updateFd when id is reassigned to another
@@ -1174,7 +1180,7 @@ static void lHyp_port_QE (	sInstance 	*pAI,
   }
 
   if ( status ) {
-    if ( (gHyp_secs1_flags(pPort) & SOCKET_LISTEN) ) {
+    if ( (gHyp_secs1_flags(pPort) & (SOCKET_LISTEN | SOCKET_UNIX_LISTEN)) ) {
       gHyp_instance_warning ( pAI,STATUS_PORT, 
 			    "Device %d is no longer connected.",
 			    id ) ;
@@ -1214,7 +1220,7 @@ static void lHyp_port_QE (	sInstance 	*pAI,
 				     sender, 
 				     "DATA", 
 				     "00000001",
-				     eventTime ) ;
+				     (int)eventTime ) ;
 
     gHyp_instance_setState ( pAI, STATE_QUERY ) ;
     gHyp_frame_setState ( pFrame, STATE_QUERY ) ;
@@ -1324,7 +1330,7 @@ void gHyp_port_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
   return ;
 }
 
-#if defined ( AS_UNIX ) && !defined (AS_TRUE64)
+#if defined ( AS_UNIX ) 
 
 void gHyp_port_recvmsg ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
 {

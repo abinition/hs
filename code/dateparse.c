@@ -11,8 +11,8 @@
  * Modifications:
  *
  *	$Log: dateparse.c,v $
- *	Revision 1.5  2007-07-09 05:39:00  bergsma
- *	TLOGV3
+ *	Revision 1.8  2008-02-12 23:07:31  bergsma
+ *	V3.8.2 (compiled with VS C 2008)
  *	
  *	Revision 1.7  2006-10-01 16:25:26  bergsma
  *	Added support for asctime() function and the means to parse it (in dateparse.c)
@@ -425,7 +425,11 @@ time_t gHyp_dateparse_parse( char* str )
   ** specify a zone - those don't occur in email and netnews.
   */
 #if defined (AS_SOLARIS) || defined (AS_WINDOWS) || defined (_ANSI_C_SOURCE) || defined (_DECC_V4_SOURCE)
+#ifdef AS_WINDOWS
+  _tzset();
+#else
   tzset();
+#endif
   gmtoff = -timezone;
 #else /* SYSV */
   gmtoff = now_tmP->tm_gmtoff;
@@ -1242,7 +1246,7 @@ time_t gHyp_dateparse_parse( char* str )
     */
     /*gHyp_util_debug("%d",t-check_t);*/
 
-    delta = ( t - check_t ) ;
+    delta = (int) ( t - check_t ) ;
     t += delta ;
   }
 

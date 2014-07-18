@@ -10,8 +10,8 @@
  * Modifications:
  *
  * $Log: secs2.c,v $
- * Revision 1.5  2007-07-09 05:39:00  bergsma
- * TLOGV3
+ * Revision 1.13  2008-02-17 02:10:17  bergsma
+ * Added secs_xml() function
  *
  * Revision 1.12  2007-02-24 01:54:08  bergsma
  * Added secs_*_raw functions.
@@ -242,6 +242,7 @@ static char* lHyp_secs2_parse ( char *pBuf,
 				sData *pTV,
 				int sequence,
 				sLOGICAL isLittleEndian,
+				sLOGICAL isXML,
 				char *primary ) 
 {
   char
@@ -288,6 +289,8 @@ static char* lHyp_secs2_parse ( char *pBuf,
     if ( sequence == -1 ) 
       /* Signifies the root variable. Use supplied name */ 
       sprintf ( name, primary ) ;
+    else if ( isXML )
+      sprintf ( name, "L" ) ;
     else
       /* Generate variable based on sequence */
       sprintf ( name, "L_%u", sequence ) ;
@@ -302,6 +305,7 @@ static char* lHyp_secs2_parse ( char *pBuf,
 				pData, 
 				sequence++, 
 				isLittleEndian,
+				isXML,
 				primary ) ; 
     gHyp_data_append ( pTV, pData ) ;
     break ;
@@ -309,6 +313,8 @@ static char* lHyp_secs2_parse ( char *pBuf,
   case SECS_ITEM_JIS8 :
     if ( sequence == -1 ) 
       sprintf ( name, primary ) ;
+    else if ( isXML )
+      sprintf ( name, "U" ) ;
     else
       sprintf ( name, "U_%u", sequence ) ;
     pData = gHyp_data_new ( name ) ;
@@ -328,6 +334,8 @@ static char* lHyp_secs2_parse ( char *pBuf,
   case SECS_ITEM_ASCII :
     if ( sequence == -1 ) 
       sprintf ( name, primary ) ;
+    else if ( isXML )
+      sprintf ( name, "A" ) ;
     else
       sprintf ( name, "A_%u", sequence ) ;
     pData = gHyp_data_new ( name ) ;
@@ -343,8 +351,10 @@ static char* lHyp_secs2_parse ( char *pBuf,
     /* Not supported, default to SLONG array of 2 elements */
     if ( sequence == -1 ) 
       sprintf ( name, primary ) ;
+    else if ( isXML )
+      sprintf ( name, "SQ" ) ;
     else
-      sprintf ( name, "SL_%u", sequence ) ;
+      sprintf ( name, "SQ_%u", sequence ) ;
     pData = gHyp_data_new ( name ) ;
     gHyp_data_newVector ( pData, TYPE_LONG, numElements/4, FALSE ) ;
     for ( i=0; i<numElements/4; i++ ) {
@@ -361,6 +371,8 @@ static char* lHyp_secs2_parse ( char *pBuf,
   case SECS_ITEM_SLONG :
     if ( sequence == -1 ) 
       sprintf ( name, primary ) ;
+    else if ( isXML )
+      sprintf ( name, "SL" ) ;
     else
       sprintf ( name, "SL_%u", sequence ) ;
     pData = gHyp_data_new ( name ) ;
@@ -380,6 +392,8 @@ static char* lHyp_secs2_parse ( char *pBuf,
   case SECS_ITEM_SWORD :
     if ( sequence == -1 ) 
       sprintf ( name, primary ) ;
+    else if ( isXML )
+      sprintf ( name, "SW" ) ;
     else
       sprintf ( name, "SW_%u", sequence ) ;
     pData = gHyp_data_new ( name ) ;
@@ -398,6 +412,8 @@ static char* lHyp_secs2_parse ( char *pBuf,
   case SECS_ITEM_SBYTE :
     if ( sequence == -1 ) 
       sprintf ( name, primary ) ;
+    else if ( isXML )
+      sprintf ( name, "SB" ) ;
     else
       sprintf ( name, "SB_%u", sequence ) ;
     pData = gHyp_data_new ( name ) ;
@@ -412,6 +428,8 @@ static char* lHyp_secs2_parse ( char *pBuf,
   case SECS_ITEM_DOUBLE :
     if ( sequence == -1 ) 
       sprintf ( name, primary ) ;
+    else if ( isXML )
+      sprintf ( name, "D" ) ;
     else
       sprintf ( name, "D_%u", sequence ) ;
     pData = gHyp_data_new ( name ) ;
@@ -430,6 +448,8 @@ static char* lHyp_secs2_parse ( char *pBuf,
   case SECS_ITEM_FLOAT :
      if ( sequence == -1 ) 
       sprintf ( name, primary ) ;
+    else if ( isXML )
+      sprintf ( name, "F" ) ;
     else
       sprintf ( name, "F_%u", sequence ) ;
     pData = gHyp_data_new ( name ) ;
@@ -449,8 +469,10 @@ static char* lHyp_secs2_parse ( char *pBuf,
     /* Not supported, default to ULONG 2-element array */
     if ( sequence == -1 ) 
       sprintf ( name, primary ) ;
+    else if ( isXML )
+      sprintf ( name, "UQ" ) ;
     else
-      sprintf ( name, "UL_%u", sequence ) ;
+      sprintf ( name, "UQ_%u", sequence ) ;
     pData = gHyp_data_new ( name ) ;
     gHyp_data_newVector ( pData, TYPE_ULONG, numElements/4, FALSE ) ;
     for ( i=0; i<numElements/4; i++ ) {
@@ -467,6 +489,8 @@ static char* lHyp_secs2_parse ( char *pBuf,
   case SECS_ITEM_ULONG :
      if ( sequence == -1 ) 
       sprintf ( name, primary ) ;
+    else if ( isXML )
+      sprintf ( name, "UL" ) ;
     else
       sprintf ( name, "UL_%u", sequence ) ;
     pData = gHyp_data_new ( name ) ;
@@ -485,6 +509,8 @@ static char* lHyp_secs2_parse ( char *pBuf,
   case SECS_ITEM_UWORD :
     if ( sequence == -1 ) 
       sprintf ( name, primary ) ;
+    else if ( isXML )
+      sprintf ( name, "UW" ) ;
     else
       sprintf ( name, "UW_%u", sequence ) ;
     pData = gHyp_data_new ( name ) ;
@@ -503,6 +529,8 @@ static char* lHyp_secs2_parse ( char *pBuf,
   case SECS_ITEM_BOOLEAN :
      if ( sequence == -1 ) 
       sprintf ( name, primary ) ;
+    else if ( isXML )
+      sprintf ( name, "BL" ) ;
     else
       sprintf ( name, "BL_%u", sequence ) ;
     pData = gHyp_data_new ( name ) ;
@@ -517,6 +545,8 @@ static char* lHyp_secs2_parse ( char *pBuf,
   case SECS_ITEM_BINARY :
      if ( sequence == -1 ) 
       sprintf ( name, primary ) ;
+    else if ( isXML )
+      sprintf ( name, "BN" ) ;
     else
       sprintf ( name, "BN_%u", sequence ) ;
     pData = gHyp_data_new ( name ) ;
@@ -531,6 +561,8 @@ static char* lHyp_secs2_parse ( char *pBuf,
   case SECS_ITEM_UBYTE :
     if ( sequence == -1 ) 
       sprintf ( name, primary ) ;
+    else if ( isXML )
+      sprintf ( name, "UB" ) ;
     else
       sprintf ( name, "UB_%u", sequence ) ;
     pData = gHyp_data_new ( name ) ;
@@ -605,7 +637,8 @@ int gHyp_secs2_parseSecs ( sSecs2 *pSecs2,
   sLOGICAL
     isBinary,
     isReply=FALSE,
-    isLittleEndian = gHyp_util_isLittleEndian() ;
+    isLittleEndian = gHyp_util_isLittleEndian(),
+    isXML = gHyp_instance_getSecsXML(pAI);
 
   sEndian
     endian ;
@@ -743,6 +776,7 @@ int gHyp_secs2_parseSecs ( sSecs2 *pSecs2,
 				 pTV, 
 				 sequence,
 				 isLittleEndian,
+				 isXML,
 				 primary ) ;
   }
   else {

@@ -10,9 +10,6 @@
 /* Modifications: 
  *
  * $Log: router.c,v $
- * Revision 1.5  2007-07-09 05:39:00  bergsma
- * TLOGV3
- *
  * Revision 1.32  2007-02-15 03:23:47  bergsma
  * Initialize a variable pMethodObj to NULL
  *

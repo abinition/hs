@@ -11,8 +11,20 @@
  * Modifications:
  *
  * $Log: secs.c,v $
- * Revision 1.5  2007-07-09 05:39:00  bergsma
- * TLOGV3
+ * Revision 1.26  2008-05-06 02:15:23  bergsma
+ * Comment typo
+ *
+ * Revision 1.25  2008-05-03 21:39:08  bergsma
+ * typo on secs_xml, typo in secs_hsms
+ *
+ * Revision 1.24  2008-02-17 02:10:17  bergsma
+ * Added secs_xml() function
+ *
+ * Revision 1.23  2008-02-12 23:33:39  bergsma
+ * VS 2008 update
+ *
+ * Revision 1.22  2007-09-25 17:50:19  bergsma
+ * Integrate SOCK_UNIX_LISTEN with SOCK_LISTEN
  *
  * Revision 1.21  2007-05-08 01:27:12  bergsma
  * Used deleteFd rather than updateFd when id is reassigned to another
@@ -102,7 +114,66 @@
 /********************** INTERNAL OBJECT STRUCTURES ************************/
 
 /**********************	FUNCTION DEFINITIONS ********************************/
+void gHyp_secs_xml(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: secs_xml ( )
+   *	Returns 1
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	1
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
 
+  if ( isPARSE )
+  
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+    
+  else {
+ 
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+    
+    sData
+      *pData ;
+
+    sLOGICAL
+      isXML = TRUE ;
+
+    int
+      argCount = gHyp_parse_argCount ( pParse ) ;
+
+    /* Assume success */	
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 0 && argCount != 1 ) 
+      gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+      "Invalid args. Usage: secs_xml ( [isXML] )");
+
+    if ( argCount == 1 ) {
+      pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
+      isXML = gHyp_data_getBool ( pData,
+	  			gHyp_data_getSubScript ( pData ),
+			        TRUE ) ;
+    }
+    
+    gHyp_instance_setSecsXML ( pAI, (sLOGICAL) isXML  ) ;
+
+    gHyp_instance_pushSTATUS ( pAI, pStack ) ;
+  }
+} 
 void gHyp_secs_mlb(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE) 
 {
   /* Description:
@@ -300,7 +371,7 @@ void gHyp_secs_hsms ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
     if ( argCount != 1 && argCount != 2 ) 
       gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-      "Invalid args. Usage: secs_hsms ( service [,localAddr) )");
+      "Invalid args. Usage: secs_hsms ( service [,localAddr] )");
 
     if ( argCount == 2 ) {
       /* Get the local address */
@@ -316,8 +387,7 @@ void gHyp_secs_hsms ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     else
       bindAll = TRUE ;
 
-
-    /* Get the /etc/service name */
+    /* Get the /etc/service name (or port number) */
     pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
     n = gHyp_data_getStr ( pData,
 			   service,
@@ -1071,6 +1141,7 @@ void gHyp_secs_assign ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
         flags = gHyp_secs1_flags ( pSecs1 ) ;
         flags = (flags & MASK_SOCKET) | PROTOCOL_SECS1 ;
         gHyp_secs1_setFlags ( pSecs1, flags ) ;
+
       }
     }
 
@@ -1410,14 +1481,14 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
 
   if ( status ) {
 
-    if ( pHsms && (gHyp_hsms_flags(pHsms) & SOCKET_LISTEN)) {
+    if ( pHsms && (gHyp_hsms_flags(pHsms) & (SOCKET_LISTEN | SOCKET_UNIX_LISTEN))) {
       status = FALSE ;
       gHyp_instance_warning ( pAI,STATUS_SECS, 
 			    "No HSMS connection (through port %d) exists for device %d. ",
 			    fd, id ) ;
     }
 
-    if ( pSecs1 && (gHyp_secs1_flags(pSecs1) & SOCKET_LISTEN)) {
+    if ( pSecs1 && (gHyp_secs1_flags(pSecs1) & (SOCKET_LISTEN | SOCKET_UNIX_LISTEN))) {
       status = FALSE ;
       gHyp_instance_warning ( pAI,STATUS_SECS, 
 			    "No SECS 1 connection (through port %d) exists for device %d. ",
@@ -1582,7 +1653,7 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
 				       sender, 
 				       method, 
 				       transactionId,
-				       eventTime ) ;
+				       (int)eventTime ) ;
       gHyp_instance_setSecsReplyIn ( pAI, 
 				     id, 
 				     stream, 

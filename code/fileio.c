@@ -11,8 +11,24 @@
  * Modifications:
  *
  *	$Log: fileio.c,v $
- *	Revision 1.5  2007-07-09 05:39:00  bergsma
- *	TLOGV3
+ *	Revision 1.50  2008-05-30 01:21:43  bergsma
+ *	puts() function overflows if too many quotes.
+ *	
+ *	Revision 1.49  2008-05-29 04:28:39  bergsma
+ *	xsdescribe fix
+ *	
+ *	Revision 1.48  2008-05-27 16:13:29  bergsma
+ *	(typedef) needed
+ *	
+ *	Revision 1.47  2008-05-12 17:37:43  bergsma
+ *	checksum function can read data as well as files.
+ *	
+ *	Revision 1.46  2008-02-17 02:09:24  bergsma
+ *	Was using back-quote instead of regular quote for TOKEN_IDENTIFIED,
+ *	causing echo to fail because backquotes are for TOKEN_RAW.
+ *	
+ *	Revision 1.45  2008-02-12 23:09:29  bergsma
+ *	V3.8.2 (compiled with VS C 2008)
  *	
  *	Revision 1.44  2007-06-20 05:17:34  bergsma
  *	Fixes for RUN_RESTRICTED, fixes for describe.
@@ -471,10 +487,16 @@ static int lHyp_fileio_describe2 ( sData *pParent,
 			      0,
 			      FALSE ) ;
 
-    if ( isXML )
-      newOffset = sprintf ( newOutput,
+    if ( isXML ) {
+      if ( pResult ) 
+        newOffset = sprintf ( newOutput,
+			    "%s\n",
+			    pValue ) ;
+      else 
+        newOffset = sprintf ( newOutput,
 			    "%s",
 			    pValue ) ;
+    }
     else 
       newOffset = sprintf ( newOutput,
 			    "\"%s\"%s",
@@ -1623,7 +1645,7 @@ static void lHyp_fileio_put (	sInstance 	*pAI,
         /* If not printing a string, separate all values with spaces. */
 	if ( 	!isStr && 
 		!isFirstValue && 
-		pMsg < pEndMsg ) *pMsg++ = ' ' ;
+		pMsg < pEndMsg ) { *pMsg++ = ' ' ; *pMsg = '\0' ; }
 		
 	isFirstValue = FALSE ;
 
@@ -1647,7 +1669,7 @@ static void lHyp_fileio_put (	sInstance 	*pAI,
 
       }
 
-      if ( ( pMsg + valueLen ) > pEndMsg ) {
+      if ( ( pMsg + valueLen + 3 ) > pEndMsg ) {
       
 	/* Cannot fit, output what's there and start a new line */
 	if ( isFile ) {
@@ -2781,7 +2803,11 @@ void gHyp_fileio_unlink ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     pFileSpec = fileSpec ;
     if ( !(guRunFlags & RUN_RESTRICTED) ) {
 
+#ifdef AS_WINDOWS
+      if ( _unlink ( pFileSpec ) == -1 ) {
+#else
       if ( unlink ( pFileSpec ) == -1 ) {
+#endif
         gHyp_instance_warning ( pAI, STATUS_FILE, "Failed to unlink file %s",pFileSpec ) ;
       }
     }
@@ -2926,7 +2952,7 @@ void gHyp_fileio_echo ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 	      pBuf = buf ; ;
 	    }
 	    else if ( tokenType == TOKEN_UNIDENTIFIED ) {
-	      buflen = sprintf ( buf, "`%s`", pBuf ) ;
+	      buflen = sprintf ( buf, "'%s'", pBuf ) ;
 	      pBuf = buf ;
   	    }
 	    gHyp_data_setStr_n ( pValue, pBuf, buflen ) ;
@@ -3039,7 +3065,7 @@ void gHyp_fileio_load( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       pBuf = buf ;
       while ( !isEOF && pBuf ) {
 
-	        pBuf = fgets ( buf, VALUE_SIZE, pFILE );
+	pBuf = fgets ( buf, VALUE_SIZE, pFILE );
         isEOF = feof ( pFILE ) ;      
         if ( !pBuf && !isEOF ) {
 	  gHyp_data_delete ( pResult ) ;
@@ -3047,7 +3073,6 @@ void gHyp_fileio_load( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 			        STATUS_FILE,
 			        "Failed to read from input stream" ) ;
 	}
-
         if ( pBuf ) {
 	  buflen = strlen ( pBuf ) ;
 	  pValue = gHyp_data_new ( NULL ) ;
@@ -3055,7 +3080,7 @@ void gHyp_fileio_load( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 	    gHyp_data_setNull ( pValue ) ;
 	  else {
 	    /*gHyp_util_trim ( pBuf ) ;*/
-	    gHyp_data_setStr_n ( pValue, pBuf, strlen(pBuf) ) ;
+	    gHyp_data_setStr ( pValue, pBuf ) ;
 	  }
 	  gHyp_data_append ( pResult, pValue ) ;
 	  line++ ;
@@ -3242,6 +3267,8 @@ void gHyp_fileio_checksum ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       *pStack = gHyp_frame_stack ( pFrame ) ;
     
     int
+      ss,
+      context,
       n,
       fileSize,
       filePtr,
@@ -3249,6 +3276,7 @@ void gHyp_fileio_checksum ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     
     sData
       *pData,
+      *pValue,
       *pResult ;
 
     char
@@ -3259,6 +3287,8 @@ void gHyp_fileio_checksum ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       *pFILE ;
 
     sLOGICAL
+      isVector=FALSE,
+      isFile = FALSE,
       isText = FALSE ;
 
     struct stat
@@ -3284,7 +3314,7 @@ void gHyp_fileio_checksum ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
     if ( argCount != 1 && argCount != 2 ) 
       gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-    	"Invalid arguments. Usage: load_binary ( fileSpec [, isText]  )" ) ;
+      "Invalid arguments. Usage: checksum ( [fileSpec|value] [, isText]  )" ) ;
 
     gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
   
@@ -3293,11 +3323,17 @@ void gHyp_fileio_checksum ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       isText = gHyp_data_getBool ( pData, gHyp_data_getSubScript(pData), TRUE ) ;
     }
 
-    pData = gHyp_stack_popRvalue ( pStack, pAI ) ; 
-    n = gHyp_data_getStr ( pData, 
+    pData = gHyp_stack_popRdata ( pStack, pAI ) ;
+    ss = gHyp_data_getSubScript ( pData ) ; 
+    context=-1;
+    isVector = ( gHyp_data_getDataType ( pData ) > TYPE_STRING ) ;
+
+    /* See if the value is the name of a file */
+    pValue = gHyp_data_getValue ( pData, ss, TRUE ) ;
+    n = gHyp_data_getStr ( pValue, 
 			   fileSpec, 
 			   MAX_PATH_SIZE,
-			   gHyp_data_getSubScript(pData),
+			   ss,
 			   TRUE ) ;
     pFileSpec = fileSpec ;
 
@@ -3307,32 +3343,37 @@ void gHyp_fileio_checksum ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       pFILE = fopen ( pFileSpec, "r" ) ;
 
     if ( !pFILE ) {
-      gHyp_instance_warning ( pAI, STATUS_FILE,
-			      "Could not open file '%s'", pFileSpec ) ;
-      pResult = NULL ;
-    }
+
+      /* Not a file.  */
+      isFile = FALSE ;
+      pValue = NULL ;
+   }
     else {
 
+      isFile = TRUE ;
       if ( stat ( pFileSpec, &stats ) < 0 )
 	gHyp_instance_error ( pAI, STATUS_FILE,
 			      "Could not stat file '%s'", pFileSpec ) ;
       fileSize = stats.st_size ;
       filePtr = 0 ;
+    }
 
-      pResult = gHyp_data_new ( NULL ) ;
-      gHyp_data_setVariable ( pResult, "_checksum_", TYPE_STRING ) ;
+    pResult = gHyp_data_new ( NULL ) ;
+    gHyp_data_setVariable ( pResult, "_checksum_", TYPE_STRING ) ;
       
-      if (isText) {
+    if (isText) {
 
-	/* Process implied leading space character */
+      /* Process implied leading space character */
+      length = 1;
+      insep = 1;
+      crc = (crc << 8) ^ gsCrctab[((crc >> 24) ^ (unsigned char) 32) & 0xFF];
+    }
 
-	length = 1;
-	insep = 1;
-	crc = (crc << 8) ^ gsCrctab[((crc >> 24) ^ (unsigned char) 32) & 0xFF];
-      }
+    cp = buf ;
 
-      cp = buf ;
-      while ( 1 ) {
+    while ( 1 ) {
+
+      if ( isFile ) {
 
         bytes_read = fread ( buf, 1, CRC_BUFLEN, pFILE );
         if ( bytes_read < 0 ) {
@@ -3351,101 +3392,115 @@ void gHyp_fileio_checksum ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 	    bytes_read = fileSize - filePtr ;
 	  }
 	  filePtr += bytes_read ;
-          cp = buf ;
-
-	  if ( isText ) {
-
-  	    while (bytes_read--) {
-
-	      c = *(cp++);
-	      if (c >= 128) {
-		high_bits++;
-	      } 
-	      else if (c < ' ') {
-		switch (c) {
-	          case '\t':
-		  case '\n':
-		  case '\r':
-		  case '\f':
-	  	    break;
-		  default:
-		    controls++;
-		}
-	      }
-	      if (c > ' ') {
-		crc = (crc << 8) ^ gsCrctab[((crc >> 24) ^ c) & 0xFF];
-		length++;
-		insep = 0;
-	      } 
-	      else if (!insep) {
-		crc = (crc << 8) ^ gsCrctab[((crc >> 24) ^ (unsigned char) 32) & 0xFF];
-		length++;
-		insep = 1;
-	      }
-	    }
-        
-	  } 
-          
-	  else {	/* Binary file */
-
-	    length += bytes_read;
-	    while (bytes_read--) {
-	      c = *(cp++);
-	      if (c >= 128) {
-		high_bits++;
-	      } 
-	      else if (c < ' ') {
-	        switch (c) {
-	  	case '\t':
-	  	case '\n':
-		case '\r':
-		case '\f':
-		  break;
-		default:
-		  controls++;
-		}
-	      }
-	      crc = (crc << 8) ^ gsCrctab[((crc >> 24) ^ c) & 0xFF];
-
-	    } 
-	  }
 	}
-      
-      } /* End while */
-	 
-      fclose ( pFILE ) ;
+      }
+      else {
+
+	pValue = gHyp_data_nextValue ( pData, 
+				       pValue, 
+				       &context,
+					ss ) ;
+	if ( !pValue ) break ;
+
+	bytes_read = gHyp_data_getStr ( pValue, 
+				     (char*) buf, 
+				     CRC_BUFLEN, 
+				     context, 
+				     isVector ) ;
+
+      }
+
+      cp = buf ;
 
       if ( isText ) {
 
-	/* Add implied trailing space character, if needed */
-	if (!insep) {
-	  crc = (crc << 8) ^ gsCrctab[((crc >> 24) ^ (unsigned char) 32) & 0xFF];
-	  length++;
+  	while (bytes_read--) {
+
+	  c = *(cp++);
+	  if (c >= 128) {
+	    high_bits++;
+	  } 
+	  else if (c < ' ') {
+	    switch (c) {
+	      case '\t':
+	      case '\n':
+	      case '\r':
+    	      case '\f':
+	        break;
+	      default:
+	        controls++;
+	    }
+	  }
+	  if (c > ' ') {
+	    crc = (crc << 8) ^ gsCrctab[((crc >> 24) ^ c) & 0xFF];
+	    length++;
+	    insep = 0;
+	  } 
+	  else if (!insep) {
+	    crc = (crc << 8) ^ gsCrctab[((crc >> 24) ^ (unsigned char) 32) & 0xFF];
+	    length++;
+	    insep = 1;
+	  }
 	}
+      } 
+      else {	/* Binary file */
+
+	length += bytes_read;
+	while (bytes_read--) {
+	  c = *(cp++);
+	  if (c >= 128) {
+	    high_bits++;
+	  } 
+	  else if (c < ' ') {
+	    switch (c) {
+	      case '\t':
+	      case '\n':
+	      case '\r':
+	      case '\f':
+		break;
+	      default:
+		controls++;
+	    }
+	  }
+	  crc = (crc << 8) ^ gsCrctab[((crc >> 24) ^ c) & 0xFF];
+	} 
       }
 
-      bytes_read = length;
-      while (bytes_read > 0) {
-        crc = (crc << 8) ^ gsCrctab[((crc >> 24) ^ bytes_read) & 0xFF];
-        bytes_read >>= 8;
+    } /* End while */
+
+    if ( isFile  ) fclose ( pFILE ) ;
+
+    if ( isText ) {
+
+      /* Add implied trailing space character, if needed */
+      if (!insep) {
+	crc = (crc << 8) ^ gsCrctab[((crc >> 24) ^ (unsigned char) 32) & 0xFF];
+	length++;
       }
-
-      crc = ~crc & 0xFFFFFFFF;
-      /*gHyp_util_debug("CRC-Checksum: %lu %ld", crc, length);*/
-      
-      pData = gHyp_data_new ( NULL ) ;
-      gHyp_data_newConstant_raw ( pData, TYPE_HEX, &crc ) ;
-      gHyp_data_append ( pResult, pData ) ;
-
-      pData = gHyp_data_new ( NULL ) ;
-      gHyp_data_setInt ( pData, length ) ;
-      gHyp_data_append ( pResult, pData ) ;
     }
+
+    bytes_read = length;
+    while (bytes_read > 0) {
+      crc = (crc << 8) ^ gsCrctab[((crc >> 24) ^ bytes_read) & 0xFF];
+      bytes_read >>= 8;
+    }
+
+    crc = ~crc & 0xFFFFFFFF;
+    /*gHyp_util_debug("CRC-Checksum: %lu %ld", crc, length);*/
+      
+    pData = gHyp_data_new ( NULL ) ;
+    gHyp_data_newConstant_raw ( pData, TYPE_HEX, &crc ) ;
+    gHyp_data_append ( pResult, pData ) ;
+
+    pData = gHyp_data_new ( NULL ) ;
+    gHyp_data_setInt ( pData, length ) ;
+    gHyp_data_append ( pResult, pData ) ;
 
     if ( pResult )
       gHyp_stack_push ( pStack, pResult ) ;
     else
       gHyp_instance_pushSTATUS ( pAI, pStack ) ;
+
   }
 
 }

@@ -3,9 +3,6 @@
  * Modifications:
  *
  * $Log: function.h,v $
- * Revision 1.5  2007-07-09 05:39:00  bergsma
- * TLOGV3
- *
  * Revision 1.13  2007-03-26 21:16:18  bergsma
  * Added parseurl function().
  *

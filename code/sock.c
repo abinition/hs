@@ -11,8 +11,29 @@
  * Modifications:
  *
  *	$Log: sock.c,v $
- *	Revision 1.6  2007-07-09 05:39:00  bergsma
- *	TLOGV3
+ *	Revision 1.87  2008-06-11 18:50:19  bergsma
+ *	Fix SECS1 TCP LISTEN
+ *	
+ *	Revision 1.86  2008-03-05 22:21:10  bergsma
+ *	Try and get recvmsg and sendmsg working for TRU64
+ *	
+ *	Revision 1.85  2008-02-12 23:52:42  bergsma
+ *	VS 2008 update
+ *	
+ *	Revision 1.84  2007-09-25 17:50:19  bergsma
+ *	Integrate SOCK_UNIX_LISTEN with SOCK_LISTEN
+ *	
+ *	Revision 1.83  2007-07-25 03:43:10  bergsma
+ *	FD_CLR the newSocket passed to us over a UNIX socket.
+ *	
+ *	Revision 1.82  2007-07-22 03:02:56  bergsma
+ *	Close handoff socket when finished with it.
+ *	
+ *	Revision 1.81  2007-07-11 14:44:59  bergsma
+ *	Add second argyment to ssl_digest
+ *	
+ *	Revision 1.80  2007-07-09 05:37:32  bergsma
+ *	Add ssl_digest
  *	
  *	Revision 1.79  2007-05-08 01:26:31  bergsma
  *	Remove comment
@@ -979,7 +1000,7 @@ sLOGICAL gHyp_sock_init ( )
 
   /* Mark the heartbeat start time. */
   gsCurTime = time(NULL);
-  giNextIdleBeat = gsCurTime + IDLE_INTERVAL ;
+  giNextIdleBeat = (int)gsCurTime + IDLE_INTERVAL ;
   giNextAlarm = giNextIdleBeat ;
 
   /* Zero the local buffers */
@@ -2355,7 +2376,7 @@ sData *gHyp_sock_getSSLstate( sSSL *pSSL  )
   return pParent ;
 }
 
-sLOGICAL gHyp_sock_setSSLstate ( sSSL *pSSL, sData *pSSLdata)
+sLOGICAL gHyp_sock_setSSLstate ( sSSL *pSSL, sData *pSSLdata, sSSL *pSSLORIG)
 {
 
   sData
@@ -2386,6 +2407,7 @@ sLOGICAL gHyp_sock_setSSLstate ( sSSL *pSSL, sData *pSSLdata)
     ssl3_buf_len ;
 
   sLOGICAL
+    DO_DEBUG = 0,
     DO_MAIN = 1,
     DO_CIPHER = 1,
     DO_CIPHER_INIT = 1,
@@ -2517,7 +2539,7 @@ sLOGICAL gHyp_sock_setSSLstate ( sSSL *pSSL, sData *pSSLdata)
 
   if ( !ssl->enc_read_ctx ) {
 
-    gHyp_util_debug("Allocating new read cipher context");
+    if ( DO_DEBUG ) gHyp_util_debug("Allocating new read cipher context");
     ssl->enc_read_ctx = (EVP_CIPHER_CTX *) OPENSSL_malloc ( sizeof(EVP_CIPHER_CTX) ) ;
 
   }
@@ -2528,7 +2550,7 @@ sLOGICAL gHyp_sock_setSSLstate ( sSSL *pSSL, sData *pSSLdata)
 
   if ( DO_CIPHER_INIT ) {
     /* This resets cipher, oiv, iv, key_len, and cipher_data */
-    gHyp_util_debug("Initializing new read cipher context");
+    if ( DO_DEBUG ) gHyp_util_debug("Initializing new read cipher context");
     EVP_CIPHER_CTX_init( evp_cipher_ctx );
   }
 
@@ -2567,7 +2589,7 @@ sLOGICAL gHyp_sock_setSSLstate ( sSSL *pSSL, sData *pSSLdata)
   
   if ( !evp_cipher_ctx->cipher_data ) {
 
-    gHyp_util_debug("Allocating new read cipher data of %d bytes",gHyp_data_bufferLen ( pData, 0 ));
+    if ( DO_DEBUG ) gHyp_util_debug("Allocating new read cipher data of %d bytes",gHyp_data_bufferLen ( pData, 0 ));
     evp_cipher_ctx->cipher_data = (void *)OPENSSL_malloc(gHyp_data_bufferLen ( pData, 0 ));
 
   }
@@ -2591,7 +2613,7 @@ sLOGICAL gHyp_sock_setSSLstate ( sSSL *pSSL, sData *pSSLdata)
     
   pData = gHyp_ssl_getData ( pSSLdata, "enc_read_ctx","cipher","nid" );
   if ( !evp_cipher_ctx->cipher ) {
-    gHyp_util_debug("Creating new read cipher by nid %d",gHyp_data_getInt ( pData, 0, TRUE ));
+    if ( DO_DEBUG ) gHyp_util_debug("Creating new read cipher by nid %d",gHyp_data_getInt ( pData, 0, TRUE ));
     evp_cipher_ctx->cipher = EVP_get_cipherbynid( gHyp_data_getInt ( pData, 0, TRUE )  ) ;
   }
 
@@ -2604,7 +2626,7 @@ sLOGICAL gHyp_sock_setSSLstate ( sSSL *pSSL, sData *pSSLdata)
   }
 
   if ( !ssl->enc_write_ctx ) {
-    gHyp_util_debug("Allocating new write cipher context");
+    if ( DO_DEBUG ) gHyp_util_debug("Allocating new write cipher context");
     ssl->enc_write_ctx = (EVP_CIPHER_CTX *) OPENSSL_malloc ( sizeof(EVP_CIPHER_CTX) ) ;
   }
 
@@ -2613,7 +2635,7 @@ sLOGICAL gHyp_sock_setSSLstate ( sSSL *pSSL, sData *pSSLdata)
     return gHyp_util_logWarning ( "No cipher write context" ) ;
   
   if ( DO_CIPHER_INIT ) {
-    gHyp_util_debug("Initializing write cipher context");
+    if ( DO_DEBUG ) gHyp_util_debug("Initializing write cipher context");
     EVP_CIPHER_CTX_init( evp_cipher_ctx );
   }
 
@@ -2650,7 +2672,7 @@ sLOGICAL gHyp_sock_setSSLstate ( sSSL *pSSL, sData *pSSLdata)
 
   pData = gHyp_ssl_getData ( pSSLdata, "enc_write_ctx","cipher_data","" );
   if ( !evp_cipher_ctx->cipher_data ) {
-    gHyp_util_debug("Allocating new write cipher data of %d bytes",gHyp_data_bufferLen ( pData, 0 ));
+    if ( DO_DEBUG ) gHyp_util_debug("Allocating new write cipher data of %d bytes",gHyp_data_bufferLen ( pData, 0 ));
     evp_cipher_ctx->cipher_data = (void *)OPENSSL_malloc(gHyp_data_bufferLen ( pData, 0 ));
   }
   
@@ -2672,7 +2694,7 @@ sLOGICAL gHyp_sock_setSSLstate ( sSSL *pSSL, sData *pSSLdata)
 
   pData = gHyp_ssl_getData ( pSSLdata, "enc_write_ctx","cipher","nid" );
   if ( !evp_cipher_ctx->cipher ) {
-    gHyp_util_debug("Creating new write cipher by nid %d",gHyp_data_getInt ( pData, 0, TRUE ));
+    if ( DO_DEBUG ) gHyp_util_debug("Creating new write cipher by nid %d",gHyp_data_getInt ( pData, 0, TRUE ));
     evp_cipher_ctx->cipher = EVP_get_cipherbynid( gHyp_data_getInt ( pData, 0, TRUE )  ) ;
   }
   
@@ -2686,7 +2708,7 @@ sLOGICAL gHyp_sock_setSSLstate ( sSSL *pSSL, sData *pSSLdata)
   
   pData = gHyp_ssl_getData ( pSSLdata, "read_hash","type","" );
   if ( !ssl->read_hash ) {
-    gHyp_util_debug("Allocating new read hash of nid %d",gHyp_data_getInt ( pData, 0, TRUE));
+    if ( DO_DEBUG ) gHyp_util_debug("Allocating new read hash of nid %d",gHyp_data_getInt ( pData, 0, TRUE));
     ssl->read_hash = EVP_get_digestbynid( gHyp_data_getInt ( pData, 0, TRUE ) ) ;
   }
 
@@ -2695,7 +2717,7 @@ sLOGICAL gHyp_sock_setSSLstate ( sSSL *pSSL, sData *pSSLdata)
 
   pData = gHyp_ssl_getData ( pSSLdata, "write_hash","type","" );
   if ( !ssl->write_hash ) {
-    gHyp_util_debug("Creating new write hash from nid %d",gHyp_data_getInt ( pData, 0, TRUE ));
+    if ( DO_DEBUG ) gHyp_util_debug("Creating new write hash from nid %d",gHyp_data_getInt ( pData, 0, TRUE ));
     ssl->write_hash = EVP_get_digestbynid( gHyp_data_getInt ( pData, 0, TRUE )  ) ;
   }
 
@@ -2771,7 +2793,7 @@ sLOGICAL gHyp_sock_setSSLstate ( sSSL *pSSL, sData *pSSLdata)
 
   if ( ssl3_buf->len == 0 && !ssl3_buf->buf ) {
     /* No rbuf, allocate one */
-    gHyp_util_debug("Initializing new ssl3 rbuf of %d bytes",ssl3_buf_len);
+    if ( DO_DEBUG ) gHyp_util_debug("Initializing new ssl3 rbuf of %d bytes",ssl3_buf_len);
     ssl3_buf->buf = OPENSSL_malloc ( ssl3_buf_len ) ;
   }
 
@@ -2784,7 +2806,7 @@ sLOGICAL gHyp_sock_setSSLstate ( sSSL *pSSL, sData *pSSLdata)
   ssl3_buf->left = gHyp_data_getInt ( pData, 0, TRUE ) ;
 
   if ( ssl3_buf->left > 0 ) {
-    gHyp_util_debug("S3 RBUF left = %d",ssl3_buf->left ) ;
+    if ( DO_DEBUG ) gHyp_util_debug("S3 RBUF left = %d",ssl3_buf->left ) ;
     pData = gHyp_ssl_getData ( pSSLdata, "s3", "rbuf", "buf" ) ;
     memcpy ( ssl3_buf->buf+ssl3_buf->offset, 
 	     gHyp_data_buffer ( pData, 0 ),
@@ -2800,7 +2822,7 @@ sLOGICAL gHyp_sock_setSSLstate ( sSSL *pSSL, sData *pSSLdata)
 
   if ( ssl3_buf->len == 0 && !ssl3_buf->buf ) {
     /* No wbuf, allocate one */
-    gHyp_util_debug("Initializing new ssl3 wbuf of %d bytes",ssl3_buf_len);
+    if ( DO_DEBUG ) gHyp_util_debug("Initializing new ssl3 wbuf of %d bytes",ssl3_buf_len);
     ssl3_buf->buf = OPENSSL_malloc ( ssl3_buf_len ) ;
   }
 
@@ -2813,7 +2835,7 @@ sLOGICAL gHyp_sock_setSSLstate ( sSSL *pSSL, sData *pSSLdata)
   ssl3_buf->left = gHyp_data_getInt ( pData, 0, TRUE ) ;
 
   if ( ssl3_buf->left > 0 ) {
-    gHyp_util_debug("S3 wbuf left = %d",ssl3_buf->left ) ;
+    if ( DO_DEBUG ) gHyp_util_debug("S3 wbuf left = %d",ssl3_buf->left ) ;
     pData = gHyp_ssl_getData ( pSSLdata, "s3", "wbuf", "buf" ) ;
     memcpy ( ssl3_buf->buf+ssl3_buf->offset, 
 	     gHyp_data_buffer ( pData, 0 ),
@@ -2829,7 +2851,7 @@ sLOGICAL gHyp_sock_setSSLstate ( sSSL *pSSL, sData *pSSLdata)
   /*=============================================================*/
   if ( DO_SESSION_DI ) {
 
-    gHyp_util_debug ( "Using SESSION d2i_SSL_SESSION method" );
+    if ( DO_DEBUG ) gHyp_util_debug ( "Using SESSION d2i_SSL_SESSION method" );
     pData = gHyp_ssl_getData ( pSSLdata, "ASN1_SESSION", "", "" ) ;
     gHyp_sock_setSessionObject ( pSSL, pData );
 
@@ -2839,7 +2861,7 @@ sLOGICAL gHyp_sock_setSSLstate ( sSSL *pSSL, sData *pSSLdata)
   /* SESSION */
 
   if ( !ssl->session ) {
-    gHyp_util_debug("Allocating new session");
+    if ( DO_DEBUG ) gHyp_util_debug("Allocating new session");
     ssl->session = (SSL_SESSION *) OPENSSL_malloc ( sizeof ( SSL_SESSION ) ) ;
     session = (SSL_SESSION*) ssl->session ;
     memset ( session, 0, sizeof ( SSL_SESSION ) ) ;
@@ -2909,6 +2931,26 @@ sLOGICAL gHyp_sock_setSSLstate ( sSSL *pSSL, sData *pSSLdata)
   }
   /*=============================================================*/
 
+  /*
+  pSSL->ssl = pSSLORIG->ssl ;
+  pSSL->outBio = pSSLORIG->outBio ; 
+  pSSL->filterBio = pSSLORIG->filterBio ;
+  pSSL->inBio = pSSLORIG->inBio ;
+  */
+
+  /*
+  pSSL->isClient = pSSLORIG->isClient ;
+  pSSL->sslCtx = pSSLORIG->sslCtx ;
+  pSSL->state = pSSLORIG->state ;
+  */
+
+  /* What did we forget? 
+  ssl->init_msg = pSSLORIG->ssl->init_msg ;
+  ssl->packet = pSSLORIG->ssl->packet ;
+  session->cipher = pSSLORIG->ssl->session->cipher ;
+  ssl->cert = pSSLORIG->ssl->cert ;
+  ssl->session = pSSLORIG->ssl->session ;
+  */
 
   /*=============================================================*/
   if ( DO_REHANDSHAKE ) {
@@ -2920,6 +2962,51 @@ sLOGICAL gHyp_sock_setSSLstate ( sSSL *pSSL, sData *pSSLdata)
 
   return TRUE ;
 }
+
+void gHyp_sock_digest ( char *text, char *text2, char *digest ) 
+{
+  
+  EVP_MD_CTX 
+    mdctx;
+
+ const EVP_MD 
+   *md;
+
+ unsigned char 
+   md_value[EVP_MAX_MD_SIZE];
+
+ int 
+   md_len,
+   n ;
+
+  OpenSSL_add_all_digests();
+
+  md = EVP_get_digestbyname("SHA1");
+
+  if(!md) {
+    gHyp_util_logError ( "Unknown message digest SHA1");
+    return ;     
+  }
+
+  EVP_MD_CTX_init(&mdctx);
+  EVP_DigestInit_ex(&mdctx, md, NULL);
+  EVP_DigestUpdate(&mdctx, text, strlen(text));
+  if ( strlen ( text2 ) > 0 ) EVP_DigestUpdate(&mdctx, text2, strlen(text2));
+  EVP_DigestFinal_ex(&mdctx, md_value, &md_len);
+  EVP_MD_CTX_cleanup(&mdctx);
+
+  n = gHyp_util_base64Encode( md_value, md_len, digest )  ;
+  digest[n] = '\0' ;
+
+  /*
+  n = gHyp_util_unparseString ( digest, md_value, md_len, strlen ( digest ), 
+				FALSE, FALSE, FALSE, "" ) ;
+				*/
+  return ;
+}
+
+
+
 
 sLOGICAL gHyp_sock_ctxCApath ( void *ctx, char *CApath ) 
 {
@@ -4126,7 +4213,7 @@ static int lHyp_sock_doSSL( sSSL* pSSL,
 	  sslTimeout = SSL_WAIT_INCREMENT ; /* If was zero, no longer */
 	  nWriteOut = BIO_write( pSSL->outBio, pSSLbuf, nReadSock ) ;
 	  maxWait = SSL_TIMEOUT ; /* Reset maximum wait */
-
+      
           if ( guDebugFlags & DEBUG_DIAGNOSTICS )
 	    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
 	      "Filter<-Engine BIO_write, %d bytes",nWriteOut ) ;
@@ -4484,13 +4571,18 @@ void gHyp_sock_close ( SOCKET socket, short channelType, char* target, char* pat
   case SOCKET_TCP:
     gHyp_util_logInfo ( "Closing TCP client connection (%d) to host '%s'",
                         socket, target ) ;
+
+  case SOCKET_UNIX_LISTEN:
+    if ( channelType == SOCKET_UNIX_LISTEN )
+      gHyp_util_logInfo ( "Closing UNIX listen connection (%d) to device '%s'",
+                          socket, target ) ;
   case SOCKET_LISTEN:
     if ( channelType == SOCKET_LISTEN )
       gHyp_util_logInfo ( "Closing TCP listen connection (%d) to device '%s'",
                           socket, target ) ;
   case SOCKET_UNIX:
     if ( channelType == SOCKET_UNIX )
-      gHyp_util_logInfo ( "Closing UNIX listen connection (%d) to device '%s'",
+      gHyp_util_logInfo ( "Closing UNIX connection (%d) to device '%s'",
                           socket, target ) ;
 
     
@@ -4795,7 +4887,7 @@ static sChannel* lHyp_sock_getMSLOTchannel ( char *object,
                         path ) ;
 
     /* Force evaluation of timeout */
-    giNextAlarm = gsCurTime ;
+    giNextAlarm = (int)gsCurTime ;
 
   }
   return pChannel ;
@@ -5178,7 +5270,7 @@ void gHyp_sock_cleanClient ( sData *pClients )
 
     updateTime = gHyp_channel_updateTime ( pChannel ) ;
     strcpy ( timeStamp, gHyp_util_timeStamp ( updateTime ) ) ; ;
-    elapsedTime = gsCurTime - updateTime ;
+    elapsedTime = (int)(gsCurTime - updateTime) ;
 
     if ( elapsedTime < 0 ) elapsedTime = IDLE_INTERVAL ;
     if ( elapsedTime >= IDLE_INTERVAL ) {
@@ -6154,7 +6246,7 @@ static int lHyp_sock_nextAlarmTime ( sData *pClients )
   if ( giNextIdleBeat <= gsCurTime ||
        giNextIdleBeat >  gsCurTime + IDLE_INTERVAL )
     /* Clock was set ahead or behind! */
-    giNextIdleBeat = gsCurTime + IDLE_INTERVAL ;
+    giNextIdleBeat = (int)gsCurTime + IDLE_INTERVAL ;
   
   /* Assume next alarm will occur at the heartbeat interval */
   nextAlarmTime = giNextIdleBeat ;
@@ -6165,7 +6257,7 @@ static int lHyp_sock_nextAlarmTime ( sData *pClients )
         f=FALSE, pData = gHyp_data_getNext ( pData )) {
 
     pChannel = (sChannel*) gHyp_data_getObject ( pData ) ;
-    nextUpdateTime = gHyp_channel_updateTime (pChannel) + IDLE_INTERVAL ;
+    nextUpdateTime = (int)gHyp_channel_updateTime (pChannel) + IDLE_INTERVAL ;
 
     /* Correct for time warps - Correct and delay evaluation. */
     if ( nextUpdateTime <= gsCurTime ||
@@ -6473,6 +6565,7 @@ static int lHyp_sock_select_read_objects ( sConcept *pConcept, sData *pSockets )
   sSecs1
     *pSecs1,
     *pPort,
+    *pListenSecs1,
     *pListenPort ;
 
   sHsms
@@ -6631,7 +6724,7 @@ static int lHyp_sock_select_read_objects ( sConcept *pConcept, sData *pSockets )
 
 	}
 	else {
-	  gHyp_util_logWarning ( "No id is assigned to new socket %d from parent socket %d",newSocket, port ) ;
+	  gHyp_util_logWarning ( "No id is assigned to new socket %d from HSMS listen socket %d",newSocket, socket ) ;
 	}
       }
       else if ( flags == (PROTOCOL_SECS1 | SOCKET_LISTEN) ) {
@@ -6661,12 +6754,28 @@ static int lHyp_sock_select_read_objects ( sConcept *pConcept, sData *pSockets )
 	/* Find any instance that has assigned this socket to an id */ 
         pAIassigned = gHyp_concept_getInstForFd ( pConcept, socket ) ;
 
-
 	/* Find any device id from that instance */
 	id = pAIassigned == NULL ? NULL_DEVICEID : gHyp_instance_getDeviceId ( pAIassigned, socket ) ;
+	if ( pAIassigned ) gHyp_instance_signalConnect ( pAIassigned, newSocket, port, id ) ;
 
-	if ( !pAIassigned ) 
-	  gHyp_util_logWarning ( "No id is assigned to new socket %d from parent socket %d",newSocket, port ) ;
+	if ( id != NULL_DEVICEID ) {
+	
+	  /* Take any SSL structures as well */
+	  pListenSecs1 = (sSecs1*) gHyp_concept_getSocketObject ( pConcept, 
+					(SOCKET) socket, 
+					DATA_OBJECT_NULL ) ;
+
+#ifdef AS_SSL
+	  gHyp_secs1_setSSL ( 
+	    pSecs1,  gHyp_sock_copySSL ( gHyp_secs1_getSSL ( pListenSecs1 ))) ;
+#endif
+	  /* Take this id */
+	  gHyp_instance_updateFd ( pAIassigned, newSocket, id, NULL, FALSE ) ;
+
+	}
+	else {
+	  gHyp_util_logWarning ( "No id is assigned to new socket %d from SECS1 listen socket %d",newSocket, socket ) ;
+	}
 
       }
       else if ( flags == (PROTOCOL_NONE | SOCKET_LISTEN) ) {
@@ -6721,7 +6830,7 @@ static int lHyp_sock_select_read_objects ( sConcept *pConcept, sData *pSockets )
 
 	}	
 	else {
-	  gHyp_util_logWarning ( "No id is assigned to new socket %d from parent socket %d",newSocket, port ) ;
+	  gHyp_util_logWarning ( "No id is assigned to new socket %d from port listen socket %d",newSocket, socket ) ;
 	}
       
       }
@@ -6777,11 +6886,11 @@ static int lHyp_sock_select_read_objects ( sConcept *pConcept, sData *pSockets )
 
 	}
 	else {
-	  gHyp_util_logWarning ( "No id is assigned to new socket %d from parent socket %d",newSocket, port ) ;
+	  gHyp_util_logWarning ( "No id is assigned to new socket %d from http listen socket %d",newSocket, socket ) ;
 	}
 	
       }
-#if defined ( AS_UNIX ) && !defined (AS_TRUE64)
+#if defined ( AS_UNIX ) 
 
       else if ( flags == (PROTOCOL_NONE | SOCKET_UNIX_LISTEN) ) {
 
@@ -6815,7 +6924,7 @@ static int lHyp_sock_select_read_objects ( sConcept *pConcept, sData *pSockets )
 	id = pAIassigned == NULL ? NULL_DEVICEID : gHyp_instance_getDeviceId ( pAIassigned, socket ) ;
 
 	/* Create the signal that specifies what we just selected */
-	if ( pAIassigned ) gHyp_instance_signalConnect ( pAIassigned, newSocket, port, id ) ;
+	if ( pAIassigned ) gHyp_instance_signalConnect ( pAIassigned, socket, port, id ) ;
 
 	if ( id != NULL_DEVICEID ) {
 
@@ -6823,7 +6932,7 @@ static int lHyp_sock_select_read_objects ( sConcept *pConcept, sData *pSockets )
 	  gHyp_instance_updateFd ( pAIassigned, newSocket, id, NULL, FALSE ) ;
 	}	
 	else {
-	  gHyp_util_logWarning ( "No id is assigned to new socket %d from parent socket %d",newSocket, port ) ;
+	  gHyp_util_logWarning ( "No id is assigned to new socket %d from UNIX listen socket %d",newSocket, socket ) ;
 	}
       
       }
@@ -6888,13 +6997,20 @@ static int lHyp_sock_select_read_objects ( sConcept *pConcept, sData *pSockets )
 	    gHyp_secs1_copyForwardPort ( pListenPort, id ) ) ; 
 
 	  /* Transfer the id. */
+	  gHyp_util_logInfo ( "Id %d is assigned to new UNIX handoff socket %d",id, newSocket ) ;
 	  gHyp_instance_updateFd ( pAIassigned, newSocket, id, NULL, FALSE ) ;
 
 	}
 	else {
-	  gHyp_util_logWarning ( "No id is assigned to new UNIX socket %d from parent UNIX socket %d",newSocket, parentSocket ) ;
+	  gHyp_util_logWarning ( "No id is assigned to new UNIX socket %d from handoff socket %d",newSocket, socket ) ;
 	}
 
+	gHyp_util_logInfo ( "Closing UNIX handoff socket %d",socket ) ;
+	gHyp_concept_deleteSocketObject ( pConcept, socket ) ;
+
+	/* Incase the new socket was used by something else, clear it now */
+	FD_CLR ( newSocket, &gsReadFDS ) ;
+        /*FD_CLR ( socket, &gsReadFDS ) ;*/
 
       }
 #endif
@@ -7570,7 +7686,7 @@ int gHyp_sock_select ( sConcept* pConcept,
     /*gHyp_util_debug("Next clean in %d seconds",(giNextAlarm-gsCurTime));*/
    }
   /* Calculate time to next check. */
-  timeToAlarm = giNextAlarm - gsCurTime + 1 ;
+  timeToAlarm = giNextAlarm - (int)gsCurTime + 1 ;
   timeToAlarm = MIN ( timeToAlarm, IDLE_INTERVAL ) ;
 
   /* The timeout suplied is the first event time from all the instances.

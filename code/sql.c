@@ -14,8 +14,35 @@
  * Modified:
  *
  * $Log: sql.c,v $
- * Revision 1.5  2007-07-09 05:39:00  bergsma
- * TLOGV3
+ * Revision 1.59  2008-06-13 04:22:00  bergsma
+ * Make CLOB _data_
+ *
+ * Revision 1.58  2008-05-27 16:12:25  bergsma
+ * Make sure _data_ is used for colLens > INTERNAL_VALUE_SIZE
+ *
+ * Revision 1.57  2008-05-27 00:25:13  bergsma
+ * no message
+ *
+ * Revision 1.56  2008-05-26 00:32:41  bergsma
+ * no message
+ *
+ * Revision 1.55  2008-05-26 00:08:57  bergsma
+ * OCIlobRead function problems
+ *
+ * Revision 1.54  2008-05-25 02:30:40  bergsma
+ * OCIlobRead function problems
+ *
+ * Revision 1.53  2008-05-23 05:44:51  bergsma
+ * ORACLE CLOB Reading changes
+ *
+ * Revision 1.52  2008-05-19 01:07:40  bergsma
+ * For ORACLE clob, allow maximum 512K input buffer.
+ *
+ * Revision 1.49  2007-12-01 02:00:18  bergsma
+ * For pgsql, use PQfmod to get varchar value
+ *
+ * Revision 1.48  2007-11-29 18:03:03  bergsma
+ * sql_toexternal, 2nd argument was reversed, trim was broken
  *
  * Revision 1.47  2007-06-20 22:31:41  bergsma
  * no message
@@ -167,6 +194,7 @@
 
 /********************** AUTOROUTER INTERFACE ********************************/
 
+
 #include "auto.h"       /* System Interface and Function Prototypes */
 
 /********************** EXTERNAL FUNCTION DECLARATIONS ***********************/
@@ -178,6 +206,12 @@
 /********************** INTERNAL OBJECT STRUCTURES ***************************/
 
 /********************** FUNCTION DEFINITIONS ********************************/
+
+
+#ifdef AS_SQLSERVER_NEW
+#define _SQLNCLI_ODBC_
+include "sqlncli.h";
+#endif
 
 #ifdef AS_SQLSERVER
 #define DBNTWIN32
@@ -244,7 +278,7 @@ static int lHyp_sql_msgHandler (PDBPROCESS dbproc, DBINT msgno, INT msgstate,
 #ifdef AS_ORACLE
 
 static char errbuf[512];
-static void lHyp_sql_checkErr( OCIError *errhp, sword status)
+static sLOGICAL lHyp_sql_checkErr( OCIError *errhp, sword status)
 {
   sb4  errcode = 0;
   sLOGICAL isError = 1 ;
@@ -303,7 +337,30 @@ static void lHyp_sql_checkErr( OCIError *errhp, sword status)
       gHyp_util_logError(errbuf );
   }
 
-  return  ;
+  return isError ;
+}
+
+static ub4 piece_count = 0;
+static sb4 lHyp_sql_readLob ( dvoid *ctxp, CONST dvoid *bufxp, ub4 len, ub1 piece )
+{
+  piece_count++;
+  switch (piece) {
+
+    case OCI_LAST_PIECE:
+    case OCI_FIRST_PIECE:
+    case OCI_NEXT_PIECE:
+
+      /* process buffer bufxp */
+      /*gHyp_util_debug("callback read the %d th piece\n", piece_count);*/
+      gHyp_util_breakStream ( (char*) bufxp, len, (sData*) ctxp, TRUE ) ;
+
+      break;
+
+    default:
+      gHyp_util_logError("Callback read error: unkown piece = %d.\n", piece);
+      return OCI_ERROR;
+  }
+  return OCI_CONTINUE;
 }
 
 #endif
@@ -436,10 +493,16 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
      sword	rc ; 
      OCIStmt    *stmthp;
      OCIParam   *mypard;
+
      void*	dataBuffer[MAX_SQL_ITEMS] ;
-     ub2	dataBufferLen[MAX_SQL_ITEMS] ;
+
+     ub4	dataBufferLen[MAX_SQL_ITEMS] ;
+     ub4	amount ;
+     ub4	offset ;
      ub2	dataLen[MAX_SQL_ITEMS] ;
+     /*dvoid*	dataBufferPtr[MAX_SQL_ITEMS] ;*/
      OCIDefine*	defnp[MAX_SQL_ITEMS] ;
+     OCILobLocator* pLobLocator[MAX_SQL_ITEMS];
      sb2	indicator[MAX_SQL_ITEMS],
 	        precision ;
      sLOGICAL	isFloat[MAX_SQL_ITEMS];
@@ -757,6 +820,8 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 #elif AS_PGSQL
                   colTypes[i] = PQftype ( results, i ) ;
                   colLens[i] = PQfsize( results, i ) ;
+                  if ( colLens[i] == -1 )
+		    colLens[i] = PQfmod( results, i ) ;
                   isDataBinary[i] = PQfformat ( results, i ) ;
 #elif AS_ORACLE
 		  rc = OCIAttrGet(	(dvoid*) mypard, 
@@ -768,7 +833,6 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 		  lHyp_sql_checkErr ( dbproc->errhp, rc ) ;
 
 		  colTypes[i] = dataType ;
-
 		  rc = OCIAttrGet(	(dvoid*) mypard, 
 					(ub4) OCI_DTYPE_PARAM, 
 					(dvoid*) &precision,
@@ -786,14 +850,40 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 					(ub4 *) 0, 
 					(ub4) OCI_ATTR_DATA_SIZE, 
 					(OCIError *) dbproc->errhp  );
+ 		  lHyp_sql_checkErr ( dbproc->errhp, rc ) ;
 
 		  colLens[i] = colLen ;
-
 		  if ( colLen < VALUE_SIZE ) colLen = VALUE_SIZE ;
-		  dataBufferLen[i] = colLen ;
 
-		  /* Allocate a buffer to receive the data for column i+1 */
-		  dataBuffer[i] = (void*) AllocMemory ( dataBufferLen[i]+1 ) ;
+		  if ( dataType == SQLT_CLOB ||
+		       dataType == SQLT_BLOB ) {
+		    dataBufferLen[i] = MAX_SQL_BUFFER_SIZE ;
+		    /* Allocate a buffer to receive the data for column i+1 */
+		    dataBuffer[i] = (void*) AllocMemory ( dataBufferLen[i] ) ;
+		    /*dataBufferPtr[i] = &dataBuffer[i] ;*/
+		    rc = OCIDescriptorAlloc(  dbproc->envhp, 
+					      (void **)&pLobLocator[i],
+					      (ub4)OCI_DTYPE_LOB, 
+					      (size_t)0, (void**)0 ) ;
+					      /*(size_t)dataBufferLen[i], 
+					      (void**)&dataBufferPtr[i] ) ;*/
+ 		    lHyp_sql_checkErr ( dbproc->errhp, rc ) ;
+
+		    /*
+		    rc = OCILobEnableBuffering ( dbproc->svchp, 
+						 dbproc->errhp, 
+						 pLobLocator[i] ) ;
+ 		    lHyp_sql_checkErr ( dbproc->errhp, rc ) ;
+		    */
+
+
+		  }
+		  else {
+		    dataBufferLen[i] = colLen ;
+		    /* Allocate a buffer to receive the data for column i+1 */
+		    dataBuffer[i] = (void*) AllocMemory ( dataBufferLen[i]+1 ) ;
+		  }
+
 #endif
 		}
 
@@ -882,7 +972,17 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
                       case SQLVARCHAR :
                       case SQLCHAR :
-                        gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
+			if ( n == 0 ) 
+                          gHyp_data_setStr_n (pData, "NULL", 4 ) ;
+
+                        else if ( colLens[i] <= INTERNAL_VALUE_SIZE )
+                          gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
+
+			else {
+  			  gHyp_data_setVariable ( pData, "_data_", TYPE_STRING ) ;
+			  gHyp_util_breakStream ( (char*) pBytes, n, pData, TRUE ) ;
+			}
+                        /*gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;*/
                         break ;
 
                       case SQLTEXT :
@@ -1087,8 +1187,17 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
                       case FIELD_TYPE_STRING :
                       case FIELD_TYPE_VAR_STRING :
+			if ( n == 0 ) 
+                          gHyp_data_setStr_n (pData, "NULL", 4 ) ;
 
-                        gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
+                        else if ( colLens[i] <= INTERNAL_VALUE_SIZE )
+                          gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
+
+			else {
+  			  gHyp_data_setVariable ( pData, "_data_", TYPE_STRING ) ;
+			  gHyp_util_breakStream ( (char*) pBytes, n, pData, TRUE ) ;
+			}
+                        /*gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;*/
                         break ;
 
                       case FIELD_TYPE_BLOB :
@@ -1300,7 +1409,18 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 		    case 1043: /*VARCHAROID */
 
 			/* Text */
-                        gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
+			if ( n == 0 ) 
+                          gHyp_data_setStr_n (pData, "NULL", 4 ) ;
+
+                        else if ( colLens[col] <= INTERNAL_VALUE_SIZE )
+                          gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
+
+			else {
+  			  gHyp_data_setVariable ( pData, "_data_", TYPE_STRING ) ;
+			  gHyp_util_breakStream ( (char*) pBytes, n, pData, TRUE ) ;
+			}
+
+                        /*gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;*/
                         break ;
 
 		    case 25: /*TEXTOID*/
@@ -1455,17 +1575,33 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 		    /* Associate the buffer with a column definition.
 		     * Convert everything to CHAR
 		     */
-		    rc = OCIDefineByPos(stmthp, 
+		    if ( colTypes[i] == SQLT_CLOB || colTypes[i] == SQLT_BLOB ) {
+
+		      rc = OCIDefineByPos(stmthp, 
+					&defnp[i], 
+					dbproc->errhp,
+					i+1, 
+					(dvoid *) &pLobLocator[i],
+					(sb4) 0, 
+					(ub2) colTypes[i],
+					(dvoid *) 0 /*&indicator[i]*/, 
+					(ub2 *) 0 /*&dataLen[i]*/,
+					(ub2 *)0, 
+					OCI_DEFAULT);
+		    }
+		    else {
+		      rc = OCIDefineByPos(stmthp, 
 					&defnp[i], 
 					dbproc->errhp,
 					i+1, 
 					(dvoid *) dataBuffer[i],
-					(sword) dataBufferLen[i], 
+					(sb4) dataBufferLen[i], 
 					(ub2) SQLT_CHR, /*colTypes[i],*/
 					(dvoid *) &indicator[i], 
 					(ub2 *)&dataLen[i],
 					(ub2 *)0, 
 					OCI_DEFAULT);
+		    }
 
 		    lHyp_sql_checkErr ( dbproc->errhp, rc ) ;
 		  }
@@ -1484,7 +1620,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 			/*OCI_STMT_SCROLLABLE_READONLY) ;*/
 
 		lHyp_sql_checkErr ( dbproc->errhp, rc ) ;
-
+		
                 rows = 0 ;
 
 		/*orientation = OCI_FETCH_NEXT ;*/
@@ -1517,7 +1653,17 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
                       case SQLT_CHR :
 
                         /* VARCHAR2 */
-                        gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
+			if ( n == 0 ) 
+                          gHyp_data_setStr_n (pData, "NULL", 4 ) ;
+
+                        else if ( colLens[col] <= INTERNAL_VALUE_SIZE )
+                          gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
+
+			else {
+  			  gHyp_data_setVariable ( pData, "_data_", TYPE_STRING ) ;
+			  gHyp_util_breakStream ( (char*) pBytes, n, pData, TRUE ) ;
+			}
+                        /*gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;*/
                         break ;
 
 		      case SQLT_INT :
@@ -1562,7 +1708,31 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 			gHyp_util_breakStream ( (char*) pBytes, n, pData, TRUE ) ;
 			break ;
 
-                      default :
+		      case SQLT_BLOB :
+		      case SQLT_CLOB :
+
+  			gHyp_data_setVariable ( pData, "_data_", TYPE_STRING ) ;
+
+			OCILobGetLength( dbproc->svchp, dbproc->errhp, pLobLocator[col], &amount);
+			/*amount =  MAX_SQL_BUFFER_SIZE ; 4294967295 = 4 gigabytes minus 1 */
+			offset = 1 ;
+			rc = OCILobRead(
+			  dbproc->svchp, 
+			  dbproc->errhp, 
+			  pLobLocator[col],
+			  (ub4*) &amount,
+			  offset, 
+			  (dvoid *) &dataBuffer[col],
+			  (ub4) dataBufferLen[col], 
+			  (dvoid *) pData, 
+			  lHyp_sql_readLob,
+			  (ub2) 0, 
+			  (ub1) SQLCS_IMPLICIT ) ;
+  			lHyp_sql_checkErr ( dbproc->errhp, rc ) ;
+ 
+			break ;
+
+		      default :
 			      
 			if ( n == 0 ) 
                           gHyp_data_setStr_n (pData, "NULL", 4 ) ;
@@ -1691,8 +1861,12 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 		if ( results != OCI_NO_DATA ) 
 		  lHyp_sql_checkErr ( dbproc->errhp, results ) ;
 
-		for ( i=0; i<numCols; i++ )
+		for ( i=0; i<numCols; i++ ) {
 		  ReleaseMemory ( dataBuffer[i] ) ;
+		  if ( colTypes[i] == SQLT_CLOB || colTypes[i] == SQLT_BLOB ) {
+		    OCIDescriptorFree(pLobLocator[i], (ub4) OCI_DTYPE_LOB);
+		  }
+		}
 
 		if ( stmthp )
 		  OCIHandleFree( (dvoid *)stmthp, (ub4) OCI_HTYPE_STMT);
@@ -2394,9 +2568,9 @@ void gHyp_sql_toexternal(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
     if ( argCount == 2 ) {
       pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
-      doTrim  = gHyp_data_getBool ( pData,
+      doTrim  = ! ( gHyp_data_getBool ( pData,
 				    gHyp_data_getSubScript ( pData  ),
-				    TRUE ) ;
+				    TRUE ) ) ;
     }
 
     pData = gHyp_stack_popRdata ( pStack, pAI ) ;
@@ -2427,8 +2601,8 @@ void gHyp_sql_toexternal(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 			     isVector ) ;
         pStr = strVal ;
         pValue2 = gHyp_data_new ( NULL ) ;
+	if ( doTrim ) n = gHyp_util_trim ( strVal ) ;
         n = gHyp_util_unparseString ( strVal2, pStr, n, VALUE_SIZE, FALSE, FALSE, TRUE,"" ) ;
-	if ( doTrim ) n = gHyp_util_trim ( strVal2 ) ;
         gHyp_data_setStr_n ( pValue2, strVal2, n ) ;
 	if ( n > 0 ) isEmpty = FALSE ;
       }
@@ -2567,7 +2741,7 @@ void gHyp_sql_datetime ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       if ( context== -2 && ss != -1 ) {
         gHyp_data_delete ( pResult ) ;
         gHyp_instance_error ( pAI, STATUS_BOUNDS, 
-			    "Subscript '%s' is out of bounds in sql_toexternal()",
+			    "Subscript '%s' is out of bounds in sql_datetime()",
 			    ss);
       }
       gHyp_stack_push ( pStack, pResult ) ;

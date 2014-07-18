@@ -11,8 +11,9 @@
  * Modifications:
  *
  * $Log: hs.c,v $
- * Revision 1.5  2007-07-09 05:39:00  bergsma
- * TLOGV3
+ * Revision 1.46  2008-05-03 21:43:55  bergsma
+ * Use giLineCount and giProgram count together to better determine the
+ * location of a program token code.
  *
  * Revision 1.45  2007-06-20 22:32:48  bergsma
  * Use popRdata, not popRvalue before data_getNext
@@ -780,7 +781,7 @@ int main ( int argc, char * argv[] )
     "       -h                     (print this help)\n",
     "       -i                     (interactive mode)\n",
     "       -l log                 (output to 'log' instead of stdout)\n",
-    "       -n service             (tcp/ip listen service name)\n",
+    "       -n service/port        (tcp/ip listen service name or port)\n",
     "       -q                     (quiet mode)\n",
     "       -r                     (ROOT mode)\n",
     "       -s stream              (input from 'stream' instead of stdin)\n",
@@ -1022,8 +1023,10 @@ int main ( int argc, char * argv[] )
       exit(2) ;
     }
   } 
-  else 
+  else {
+    strcpy ( program, "stdin" ) ;
     gsPP = stdin ;
+  }
 
   /* Check argument compatability *
   if ( service[0] && !(runFlags & RUN_ROOT)) {
@@ -1166,7 +1169,7 @@ int main ( int argc, char * argv[] )
           if ( !stream[0] ) break ;
 
           /* Input came from -s "stmt" */         
-          pStream = gHyp_load_fromStream ( gpAImain, pHyp, stream, giProgramCount++ ) ;
+          pStream = gHyp_load_fromStream ( gpAImain, pHyp, stream, giLineCount++ ) ;
           if ( pStream == NULL || *pStream ) {
             gHyp_util_logError ( "Failed to load HyperScript stream" ) ;
             break ;
@@ -1177,7 +1180,7 @@ int main ( int argc, char * argv[] )
 
           stream[0] = '\0' ;
         }
-        else if ( !endOfFile && gHyp_hyp_source ( gpAImain, pHyp, gsPP, TRUE ) > 0 ) {
+        else if ( !endOfFile && gHyp_hyp_source ( gpAImain, pHyp, gsPP, program, TRUE ) > 0 ) {
           
           /* More tokens loaded - set PARSE state and call gHyp_instance_run */
           gHyp_instance_setState ( gpAImain, STATE_PARSE ) ;

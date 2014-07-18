@@ -10,12 +10,7 @@
  * Modifications:
  *
  *   $Log: mapi.c,v $
- *   Revision 1.5  2007-07-09 05:39:00  bergsma
- *   TLOGV3
- *
- *   Revision 1.1  2005-01-25 05:43:42  bergsma
- *   Add MAPI (NSAS Nokia support methods for Outlook forwarding)
- *
+ *   Revision 1.1  2005/01/25 05:43:42  bergsma
  *
  */
 
@@ -56,50 +51,54 @@ typedef struct _rpc_header  {
 #error add macros for big endian machine
 #endif
 
-// This is raw packet data we'll send to the Exchange server's port mapper to obtain
-//  the ports it's listening on.  Then we'll register these ports with the client
-//  machine's local portmapper.
+/*
+ * This is raw packet data we'll send to the Exchange server's port mapper to obtain
+ * the ports it's listening on.  Then we'll register these ports with the client
+ * machine's local portmapper.
+ */
 
-char *gszExchangeDIR_UUID =       "f5cc5a18-4264-101a-8c59-08002b2f8426";
-char *gszExchangeRFR_UUID =       "1544f5e0-613c-11d1-93df-00c04fd7bd09"; 
-char *gszExchangeSTORE_UUID =     "a4f1db00-ca47-1067-b31e-00dd010662da";   // Exchange Server STORE ADMIN Interface 
-char *gszRPC_UUID =               "8A885D04-1CEB-11C9-9FE8-08002B104860";   // Id of the whole RPC world
+static char *gszExchangeDIR_UUID =       "f5cc5a18-4264-101a-8c59-08002b2f8426";
+static char *gszExchangeRFR_UUID =       "1544f5e0-613c-11d1-93df-00c04fd7bd09"; 
+static char *gszExchangeSTORE_UUID =     "a4f1db00-ca47-1067-b31e-00dd010662da";   // Exchange Server STORE ADMIN Interface 
+static char *gszRPC_UUID =               "8A885D04-1CEB-11C9-9FE8-08002B104860";   // Id of the whole RPC world
+
+/*
+ * unsigned char pRPCBindData[DCE_RPC_BIND_DATA_LEN] = 
+ *	05 00 0B 03 10 00 00 00 48 00 00 00 01 00 00 00
+ *	D0 16 D0 16 00 00 00 00 01 00 00 00 00 00 01 00
+ *	08 83 AF E1 1F 5D C9 11 91 A4 08 00 2B 14 A0 FA
+ *	03 00 00 00 04 5D 88 8A EB 1C C9 11 9F E8 08 00
+ *	2B 10 48 60 02 00 00 00      
+
+ * This is an example of what Bind Ack data looks like
+ * unsigned char pRPCBindAckData[] = 
+ * 00000030                    05 00 0C 03 10 00 00 00 3C 00       ........<.
+ * 00000040  00 00 01 00 00 00 D0 16 D0 16 37 00 01 00 04 00 ..........7.....
+ * 00000050  31 33 35 00 00 00 01 00 00 00 00 00 00 00 04 5D 135............]
+ * 00000060  88 8A EB 1C C9 11 9F E8 08 00 2B 10 48 60 02 00 ..........+.H`..
+ * 00000070  00 00                                           ..              
+ */
 
 #include "mapidata.c"
 
 int iFishOutPort(const unsigned char *packet, int length);
-
-//unsigned char pRPCBindData[DCE_RPC_BIND_DATA_LEN] = 
-//	05 00 0B 03 10 00 00 00 48 00 00 00 01 00 00 00
-//	D0 16 D0 16 00 00 00 00 01 00 00 00 00 00 01 00
-//	08 83 AF E1 1F 5D C9 11 91 A4 08 00 2B 14 A0 FA
-//	03 00 00 00 04 5D 88 8A EB 1C C9 11 9F E8 08 00
-//	2B 10 48 60 02 00 00 00      
-
-// This is an example of what Bind Ack data looks like
-//unsigned char pRPCBindAckData[] = 
-//00000030                    05 00 0C 03 10 00 00 00 3C 00       ........<.
-//00000040  00 00 01 00 00 00 D0 16 D0 16 37 00 01 00 04 00 ..........7.....
-//00000050  31 33 35 00 00 00 01 00 00 00 00 00 00 00 04 5D 135............]
-//00000060  88 8A EB 1C C9 11 9F E8 08 00 2B 10 48 60 02 00 ..........+.H`..
-//00000070  00 00                                           ..              
-
-
 int iFindThisEndpoint(char *szServerAddr, char *szUUID, int *piPortNumber);
+UINT iHookIntoPortMapperThread(void *ptr);
 
-/* These are the values I'll pass to the thread that'll be started.*/
+/* These are the values to pass to the thread that'll be started.*/
 typedef struct {
     int iExchangeDIRPort;
     int iExchangeRFRPort;
     int iExchangeSTOREPort;
 } HookStruct;
 
-UINT iHookIntoPortMapperThread(void *ptr);
 
+/*
 extern char *gszExchangeDIR_UUID;
 extern char *gszExchangeRFR_UUID;
 extern char *gszExchangeSTORE_UUID;
 extern char *gszRPC_UUID;
+*/
 
 /* from: http://www.tburke.net/info/reskittools/topics/rpcdump_examples.htm
  ncacn_ip_tcp(Connection-oriented TCP/IP)
@@ -116,6 +115,7 @@ extern char *gszRPC_UUID;
 #define INTERFACE_DESC1 ((unsigned char *)"NSAS PF Exchange RFR")
 #define INTERFACE_DESC2 ((unsigned char *)"NSAS PF Exchange DIR")
 #define INTERFACE_DESC3 ((unsigned char *)"NSAS PF Exchange STORE")
+
 
 
 int iStartPortMapperHook(
@@ -158,8 +158,9 @@ int iStartPortMapperHook(
     return rc;
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
 int iFindThisEndpoint(char *szServerAddr, char *szUUID, int *piPortNumber)
+{
+  /*
 //
 // Purpose : Searchs the endpoints of the port mapper on the given server for the given UUID.
 //	        Returns the given endpoint (if found).  If not found, piPortNumber will point to
@@ -170,7 +171,8 @@ int iFindThisEndpoint(char *szServerAddr, char *szUUID, int *piPortNumber)
 //           # -- Win32 error (check szErrorText buffer)
 //
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-{
+  */
+
     RPC_STATUS rc = -1;
     unsigned char *pszStringBinding = NULL;
     int index = 0;
@@ -180,7 +182,7 @@ int iFindThisEndpoint(char *szServerAddr, char *szUUID, int *piPortNumber)
 
     /*gHyp_util_logWarning(  "FTE: Searching for endpoint UUID = %s on server %s\n", szUUID, szServerAddr);*/
 
-    // Concatenate the elements of the string binding into the proper sequence. 
+    /* Concatenate the elements of the string binding into the proper sequence. */
     rc = RpcStringBindingCompose(
 				 NULL,
 				 NCACN_IP_TCP,
@@ -289,12 +291,13 @@ LFuncExit:
 
 }  // end fcn iFindThisEndpoint
 
+/*
 // Sample taken from:
 //	    \Microsoft SDK\Samples\netds\rpc\filerep\filerepsecure\filerepservice.cpp
-RPC_STATUS __stdcall RpcServerIfCallback (
-  IN void *Interface,
-  IN void *Context
-) {
+*/
+
+RPC_STATUS __stdcall RpcServerIfCallback ( IN void *Interface, IN void *Context ) 
+{
     ULONG ulAuthnLevel;
     ULONG ulAuthnSvc;
 

@@ -10,8 +10,11 @@
 /* Modifications: 
  *
  * $Log: cgi.c,v $
- * Revision 1.5  2007-07-09 05:39:00  bergsma
- * TLOGV3
+ * Revision 1.36  2007-09-01 20:21:28  bergsma
+ * Typo, meant ',' rather than ' '
+ *
+ * Revision 1.35  2007-07-09 05:35:30  bergsma
+ * Add urlstring()
  *
  * Revision 1.34  2007-06-10 05:13:58  bergsma
  * Scan for comma as well as space when splitting strings received in http_data
@@ -239,6 +242,99 @@ void gHyp_cgi_plusToSpace(char *str)
   for (x=0; str[x]; x++)
     if (str[x] == '+')
       str[x] = ' ';
+}
+
+
+void gHyp_cgi_urlstring ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: urlstring ( variable, [,variable[,variable[,variable....]]]] )
+   *	Returns the urlstring.
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	strin
+   *
+   * Modifications:
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+
+  else {
+
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+    
+    sData
+      *pResult,
+      *pValue,
+      *pData;
+    
+    char
+      amp[2],
+      decryptedLabel[TOKEN_SIZE+1],
+      encryptedLabel[TOKEN_SIZE+1],
+      decryptedValue[VALUE_SIZE+1],
+      encryptedValue[VALUE_SIZE+1],
+      line[VALUE_SIZE+1] ;
+
+    int
+      n,
+      nl,nv,
+      argCount = gHyp_parse_argCount ( pParse ) ;
+    
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount == 0 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+	"Invalid arguments. Usage: urlstring ( v1, [,v2[,v3[,v4....]]] )" ) ;
+
+    pResult = gHyp_data_new ("_urlstring_") ;
+
+    amp[0] = '&' ;
+    amp[1] = '\0' ;
+
+    while ( argCount-- ) {
+
+      pData = gHyp_stack_popLvalue ( pStack, pAI ) ;
+
+      /* Make label */
+      nl = sprintf ( decryptedLabel, "%s", gHyp_data_getLabel ( pData ) ) ;
+
+      nl = gHyp_util_urlEncode ( decryptedLabel, nl, encryptedLabel ) ;
+
+      nv = gHyp_data_getStr ( pData, 
+			     decryptedValue, 
+			     VALUE_SIZE, 
+			     gHyp_data_getSubScript ( pData ), 
+			     TRUE ) ;
+      nv = gHyp_util_urlEncode ( decryptedValue, nv, encryptedValue ) ;
+ 
+      if ( argCount == 0 ) amp[0] = '\0';
+
+      /* Make line */
+      n = sprintf ( line, "%s%s=%s", amp, encryptedLabel, encryptedValue ) ;
+
+      pValue = gHyp_data_new ( NULL ) ;
+      gHyp_data_setStr_n ( pValue, line, n );
+      gHyp_data_insert ( pResult, pValue ) ;
+    }
+
+    gHyp_stack_push ( pStack, pResult ) ;
+  }	
 }
 
 
@@ -672,8 +768,8 @@ char *gHyp_cgi_parseXML ( char *pStream,
 		      while ( pStr2 > pStr ) {
 
 		       c = *pStr2 ;
-		        /* If we find a space, split the string right here. */
-		        if ( c == ' ' ) break ;
+		        /* If we find a comma, split the string right here. */
+		        if ( c == ',' ) break ;
 		        pStr2-- ;
 		      }
 

@@ -10,8 +10,8 @@
  * Modifications:
  *
  *   $Log: stack.c,v $
- *   Revision 1.5  2007-07-09 05:39:00  bergsma
- *   TLOGV3
+ *   Revision 1.7  2007-07-11 18:53:35  mhohimer
+ *   updated gHyp_stack_popLvalue() to check for identically named nodes and appendthe appropriate tag index ( '{index}' ) to the return value if needed.
  *
  *   Revision 1.6  2005-04-22 19:26:38  bergsma
  *   Uncommented section in gHyp_stack_popRdata that checks for empty
@@ -333,15 +333,19 @@ sData * gHyp_stack_popLvalue ( sStack * pStack, sInstance *pAI )
 
   sData 
     *pData = gHyp_stack_pop ( pStack ),
-    *pValue ;
+    *pValue,
+    *pPrev ;
     
   char
     *pLeft,
     *pRight,
+    tagIndex[TAG_INDEX_BUFLEN],
+    *pTagIndex = tagIndex,
     variable[TOKEN_SIZE+1] ;
     
   int
-    ss ;
+    ss,
+    i = 0 ;
 
   if ( pData == NULL ) {
     gHyp_util_logError ( "Stack was empty when variable was expected" ) ;
@@ -363,7 +367,24 @@ sData * gHyp_stack_popLvalue ( sStack * pStack, sInstance *pAI )
   /* If the lValue is subscripted, like a[i], and the subscript value
    * is a VARIABLE, then resolve a[i] to a.x, where x is the name of
    * the variable at a[i].
+   * 
+   * NEW COMMENTS:
+   **********************************************************************
+   * Whenever we have to resolve to a name a.x, we must also 
+   * determine if the name x is NOT the first occurance, implied as {0}, 
+   * because otherwise we need to append {i}, where i is value 
+   * between 1 and (n-1) occurance of 'x'.   
+   * The algorithm performs a loop, calling gHyp_data_getPrev
+   * in succession,  and counting the number of times the same name 'x'
+   * is encountered, until the first element is reached.  This is
+   * no more or less efficient than executing gHyp_data_count, and
+   * in a complex expression, this adjustment, once done, doesn't 
+   * have to be done again. Once the proper {i} is determined, it is 
+   * appended onto the end of the label for the variable, and it will 
+   * be thereafter managed.
+   ***********************************************************************
    */
+   
   ss = gHyp_data_getSubScript ( pData ) ;
   if ( ss >= 0 &&
        tokenType == TOKEN_REFERENCE &&
@@ -372,17 +393,25 @@ sData * gHyp_stack_popLvalue ( sStack * pStack, sInstance *pAI )
        gHyp_data_tokenType ( pValue ) == TOKEN_VARIABLE ) {
     pLeft = gHyp_data_getLabel ( pData ) ;
     pRight = gHyp_data_getLabel ( pValue ) ;
-    if ( strlen ( pLeft ) + strlen ( pRight ) > TOKEN_SIZE ) 
+    
+    /* check for previous occurances of x given the name a.x */
+    pPrev = gHyp_data_getPrev( pValue ) ;
+    if ( (i = gHyp_data_getTagIndex( pValue )) )
+      sprintf ( tagIndex, "{%d}", i ) ;
+    else
+      strcpy( pTagIndex, "\0" ) ;
+      
+    if ( strlen ( pLeft ) + strlen ( pRight ) + strlen( pTagIndex ) > TOKEN_SIZE ) 
      gHyp_instance_error ( 
         pAI,
         STATUS_IDENTIFIER,
-	"New variable %s.%s exceeds maximum length TOKEN_SIZE=%d",
-	pLeft, pRight, TOKEN_SIZE ) ;
+	"New variable %s.%s.%s exceeds maximum length TOKEN_SIZE=%d",
+	pLeft, pRight, pTagIndex, TOKEN_SIZE ) ;
 
     sprintf ( variable,
-	      "%s.%s",
+	      "%s.%s%s",
 	      pLeft,
-	      pRight ) ;
+	      pRight, pTagIndex ) ;     
     gHyp_data_setReference ( pData, variable, pValue ) ;
     gHyp_data_setSubScript ( pData, -1 ) ;
     if ( guDebugFlags & DEBUG_STACK )

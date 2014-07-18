@@ -10,8 +10,21 @@
 /* Modifications:
  *
  * $Log: hyp.c,v $
- * Revision 1.5  2007-07-09 05:39:00  bergsma
- * TLOGV3
+ * Revision 1.14  2008-06-13 04:14:26  bergsma
+ * Protect tokenStr from overwite
+ *
+ * Revision 1.13  2008-05-06 02:12:20  bergsma
+ * Change wording of error message
+ *
+ * Revision 1.12  2008-05-03 21:43:55  bergsma
+ * Use giLineCount and giProgram count together to better determine the
+ * location of a program token code.
+ *
+ * Revision 1.11  2008-03-05 22:55:05  bergsma
+ * typo
+ *
+ * Revision 1.10  2008-02-12 23:41:04  bergsma
+ * VS 2008 update
  *
  * Revision 1.9  2007-02-13 22:31:23  bergsma
  * Move method[METHOD_SIZE+1] so that the hyp structure aligns better.
@@ -150,7 +163,7 @@ void gHyp_hyp_delete ( sHyp * pHyp )
 }
 
 
-void gHyp_hyp_traceReport ( int lineNo ) 
+void gHyp_hyp_traceReport ( int lineNo, char *method ) 
 {
   /* Description:
    *
@@ -172,7 +185,7 @@ void gHyp_hyp_traceReport ( int lineNo )
   else
     pTrace++ ;
   pTrace = pTrace + MAX ( 0, (int) (strlen ( pTrace ) - 40 ) ) ;
-  gHyp_util_logError ( "-->%s<-- in line %d", pTrace, lineNo ) ;
+  gHyp_util_logError ( "-->%s<-- in line %d, in method %s", pTrace, lineNo, method ) ;
   gHyp_util_logError ( "%s", gzTraceBufPrevPrev ) ;
   gHyp_util_logError ( "%s", gzTraceBufPrev ) ;
   gHyp_util_logError ( "%s", gzTraceBuf ) ;
@@ -217,22 +230,23 @@ static void lHyp_hyp_trace ( sCode *pCode, sLOGICAL isExecuting )
    *	none
    *
    */
-  char		tokenStr[MAX_TRACE_LENGTH+1] ;
+  /*char		tokenStr[MAX_INPUT_LENGTH+1] ;*/
+  char	tokenStr[MAX_TRACE_LENGTH+1] ;
   int		nextTokenLen,
   		lastTokensLen ;
 
   /* Trace the most recent tokens being parsed. */
   if ( pCode->tokenType == TOKEN_LITERAL )
-    sprintf ( tokenStr, "%c%.*s%c ", '"', MAX_TRACE_LENGTH-2, pCode->token, '"' ) ; 
+    sprintf ( tokenStr, "%c%.*s%c ", '"', MAX_TRACE_LENGTH-3, pCode->token, '"' ) ; 
 
   else if ( pCode->tokenType == TOKEN_UNIDENTIFIED &&
 	    !gHyp_util_isIdentifier( pCode->token ) )
     
-    sprintf ( tokenStr, "'%s' ", pCode->token ) ; 
+    sprintf ( tokenStr, "'%.*s' ", MAX_TRACE_LENGTH-3, pCode->token ) ; 
       
   else
 
-    sprintf ( tokenStr, "%s ", pCode->token ) ; 
+    sprintf ( tokenStr, "%.*s ", MAX_TRACE_LENGTH-3, pCode->token ) ; 
   
   nextTokenLen = strlen ( tokenStr ) ;
   lastTokensLen = strlen ( gzTraceBuf ) ;
@@ -536,6 +550,7 @@ sLOGICAL gHyp_hyp_okUnaryOperator ( sHyp *pHyp )
 int gHyp_hyp_source ( sInstance *pAIarg,
 		      sHyp *pHypArg, 
 		      FILE* pp,
+		      char *ppName,
 		      sLOGICAL allowLongJmp )
 {
   /* Description:
@@ -594,15 +609,25 @@ int gHyp_hyp_source ( sInstance *pAIarg,
   while ( 1 ) {
 
     /* Read next line of input, adding to previous input. */
+#ifdef AS_WINDOWS
+    gsSocketToCancel = _fileno ( pp ) ;
+#else
     gsSocketToCancel = fileno ( pp ) ;
+#endif
     pStream = fgets ( stream, MAX_INPUT_LENGTH, pp ) ;
 
     /* Test for end-of-file */
     if ( pStream == NULL ) return COND_ERROR ;
     
-    /* Increment line count and test for verify flag */
+    /* giLineCount is for the current METHOD being parsed or executed, and 
+     * is set to zero at the start of each new method.  Its purpose
+     * is for debugging, when errors occurs it helps to find the spot.
+     * On the other hand, giProgramCount is for all that has been loaded
+     * thus far.
+     */
     giLineCount++ ;
     giProgramCount++ ;
+    /* Test for verify flag */
     if ( (guRunFlags & RUN_VERIFY) )
       gHyp_util_logInfo ( "%4d: %s", giProgramCount, pStream ) ;
     
@@ -614,12 +639,12 @@ int gHyp_hyp_source ( sInstance *pAIarg,
      * have a matching end delimiter, instead the line ended  with a '\' 
      * character and the line continues.
     */
-    pStream = gHyp_load_fromStream ( pAI, pHyp, stream, giProgramCount ) ;
+    pStream = gHyp_load_fromStream ( pAI, pHyp, stream, giLineCount ) ;
 
     /* Quit if load was fatal */
     if ( pStream == NULL ) {
       guErrorCount++ ;
-      gHyp_util_logError ( "Failed to load HyperScript" ) ;
+      gHyp_util_logError ( "Failed to load HyperScript from %s",ppName ) ;
       return COND_FATAL ;
     }
     
@@ -635,13 +660,13 @@ int gHyp_hyp_source ( sInstance *pAIarg,
       
     if ( terminator == '"' )
       gHyp_util_logWarning ( 
-	"Nonterminated string constant on line %d", giLineCount ) ;
+	"Nonterminated string constant on line %d, (line %d of %s)", giProgramCount, giLineCount, ppName ) ;
     else if ( terminator == '\'' )
       gHyp_util_logWarning ( 
-	 "Nonterminated variable on line %d", giLineCount ) ;
+	 "Nonterminated variable on line %d, (line %d of %s)", giProgramCount, giLineCount, ppName ) ;
     else 
       gHyp_util_logWarning ( 
-	 "Nonterminated character array on line %d", giLineCount ) ;
+	 "Nonterminated character array on line %d, (line %d of %s)", giProgramCount, giLineCount, ppName ) ;
 
     break ;
   }
@@ -879,9 +904,8 @@ void gHyp_hyp_transfer ( sInstance *pAI,
 					 gHyp_data_getLabel (pMethodData),
 					 pAI ) ) {
     
-    /* Deprecated feature. */
-    /*
-      gHyp_util_logWarning ( "Deprecated method definition for '%s', adding ';' after '}'",
+    /* Deprecated. Issue warning, urging user to correct. 
+    gHyp_util_logWarning ( "Deprecated method definition for '%s', please add ';' after '}'",
     			   gHyp_data_getLabel ( pMethodData )) ;
     */
     gHyp_hyp_load ( pAI,

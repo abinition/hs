@@ -3,9 +3,6 @@
  * Modifications:
  *
  * $Log: system.h,v $
- * Revision 1.5  2007-07-09 05:39:00  bergsma
- * TLOGV3
- *
  * Revision 1.5  2007-03-15 01:08:27  bergsma
  * Added getclock function
  *

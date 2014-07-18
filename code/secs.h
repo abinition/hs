@@ -2,8 +2,8 @@
  * Modifications:
  *
  * $Log: secs.h,v $
- * Revision 1.5  2007-07-09 05:39:00  bergsma
- * TLOGV3
+ * Revision 1.4  2008-02-17 02:10:17  bergsma
+ * Added secs_xml() function
  *
  * Revision 1.3  2007-02-24 01:54:52  bergsma
  * Added secs_*_raw functions.
@@ -13,6 +13,7 @@
  *
  */
 extern void		gHyp_secs_mlb ( sInstance *, sCode *, sLOGICAL  ) ;
+extern void		gHyp_secs_xml ( sInstance *, sCode *, sLOGICAL  ) ;
 extern void		gHyp_secs_mhp ( sInstance *, sCode *, sLOGICAL  ) ;
 extern void		gHyp_secs_hsms ( sInstance *, sCode *, sLOGICAL  ) ;
 extern void		gHyp_secs_service ( sInstance *, sCode *, sLOGICAL  ) ;

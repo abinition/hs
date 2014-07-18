@@ -9,8 +9,20 @@
 /* Modifications: 
  *
  * $Log: concept.c,v $
- * Revision 1.5  2007-07-09 05:39:00  bergsma
- * TLOGV3
+ * Revision 1.59  2008-06-22 18:27:58  bergsma
+ * After successfully doing a renameto(), function must return TRUE.
+ *
+ * Revision 1.58  2008-02-12 23:36:44  bergsma
+ * VS 2008 update
+ *
+ * Revision 1.57  2008-02-12 23:04:16  bergsma
+ * V3.8.2 (compiled with VS C 2008)
+ *
+ * Revision 1.56  2007-09-25 17:48:31  bergsma
+ * LogInfo comment change
+ *
+ * Revision 1.55  2007-09-03 06:20:46  bergsma
+ * Hangup signal handling reassignment fixes
  *
  * Revision 1.54  2007-05-08 01:23:48  bergsma
  * Fix potential spin condition in deleteSocketObject
@@ -720,7 +732,12 @@ sLOGICAL gHyp_concept_init ( sConcept *pConcept,
     guTimeStamp = TRUE ;
 
    /* Set timestamp */
+#ifdef AS_WINDOWS
+  _tzset();
+#else
   tzset();
+#endif
+
   gsCurTime = time ( NULL ) ;
 
   /* Open logs - if defined with -l option. */
@@ -1289,7 +1306,7 @@ int gHyp_concept_setAlarms ( sConcept *pConcept )
     /*if ( eventTime == gsCurTime ) gHyp_instance_signalAlarm ( pAI ) ;*/
     if ( eventTime <= gsCurTime ) gHyp_instance_signalAlarm ( pAI ) ;
 
-    if ( timeout != 0 ) timeout = MIN ( timeout, eventTime-gsCurTime ) ;
+    if ( timeout != 0 ) timeout = MIN ( timeout, eventTime-(int)gsCurTime ) ;
     
     if ( gHyp_instance_isSignal ( pAI ) ) {
       /*
@@ -1445,8 +1462,8 @@ sLOGICAL gHyp_concept_openReader ( sConcept *pConcept )
 	  giLoopbackType = SOCKET_FIFO ;
 	}
 
-	/* If the second attempt succeeded, we must still return FALSE */
-	if ( !tryAgain ) return FALSE ;
+	/* Whether or not the second attempt succeeded or failed, we must still return */
+	if ( !tryAgain ) return (sLOGICAL) (pConcept->link.inbox != INVALID_HANDLE_VALUE ) ;
 
 	break ;
       }
@@ -1740,7 +1757,7 @@ sLOGICAL gHyp_concept_renameto ( sConcept *pConcept, char *target )
       root[OBJECT_SIZE+1],
       host[HOST_SIZE+1] ;
   
-  /* Not ok to move if we hav already aconnected */
+  /* Not ok to move if we have already aconnected */
   if ( pConcept->link.hasRegistered )  return FALSE ;
 
   pAImain = gHyp_concept_getConceptInstance ( pConcept ) ;
@@ -2142,6 +2159,7 @@ void gHyp_concept_deleteSocketObject ( sConcept *pConcept, SOCKET socket )
 
       if ( parentSocket != INVALID_SOCKET ) { 
 
+	if ( parentSocket == socket ) break ;
 	gHyp_util_logInfo("Reassigning all HSMS device ids back to socket %d", parentSocket ) ;
       }
 
@@ -2177,6 +2195,7 @@ void gHyp_concept_deleteSocketObject ( sConcept *pConcept, SOCKET socket )
 
       if ( parentSocket != INVALID_SOCKET ) { 
 
+	if ( parentSocket == socket ) break ;
 	gHyp_util_logInfo("Reassigning all SECS I device ids back to socket %d", parentSocket ) ;
 
       }
@@ -2209,7 +2228,8 @@ void gHyp_concept_deleteSocketObject ( sConcept *pConcept, SOCKET socket )
 
       if ( parentSocket != INVALID_SOCKET ) { 
 
-	gHyp_util_logInfo("Reassigning all port device ids back to port %d", parentSocket ) ;
+	if ( parentSocket == socket ) break ;
+	gHyp_util_logInfo("Reassigning all http device ids back to port %d", parentSocket ) ;
       }
       
       while ( 1 ) {

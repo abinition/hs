@@ -10,8 +10,24 @@
  * Modifications:
  *
  *	$Log: util.c,v $
- *	Revision 1.5  2007-07-09 05:39:00  bergsma
- *	TLOGV3
+ *	Revision 1.58  2008-06-07 02:49:50  bergsma
+ *	Added gHyp_util_breakTokenForMsg
+ *	
+ *	Revision 1.57  2008-05-30 01:22:33  bergsma
+ *	Test for negative character value before doing isprint or isspace
+ *	
+ *	Revision 1.56  2008-05-17 02:32:12  bergsma
+ *	In breakString, use a 'work' temp variable to avoid buffers that
+ *	have no NULL for an ending.
+ *	
+ *	Revision 1.55  2008-05-12 17:38:08  bergsma
+ *	Error in unparse, buffer overwrite.
+ *	
+ *	Revision 1.54  2008-02-12 23:13:16  bergsma
+ *	Bug dealing with printing &#ooooo numbers
+ *	
+ *	Revision 1.53  2007-09-03 06:22:27  bergsma
+ *	Tickcount sometimes is a neg number?  Fix attempts to correct
  *	
  *	Revision 1.52  2007-06-20 05:18:24  bergsma
  *	util_trim and util_trim_whiitespace need type coversion on return values
@@ -461,7 +477,7 @@ char* gHyp_util_random8 ()
   static char   gzRandom[8+1];
 
   if ( seed == 0 ) {
-    seed = time ( NULL ) ;
+    seed = (int) time ( NULL ) ;
 #if defined ( AS_VMS ) || defined ( AS_WINDOWS )
     srand ( seed ) ;
 #else
@@ -787,7 +803,7 @@ sLOGICAL gHyp_util_debug ( const char *fmt, ... )
 
 int gHyp_util_getclock ()
 {
-  int
+  unsigned int
       tickcount ;
 
 #ifndef AS_WINDOWS
@@ -820,7 +836,8 @@ int gHyp_util_getclock ()
 #endif
 
   /* Get the remainder from 1000 */
-  return tickcount % 1000 ;
+tickcount = tickcount % 1000 ;
+return tickcount ; 
 }
 
 sLOGICAL gHyp_util_logDebug (   int newFrameDepth, 
@@ -1768,14 +1785,14 @@ int gHyp_util_parseXML ( char *pStr )
          i = sscanf ( pStr+3, "%x%n", (unsigned int*) &u, &n ) ;
 	 if ( i == 1 && n > 0 && n < 5 && *(pStr+3+n) == ';' ) {
             *pAnchor++ = (char) u ;
-            pStr += (n+2) ;
+            pStr += (n+4) ;
 	 }
       }
       else if ( strncmp ( pStr, "&#", 2 ) == 0 ) {
          i = sscanf ( pStr+2, "%u%n", (unsigned int*) &u, &n ) ;
 	 if ( i == 1 && n > 0 && n < 6 && *(pStr+2+n) == ';' ) {
             *pAnchor++ = (char) u ;
-            pStr += (n+2) ;
+            pStr += (n+3) ;
 	 }
       }
       else
@@ -2025,7 +2042,7 @@ int gHyp_util_unparseString ( char *pDstStr,
 
   if ( isForXML ) {
 
-    for ( ; i<strLen && pDst <= pEndDst; pSrcStr++ ) {
+    for ( ; i<strLen && pDst < pEndDst; pSrcStr++ ) {
     
       switch ( *pSrcStr ) {
       
@@ -2076,7 +2093,7 @@ int gHyp_util_unparseString ( char *pDstStr,
 
       default :
         c = *pSrcStr ;
-        if ( (!isprint ( c ) && !isspace ( c )) || c <= 0 ) {
+        if ( c <= 0 || (!isprint ( c ) && !isspace ( c ))  ) {
 	  if ( pDst+6 > pEndDst ) break ;
           uc = c ;
 	  pDst += sprintf ( pDst, "&#x%02x;", uc ) ;
@@ -2099,7 +2116,7 @@ int gHyp_util_unparseString ( char *pDstStr,
   }
   else {
 
-    for ( ; i<strLen && pDst <= pEndDst; pSrcStr++ ) {
+    for ( ; i<strLen && pDst < pEndDst; pSrcStr++ ) {
 
     switch ( *pSrcStr ) {
       
@@ -2209,7 +2226,7 @@ int gHyp_util_unparseString ( char *pDstStr,
         *pDst++ = '\\' ;
         *pDst++ = c ;
       } 
-      else if ( (!isprint ( c ) && !isspace ( c )) || c <= 0 ) {
+      else if ( c <= 0 || (!isprint ( c ) && !isspace ( c )) ) {
 
         if ( pDst+1 > pEndDst ) break ;
         *pDst++ = '\\' ;
@@ -2792,7 +2809,7 @@ int gHyp_util_base64Decode( char *in, int size_in, char *out )
   }
 
   if( ch == -4 ) {
-    gHyp_util_logError("base64 decode error on '%s'",in);
+    gHyp_util_logError("Base64 decode error on '%s'",in);
   }
 
   return i_out ;
@@ -2947,6 +2964,8 @@ void gHyp_util_breakStream ( char *buffer, int bufLen, sData *pParent, sLOGICAL 
     width2,
     width3;
 
+  char work[VALUE_SIZE+1];
+
   pBuf = buffer ;
   while ( bufLen > 0 ) {
 
@@ -2956,11 +2975,14 @@ void gHyp_util_breakStream ( char *buffer, int bufLen, sData *pParent, sLOGICAL 
 
       /* The data should be logically divided by line feeds. */
 
+      memcpy ( work, pBuf, width ) ;
+      work[width] = '\0' ;
+
       /* Get the length of the next line */
-      width2 = strcspn ( pBuf, "\r\n" ) ;
+      width2 = strcspn ( work, "\r\n" ) ;
 
       /* Keep the lf and cr */
-      width2 += strspn ( pBuf+width2, "\r\n" ) ;
+      width2 += strspn ( work+width2, "\r\n" ) ;
 	    
       if ( width2 > 0 ) {
 	  
@@ -2974,7 +2996,7 @@ void gHyp_util_breakStream ( char *buffer, int bufLen, sData *pParent, sLOGICAL 
 	  /* We'd like to store longer, but will it fit? */
 
 	  width3 = width2 ;
-	  for ( i=0;i<width2;i++ ) if ( !isprint(pBuf[i]) ) width3+=3;
+	  for ( i=0;i<width2;i++ ) if ( !isprint(work[i]) ) width3+=3;
 	  if ( width3 <= VALUE_SIZE ) 
 	     /* Yes, it will fit - adjust size */
 	     width = width2 ;
@@ -2983,7 +3005,7 @@ void gHyp_util_breakStream ( char *buffer, int bufLen, sData *pParent, sLOGICAL 
     }
 
     pValue = gHyp_data_new ( NULL ) ;
-    gHyp_data_setStr_n ( pValue, (char*) pBuf, width ) ;
+    gHyp_data_setStr_n ( pValue, (char*) work, width ) ;
     gHyp_data_append ( pParent, pValue ) ;
 
     bufLen -= width ;
@@ -2991,3 +3013,53 @@ void gHyp_util_breakStream ( char *buffer, int bufLen, sData *pParent, sLOGICAL 
   }
 }
 
+int gHyp_util_breakStringForMsg( char *buffer, int bufLen, int maxBufLen ) 
+{
+  char 
+    *pBuf,
+    *pBuf2,
+    *pEndBuf,
+    *pMaxEndBuf ;
+
+  pBuf = buffer ;
+  pBuf2 = pBuf ;
+  pEndBuf = pBuf + bufLen ;
+  pMaxEndBuf = pBuf + maxBufLen ;
+
+  while ( pBuf < pEndBuf && pEndBuf < pMaxEndBuf ) {
+
+    if ( *pBuf == '"' && 
+	 pBuf < pEndBuf &&
+	 *(pBuf+1) == ',' ) {
+
+      /* Push everything ahead */
+      pBuf2 = pEndBuf ;  /* Pointing to the NULL at the end */
+      pEndBuf++ ;
+      if ( pEndBuf >= pMaxEndBuf ) break ;
+      *pEndBuf = '\0' ;
+
+      /* Advance pBuf to the comma */
+      pBuf++ ;
+
+      /* Advance pBuf past the comma */
+      pBuf++ ;
+
+      /* Overwrite with the characters before */
+      while ( pBuf2 > pBuf ) { *pBuf2 = *(pBuf2-1) ; pBuf2-- ; }
+
+      /* Add the pipe */
+      *pBuf = '|' ;
+    }
+    pBuf++ ;
+  }
+
+  /* Null terminate */
+  *pBuf = '\0' ;
+
+  /* Return new length */
+  return (pBuf2-buffer);
+
+
+
+}
+  

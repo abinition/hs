@@ -10,8 +10,14 @@
 /* Modifications:
  * 
  * $Log: http.c,v $
- * Revision 1.5  2007-07-09 05:39:00  bergsma
- * TLOGV3
+ * Revision 1.26  2008-02-12 23:15:31  bergsma
+ * VS 2008 update
+ *
+ * Revision 1.25  2007-09-25 17:50:19  bergsma
+ * Integrate SOCK_UNIX_LISTEN with SOCK_LISTEN
+ *
+ * Revision 1.24  2007-07-22 02:56:59  bergsma
+ * When converting from port to http, the sHTTP object must be available
  *
  * Revision 1.23  2007-05-08 01:27:12  bergsma
  * Used deleteFd rather than updateFd when id is reassigned to another
@@ -763,6 +769,9 @@ void gHyp_http_assign ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     sSecs1
       *pHttp ;
 
+    sHTTP
+      *pHTTP ;
+
     int
       id ;
 
@@ -818,6 +827,13 @@ void gHyp_http_assign ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       flags = gHyp_secs1_flags ( pHttp ) ;
       flags = (flags & MASK_SOCKET) | PROTOCOL_HTTP ;
       gHyp_secs1_setFlags ( pHttp, flags ) ;
+      pHTTP = gHyp_secs1_getHttp ( pHttp ) ;
+      if ( !pHTTP ) {
+        pHTTP = gHyp_http_new() ;
+        gHyp_secs1_setHttp ( pHttp, pHTTP ) ;
+      }
+      flags = (flags & MASK_SOCKET) | PROTOCOL_HTTP ;
+
 
     }
     gHyp_instance_pushSTATUS ( pAI, pStack ) ;
@@ -1255,8 +1271,9 @@ static void lHyp_http_QE (	sInstance 	*pAI,
 {
   /* Description:
    *
-   *	Services the http_query() and http_event() functions.
-   *	Creates a query or event message and sends it. 
+   *	Services the http_query() and http_event() and http_reply() 
+   *    functions.
+   *	Creates a query or event or reply message and sends it. 
    *
    * Arguments:
    *
@@ -1416,7 +1433,7 @@ static void lHyp_http_QE (	sInstance 	*pAI,
   }
 
   if ( status ) {
-    if ( (gHyp_secs1_flags(pHttpPort) & SOCKET_LISTEN) ) {
+    if ( (gHyp_secs1_flags(pHttpPort) & (SOCKET_LISTEN | SOCKET_UNIX_LISTEN)) ) {
       gHyp_instance_warning ( pAI,STATUS_HTTP, 
 			    "Device %d is no longer connected.",
 			    id ) ;
@@ -1673,7 +1690,7 @@ static void lHyp_http_QE (	sInstance 	*pAI,
 				     sender, 
 				     "DATA", 
 				     "00000001",
-				     eventTime ) ;
+				     (int)eventTime ) ;
 
     gHyp_instance_setState ( pAI, STATE_QUERY ) ;
     gHyp_frame_setState ( pFrame, STATE_QUERY ) ;

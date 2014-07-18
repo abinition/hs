@@ -1,0 +1,2239 @@
+# Microsoft Developer Studio Generated Dependency File, included by hs.mak
+
+.\aimsg.c : \
+	"..\..\..\program files\microsoft sdk\include\basetsd.h"\
+	"..\..\..\program files\microsoft sdk\include\guiddef.h"\
+	"..\..\..\program files\microsoft sdk\include\propidl.h"\
+	"..\..\..\program files\microsoft sdk\include\reason.h"\
+	"..\..\..\program files\microsoft sdk\include\stralign.h"\
+	"..\..\..\program files\microsoft sdk\include\tvout.h"\
+	"..\..\..\program files\microsoft sdk\include\winefs.h"\
+	".\aimsg.h"\
+	".\auto.h"\
+	".\branch.h"\
+	".\cgi.h"\
+	".\channel.h"\
+	".\concept.h"\
+	".\data.h"\
+	".\dateparse.h"\
+	".\env.h"\
+	".\fileio.h"\
+	".\frame.h"\
+	".\function.h"\
+	".\hash.h"\
+	".\hsms.h"\
+	".\http.h"\
+	".\hyp.h"\
+	".\hypdef.h"\
+	".\instance.h"\
+	".\label.h"\
+	".\load.h"\
+	".\method.h"\
+	".\operand.h"\
+	".\operator.h"\
+	".\parse.h"\
+	".\port.h"\
+	".\promis.h"\
+	".\route.h"\
+	".\router.h"\
+	".\secs.h"\
+	".\secs1.h"\
+	".\secs2.h"\
+	".\signl.h"\
+	".\sock.h"\
+	".\sort.h"\
+	".\sql.h"\
+	".\ssl.h"\
+	".\stack.h"\
+	".\stmt.h"\
+	".\system.h"\
+	".\tcp.h"\
+	".\typdef.h"\
+	".\type.h"\
+	".\util.h"\
+	
+
+.\branch.c : \
+	"..\..\..\program files\microsoft sdk\include\basetsd.h"\
+	"..\..\..\program files\microsoft sdk\include\guiddef.h"\
+	"..\..\..\program files\microsoft sdk\include\propidl.h"\
+	"..\..\..\program files\microsoft sdk\include\reason.h"\
+	"..\..\..\program files\microsoft sdk\include\stralign.h"\
+	"..\..\..\program files\microsoft sdk\include\tvout.h"\
+	"..\..\..\program files\microsoft sdk\include\winefs.h"\
+	".\aimsg.h"\
+	".\auto.h"\
+	".\branch.h"\
+	".\cgi.h"\
+	".\channel.h"\
+	".\concept.h"\
+	".\data.h"\
+	".\dateparse.h"\
+	".\env.h"\
+	".\fileio.h"\
+	".\frame.h"\
+	".\function.h"\
+	".\hash.h"\
+	".\hsms.h"\
+	".\http.h"\
+	".\hyp.h"\
+	".\hypdef.h"\
+	".\instance.h"\
+	".\label.h"\
+	".\load.h"\
+	".\method.h"\
+	".\operand.h"\
+	".\operator.h"\
+	".\parse.h"\
+	".\port.h"\
+	".\promis.h"\
+	".\route.h"\
+	".\router.h"\
+	".\secs.h"\
+	".\secs1.h"\
+	".\secs2.h"\
+	".\signl.h"\
+	".\sock.h"\
+	".\sort.h"\
+	".\sql.h"\
+	".\ssl.h"\
+	".\stack.h"\
+	".\stmt.h"\
+	".\system.h"\
+	".\tcp.h"\
+	".\typdef.h"\
+	".\type.h"\
+	".\util.h"\
+	
+
+.\cgi.c : \
+	"..\..\..\program files\microsoft sdk\include\basetsd.h"\
+	"..\..\..\program files\microsoft sdk\include\guiddef.h"\
+	"..\..\..\program files\microsoft sdk\include\propidl.h"\
+	"..\..\..\program files\microsoft sdk\include\reason.h"\
+	"..\..\..\program files\microsoft sdk\include\stralign.h"\
+	"..\..\..\program files\microsoft sdk\include\tvout.h"\
+	"..\..\..\program files\microsoft sdk\include\winefs.h"\
+	".\aimsg.h"\
+	".\auto.h"\
+	".\branch.h"\
+	".\cgi.h"\
+	".\channel.h"\
+	".\concept.h"\
+	".\data.h"\
+	".\dateparse.h"\
+	".\env.h"\
+	".\fileio.h"\
+	".\frame.h"\
+	".\function.h"\
+	".\hash.h"\
+	".\hsms.h"\
+	".\http.h"\
+	".\hyp.h"\
+	".\hypdef.h"\
+	".\instance.h"\
+	".\label.h"\
+	".\load.h"\
+	".\method.h"\
+	".\operand.h"\
+	".\operator.h"\
+	".\parse.h"\
+	".\port.h"\
+	".\promis.h"\
+	".\route.h"\
+	".\router.h"\
+	".\secs.h"\
+	".\secs1.h"\
+	".\secs2.h"\
+	".\signl.h"\
+	".\sock.h"\
+	".\sort.h"\
+	".\sql.h"\
+	".\ssl.h"\
+	".\stack.h"\
+	".\stmt.h"\
+	".\system.h"\
+	".\tcp.h"\
+	".\typdef.h"\
+	".\type.h"\
+	".\util.h"\
+	
+
+.\channel.c : \
+	"..\..\..\program files\microsoft sdk\include\basetsd.h"\
+	"..\..\..\program files\microsoft sdk\include\guiddef.h"\
+	"..\..\..\program files\microsoft sdk\include\propidl.h"\
+	"..\..\..\program files\microsoft sdk\include\reason.h"\
+	"..\..\..\program files\microsoft sdk\include\stralign.h"\
+	"..\..\..\program files\microsoft sdk\include\tvout.h"\
+	"..\..\..\program files\microsoft sdk\include\winefs.h"\
+	".\aimsg.h"\
+	".\auto.h"\
+	".\branch.h"\
+	".\cgi.h"\
+	".\channel.h"\
+	".\concept.h"\
+	".\data.h"\
+	".\dateparse.h"\
+	".\env.h"\
+	".\fileio.h"\
+	".\frame.h"\
+	".\function.h"\
+	".\hash.h"\
+	".\hsms.h"\
+	".\http.h"\
+	".\hyp.h"\
+	".\hypdef.h"\
+	".\instance.h"\
+	".\label.h"\
+	".\load.h"\
+	".\method.h"\
+	".\operand.h"\
+	".\operator.h"\
+	".\parse.h"\
+	".\port.h"\
+	".\promis.h"\
+	".\route.h"\
+	".\router.h"\
+	".\secs.h"\
+	".\secs1.h"\
+	".\secs2.h"\
+	".\signl.h"\
+	".\sock.h"\
+	".\sort.h"\
+	".\sql.h"\
+	".\ssl.h"\
+	".\stack.h"\
+	".\stmt.h"\
+	".\system.h"\
+	".\tcp.h"\
+	".\typdef.h"\
+	".\type.h"\
+	".\util.h"\
+	
+
+.\concept.c : \
+	"..\..\..\program files\microsoft sdk\include\basetsd.h"\
+	"..\..\..\program files\microsoft sdk\include\guiddef.h"\
+	"..\..\..\program files\microsoft sdk\include\propidl.h"\
+	"..\..\..\program files\microsoft sdk\include\reason.h"\
+	"..\..\..\program files\microsoft sdk\include\stralign.h"\
+	"..\..\..\program files\microsoft sdk\include\tvout.h"\
+	"..\..\..\program files\microsoft sdk\include\winefs.h"\
+	".\aimsg.h"\
+	".\auto.h"\
+	".\branch.h"\
+	".\cgi.h"\
+	".\channel.h"\
+	".\concept.h"\
+	".\data.h"\
+	".\dateparse.h"\
+	".\env.h"\
+	".\fileio.h"\
+	".\frame.h"\
+	".\function.h"\
+	".\hash.h"\
+	".\hsms.h"\
+	".\http.h"\
+	".\hyp.h"\
+	".\hypdef.h"\
+	".\instance.h"\
+	".\label.h"\
+	".\load.h"\
+	".\method.h"\
+	".\operand.h"\
+	".\operator.h"\
+	".\parse.h"\
+	".\port.h"\
+	".\promis.h"\
+	".\route.h"\
+	".\router.h"\
+	".\secs.h"\
+	".\secs1.h"\
+	".\secs2.h"\
+	".\signl.h"\
+	".\sock.h"\
+	".\sort.h"\
+	".\sql.h"\
+	".\ssl.h"\
+	".\stack.h"\
+	".\stmt.h"\
+	".\system.h"\
+	".\tcp.h"\
+	".\typdef.h"\
+	".\type.h"\
+	".\util.h"\
+	
+
+.\data.c : \
+	"..\..\..\program files\microsoft sdk\include\basetsd.h"\
+	"..\..\..\program files\microsoft sdk\include\guiddef.h"\
+	"..\..\..\program files\microsoft sdk\include\propidl.h"\
+	"..\..\..\program files\microsoft sdk\include\reason.h"\
+	"..\..\..\program files\microsoft sdk\include\stralign.h"\
+	"..\..\..\program files\microsoft sdk\include\tvout.h"\
+	"..\..\..\program files\microsoft sdk\include\winefs.h"\
+	".\aimsg.h"\
+	".\auto.h"\
+	".\branch.h"\
+	".\cgi.h"\
+	".\channel.h"\
+	".\concept.h"\
+	".\data.h"\
+	".\dateparse.h"\
+	".\env.h"\
+	".\fileio.h"\
+	".\frame.h"\
+	".\function.h"\
+	".\hash.h"\
+	".\hsms.h"\
+	".\http.h"\
+	".\hyp.h"\
+	".\hypdef.h"\
+	".\instance.h"\
+	".\label.h"\
+	".\load.h"\
+	".\method.h"\
+	".\operand.h"\
+	".\operator.h"\
+	".\parse.h"\
+	".\port.h"\
+	".\promis.h"\
+	".\route.h"\
+	".\router.h"\
+	".\secs.h"\
+	".\secs1.h"\
+	".\secs2.h"\
+	".\signl.h"\
+	".\sock.h"\
+	".\sort.h"\
+	".\sql.h"\
+	".\ssl.h"\
+	".\stack.h"\
+	".\stmt.h"\
+	".\system.h"\
+	".\tcp.h"\
+	".\typdef.h"\
+	".\type.h"\
+	".\util.h"\
+	
+
+.\dateparse.c : \
+	"..\..\..\program files\microsoft sdk\include\basetsd.h"\
+	"..\..\..\program files\microsoft sdk\include\guiddef.h"\
+	"..\..\..\program files\microsoft sdk\include\propidl.h"\
+	"..\..\..\program files\microsoft sdk\include\reason.h"\
+	"..\..\..\program files\microsoft sdk\include\stralign.h"\
+	"..\..\..\program files\microsoft sdk\include\tvout.h"\
+	"..\..\..\program files\microsoft sdk\include\winefs.h"\
+	".\aimsg.h"\
+	".\auto.h"\
+	".\branch.h"\
+	".\cgi.h"\
+	".\channel.h"\
+	".\concept.h"\
+	".\data.h"\
+	".\dateparse.h"\
+	".\env.h"\
+	".\fileio.h"\
+	".\frame.h"\
+	".\function.h"\
+	".\hash.h"\
+	".\hsms.h"\
+	".\http.h"\
+	".\hyp.h"\
+	".\hypdef.h"\
+	".\instance.h"\
+	".\label.h"\
+	".\load.h"\
+	".\method.h"\
+	".\operand.h"\
+	".\operator.h"\
+	".\parse.h"\
+	".\port.h"\
+	".\promis.h"\
+	".\route.h"\
+	".\router.h"\
+	".\secs.h"\
+	".\secs1.h"\
+	".\secs2.h"\
+	".\signl.h"\
+	".\sock.h"\
+	".\sort.h"\
+	".\sql.h"\
+	".\ssl.h"\
+	".\stack.h"\
+	".\stmt.h"\
+	".\system.h"\
+	".\tcp.h"\
+	".\typdef.h"\
+	".\type.h"\
+	".\util.h"\
+	
+
+.\env.c : \
+	"..\..\..\program files\microsoft sdk\include\basetsd.h"\
+	"..\..\..\program files\microsoft sdk\include\guiddef.h"\
+	"..\..\..\program files\microsoft sdk\include\propidl.h"\
+	"..\..\..\program files\microsoft sdk\include\reason.h"\
+	"..\..\..\program files\microsoft sdk\include\stralign.h"\
+	"..\..\..\program files\microsoft sdk\include\tvout.h"\
+	"..\..\..\program files\microsoft sdk\include\winefs.h"\
+	".\aimsg.h"\
+	".\auto.h"\
+	".\branch.h"\
+	".\cgi.h"\
+	".\channel.h"\
+	".\concept.h"\
+	".\data.h"\
+	".\dateparse.h"\
+	".\env.h"\
+	".\fileio.h"\
+	".\frame.h"\
+	".\function.h"\
+	".\hash.h"\
+	".\hsms.h"\
+	".\http.h"\
+	".\hyp.h"\
+	".\hypdef.h"\
+	".\instance.h"\
+	".\label.h"\
+	".\load.h"\
+	".\method.h"\
+	".\operand.h"\
+	".\operator.h"\
+	".\parse.h"\
+	".\port.h"\
+	".\promis.h"\
+	".\route.h"\
+	".\router.h"\
+	".\secs.h"\
+	".\secs1.h"\
+	".\secs2.h"\
+	".\signl.h"\
+	".\sock.h"\
+	".\sort.h"\
+	".\sql.h"\
+	".\ssl.h"\
+	".\stack.h"\
+	".\stmt.h"\
+	".\system.h"\
+	".\tcp.h"\
+	".\typdef.h"\
+	".\type.h"\
+	".\util.h"\
+	
+
+.\fileio.c : \
+	"..\..\..\program files\microsoft sdk\include\basetsd.h"\
+	"..\..\..\program files\microsoft sdk\include\guiddef.h"\
+	"..\..\..\program files\microsoft sdk\include\propidl.h"\
+	"..\..\..\program files\microsoft sdk\include\reason.h"\
+	"..\..\..\program files\microsoft sdk\include\stralign.h"\
+	"..\..\..\program files\microsoft sdk\include\tvout.h"\
+	"..\..\..\program files\microsoft sdk\include\winefs.h"\
+	".\aimsg.h"\
+	".\auto.h"\
+	".\branch.h"\
+	".\cgi.h"\
+	".\channel.h"\
+	".\concept.h"\
+	".\data.h"\
+	".\dateparse.h"\
+	".\env.h"\
+	".\fileio.h"\
+	".\frame.h"\
+	".\function.h"\
+	".\hash.h"\
+	".\hsms.h"\
+	".\http.h"\
+	".\hyp.h"\
+	".\hypdef.h"\
+	".\instance.h"\
+	".\label.h"\
+	".\load.h"\
+	".\method.h"\
+	".\operand.h"\
+	".\operator.h"\
+	".\parse.h"\
+	".\port.h"\
+	".\promis.h"\
+	".\route.h"\
+	".\router.h"\
+	".\secs.h"\
+	".\secs1.h"\
+	".\secs2.h"\
+	".\signl.h"\
+	".\sock.h"\
+	".\sort.h"\
+	".\sql.h"\
+	".\ssl.h"\
+	".\stack.h"\
+	".\stmt.h"\
+	".\system.h"\
+	".\tcp.h"\
+	".\typdef.h"\
+	".\type.h"\
+	".\util.h"\
+	
+
+.\frame.c : \
+	"..\..\..\program files\microsoft sdk\include\basetsd.h"\
+	"..\..\..\program files\microsoft sdk\include\guiddef.h"\
+	"..\..\..\program files\microsoft sdk\include\propidl.h"\
+	"..\..\..\program files\microsoft sdk\include\reason.h"\
+	"..\..\..\program files\microsoft sdk\include\stralign.h"\
+	"..\..\..\program files\microsoft sdk\include\tvout.h"\
+	"..\..\..\program files\microsoft sdk\include\winefs.h"\
+	".\aimsg.h"\
+	".\auto.h"\
+	".\branch.h"\
+	".\cgi.h"\
+	".\channel.h"\
+	".\concept.h"\
+	".\data.h"\
+	".\dateparse.h"\
+	".\env.h"\
+	".\fileio.h"\
+	".\frame.h"\
+	".\function.h"\
+	".\hash.h"\
+	".\hsms.h"\
+	".\http.h"\
+	".\hyp.h"\
+	".\hypdef.h"\
+	".\instance.h"\
+	".\label.h"\
+	".\load.h"\
+	".\method.h"\
+	".\operand.h"\
+	".\operator.h"\
+	".\parse.h"\
+	".\port.h"\
+	".\promis.h"\
+	".\route.h"\
+	".\router.h"\
+	".\secs.h"\
+	".\secs1.h"\
+	".\secs2.h"\
+	".\signl.h"\
+	".\sock.h"\
+	".\sort.h"\
+	".\sql.h"\
+	".\ssl.h"\
+	".\stack.h"\
+	".\stmt.h"\
+	".\system.h"\
+	".\tcp.h"\
+	".\typdef.h"\
+	".\type.h"\
+	".\util.h"\
+	
+
+.\function.c : \
+	"..\..\..\program files\microsoft sdk\include\basetsd.h"\
+	"..\..\..\program files\microsoft sdk\include\guiddef.h"\
+	"..\..\..\program files\microsoft sdk\include\propidl.h"\
+	"..\..\..\program files\microsoft sdk\include\reason.h"\
+	"..\..\..\program files\microsoft sdk\include\stralign.h"\
+	"..\..\..\program files\microsoft sdk\include\tvout.h"\
+	"..\..\..\program files\microsoft sdk\include\winefs.h"\
+	".\aimsg.h"\
+	".\auto.h"\
+	".\branch.h"\
+	".\cgi.h"\
+	".\channel.h"\
+	".\concept.h"\
+	".\data.h"\
+	".\dateparse.h"\
+	".\env.h"\
+	".\fileio.h"\
+	".\frame.h"\
+	".\function.h"\
+	".\hash.h"\
+	".\hsms.h"\
+	".\http.h"\
+	".\hyp.h"\
+	".\hypdef.h"\
+	".\instance.h"\
+	".\label.h"\
+	".\load.h"\
+	".\method.h"\
+	".\operand.h"\
+	".\operator.h"\
+	".\parse.h"\
+	".\port.h"\
+	".\promis.h"\
+	".\route.h"\
+	".\router.h"\
+	".\secs.h"\
+	".\secs1.h"\
+	".\secs2.h"\
+	".\signl.h"\
+	".\sock.h"\
+	".\sort.h"\
+	".\sql.h"\
+	".\ssl.h"\
+	".\stack.h"\
+	".\stmt.h"\
+	".\system.h"\
+	".\tcp.h"\
+	".\typdef.h"\
+	".\type.h"\
+	".\util.h"\
+	
+
+.\hash.c : \
+	"..\..\..\program files\microsoft sdk\include\basetsd.h"\
+	"..\..\..\program files\microsoft sdk\include\guiddef.h"\
+	"..\..\..\program files\microsoft sdk\include\propidl.h"\
+	"..\..\..\program files\microsoft sdk\include\reason.h"\
+	"..\..\..\program files\microsoft sdk\include\stralign.h"\
+	"..\..\..\program files\microsoft sdk\include\tvout.h"\
+	"..\..\..\program files\microsoft sdk\include\winefs.h"\
+	".\aimsg.h"\
+	".\auto.h"\
+	".\branch.h"\
+	".\cgi.h"\
+	".\channel.h"\
+	".\concept.h"\
+	".\data.h"\
+	".\dateparse.h"\
+	".\env.h"\
+	".\fileio.h"\
+	".\frame.h"\
+	".\function.h"\
+	".\hash.h"\
+	".\hsms.h"\
+	".\http.h"\
+	".\hyp.h"\
+	".\hypdef.h"\
+	".\instance.h"\
+	".\label.h"\
+	".\load.h"\
+	".\method.h"\
+	".\operand.h"\
+	".\operator.h"\
+	".\parse.h"\
+	".\port.h"\
+	".\promis.h"\
+	".\route.h"\
+	".\router.h"\
+	".\secs.h"\
+	".\secs1.h"\
+	".\secs2.h"\
+	".\signl.h"\
+	".\sock.h"\
+	".\sort.h"\
+	".\sql.h"\
+	".\ssl.h"\
+	".\stack.h"\
+	".\stmt.h"\
+	".\system.h"\
+	".\tcp.h"\
+	".\typdef.h"\
+	".\type.h"\
+	".\util.h"\
+	
+
+.\hs.c : \
+	"..\..\..\program files\microsoft sdk\include\basetsd.h"\
+	"..\..\..\program files\microsoft sdk\include\guiddef.h"\
+	"..\..\..\program files\microsoft sdk\include\propidl.h"\
+	"..\..\..\program files\microsoft sdk\include\reason.h"\
+	"..\..\..\program files\microsoft sdk\include\stralign.h"\
+	"..\..\..\program files\microsoft sdk\include\tvout.h"\
+	"..\..\..\program files\microsoft sdk\include\winefs.h"\
+	".\aimsg.h"\
+	".\auto.h"\
+	".\branch.h"\
+	".\cgi.h"\
+	".\channel.h"\
+	".\concept.h"\
+	".\data.h"\
+	".\dateparse.h"\
+	".\env.h"\
+	".\fileio.h"\
+	".\frame.h"\
+	".\function.h"\
+	".\hash.h"\
+	".\hsms.h"\
+	".\http.h"\
+	".\hyp.h"\
+	".\hypdef.h"\
+	".\instance.h"\
+	".\label.h"\
+	".\load.h"\
+	".\method.h"\
+	".\operand.h"\
+	".\operator.h"\
+	".\parse.h"\
+	".\port.h"\
+	".\promis.h"\
+	".\route.h"\
+	".\router.h"\
+	".\secs.h"\
+	".\secs1.h"\
+	".\secs2.h"\
+	".\signl.h"\
+	".\sock.h"\
+	".\sort.h"\
+	".\sql.h"\
+	".\ssl.h"\
+	".\stack.h"\
+	".\stmt.h"\
+	".\system.h"\
+	".\tcp.h"\
+	".\typdef.h"\
+	".\type.h"\
+	".\util.h"\
+	
+
+.\hsms.c : \
+	"..\..\..\program files\microsoft sdk\include\basetsd.h"\
+	"..\..\..\program files\microsoft sdk\include\guiddef.h"\
+	"..\..\..\program files\microsoft sdk\include\propidl.h"\
+	"..\..\..\program files\microsoft sdk\include\reason.h"\
+	"..\..\..\program files\microsoft sdk\include\stralign.h"\
+	"..\..\..\program files\microsoft sdk\include\tvout.h"\
+	"..\..\..\program files\microsoft sdk\include\winefs.h"\
+	".\aimsg.h"\
+	".\auto.h"\
+	".\branch.h"\
+	".\cgi.h"\
+	".\channel.h"\
+	".\concept.h"\
+	".\data.h"\
+	".\dateparse.h"\
+	".\env.h"\
+	".\fileio.h"\
+	".\frame.h"\
+	".\function.h"\
+	".\hash.h"\
+	".\hsms.h"\
+	".\http.h"\
+	".\hyp.h"\
+	".\hypdef.h"\
+	".\instance.h"\
+	".\label.h"\
+	".\load.h"\
+	".\method.h"\
+	".\operand.h"\
+	".\operator.h"\
+	".\parse.h"\
+	".\port.h"\
+	".\promis.h"\
+	".\route.h"\
+	".\router.h"\
+	".\secs.h"\
+	".\secs1.h"\
+	".\secs2.h"\
+	".\secshead.h"\
+	".\signl.h"\
+	".\sock.h"\
+	".\sort.h"\
+	".\sql.h"\
+	".\ssl.h"\
+	".\stack.h"\
+	".\stmt.h"\
+	".\system.h"\
+	".\tcp.h"\
+	".\typdef.h"\
+	".\type.h"\
+	".\util.h"\
+	
+
+.\http.c : \
+	"..\..\..\program files\microsoft sdk\include\basetsd.h"\
+	"..\..\..\program files\microsoft sdk\include\guiddef.h"\
+	"..\..\..\program files\microsoft sdk\include\propidl.h"\
+	"..\..\..\program files\microsoft sdk\include\reason.h"\
+	"..\..\..\program files\microsoft sdk\include\stralign.h"\
+	"..\..\..\program files\microsoft sdk\include\tvout.h"\
+	"..\..\..\program files\microsoft sdk\include\winefs.h"\
+	".\aimsg.h"\
+	".\auto.h"\
+	".\branch.h"\
+	".\cgi.h"\
+	".\channel.h"\
+	".\concept.h"\
+	".\data.h"\
+	".\dateparse.h"\
+	".\env.h"\
+	".\fileio.h"\
+	".\frame.h"\
+	".\function.h"\
+	".\hash.h"\
+	".\hsms.h"\
+	".\http.h"\
+	".\hyp.h"\
+	".\hypdef.h"\
+	".\instance.h"\
+	".\label.h"\
+	".\load.h"\
+	".\method.h"\
+	".\operand.h"\
+	".\operator.h"\
+	".\parse.h"\
+	".\port.h"\
+	".\promis.h"\
+	".\route.h"\
+	".\router.h"\
+	".\secs.h"\
+	".\secs1.h"\
+	".\secs2.h"\
+	".\signl.h"\
+	".\sock.h"\
+	".\sort.h"\
+	".\sql.h"\
+	".\ssl.h"\
+	".\stack.h"\
+	".\stmt.h"\
+	".\system.h"\
+	".\tcp.h"\
+	".\typdef.h"\
+	".\type.h"\
+	".\util.h"\
+	
+
+.\hyp.c : \
+	"..\..\..\program files\microsoft sdk\include\basetsd.h"\
+	"..\..\..\program files\microsoft sdk\include\guiddef.h"\
+	"..\..\..\program files\microsoft sdk\include\propidl.h"\
+	"..\..\..\program files\microsoft sdk\include\reason.h"\
+	"..\..\..\program files\microsoft sdk\include\stralign.h"\
+	"..\..\..\program files\microsoft sdk\include\tvout.h"\
+	"..\..\..\program files\microsoft sdk\include\winefs.h"\
+	".\aimsg.h"\
+	".\auto.h"\
+	".\branch.h"\
+	".\cgi.h"\
+	".\channel.h"\
+	".\concept.h"\
+	".\data.h"\
+	".\dateparse.h"\
+	".\env.h"\
+	".\fileio.h"\
+	".\frame.h"\
+	".\function.h"\
+	".\hash.h"\
+	".\hsms.h"\
+	".\http.h"\
+	".\hyp.h"\
+	".\hypdef.h"\
+	".\instance.h"\
+	".\label.h"\
+	".\load.h"\
+	".\method.h"\
+	".\operand.h"\
+	".\operator.h"\
+	".\parse.h"\
+	".\port.h"\
+	".\promis.h"\
+	".\route.h"\
+	".\router.h"\
+	".\secs.h"\
+	".\secs1.h"\
+	".\secs2.h"\
+	".\signl.h"\
+	".\sock.h"\
+	".\sort.h"\
+	".\sql.h"\
+	".\ssl.h"\
+	".\stack.h"\
+	".\stmt.h"\
+	".\system.h"\
+	".\tcp.h"\
+	".\typdef.h"\
+	".\type.h"\
+	".\util.h"\
+	
+
+.\instance.c : \
+	"..\..\..\program files\microsoft sdk\include\basetsd.h"\
+	"..\..\..\program files\microsoft sdk\include\guiddef.h"\
+	"..\..\..\program files\microsoft sdk\include\propidl.h"\
+	"..\..\..\program files\microsoft sdk\include\reason.h"\
+	"..\..\..\program files\microsoft sdk\include\stralign.h"\
+	"..\..\..\program files\microsoft sdk\include\tvout.h"\
+	"..\..\..\program files\microsoft sdk\include\winefs.h"\
+	".\aimsg.h"\
+	".\auto.h"\
+	".\branch.h"\
+	".\cgi.h"\
+	".\channel.h"\
+	".\concept.h"\
+	".\data.h"\
+	".\dateparse.h"\
+	".\env.h"\
+	".\fileio.h"\
+	".\frame.h"\
+	".\function.h"\
+	".\hash.h"\
+	".\hsms.h"\
+	".\http.h"\
+	".\hyp.h"\
+	".\hypdef.h"\
+	".\instance.h"\
+	".\label.h"\
+	".\load.h"\
+	".\method.h"\
+	".\operand.h"\
+	".\operator.h"\
+	".\parse.h"\
+	".\port.h"\
+	".\promis.h"\
+	".\route.h"\
+	".\router.h"\
+	".\secs.h"\
+	".\secs1.h"\
+	".\secs2.h"\
+	".\signl.h"\
+	".\sock.h"\
+	".\sort.h"\
+	".\sql.h"\
+	".\ssl.h"\
+	".\stack.h"\
+	".\stmt.h"\
+	".\system.h"\
+	".\tcp.h"\
+	".\typdef.h"\
+	".\type.h"\
+	".\util.h"\
+	
+
+.\label.c : \
+	"..\..\..\program files\microsoft sdk\include\basetsd.h"\
+	"..\..\..\program files\microsoft sdk\include\guiddef.h"\
+	"..\..\..\program files\microsoft sdk\include\propidl.h"\
+	"..\..\..\program files\microsoft sdk\include\reason.h"\
+	"..\..\..\program files\microsoft sdk\include\stralign.h"\
+	"..\..\..\program files\microsoft sdk\include\tvout.h"\
+	"..\..\..\program files\microsoft sdk\include\winefs.h"\
+	".\aimsg.h"\
+	".\auto.h"\
+	".\branch.h"\
+	".\cgi.h"\
+	".\channel.h"\
+	".\concept.h"\
+	".\data.h"\
+	".\dateparse.h"\
+	".\env.h"\
+	".\fileio.h"\
+	".\frame.h"\
+	".\function.h"\
+	".\hash.h"\
+	".\hsms.h"\
+	".\http.h"\
+	".\hyp.h"\
+	".\hypdef.h"\
+	".\instance.h"\
+	".\label.h"\
+	".\load.h"\
+	".\method.h"\
+	".\operand.h"\
+	".\operator.h"\
+	".\parse.h"\
+	".\port.h"\
+	".\promis.h"\
+	".\route.h"\
+	".\router.h"\
+	".\secs.h"\
+	".\secs1.h"\
+	".\secs2.h"\
+	".\signl.h"\
+	".\sock.h"\
+	".\sort.h"\
+	".\sql.h"\
+	".\ssl.h"\
+	".\stack.h"\
+	".\stmt.h"\
+	".\system.h"\
+	".\tcp.h"\
+	".\typdef.h"\
+	".\type.h"\
+	".\util.h"\
+	
+
+.\load.c : \
+	"..\..\..\program files\microsoft sdk\include\basetsd.h"\
+	"..\..\..\program files\microsoft sdk\include\guiddef.h"\
+	"..\..\..\program files\microsoft sdk\include\propidl.h"\
+	"..\..\..\program files\microsoft sdk\include\reason.h"\
+	"..\..\..\program files\microsoft sdk\include\stralign.h"\
+	"..\..\..\program files\microsoft sdk\include\tvout.h"\
+	"..\..\..\program files\microsoft sdk\include\winefs.h"\
+	".\aimsg.h"\
+	".\auto.h"\
+	".\branch.h"\
+	".\cgi.h"\
+	".\channel.h"\
+	".\concept.h"\
+	".\data.h"\
+	".\dateparse.h"\
+	".\env.h"\
+	".\fileio.h"\
+	".\frame.h"\
+	".\function.h"\
+	".\hash.h"\
+	".\hsms.h"\
+	".\http.h"\
+	".\hyp.h"\
+	".\hypdef.h"\
+	".\instance.h"\
+	".\label.h"\
+	".\load.h"\
+	".\method.h"\
+	".\operand.h"\
+	".\operator.h"\
+	".\parse.h"\
+	".\port.h"\
+	".\promis.h"\
+	".\route.h"\
+	".\router.h"\
+	".\secs.h"\
+	".\secs1.h"\
+	".\secs2.h"\
+	".\signl.h"\
+	".\sock.h"\
+	".\sort.h"\
+	".\sql.h"\
+	".\ssl.h"\
+	".\stack.h"\
+	".\stmt.h"\
+	".\system.h"\
+	".\tcp.h"\
+	".\typdef.h"\
+	".\type.h"\
+	".\util.h"\
+	
+
+.\memtrack.c : \
+	".\memtrack.h"\
+	".\typdef.h"\
+	".\util.h"\
+	
+
+.\method.c : \
+	"..\..\..\program files\microsoft sdk\include\basetsd.h"\
+	"..\..\..\program files\microsoft sdk\include\guiddef.h"\
+	"..\..\..\program files\microsoft sdk\include\propidl.h"\
+	"..\..\..\program files\microsoft sdk\include\reason.h"\
+	"..\..\..\program files\microsoft sdk\include\stralign.h"\
+	"..\..\..\program files\microsoft sdk\include\tvout.h"\
+	"..\..\..\program files\microsoft sdk\include\winefs.h"\
+	".\aimsg.h"\
+	".\auto.h"\
+	".\branch.h"\
+	".\cgi.h"\
+	".\channel.h"\
+	".\concept.h"\
+	".\data.h"\
+	".\dateparse.h"\
+	".\env.h"\
+	".\fileio.h"\
+	".\frame.h"\
+	".\function.h"\
+	".\hash.h"\
+	".\hsms.h"\
+	".\http.h"\
+	".\hyp.h"\
+	".\hypdef.h"\
+	".\instance.h"\
+	".\label.h"\
+	".\load.h"\
+	".\method.h"\
+	".\operand.h"\
+	".\operator.h"\
+	".\parse.h"\
+	".\port.h"\
+	".\promis.h"\
+	".\route.h"\
+	".\router.h"\
+	".\secs.h"\
+	".\secs1.h"\
+	".\secs2.h"\
+	".\signl.h"\
+	".\sock.h"\
+	".\sort.h"\
+	".\sql.h"\
+	".\ssl.h"\
+	".\stack.h"\
+	".\stmt.h"\
+	".\system.h"\
+	".\tcp.h"\
+	".\typdef.h"\
+	".\type.h"\
+	".\util.h"\
+	
+
+.\operand.c : \
+	"..\..\..\program files\microsoft sdk\include\basetsd.h"\
+	"..\..\..\program files\microsoft sdk\include\guiddef.h"\
+	"..\..\..\program files\microsoft sdk\include\propidl.h"\
+	"..\..\..\program files\microsoft sdk\include\reason.h"\
+	"..\..\..\program files\microsoft sdk\include\stralign.h"\
+	"..\..\..\program files\microsoft sdk\include\tvout.h"\
+	"..\..\..\program files\microsoft sdk\include\winefs.h"\
+	".\aimsg.h"\
+	".\auto.h"\
+	".\branch.h"\
+	".\cgi.h"\
+	".\channel.h"\
+	".\concept.h"\
+	".\data.h"\
+	".\dateparse.h"\
+	".\env.h"\
+	".\fileio.h"\
+	".\frame.h"\
+	".\function.h"\
+	".\hash.h"\
+	".\hsms.h"\
+	".\http.h"\
+	".\hyp.h"\
+	".\hypdef.h"\
+	".\instance.h"\
+	".\label.h"\
+	".\load.h"\
+	".\method.h"\
+	".\operand.h"\
+	".\operator.h"\
+	".\parse.h"\
+	".\port.h"\
+	".\promis.h"\
+	".\route.h"\
+	".\router.h"\
+	".\secs.h"\
+	".\secs1.h"\
+	".\secs2.h"\
+	".\signl.h"\
+	".\sock.h"\
+	".\sort.h"\
+	".\sql.h"\
+	".\ssl.h"\
+	".\stack.h"\
+	".\stmt.h"\
+	".\system.h"\
+	".\tcp.h"\
+	".\typdef.h"\
+	".\type.h"\
+	".\util.h"\
+	
+
+.\operator.c : \
+	"..\..\..\program files\microsoft sdk\include\basetsd.h"\
+	"..\..\..\program files\microsoft sdk\include\guiddef.h"\
+	"..\..\..\program files\microsoft sdk\include\propidl.h"\
+	"..\..\..\program files\microsoft sdk\include\reason.h"\
+	"..\..\..\program files\microsoft sdk\include\stralign.h"\
+	"..\..\..\program files\microsoft sdk\include\tvout.h"\
+	"..\..\..\program files\microsoft sdk\include\winefs.h"\
+	".\aimsg.h"\
+	".\auto.h"\
+	".\branch.h"\
+	".\cgi.h"\
+	".\channel.h"\
+	".\concept.h"\
+	".\data.h"\
+	".\dateparse.h"\
+	".\env.h"\
+	".\fileio.h"\
+	".\frame.h"\
+	".\function.h"\
+	".\hash.h"\
+	".\hsms.h"\
+	".\http.h"\
+	".\hyp.h"\
+	".\hypdef.h"\
+	".\instance.h"\
+	".\label.h"\
+	".\load.h"\
+	".\method.h"\
+	".\operand.h"\
+	".\operator.h"\
+	".\parse.h"\
+	".\port.h"\
+	".\promis.h"\
+	".\route.h"\
+	".\router.h"\
+	".\secs.h"\
+	".\secs1.h"\
+	".\secs2.h"\
+	".\signl.h"\
+	".\sock.h"\
+	".\sort.h"\
+	".\sql.h"\
+	".\ssl.h"\
+	".\stack.h"\
+	".\stmt.h"\
+	".\system.h"\
+	".\tcp.h"\
+	".\typdef.h"\
+	".\type.h"\
+	".\util.h"\
+	
+
+.\parse.c : \
+	"..\..\..\program files\microsoft sdk\include\basetsd.h"\
+	"..\..\..\program files\microsoft sdk\include\guiddef.h"\
+	"..\..\..\program files\microsoft sdk\include\propidl.h"\
+	"..\..\..\program files\microsoft sdk\include\reason.h"\
+	"..\..\..\program files\microsoft sdk\include\stralign.h"\
+	"..\..\..\program files\microsoft sdk\include\tvout.h"\
+	"..\..\..\program files\microsoft sdk\include\winefs.h"\
+	".\aimsg.h"\
+	".\auto.h"\
+	".\branch.h"\
+	".\cgi.h"\
+	".\channel.h"\
+	".\concept.h"\
+	".\data.h"\
+	".\dateparse.h"\
+	".\env.h"\
+	".\fileio.h"\
+	".\frame.h"\
+	".\function.h"\
+	".\hash.h"\
+	".\hsms.h"\
+	".\http.h"\
+	".\hyp.h"\
+	".\hypdef.h"\
+	".\instance.h"\
+	".\label.h"\
+	".\load.h"\
+	".\method.h"\
+	".\operand.h"\
+	".\operator.h"\
+	".\parse.h"\
+	".\port.h"\
+	".\promis.h"\
+	".\route.h"\
+	".\router.h"\
+	".\secs.h"\
+	".\secs1.h"\
+	".\secs2.h"\
+	".\signl.h"\
+	".\sock.h"\
+	".\sort.h"\
+	".\sql.h"\
+	".\ssl.h"\
+	".\stack.h"\
+	".\stmt.h"\
+	".\system.h"\
+	".\tcp.h"\
+	".\typdef.h"\
+	".\type.h"\
+	".\util.h"\
+	
+
+.\port.c : \
+	"..\..\..\program files\microsoft sdk\include\basetsd.h"\
+	"..\..\..\program files\microsoft sdk\include\guiddef.h"\
+	"..\..\..\program files\microsoft sdk\include\propidl.h"\
+	"..\..\..\program files\microsoft sdk\include\reason.h"\
+	"..\..\..\program files\microsoft sdk\include\stralign.h"\
+	"..\..\..\program files\microsoft sdk\include\tvout.h"\
+	"..\..\..\program files\microsoft sdk\include\winefs.h"\
+	".\aimsg.h"\
+	".\auto.h"\
+	".\branch.h"\
+	".\cgi.h"\
+	".\channel.h"\
+	".\concept.h"\
+	".\data.h"\
+	".\dateparse.h"\
+	".\env.h"\
+	".\fileio.h"\
+	".\frame.h"\
+	".\function.h"\
+	".\hash.h"\
+	".\hsms.h"\
+	".\http.h"\
+	".\hyp.h"\
+	".\hypdef.h"\
+	".\instance.h"\
+	".\label.h"\
+	".\load.h"\
+	".\method.h"\
+	".\operand.h"\
+	".\operator.h"\
+	".\parse.h"\
+	".\port.h"\
+	".\promis.h"\
+	".\route.h"\
+	".\router.h"\
+	".\secs.h"\
+	".\secs1.h"\
+	".\secs2.h"\
+	".\signl.h"\
+	".\sock.h"\
+	".\sort.h"\
+	".\sql.h"\
+	".\ssl.h"\
+	".\stack.h"\
+	".\stmt.h"\
+	".\system.h"\
+	".\tcp.h"\
+	".\typdef.h"\
+	".\type.h"\
+	".\util.h"\
+	
+
+.\promis.c : \
+	"..\..\..\program files\microsoft sdk\include\basetsd.h"\
+	"..\..\..\program files\microsoft sdk\include\guiddef.h"\
+	"..\..\..\program files\microsoft sdk\include\propidl.h"\
+	"..\..\..\program files\microsoft sdk\include\reason.h"\
+	"..\..\..\program files\microsoft sdk\include\stralign.h"\
+	"..\..\..\program files\microsoft sdk\include\tvout.h"\
+	"..\..\..\program files\microsoft sdk\include\winefs.h"\
+	".\aimsg.h"\
+	".\auto.h"\
+	".\branch.h"\
+	".\cgi.h"\
+	".\channel.h"\
+	".\concept.h"\
+	".\data.h"\
+	".\dateparse.h"\
+	".\env.h"\
+	".\fileio.h"\
+	".\frame.h"\
+	".\function.h"\
+	".\hash.h"\
+	".\hsms.h"\
+	".\http.h"\
+	".\hyp.h"\
+	".\hypdef.h"\
+	".\instance.h"\
+	".\label.h"\
+	".\load.h"\
+	".\method.h"\
+	".\operand.h"\
+	".\operator.h"\
+	".\parse.h"\
+	".\port.h"\
+	".\promis.h"\
+	".\route.h"\
+	".\router.h"\
+	".\secs.h"\
+	".\secs1.h"\
+	".\secs2.h"\
+	".\signl.h"\
+	".\sock.h"\
+	".\sort.h"\
+	".\sql.h"\
+	".\ssl.h"\
+	".\stack.h"\
+	".\stmt.h"\
+	".\system.h"\
+	".\tcp.h"\
+	".\typdef.h"\
+	".\type.h"\
+	".\util.h"\
+	
+
+.\route.c : \
+	"..\..\..\program files\microsoft sdk\include\basetsd.h"\
+	"..\..\..\program files\microsoft sdk\include\guiddef.h"\
+	"..\..\..\program files\microsoft sdk\include\propidl.h"\
+	"..\..\..\program files\microsoft sdk\include\reason.h"\
+	"..\..\..\program files\microsoft sdk\include\stralign.h"\
+	"..\..\..\program files\microsoft sdk\include\tvout.h"\
+	"..\..\..\program files\microsoft sdk\include\winefs.h"\
+	".\aimsg.h"\
+	".\auto.h"\
+	".\branch.h"\
+	".\cgi.h"\
+	".\channel.h"\
+	".\concept.h"\
+	".\data.h"\
+	".\dateparse.h"\
+	".\env.h"\
+	".\fileio.h"\
+	".\frame.h"\
+	".\function.h"\
+	".\hash.h"\
+	".\hsms.h"\
+	".\http.h"\
+	".\hyp.h"\
+	".\hypdef.h"\
+	".\instance.h"\
+	".\label.h"\
+	".\load.h"\
+	".\method.h"\
+	".\operand.h"\
+	".\operator.h"\
+	".\parse.h"\
+	".\port.h"\
+	".\promis.h"\
+	".\route.h"\
+	".\router.h"\
+	".\secs.h"\
+	".\secs1.h"\
+	".\secs2.h"\
+	".\signl.h"\
+	".\sock.h"\
+	".\sort.h"\
+	".\sql.h"\
+	".\ssl.h"\
+	".\stack.h"\
+	".\stmt.h"\
+	".\system.h"\
+	".\tcp.h"\
+	".\typdef.h"\
+	".\type.h"\
+	".\util.h"\
+	
+
+.\router.c : \
+	"..\..\..\program files\microsoft sdk\include\basetsd.h"\
+	"..\..\..\program files\microsoft sdk\include\guiddef.h"\
+	"..\..\..\program files\microsoft sdk\include\propidl.h"\
+	"..\..\..\program files\microsoft sdk\include\reason.h"\
+	"..\..\..\program files\microsoft sdk\include\stralign.h"\
+	"..\..\..\program files\microsoft sdk\include\tvout.h"\
+	"..\..\..\program files\microsoft sdk\include\winefs.h"\
+	".\aimsg.h"\
+	".\auto.h"\
+	".\branch.h"\
+	".\cgi.h"\
+	".\channel.h"\
+	".\concept.h"\
+	".\data.h"\
+	".\dateparse.h"\
+	".\env.h"\
+	".\fileio.h"\
+	".\frame.h"\
+	".\function.h"\
+	".\hash.h"\
+	".\hsms.h"\
+	".\http.h"\
+	".\hyp.h"\
+	".\hypdef.h"\
+	".\instance.h"\
+	".\label.h"\
+	".\load.h"\
+	".\method.h"\
+	".\operand.h"\
+	".\operator.h"\
+	".\parse.h"\
+	".\port.h"\
+	".\promis.h"\
+	".\route.h"\
+	".\router.h"\
+	".\secs.h"\
+	".\secs1.h"\
+	".\secs2.h"\
+	".\signl.h"\
+	".\sock.h"\
+	".\sort.h"\
+	".\sql.h"\
+	".\ssl.h"\
+	".\stack.h"\
+	".\stmt.h"\
+	".\system.h"\
+	".\tcp.h"\
+	".\typdef.h"\
+	".\type.h"\
+	".\util.h"\
+	
+
+.\secs.c : \
+	"..\..\..\program files\microsoft sdk\include\basetsd.h"\
+	"..\..\..\program files\microsoft sdk\include\guiddef.h"\
+	"..\..\..\program files\microsoft sdk\include\propidl.h"\
+	"..\..\..\program files\microsoft sdk\include\reason.h"\
+	"..\..\..\program files\microsoft sdk\include\stralign.h"\
+	"..\..\..\program files\microsoft sdk\include\tvout.h"\
+	"..\..\..\program files\microsoft sdk\include\winefs.h"\
+	".\aimsg.h"\
+	".\auto.h"\
+	".\branch.h"\
+	".\cgi.h"\
+	".\channel.h"\
+	".\concept.h"\
+	".\data.h"\
+	".\dateparse.h"\
+	".\env.h"\
+	".\fileio.h"\
+	".\frame.h"\
+	".\function.h"\
+	".\hash.h"\
+	".\hsms.h"\
+	".\http.h"\
+	".\hyp.h"\
+	".\hypdef.h"\
+	".\instance.h"\
+	".\label.h"\
+	".\load.h"\
+	".\method.h"\
+	".\operand.h"\
+	".\operator.h"\
+	".\parse.h"\
+	".\port.h"\
+	".\promis.h"\
+	".\route.h"\
+	".\router.h"\
+	".\secs.h"\
+	".\secs1.h"\
+	".\secs2.h"\
+	".\signl.h"\
+	".\sock.h"\
+	".\sort.h"\
+	".\sql.h"\
+	".\ssl.h"\
+	".\stack.h"\
+	".\stmt.h"\
+	".\system.h"\
+	".\tcp.h"\
+	".\typdef.h"\
+	".\type.h"\
+	".\util.h"\
+	
+
+.\secs1.c : \
+	"..\..\..\program files\microsoft sdk\include\basetsd.h"\
+	"..\..\..\program files\microsoft sdk\include\guiddef.h"\
+	"..\..\..\program files\microsoft sdk\include\propidl.h"\
+	"..\..\..\program files\microsoft sdk\include\reason.h"\
+	"..\..\..\program files\microsoft sdk\include\stralign.h"\
+	"..\..\..\program files\microsoft sdk\include\tvout.h"\
+	"..\..\..\program files\microsoft sdk\include\winefs.h"\
+	".\aimsg.h"\
+	".\auto.h"\
+	".\branch.h"\
+	".\cgi.h"\
+	".\channel.h"\
+	".\concept.h"\
+	".\data.h"\
+	".\dateparse.h"\
+	".\env.h"\
+	".\fileio.h"\
+	".\frame.h"\
+	".\function.h"\
+	".\hash.h"\
+	".\hsms.h"\
+	".\http.h"\
+	".\hyp.h"\
+	".\hypdef.h"\
+	".\instance.h"\
+	".\label.h"\
+	".\load.h"\
+	".\method.h"\
+	".\operand.h"\
+	".\operator.h"\
+	".\parse.h"\
+	".\port.h"\
+	".\promis.h"\
+	".\route.h"\
+	".\router.h"\
+	".\secs.h"\
+	".\secs1.h"\
+	".\secs2.h"\
+	".\secshead.h"\
+	".\signl.h"\
+	".\sock.h"\
+	".\sort.h"\
+	".\sql.h"\
+	".\ssl.h"\
+	".\stack.h"\
+	".\stmt.h"\
+	".\system.h"\
+	".\tcp.h"\
+	".\typdef.h"\
+	".\type.h"\
+	".\util.h"\
+	
+
+.\secs2.c : \
+	"..\..\..\program files\microsoft sdk\include\basetsd.h"\
+	"..\..\..\program files\microsoft sdk\include\guiddef.h"\
+	"..\..\..\program files\microsoft sdk\include\propidl.h"\
+	"..\..\..\program files\microsoft sdk\include\reason.h"\
+	"..\..\..\program files\microsoft sdk\include\stralign.h"\
+	"..\..\..\program files\microsoft sdk\include\tvout.h"\
+	"..\..\..\program files\microsoft sdk\include\winefs.h"\
+	".\aimsg.h"\
+	".\auto.h"\
+	".\branch.h"\
+	".\cgi.h"\
+	".\channel.h"\
+	".\concept.h"\
+	".\data.h"\
+	".\dateparse.h"\
+	".\env.h"\
+	".\fileio.h"\
+	".\frame.h"\
+	".\function.h"\
+	".\hash.h"\
+	".\hsms.h"\
+	".\http.h"\
+	".\hyp.h"\
+	".\hypdef.h"\
+	".\instance.h"\
+	".\label.h"\
+	".\load.h"\
+	".\method.h"\
+	".\operand.h"\
+	".\operator.h"\
+	".\parse.h"\
+	".\port.h"\
+	".\promis.h"\
+	".\route.h"\
+	".\router.h"\
+	".\secs.h"\
+	".\secs1.h"\
+	".\secs2.h"\
+	".\secshead.h"\
+	".\signl.h"\
+	".\sock.h"\
+	".\sort.h"\
+	".\sql.h"\
+	".\ssl.h"\
+	".\stack.h"\
+	".\stmt.h"\
+	".\system.h"\
+	".\tcp.h"\
+	".\typdef.h"\
+	".\type.h"\
+	".\util.h"\
+	
+
+.\signal.c : \
+	"..\..\..\program files\microsoft sdk\include\basetsd.h"\
+	"..\..\..\program files\microsoft sdk\include\guiddef.h"\
+	"..\..\..\program files\microsoft sdk\include\propidl.h"\
+	"..\..\..\program files\microsoft sdk\include\reason.h"\
+	"..\..\..\program files\microsoft sdk\include\stralign.h"\
+	"..\..\..\program files\microsoft sdk\include\tvout.h"\
+	"..\..\..\program files\microsoft sdk\include\winefs.h"\
+	".\aimsg.h"\
+	".\auto.h"\
+	".\branch.h"\
+	".\cgi.h"\
+	".\channel.h"\
+	".\concept.h"\
+	".\data.h"\
+	".\dateparse.h"\
+	".\env.h"\
+	".\fileio.h"\
+	".\frame.h"\
+	".\function.h"\
+	".\hash.h"\
+	".\hsms.h"\
+	".\http.h"\
+	".\hyp.h"\
+	".\hypdef.h"\
+	".\instance.h"\
+	".\label.h"\
+	".\load.h"\
+	".\method.h"\
+	".\operand.h"\
+	".\operator.h"\
+	".\parse.h"\
+	".\port.h"\
+	".\promis.h"\
+	".\route.h"\
+	".\router.h"\
+	".\secs.h"\
+	".\secs1.h"\
+	".\secs2.h"\
+	".\signl.h"\
+	".\sock.h"\
+	".\sort.h"\
+	".\sql.h"\
+	".\ssl.h"\
+	".\stack.h"\
+	".\stmt.h"\
+	".\system.h"\
+	".\tcp.h"\
+	".\typdef.h"\
+	".\type.h"\
+	".\util.h"\
+	
+
+.\sock.c : \
+	"..\..\..\openssl\openssl-0.9.7c\include\openssl\aes.h"\
+	"..\..\..\openssl\openssl-0.9.7c\include\openssl\asn1.h"\
+	"..\..\..\openssl\openssl-0.9.7c\include\openssl\bio.h"\
+	"..\..\..\openssl\openssl-0.9.7c\include\openssl\blowfish.h"\
+	"..\..\..\openssl\openssl-0.9.7c\include\openssl\bn.h"\
+	"..\..\..\openssl\openssl-0.9.7c\include\openssl\cast.h"\
+	"..\..\..\openssl\openssl-0.9.7c\include\openssl\comp.h"\
+	"..\..\..\openssl\openssl-0.9.7c\include\openssl\crypto.h"\
+	"..\..\..\openssl\openssl-0.9.7c\include\openssl\des.h"\
+	"..\..\..\openssl\openssl-0.9.7c\include\openssl\des_old.h"\
+	"..\..\..\openssl\openssl-0.9.7c\include\openssl\dh.h"\
+	"..\..\..\openssl\openssl-0.9.7c\include\openssl\dsa.h"\
+	"..\..\..\openssl\openssl-0.9.7c\include\openssl\e_os2.h"\
+	"..\..\..\openssl\openssl-0.9.7c\include\openssl\err.h"\
+	"..\..\..\openssl\openssl-0.9.7c\include\openssl\evp.h"\
+	"..\..\..\openssl\openssl-0.9.7c\include\openssl\idea.h"\
+	"..\..\..\openssl\openssl-0.9.7c\include\openssl\kssl.h"\
+	"..\..\..\openssl\openssl-0.9.7c\include\openssl\lhash.h"\
+	"..\..\..\openssl\openssl-0.9.7c\include\openssl\md2.h"\
+	"..\..\..\openssl\openssl-0.9.7c\include\openssl\md4.h"\
+	"..\..\..\openssl\openssl-0.9.7c\include\openssl\md5.h"\
+	"..\..\..\openssl\openssl-0.9.7c\include\openssl\mdc2.h"\
+	"..\..\..\openssl\openssl-0.9.7c\include\openssl\obj_mac.h"\
+	"..\..\..\openssl\openssl-0.9.7c\include\openssl\objects.h"\
+	"..\..\..\openssl\openssl-0.9.7c\include\openssl\opensslconf.h"\
+	"..\..\..\openssl\openssl-0.9.7c\include\openssl\opensslv.h"\
+	"..\..\..\openssl\openssl-0.9.7c\include\openssl\ossl_typ.h"\
+	"..\..\..\openssl\openssl-0.9.7c\include\openssl\pem.h"\
+	"..\..\..\openssl\openssl-0.9.7c\include\openssl\pem2.h"\
+	"..\..\..\openssl\openssl-0.9.7c\include\openssl\pkcs7.h"\
+	"..\..\..\openssl\openssl-0.9.7c\include\openssl\rand.h"\
+	"..\..\..\openssl\openssl-0.9.7c\include\openssl\rc2.h"\
+	"..\..\..\openssl\openssl-0.9.7c\include\openssl\rc4.h"\
+	"..\..\..\openssl\openssl-0.9.7c\include\openssl\rc5.h"\
+	"..\..\..\openssl\openssl-0.9.7c\include\openssl\ripemd.h"\
+	"..\..\..\openssl\openssl-0.9.7c\include\openssl\rsa.h"\
+	"..\..\..\openssl\openssl-0.9.7c\include\openssl\safestack.h"\
+	"..\..\..\openssl\openssl-0.9.7c\include\openssl\sha.h"\
+	"..\..\..\openssl\openssl-0.9.7c\include\openssl\ssl.h"\
+	"..\..\..\openssl\openssl-0.9.7c\include\openssl\ssl2.h"\
+	"..\..\..\openssl\openssl-0.9.7c\include\openssl\ssl23.h"\
+	"..\..\..\openssl\openssl-0.9.7c\include\openssl\ssl3.h"\
+	"..\..\..\openssl\openssl-0.9.7c\include\openssl\stack.h"\
+	"..\..\..\openssl\openssl-0.9.7c\include\openssl\symhacks.h"\
+	"..\..\..\openssl\openssl-0.9.7c\include\openssl\tls1.h"\
+	"..\..\..\openssl\openssl-0.9.7c\include\openssl\ui.h"\
+	"..\..\..\openssl\openssl-0.9.7c\include\openssl\ui_compat.h"\
+	"..\..\..\openssl\openssl-0.9.7c\include\openssl\x509.h"\
+	"..\..\..\openssl\openssl-0.9.7c\include\openssl\x509_vfy.h"\
+	"..\..\..\program files\microsoft sdk\include\basetsd.h"\
+	"..\..\..\program files\microsoft sdk\include\guiddef.h"\
+	"..\..\..\program files\microsoft sdk\include\propidl.h"\
+	"..\..\..\program files\microsoft sdk\include\reason.h"\
+	"..\..\..\program files\microsoft sdk\include\stralign.h"\
+	"..\..\..\program files\microsoft sdk\include\tvout.h"\
+	"..\..\..\program files\microsoft sdk\include\winefs.h"\
+	".\aimsg.h"\
+	".\auto.h"\
+	".\branch.h"\
+	".\cgi.h"\
+	".\channel.h"\
+	".\concept.h"\
+	".\data.h"\
+	".\dateparse.h"\
+	".\env.h"\
+	".\fileio.h"\
+	".\frame.h"\
+	".\function.h"\
+	".\hash.h"\
+	".\hsms.h"\
+	".\http.h"\
+	".\hyp.h"\
+	".\hypdef.h"\
+	".\instance.h"\
+	".\label.h"\
+	".\load.h"\
+	".\method.h"\
+	".\operand.h"\
+	".\operator.h"\
+	".\parse.h"\
+	".\port.h"\
+	".\promis.h"\
+	".\route.h"\
+	".\router.h"\
+	".\secs.h"\
+	".\secs1.h"\
+	".\secs2.h"\
+	".\signl.h"\
+	".\sock.h"\
+	".\sort.h"\
+	".\sql.h"\
+	".\ssl.h"\
+	".\stack.h"\
+	".\stmt.h"\
+	".\system.h"\
+	".\tcp.h"\
+	".\typdef.h"\
+	".\type.h"\
+	".\util.h"\
+	
+
+.\sort.c : \
+	"..\..\..\program files\microsoft sdk\include\basetsd.h"\
+	"..\..\..\program files\microsoft sdk\include\guiddef.h"\
+	"..\..\..\program files\microsoft sdk\include\propidl.h"\
+	"..\..\..\program files\microsoft sdk\include\reason.h"\
+	"..\..\..\program files\microsoft sdk\include\stralign.h"\
+	"..\..\..\program files\microsoft sdk\include\tvout.h"\
+	"..\..\..\program files\microsoft sdk\include\winefs.h"\
+	".\aimsg.h"\
+	".\auto.h"\
+	".\branch.h"\
+	".\cgi.h"\
+	".\channel.h"\
+	".\concept.h"\
+	".\data.h"\
+	".\dateparse.h"\
+	".\env.h"\
+	".\fileio.h"\
+	".\frame.h"\
+	".\function.h"\
+	".\hash.h"\
+	".\hsms.h"\
+	".\http.h"\
+	".\hyp.h"\
+	".\hypdef.h"\
+	".\instance.h"\
+	".\label.h"\
+	".\load.h"\
+	".\method.h"\
+	".\operand.h"\
+	".\operator.h"\
+	".\parse.h"\
+	".\port.h"\
+	".\promis.h"\
+	".\route.h"\
+	".\router.h"\
+	".\secs.h"\
+	".\secs1.h"\
+	".\secs2.h"\
+	".\signl.h"\
+	".\sock.h"\
+	".\sort.h"\
+	".\sql.h"\
+	".\ssl.h"\
+	".\stack.h"\
+	".\stmt.h"\
+	".\system.h"\
+	".\tcp.h"\
+	".\typdef.h"\
+	".\type.h"\
+	".\util.h"\
+	
+
+.\sql.c : \
+	"..\..\..\program files\microsoft sdk\include\basetsd.h"\
+	"..\..\..\program files\microsoft sdk\include\guiddef.h"\
+	"..\..\..\program files\microsoft sdk\include\propidl.h"\
+	"..\..\..\program files\microsoft sdk\include\reason.h"\
+	"..\..\..\program files\microsoft sdk\include\stralign.h"\
+	"..\..\..\program files\microsoft sdk\include\tvout.h"\
+	"..\..\..\program files\microsoft sdk\include\winefs.h"\
+	"..\..\..\program files\mysql\mysql server 4.1\include\my_alloc.h"\
+	"..\..\..\program files\mysql\mysql server 4.1\include\my_list.h"\
+	"..\..\..\program files\mysql\mysql server 4.1\include\mysql.h"\
+	"..\..\..\program files\mysql\mysql server 4.1\include\mysql_com.h"\
+	"..\..\..\program files\mysql\mysql server 4.1\include\mysql_time.h"\
+	"..\..\..\program files\mysql\mysql server 4.1\include\mysql_version.h"\
+	"..\..\..\program files\mysql\mysql server 4.1\include\typelib.h"\
+	".\aimsg.h"\
+	".\auto.h"\
+	".\branch.h"\
+	".\cgi.h"\
+	".\channel.h"\
+	".\concept.h"\
+	".\data.h"\
+	".\dateparse.h"\
+	".\env.h"\
+	".\fileio.h"\
+	".\frame.h"\
+	".\function.h"\
+	".\hash.h"\
+	".\hsms.h"\
+	".\http.h"\
+	".\hyp.h"\
+	".\hypdef.h"\
+	".\instance.h"\
+	".\label.h"\
+	".\load.h"\
+	".\method.h"\
+	".\operand.h"\
+	".\operator.h"\
+	".\parse.h"\
+	".\port.h"\
+	".\promis.h"\
+	".\route.h"\
+	".\router.h"\
+	".\secs.h"\
+	".\secs1.h"\
+	".\secs2.h"\
+	".\signl.h"\
+	".\sock.h"\
+	".\sort.h"\
+	".\sql.h"\
+	".\ssl.h"\
+	".\stack.h"\
+	".\stmt.h"\
+	".\system.h"\
+	".\tcp.h"\
+	".\typdef.h"\
+	".\type.h"\
+	".\util.h"\
+	
+
+.\ssl.c : \
+	"..\..\..\program files\microsoft sdk\include\basetsd.h"\
+	"..\..\..\program files\microsoft sdk\include\guiddef.h"\
+	"..\..\..\program files\microsoft sdk\include\propidl.h"\
+	"..\..\..\program files\microsoft sdk\include\reason.h"\
+	"..\..\..\program files\microsoft sdk\include\stralign.h"\
+	"..\..\..\program files\microsoft sdk\include\tvout.h"\
+	"..\..\..\program files\microsoft sdk\include\winefs.h"\
+	".\aimsg.h"\
+	".\auto.h"\
+	".\branch.h"\
+	".\cgi.h"\
+	".\channel.h"\
+	".\concept.h"\
+	".\data.h"\
+	".\dateparse.h"\
+	".\env.h"\
+	".\fileio.h"\
+	".\frame.h"\
+	".\function.h"\
+	".\hash.h"\
+	".\hsms.h"\
+	".\http.h"\
+	".\hyp.h"\
+	".\hypdef.h"\
+	".\instance.h"\
+	".\label.h"\
+	".\load.h"\
+	".\method.h"\
+	".\operand.h"\
+	".\operator.h"\
+	".\parse.h"\
+	".\port.h"\
+	".\promis.h"\
+	".\route.h"\
+	".\router.h"\
+	".\secs.h"\
+	".\secs1.h"\
+	".\secs2.h"\
+	".\signl.h"\
+	".\sock.h"\
+	".\sort.h"\
+	".\sql.h"\
+	".\ssl.h"\
+	".\stack.h"\
+	".\stmt.h"\
+	".\system.h"\
+	".\tcp.h"\
+	".\typdef.h"\
+	".\type.h"\
+	".\util.h"\
+	
+
+.\stack.c : \
+	"..\..\..\program files\microsoft sdk\include\basetsd.h"\
+	"..\..\..\program files\microsoft sdk\include\guiddef.h"\
+	"..\..\..\program files\microsoft sdk\include\propidl.h"\
+	"..\..\..\program files\microsoft sdk\include\reason.h"\
+	"..\..\..\program files\microsoft sdk\include\stralign.h"\
+	"..\..\..\program files\microsoft sdk\include\tvout.h"\
+	"..\..\..\program files\microsoft sdk\include\winefs.h"\
+	".\aimsg.h"\
+	".\auto.h"\
+	".\branch.h"\
+	".\cgi.h"\
+	".\channel.h"\
+	".\concept.h"\
+	".\data.h"\
+	".\dateparse.h"\
+	".\env.h"\
+	".\fileio.h"\
+	".\frame.h"\
+	".\function.h"\
+	".\hash.h"\
+	".\hsms.h"\
+	".\http.h"\
+	".\hyp.h"\
+	".\hypdef.h"\
+	".\instance.h"\
+	".\label.h"\
+	".\load.h"\
+	".\method.h"\
+	".\operand.h"\
+	".\operator.h"\
+	".\parse.h"\
+	".\port.h"\
+	".\promis.h"\
+	".\route.h"\
+	".\router.h"\
+	".\secs.h"\
+	".\secs1.h"\
+	".\secs2.h"\
+	".\signl.h"\
+	".\sock.h"\
+	".\sort.h"\
+	".\sql.h"\
+	".\ssl.h"\
+	".\stack.h"\
+	".\stmt.h"\
+	".\system.h"\
+	".\tcp.h"\
+	".\typdef.h"\
+	".\type.h"\
+	".\util.h"\
+	
+
+.\stmt.c : \
+	"..\..\..\program files\microsoft sdk\include\basetsd.h"\
+	"..\..\..\program files\microsoft sdk\include\guiddef.h"\
+	"..\..\..\program files\microsoft sdk\include\propidl.h"\
+	"..\..\..\program files\microsoft sdk\include\reason.h"\
+	"..\..\..\program files\microsoft sdk\include\stralign.h"\
+	"..\..\..\program files\microsoft sdk\include\tvout.h"\
+	"..\..\..\program files\microsoft sdk\include\winefs.h"\
+	".\aimsg.h"\
+	".\auto.h"\
+	".\branch.h"\
+	".\cgi.h"\
+	".\channel.h"\
+	".\concept.h"\
+	".\data.h"\
+	".\dateparse.h"\
+	".\env.h"\
+	".\fileio.h"\
+	".\frame.h"\
+	".\function.h"\
+	".\hash.h"\
+	".\hsms.h"\
+	".\http.h"\
+	".\hyp.h"\
+	".\hypdef.h"\
+	".\instance.h"\
+	".\label.h"\
+	".\load.h"\
+	".\method.h"\
+	".\operand.h"\
+	".\operator.h"\
+	".\parse.h"\
+	".\port.h"\
+	".\promis.h"\
+	".\route.h"\
+	".\router.h"\
+	".\secs.h"\
+	".\secs1.h"\
+	".\secs2.h"\
+	".\signl.h"\
+	".\sock.h"\
+	".\sort.h"\
+	".\sql.h"\
+	".\ssl.h"\
+	".\stack.h"\
+	".\stmt.h"\
+	".\system.h"\
+	".\tcp.h"\
+	".\typdef.h"\
+	".\type.h"\
+	".\util.h"\
+	
+
+.\system.c : \
+	"..\..\..\program files\microsoft sdk\include\basetsd.h"\
+	"..\..\..\program files\microsoft sdk\include\guiddef.h"\
+	"..\..\..\program files\microsoft sdk\include\propidl.h"\
+	"..\..\..\program files\microsoft sdk\include\reason.h"\
+	"..\..\..\program files\microsoft sdk\include\stralign.h"\
+	"..\..\..\program files\microsoft sdk\include\tvout.h"\
+	"..\..\..\program files\microsoft sdk\include\winefs.h"\
+	".\aimsg.h"\
+	".\auto.h"\
+	".\branch.h"\
+	".\cgi.h"\
+	".\channel.h"\
+	".\concept.h"\
+	".\data.h"\
+	".\dateparse.h"\
+	".\env.h"\
+	".\fileio.h"\
+	".\frame.h"\
+	".\function.h"\
+	".\hash.h"\
+	".\hsms.h"\
+	".\http.h"\
+	".\hyp.h"\
+	".\hypdef.h"\
+	".\instance.h"\
+	".\label.h"\
+	".\load.h"\
+	".\method.h"\
+	".\operand.h"\
+	".\operator.h"\
+	".\parse.h"\
+	".\port.h"\
+	".\promis.h"\
+	".\route.h"\
+	".\router.h"\
+	".\secs.h"\
+	".\secs1.h"\
+	".\secs2.h"\
+	".\signl.h"\
+	".\sock.h"\
+	".\sort.h"\
+	".\sql.h"\
+	".\ssl.h"\
+	".\stack.h"\
+	".\stmt.h"\
+	".\system.h"\
+	".\tcp.h"\
+	".\typdef.h"\
+	".\type.h"\
+	".\util.h"\
+	
+
+.\tcp.c : \
+	"..\..\..\program files\microsoft sdk\include\basetsd.h"\
+	"..\..\..\program files\microsoft sdk\include\guiddef.h"\
+	"..\..\..\program files\microsoft sdk\include\propidl.h"\
+	"..\..\..\program files\microsoft sdk\include\reason.h"\
+	"..\..\..\program files\microsoft sdk\include\stralign.h"\
+	"..\..\..\program files\microsoft sdk\include\tvout.h"\
+	"..\..\..\program files\microsoft sdk\include\winefs.h"\
+	".\aimsg.h"\
+	".\auto.h"\
+	".\branch.h"\
+	".\cgi.h"\
+	".\channel.h"\
+	".\concept.h"\
+	".\data.h"\
+	".\dateparse.h"\
+	".\env.h"\
+	".\fileio.h"\
+	".\frame.h"\
+	".\function.h"\
+	".\hash.h"\
+	".\hsms.h"\
+	".\http.h"\
+	".\hyp.h"\
+	".\hypdef.h"\
+	".\instance.h"\
+	".\label.h"\
+	".\load.h"\
+	".\method.h"\
+	".\operand.h"\
+	".\operator.h"\
+	".\parse.h"\
+	".\port.h"\
+	".\promis.h"\
+	".\route.h"\
+	".\router.h"\
+	".\secs.h"\
+	".\secs1.h"\
+	".\secs2.h"\
+	".\signl.h"\
+	".\sock.h"\
+	".\sort.h"\
+	".\sql.h"\
+	".\ssl.h"\
+	".\stack.h"\
+	".\stmt.h"\
+	".\system.h"\
+	".\tcp.h"\
+	".\typdef.h"\
+	".\type.h"\
+	".\util.h"\
+	
+
+.\type.c : \
+	"..\..\..\program files\microsoft sdk\include\basetsd.h"\
+	"..\..\..\program files\microsoft sdk\include\guiddef.h"\
+	"..\..\..\program files\microsoft sdk\include\propidl.h"\
+	"..\..\..\program files\microsoft sdk\include\reason.h"\
+	"..\..\..\program files\microsoft sdk\include\stralign.h"\
+	"..\..\..\program files\microsoft sdk\include\tvout.h"\
+	"..\..\..\program files\microsoft sdk\include\winefs.h"\
+	".\aimsg.h"\
+	".\auto.h"\
+	".\branch.h"\
+	".\cgi.h"\
+	".\channel.h"\
+	".\concept.h"\
+	".\data.h"\
+	".\dateparse.h"\
+	".\env.h"\
+	".\fileio.h"\
+	".\frame.h"\
+	".\function.h"\
+	".\hash.h"\
+	".\hsms.h"\
+	".\http.h"\
+	".\hyp.h"\
+	".\hypdef.h"\
+	".\instance.h"\
+	".\label.h"\
+	".\load.h"\
+	".\method.h"\
+	".\operand.h"\
+	".\operator.h"\
+	".\parse.h"\
+	".\port.h"\
+	".\promis.h"\
+	".\route.h"\
+	".\router.h"\
+	".\secs.h"\
+	".\secs1.h"\
+	".\secs2.h"\
+	".\signl.h"\
+	".\sock.h"\
+	".\sort.h"\
+	".\sql.h"\
+	".\ssl.h"\
+	".\stack.h"\
+	".\stmt.h"\
+	".\system.h"\
+	".\tcp.h"\
+	".\typdef.h"\
+	".\type.h"\
+	".\util.h"\
+	
+
+.\util.c : \
+	"..\..\..\program files\microsoft sdk\include\basetsd.h"\
+	"..\..\..\program files\microsoft sdk\include\guiddef.h"\
+	"..\..\..\program files\microsoft sdk\include\propidl.h"\
+	"..\..\..\program files\microsoft sdk\include\reason.h"\
+	"..\..\..\program files\microsoft sdk\include\stralign.h"\
+	"..\..\..\program files\microsoft sdk\include\tvout.h"\
+	"..\..\..\program files\microsoft sdk\include\winefs.h"\
+	".\aimsg.h"\
+	".\auto.h"\
+	".\branch.h"\
+	".\cgi.h"\
+	".\channel.h"\
+	".\concept.h"\
+	".\data.h"\
+	".\dateparse.h"\
+	".\env.h"\
+	".\fileio.h"\
+	".\frame.h"\
+	".\function.h"\
+	".\hash.h"\
+	".\hsms.h"\
+	".\http.h"\
+	".\hyp.h"\
+	".\hypdef.h"\
+	".\instance.h"\
+	".\label.h"\
+	".\load.h"\
+	".\method.h"\
+	".\operand.h"\
+	".\operator.h"\
+	".\parse.h"\
+	".\port.h"\
+	".\promis.h"\
+	".\route.h"\
+	".\router.h"\
+	".\secs.h"\
+	".\secs1.h"\
+	".\secs2.h"\
+	".\signl.h"\
+	".\sock.h"\
+	".\sort.h"\
+	".\sql.h"\
+	".\ssl.h"\
+	".\stack.h"\
+	".\stmt.h"\
+	".\system.h"\
+	".\tcp.h"\
+	".\typdef.h"\
+	".\type.h"\
+	".\util.h"\
+	

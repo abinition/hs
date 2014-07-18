@@ -60,6 +60,8 @@ $ ! 3. Primary or Secondary. Put "*" if doesn't matter.
 $ list_where   = "/PRIMARY/PRIMARY/PRIMARY/"
 $
 $ ! 4. Allowed promis system name.  Put "*" if promis name does not matter.
+$ !    Put in "OFF" or "DISABLED" to prevent automation router and detached
+$ !    processes from starting.
 $ list_system  = "/OPS/DEV/TST/"
 $
 $ ! 5. AutoRun directory, where services are found, including autorouter
@@ -75,6 +77,7 @@ $ defaultDet   = "::"
 $ list_det     = "/''defaultDet'/''defaultDet'/''defaultDet'/"
 $
 $ ! 8. Whether OPTION_AUTO should be set to YES or NO
+$ !    This is for AUTOMAN
 $ defaultAuto = "NO"
 $ list_auto    = "/''defaultAuto'/''defaultAuto'/''defaultAuto'/"
 $

@@ -11,9 +11,6 @@
  * Modifications:
  *
  *	$Log: type.c,v $
- *	Revision 1.5  2007-07-09 05:39:00  bergsma
- *	TLOGV3
- *	
  *	Revision 1.18  2007-06-24 17:49:02  bergsma
  *	Return proper "typeof" for literals.
  *	

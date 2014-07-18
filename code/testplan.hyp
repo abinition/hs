@@ -1,0 +1,819 @@
+/* TESTPLAN.HYP : Testplan #1 */
+/* This testplan is designed to test all the features of HyperScript.
+ * 
+ * It is primarily used as a regression script.  If it makes it all the
+ * way through, ie: to the statement "Regression test successful", then
+ * HyperScript is functioning correctly.
+ *
+ *
+ * How to run:
+ *
+ * A. Standalone
+ *
+ *    1. Make sure testplan.hyp, testplan2.hyp, and dotest.hyp exist 
+ *       in the AUTORUN directory.
+ *    2. Start autorouter in window #1.
+ *       > autorouter
+ *    3. Start the testplan hyperscript in window #2.
+ *       > hs -ftestplan.hyp -ttestplan -eCONNECT   
+ *    4. Start the dotest hyperscript in window #3
+ *       > hs -fdotest.hyp
+ *    5. When you see "Regession test successful" message, its done
+ *
+ * B. PROMIS
+ *
+ *    1. Make sure testplan.scr and testplan2.scr are in the AUTORUN
+ *       directory.
+ *       If testplan.scr or testplan2.scr do not exist, make new ones
+ *       from testplan.hyp and testplan2.hyp.  Simply add the following
+ *       2 lines to the front and end of the <testplan.hyp> file,
+ *	 respectively.
+ *		##
+ *              .
+ *              .
+ *              .
+ *		enable CONNECT ; idle() ;
+ *    2. Start autorouter
+ *       $ @AEQ_SSP:AUTOSTART ROUTER
+ *    3. Find a lot thas is automation ready, that is, one that has 
+ *       the $AUTO_RECIPE or $AUTO_DCOP parameter
+ *    4. Define the required logicals:
+ *       $ define AUTO_IN_<eqpid> TESTPLAN
+ *       $ define OPTION_AUTO YES
+ *       $ define OPTION_HYPERSCRIPT YES       
+ *    5. Run the test by tracking in the lot
+ */
+
+CONNECT() 
+{
+  debug(0) ;
+  promis = sender() ;
+  on_error FAIL() ;
+  timestamp ( 0 ) ;
+  timeout ( 10 ) ;
+  lifetime ( 600 ) ;
+
+  instantiate ( ) ;
+  if ( self(1) == "" ) FAIL() ;
+  KEY = { "Manual", "Abort", "Data", "^Recipe", "Begin", "Load", "Text" } ;
+  METHOD = { "DISCONNECT", "ABORT", "DATA", "SETUP", 
+	     "BEGIN", "LOAD", "MESSAGE" } ;
+  POSITION = { 1, 2, 3, 4, 5, 6, 7 } ;
+  ENABLED = { "YES", "YES", "YES", "YES", "YES", "YES", "YES" } ;
+  event ( promis, "HOTKEY", { &KEY, &METHOD, &POSITION, &ENABLED } ) ;
+
+  TEXT = { "\uTestplan Interface\s\g\g\g\n",
+	   "\bPress\s a \r\fhotkey\s to test its function." } ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+
+  enable DATA ;
+  enable SETUP ;
+  enable BEGIN ;
+  enable LOAD ;
+  enable MESSAGE ;
+  enable ABORT ;
+  enable DISCONNECT ;
+  idle() ;
+}
+
+BEGIN()
+{
+  TEXT = "Testing NULL statements" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  ;;;
+	
+  TEXT = "Testing simple argument specification" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  ( 1, (2,3), 4,5, (6,(7,8,9))) ;
+
+  TEXT = "Testing simple assignment" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  x = 1 ;
+  if ( x != 1 ) FAIL() ;
+
+  TEXT = "Testing simple binary expression" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  y = x + 1 ;		/* 2 		*/
+  if ( y != 2 ) FAIL() ;
+
+  TEXT = "Testing left-to-right evaluation of arguments" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  a = ( b = 1, b = b + 2 ) ;  /* a = 3, b = 3 */
+  if ( a != 3 || b != 3 ) FAIL() ;
+
+  TEXT = "Testing simple list expression" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  z = { x, y } ;		/* { 1, 2 } 	*/
+  if ( z[0] != 1 || z[1] != 2 ) FAIL() ;
+
+  TEXT = "Testing precedence evaluation and variable substitution" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  a = ( 5 + 10/2 - x ) ;	/* 9 		*/
+  if ( a != 9 ) FAIL() ;
+
+  TEXT = "Testing Subscripting" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  b = z[ z[0] ] ;		/* 2 		*/
+  if ( b != 2 ) FAIL();
+
+  TEXT = "Testing subscripting with a list" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  b = {0,1,2,3}[2] ;		/* 2 		*/
+  if ( b != 2 ) FAIL();
+
+  TEXT = "Testing Unary operator +/- and modulus" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  c = -((a*2)%+4) ;	/* -2 		*/
+  if ( c != -2 ) FAIL() ;
+
+  TEXT = "Testing autodecrement and autoincrement" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  a = 1 ; b = a++ ; c = ++a ; d=a-- ; e=--a;
+  if ( b != 1 || c !=3 || d != 3 || e != 1 ) FAIL() ;
+
+  TEXT = "Testing Logical operators && and || and !" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  if ( !(0 || 1) || (0 && 1) ) FAIL() ;
+
+  /* Wait a second for client to catch up. */
+  sleep(1);
+
+  TEXT = "Testing short cicuiting" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  y = 0 ;
+  if ( !(y != 0 && 1/y) ) ;
+  if ( y == 0 || 1/y ) ;
+  x = 1 ? y : 1/y ;  
+  x = 0 ? 1/y : y ;
+
+  TEXT = "Testing bitwise operators & | and ^" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  if ( ( 1 | 3 ) != 3 || ( 7 & 3 ) != 3 || ( 2 ^ 3 ) != 1 ) FAIL() ;
+
+  TEXT = "Testing splicing of lists within lists" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  d = { z, {3,4} } ;	/* 1, 2, 3, 4	*/
+  if ( d[0] != 1 || d[1] != 2 || d[2] != 3 || d[3] != 4 ) FAIL() ;
+
+  TEXT = "Testing list multiplication" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  e = d * 2 ;		/* 2, 4, 6, 8 */
+  if ( e[0] != 2 || e[1] != 4 || e[2] != 6 || e[3] != 8 ) FAIL() ;
+  d = d * d ;
+  if ( d[0] != 1 || d[1] != 4 || d[2] != 9 || d[3] != 16 ) FAIL() ;
+
+  TEXT = "Testing list subtraction" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  f = e - 5 ;		/* -3, -1, 1, 3	*/
+  if ( f[0] != -3 || f[1] != -1 || f[2] != 1 || f[3] != 3 ) FAIL() ;
+  e = e - e ;
+  if ( e != 0 ) FAIL() ;
+  if ( e[0] != 0 || e[1] != 0 || e[2] != 0 || e[3] != 0 ) FAIL() ;
+
+  TEXT = "Testing list addition and division" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  f = (( 4 + f ) / 2 + 1 ) ;	/* 1, 2, 3, 4	*/
+  if ( f[0] != 1 || f[1] != 2 || f[2] != 3 || f[3] != 4 ) FAIL() ;
+  f = f / f ;
+  if ( f != 1 ) FAIL() ;
+
+  TEXT = "Testing NULL string" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  string = "" ;
+  if ( string != "" ) FAIL ;
+
+  TEXT = "Testing NULL lists" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  a = {} ; b = {}; c = { 1,2,3 } ;
+  if ( a != b || a == c ) FAIL() ;  
+
+  TEXT = "Testing variables enclosed in quotes" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  'a variable' = 'x' ;
+  if ( 'a variable' != 'x' ) FAIL() ;
+
+  TEXT = "Testing single array element assignment" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  y = 0 ;
+  f[y] = 99 ;
+  if ( f[0] != 99 ) FAIL();
+
+  TEXT = "Testing conditional expressions" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  string = x > 1 ? 1 : x < 1 ? "string" : 1 ;
+  if ( string != "string" ) FAIL();
+
+  TEXT = "Testing reference/de-reference on variables" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  foobar = "hello" ;
+  fb = &foobar ;
+  *fb = *fb + " world" ;
+  if ( fb != "foobar" ) FAIL();
+  if ( *fb != "hello world" ) FAIL();  
+
+  TEXT = "Testing reference/de-reference on literals" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  fb = &"foobar" ;
+  if ( fb != "foobar" ) FAIL();
+  if ( *fb != "hello world" ) FAIL();
+	
+  TEXT = "Testing reference/de-reference on lists" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  x = 2 ; w = { 1, &x } ; y = { &w, &x } ; 
+  if ( y[0][0] != &w || (*y[0])[1] != &x || *(*y[0])[1] != 2 ) FAIL() ;
+  
+  TEXT = "Testing reference/de-reference on subscripts " ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  z = &y[0] ;
+  put z ;
+  put *z ;
+  put *(*(*z))[1] ;
+  if ( z != "y[0]" || *z != "w" || *(*(*z))[1] != x ) FAIL(); 
+
+  TEXT = "Testing basic (list) substructures" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  a = { b = { c = { d = {1,2,3}, e={4,5,6} }, f = 1000 }, "foobar", g=.1 } ;
+  if ( a[2] != "g" || a.b[0] != "c" || a[0][0].d[1] != 2 ) FAIL() ;
+
+  TEXT = "Testing pointers" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  x = &a ; y = &a.b ;
+  if ( x->b.c.e[2] != 6 || y->c.d[1] != 2 ) FAIL() ;
+  
+  TEXT = "Testing dereferencing substructures" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  x.a = 1 ;
+  x.b = 2 ;
+  x.c = 3 ;
+  if ( x.a != 1 || x.b != 2 || x.c != 3 ) FAIL() ;
+  y = { "a", "b", "c" } ;
+  i = 2 ;
+  if ( x.*y[i] != 3 ) FAIL() ;
+  if ( *x[1] != 2 ) FAIL() ;
+
+  sleep(1);
+
+  TEXT = "Testing float values" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  r1 = -1.2e+02 ;
+  r2 = 17.142857 ;
+  r3 = r1 / r2 ;
+  if ( float(r3) != -7.0 ) FAIL();
+
+  TEXT = "Testing conversions" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  if ( str ( 123 ) != "123" ) FAIL() ;
+  if ( int ( "123" ) != 123 ) FAIL() ;
+  if ( float ( "1.23" ) != float (1.23)  ) FAIL() ;
+  if ( double ( "1.23" ) != double (1.23) ) FAIL() ;
+  if ( toupper ( "abc" ) != "ABC" ) FAIL() ;
+  if ( tolower ( "ABC" ) != "abc" ) FAIL() ;
+
+  TEXT = "Testing vector behaviour" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  undef x ;
+  int x ;
+  if ( count(x) != 1 ) FAIL() ;
+  x = 0 ;
+  if ( count(x) != 1 || x != 0 ) FAIL() ;
+  int x[3] = {1,2,3} ;
+  if ( count(x) != 3 || x[2] != 3 ) FAIL() ;
+  int x[6] ;
+  if ( count(x) != 6 || x[5] != 0 ) FAIL() ;
+  int x[5] = {1,2,3,4} ;
+  x[4] = 5 ; 
+  for ( i=0,s=0; i<count(x); i++ ) s = s + x[i] ;
+  if ( s != 15 ) FAIL() ;
+
+  TEXT = "Testing str<->char conversions" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  str a = "abc" ;
+  char a ;
+  if ( a[0] != "a" || a[1] != "b" || a[2] != "c" ) FAIL() ;
+  int a ;
+  if ( a[0] != 97 || a[1] != 98 || a[2] != 99 ) FAIL() ;
+  a = a + 10 ; 
+  char a ;
+  str a ;
+  if ( a != "klm" ) FAIL() ;
+  uchar a ;
+  a = a + 100 ;
+  byte a ;
+  put a ;
+  if ( a[0] != -49 || a[1] != -48 || a[2] != -47 ) FAIL() ;
+  a = a + 146 ;
+  char a ;
+  str a ;
+  if ( a != "abc" ) FAIL() ;
+
+  TEXT = "Testing byte/ubyte conversions" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  if ( byte ( 127 ) != 127 ||
+       byte ( 128 ) != -128 ||
+       byte ( 255 ) != -1 ||
+       byte ( 256 ) != 0 ||
+       byte ( 257 ) != 1 ||
+       ubyte ( -1 ) != 255 ||
+       ubyte ( -2 ) != 254 ||
+       ubyte ( 255 ) != 255 ||
+       ubyte ( 256 ) != 0 ||
+       ubyte ( 257 ) != 1 ) FAIL() ;
+
+  TEXT = "Testing short/ushort conversions" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  if ( short ( 32767 ) != 32767 ||
+       short ( 32768 ) != -32768 ||
+       short ( 65535 ) != -1 ||
+       short ( 65536 ) != 0 ||
+       short ( 65537 ) != 1 ||
+       ushort ( -1 ) != 65535 ||
+       ushort ( -2 ) != 65534 ||
+       ushort ( 65535 ) != 65535 ||
+       ushort ( 65536 ) != 0 ||
+       ushort ( 65537 ) != 1 ) FAIL() ;
+
+  TEXT = "Testing float/double conversions" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  
+  TEXT = "Testing NULLS in strings" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ; 
+  byte as = { -125, -34, 0, 48, 115 } ;
+  str bs = str uchar as ;
+  byte cs = byte uchar bs ;
+  if (cs[0]!=-125 || cs[1]!=-34 || cs[2]!=0 || cs[3]!=48 || cs[4]!=115) FAIL();
+
+  TEXT = "Testing local/global" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  global ;
+  int a = 99 ;
+  local ;
+  { int a = 100 ; }
+  global ;
+  if (  a != 99 ) FAIL() ;
+
+  TEXT = "Testing hashed/unhashed Lists" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  list a= { "one", "two", "three", "four" } ;
+  hashed a ;
+  int a.two = 2 ;
+  if ( a.two != 2 ) FAIL() ;
+  unhashed a ;
+
+  TEXT = "Testing list/next/prev manipulation" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  put a ;
+  list a = { 1,2,3 } ;
+  do {
+    next a ;
+  }
+  while ( a[0] != 3 ) ;
+  if ( a[0] != 3 ) FAIL() ;
+  do {
+    prev a ;
+  }
+  while ( a[0] != 1 ) ;
+  if ( a[0] != 1 ) FAIL() ;
+
+  TEXT = "Testing variable merging" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  S1F2 = { list hello = { char model[7] = "BERGSMA", 
+                          char rev[4] = "2.1-0" } 
+                     } ;
+  s1f2 = { list l1 = { char m = "MIKE", char rev = "3.0-0", int x = 99 } } ;
+  msg = merge ( S1F2, s1f2 ) ;
+  if ( msg.hello.x != 99 ) FAIL() ;
+  if ( str ( msg.hello.model ) != "MIKE   " ) FAIL() ;
+  if ( int str msg.hello.rev[0] != 3 ) FAIL() ;
+
+  TEXT = "Testing variable sorting" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+
+  TEXT = "Testing If...else nesting" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  ok = 0 ;
+  if ( 1 == 1 ) 
+    if ( 1 == 2 ) 
+      ;
+    else
+      if ( 1 != 1 )
+        ;
+      else 
+        if ( 1 != 2 ) 
+          if ( 2 < 1 )
+	    ;
+          else
+            if ( 1 > 2 ) 
+	      ;
+            else
+              if ( 2 <= 1 )
+		;	
+              else 
+                if ( 1 >= 2 ) 
+		  ;
+              	else
+	          ok = 1 ;
+		  
+  if ( !ok ) FAIL();
+
+  TEXT = "Testing else-less If" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  ok = 0 ; if ( 0 ) if ( 0 ) if ( 1 ) FAIL ; ok = 1;
+  if ( !ok ) FAIL();
+
+  TEXT = "Testing exists() and count()";
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  if ( !exists (w) || count( w ) != 2 ) FAIL() ;
+
+  TEXT = "Testing undef() function" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  undef ( w ) ; if ( exists ( w ) ) FAIL() ;
+
+  TEXT = "Testing strlen() function" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  if ( strlen ( "string" ) != 6 ) FAIL() ;
+    
+  TEXT = "Testing strloc() function" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  if ( strloc ( "string", "str" ) != 0 ||
+       strloc ( "string", "ing" ) != 3 ||
+       strloc ( "string", "xxx" ) != 6 ) FAIL() ;
+    
+  TEXT = "Testing strext() function" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  if ( strext ( "string", 2, 3 ) != "rin" ) FAIL() ;
+		
+  TEXT = "Testing trim() function" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  if ( trim ( "string   " ) != "string" ) FAIL() ;
+		
+  TEXT = "Testing string subtraction function" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  str a = "foobarfoo" ;
+  b = "foo" ;
+  c = "bar" ;
+  if ( a-b != "foobar" ) FAIL() ;
+  if ( a-c != "foofoo" ) FAIL() ;
+  if ( a-a != "" ) FAIL () ;
+  if ( a-"abc" != a ) FAIL() ;
+
+  TEXT = "Testing file functions" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  h = fopen("test.dat","w");
+  a1 = { 1,2,3,4,5,"a b c","x",2.0999};
+  s1 = "the rain in spain" ;
+  fput(a1,h);
+  fputs(s1,h);
+  fclose(h);
+  h = fopen("test.dat","r");
+  a2 = fget(h);
+  s2 = fgets(h);
+  fclose ( h ) ;
+  n = count ( a1 ) ;
+  m = count ( a2 ) ;
+  if ( n != m ) FAIL() ;
+  for ( i=0; i<n ; i++ ) if ( a1[i] != a2[i] ) { put ( i ) ; FAIL() ; }
+  if ( s1 != s2 ) FAIL() ;
+  
+  sleep(1) ;
+
+  TEXT = "Testing {} blocks" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  if ( toupper ( "abc" ) != "ABC" ) FAIL() ;
+  if ( tolower ( "ABC" ) != "abc" ) FAIL() ;
+  { puts ( "Pass {}" ) ; }
+  {} puts ( "Pass: {}" ) ;
+  { { puts ( "Pass {}" ) ; } }
+
+  TEXT = "Testing statements separated by a commas" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  list x = { a = 1, b = 2 } ;
+  if ( x.a != 1 || x.b != 2 || x[0] != "a" || x[1] != "b" ) FAIL() ;
+
+  TEXT = "Testing looping: while, do, for, continue, and break " ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  for ( x = 0; x < 3; x = x + 1 ) {
+    if ( x == 1 ) {
+      y = 0 ; do y = y + 1 ; while ( y < 3 ) ; if ( y != 3 ) FAIL() ;
+      continue ;
+      FAIL();
+    }
+    else if ( x == 2  ) {
+      y = 0 ; while ( y < 3 ) y = y + 1 ; if ( y != 3 ) FAIL() ;
+      break ;
+      FAIL() ;
+    }
+  }
+  if ( x != 2 ) FAIL() ;
+
+  TEXT = { 	"Testing sender() function\n",
+  		"...sender = ", sender(),
+		"...sender instance = ", sender(1),
+		"...sender object = ", sender(2),
+		"...sender node = ", sender(3) } ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+
+  TEXT = { 	"Testing self() function\n",
+  		"...self = ", self(),
+		"...self instance = ", self(1),
+		"...self object = ", self(2),
+		"...self node = ", self(3) } ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+
+  TEXT = "Testing mode() function" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  if ( mode() != "event" ) FAIL() ;
+
+  TEXT = "Testing method() function" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  if ( method() != "BEGIN" ) FAIL() ;
+
+  TEXT = { 	"Testing date and time functions\n",
+		"...datetime = ", datetime(),
+		"...time = ", time(),
+		"...date = ", date() } ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+
+  TEXT = "Testing goto statement" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  goto LABEL ;
+}
+
+FIRST()
+{	
+  if ( SECOND() != "OK" ) FAIL() ;
+  return ;
+}
+
+SECOND()
+{
+  if ( (THIRD() + 7 ) != 10 ) FAIL() ;
+  return "OK" ;
+}
+
+THIRD() 
+{
+  return (10-7) ;
+}
+
+float F ( int n ) { if ( n == 0 ) return 1.0; else return (n*F(n-1)) ; } ;
+
+LABEL:
+{
+  TEXT = "Testing method calling" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  FIRST() ;
+
+  TEXT = "Testing local methods and recursion" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  local ;
+  if ( F (5) != 120 ) FAIL() ;
+  global ;
+
+  TEXT = "Testing error handler" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+
+  on_error ERROR() ;
+  puts ( 1, 2, 3, 4 ) ;
+
+put 99 ;
+  //if ( STATUS != "%ARGUMENT" ) FAIL();
+
+  on_error FAIL() ;
+	
+  timestamp(1);
+  TEXT = "Testing sleep() function (3 seconds...please standby)" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  sleep(3) ;
+
+  TEXT = "Testing alarm() function. (5 seconds...please standby)" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  on_alarm ALARM() ;
+  alarm ( 5 ) ;
+  idle() ;
+}
+	
+ERROR()
+{
+  retval = STATUS ;
+  put retval ;
+  TEXT = "Testing nested error handling" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  on_error ERROR2() ;
+  puts ( a, b, c ) ;
+  put ( "Returned from nested error handler" ) ;
+  puts retval ;
+  STATUS = "$ACK" ;
+}
+
+ERROR2()
+{
+  put ( "Executing nested error handler" ) ;
+  return 1 ; 
+}
+
+ALARM()
+{
+  TEXT = "Testing death handler. (5 second lifetime...please standby)" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  on_death DEATH() ;
+  lifetime ( 5 ) ;
+  idle()  ;
+}
+
+DEATH()
+{
+  lifetime ( 600 ) ;
+  timestamp(0);
+  TEXT = "Connecting to TESTPLAN2...please standby" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  enable EVENT ;
+  event ( "TESTPLAN2", "CONNECT" ) ;
+  idle() ;
+}
+
+EVENT()
+{
+  testplan2 = sender() ;
+
+  TEXT = "Testing received event message" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  if ( s != "hello" || x != 1.2e3 || i != 123 ) FAIL() ;
+
+  TEXT = "Testing query for values" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  query ( testplan2, "QUERY", { "s", "x", "i" } ) ;
+  put ( s ) ; put ( x ) ; put ( i ) ;
+  if ( s != "world" || x != 3.2e1 || i != 321 ) FAIL() ;
+
+  TEXT = "Testing timeouts" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  timeout ( 2 ) ;
+  c = 5 ;
+debug(0);
+  on_timeout return TO();
+  query ( testplan2, "FOOBAR" ) ;
+  if ( STATUS != "%TIMEOUT" ) FAIL() ;
+  MORE() ;
+}
+
+TO()
+{
+  /*debug(0);*/
+  if ( c > 0 ) {
+    on_timeout return TO(); 
+    retVal = "$ACK" ;
+  }
+  else {
+    retVal = "%TIMEOUT" ;
+  }
+ 
+  TEXT = { "Got %TIMEOUT. Returning ",retVal,". Countdown = ", str(c) } ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  c = c - 1 ;
+  return retVal ;
+}
+
+MORE()
+{
+
+  TEXT = "Testing query interrupts" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  enable QUERY ; 
+  on_message return INT() ;
+  timeout ( 10 ) ;
+  on_timeout FINISH() ; 
+  event ( testplan2, "QUERY2" ) ;
+  query ( testplan2, "FOOBAR2" ) ;
+  FINISH() ;
+}
+
+INT()
+{
+  if ( 	method() != "QUERY" ) FAIL() ;
+  put ( "MSG interrupted query" ) ;
+  return "$ACK" ;
+}
+
+QUERY()
+{
+  put "Doing QUERY method, back to query" ;
+}
+
+FINISH()
+{
+  TEXT = "Testing disabled message interrupt" ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  disable MSG3 ;
+  event ( self(), "MSG3" ) ;
+  timeout ( 3 ) ;
+  on_timeout ;
+  query ( testplan2, "FOOBAR" ) ;
+  TEXT = "Regression test successful." ;
+  puts TEXT ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+  idle();
+}
+
+MSG3()	
+{	
+  FAIL() ;
+}
+
+DISCONNECT()
+{
+  TEXT = "You may perform the operation manually." ;
+  PAGEWAIT = "YES" ;
+  event ( promis, "DISCONNECT", { &TEXT, &PAGEWAIT } ) ;
+  DONE() ;
+}
+
+ABORT()
+{
+  TEXT = "You may abort." ;
+  PAGEWAIT = "YES" ;
+  event ( promis, "ABORT", { &TEXT, &PAGEWAIT } ) ;
+  DONE() ;
+}
+
+DATA()
+{
+  query ( promis, "DATA", { "STATE" } ) ;
+  if ( STATUS ) {
+    TEXT = "The dcop STATE = " + STATE ;
+    event ( promis, "MESSAGE", { &TEXT } ) ;
+  }
+  else {
+    TEXT = { "The DATA query to PROMIS has failed\n", STATUS } ;
+    event ( promis, "MESSAGE", { &TEXT } ) ;
+  }
+}
+
+SETUP()
+{
+  query ( promis, "SETUP", { "$RECIPE", "WAFERS" } ) ;
+  if ( STATUS ) {
+    WAFS = "" ;
+    n = count ( WAFERS ) ;
+    i = 0 ;	
+    while ( i < n ) {
+      if ( i == 0 )	
+        WAFS = WAFERS[i] ;
+      else	
+        WAFS = { WAFS, ", ", WAFERS[i] } ;
+      i = i + 1 ;
+    }
+    TEXT = { "$RECIPE = ", $RECIPE, ", WAFERS = ", WAFS } ;
+    event ( promis, "MESSAGE", { &TEXT } ) ;
+  }
+  else {
+    TEXT = { "The SETUP query to PROMIS has failed\n", STATUS } ;
+    event ( promis, "MESSAGE", { &TEXT } ) ;
+  }
+}
+
+LOAD()
+{
+  timeout ( 0 ) ;
+  TEXT = "Enter load object to add, eq: load2@node" ;
+  if ( !query ( promis, "MESSAGE", {&TEXT,"PROMPT"} ) ) FAIL() ;
+
+  newLink = PROMPT ;
+  
+  TEXT = "Enter load object to link to, ie: load1@node" ;
+  if ( !query ( promis, "MESSAGE", {&TEXT,"PROMPT"} ) ) FAIL() ;
+
+  targetLink = PROMPT ;
+
+  event ( newLink, "CONNECT", { &targetLink } ) ;
+
+  TEXT = { "Successfully started ", newLink, ", connecting to ", targetLink } ;
+  event ( promis, "MESSAGE", { &TEXT } ) ;
+}
+
+MESSAGE()
+{
+  if ( sender() == promis ) {
+    TEXT = { "Received text: '", TEXT,
+	     "'\nNow enter some more text" } ;
+    timeout(10) ;
+    on_timeout FAIL() ;
+    if ( !query ( promis, "MESSAGE", {&TEXT,"PROMPT"} ) ) FAIL() ;
+
+    TEXT = { "Received text: '", PROMPT, "'\n" } ;
+    event ( promis, "MESSAGE", { &TEXT } ) ;
+  }
+}
+
+FAIL()
+{
+  TEXT = "Failed test. Aborting regression test" ;
+  PAGEWAIT = "YES" ;
+  puts ( TEXT ) ;
+  event ( promis, "ABORT", { &TEXT, &PAGEWAIT } ) ;
+  exit() ;
+}
+
+DONE()
+{
+  exit() ;
+}

@@ -10,8 +10,22 @@
 /* Modifications:
  *
  * $Log: env.c,v $
- * Revision 1.7  2007-07-09 05:39:00  bergsma
- * TLOGV3
+ * Revision 1.37  2007-09-03 06:24:08  bergsma
+ * No newlines at end of file
+ *
+ * Revision 1.36  2007-07-11 18:49:21  mhohimer
+ * added node_* functions:
+gHyp_env_node_name
+ * gHyp_env_node_parent
+ * gHyp_env_node_root
+ * gHyp_env_node_firstchild
+ * gHyp_env_node_lastchild
+ * gHyp_env_node_nextsibling
+ * gHyp_env_node_prevsibling
+ * gHyp_env_node_nextfirstcousin
+ * gHyp_env_node_prevlastcousin
+ * gHyp_env_node_getnodebyattr
+ * gHyp_env_node_getnodebyname -- YET TO BE WRITTEN
  *
  * Revision 1.35  2007-05-02 20:34:01  bergsma
  * Fix parseurl function.  Improve various print/debug/log statements.
@@ -2772,7 +2786,7 @@ void gHyp_env_reverse ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       *pData ;
     
     int
-      argCount = gHyp_parse_argCount ( pParse ) ;;
+      argCount = gHyp_parse_argCount ( pParse ) ;
 
     gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
 
@@ -4023,4 +4037,1013 @@ void gHyp_env_insertval ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
     gHyp_instance_pushSTATUS ( pAI, pStack ) ;
   }
+}
+
+void gHyp_env_node_name ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+	/* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: node_name ( node )
+   *  Returns the name (variable label) of node
+   *  
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   * Modifications:
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+  
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+    
+  else {
+ 
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+
+    sData
+      *pData,
+      *pResult ;
+
+    int
+      argCount = gHyp_parse_argCount ( pParse ) ;
+          
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 1 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+	  "Invalid arguments. Usage: node_name ( node )" ) ;
+    
+    pData = gHyp_stack_popLvalue ( pStack, pAI ) ;    
+    
+    /* warn if argument is not a node, it still works though */
+    if( gHyp_data_getDataType ( pData ) != TYPE_LIST ) {
+      gHyp_instance_warning ( pAI, STATUS_INVALID, 
+		"%s is not a node, node_* functions are intended to be used with arguments of type list",
+		gHyp_data_getLabel( pData ) ) ;
+    }
+
+    pResult = gHyp_data_new ( NULL ) ;
+    gHyp_data_setStr ( pResult, gHyp_data_getLabel( gHyp_data_getVariable( pData ) ) ) ;
+    gHyp_stack_push ( pStack, pResult ) ;   
+  }
+}
+
+void gHyp_env_node_parent ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+	/* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: node_parent ( node )
+   *  Returns the label of the parent of node, returns an empy string
+   *  if node has no parent
+   *  
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   * Modifications:
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+  
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+    
+  else {
+ 
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+
+    sData
+      *pData,
+      *pParent,
+      *pResult ;
+      
+    char
+      buffer[VALUE_SIZE+1],
+      *pBuffer,
+      ss[TAG_INDEX_BUFLEN] ;
+
+    int
+      argCount = gHyp_parse_argCount ( pParse ),
+      i ;
+          
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 1 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+	  "Invalid arguments. Usage: node_parent ( node )" ) ;
+    
+    pData = gHyp_stack_popLvalue ( pStack, pAI ) ;
+    pParent = gHyp_data_getParent( pData ) ;
+    pResult = gHyp_data_new ( NULL ) ;
+    
+    /* warn if argument is not a node, it still works though */
+    if( gHyp_data_getDataType ( pData ) != TYPE_LIST ) {
+      gHyp_instance_warning ( pAI, STATUS_INVALID, 
+		"%s is not a node, node_* functions are intended to be used with arguments of type list",
+		gHyp_data_getLabel( pData ) ) ;
+    }
+ 
+    /* if label of pData matches variable label of pData, then it's a root node with no parent */
+    if ( strcmp( gHyp_data_getLabel( pData ), gHyp_data_getLabel( gHyp_data_getVariable( pData ) ) ) == 0 ) {
+      gHyp_instance_warning ( pAI, STATUS_INVALID, 
+		"%s has no parent, it is a root node", gHyp_data_getLabel( pData ) ) ;			
+      /* return an empty string */
+      gHyp_data_setStr ( pResult, "" ) ;
+    }
+    else {
+	  /* copy label to buffer */
+	  pBuffer = buffer;
+	  strcpy( pBuffer , gHyp_data_getLabel(pData) );
+      pBuffer += strlen( gHyp_data_getLabel(pData) ) ; 
+      /*  check for curly bracketed index and remove it*/
+	  if( (i = gHyp_data_getTagIndex( pData )) ) {
+        sprintf( ss, "{%d}", i ) ;
+      	pBuffer -= strlen( ss ) ;
+      } 
+      /* subtract variable label + 3 character for the 2 "'" and the 1 dot (.) */
+      pBuffer -= (3 + strlen( gHyp_data_getLabel( gHyp_data_getVariable(pData) ) ) ) ;
+      /* add a null terminator */
+      strcpy( pBuffer, "\0" );
+      gHyp_data_setStr ( pResult, buffer ) ;
+    }
+    gHyp_stack_push ( pStack, pResult ) ;
+  }
+}
+
+void gHyp_env_node_root ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+	/* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: node_root ( node )
+   *  Returns the label of the root of the tree in which node exists
+   *  
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   * Modifications:
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+  
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+    
+  else {
+ 
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+
+    sData
+      *pData,
+      *pAncestor,
+      *pResult ;
+      
+    char
+      buffer[VALUE_SIZE+1],
+      *pBuffer,
+      ss[TAG_INDEX_BUFLEN] ;
+
+    int
+      argCount = gHyp_parse_argCount ( pParse ),
+      i ;
+          
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 1 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+	  "Invalid arguments. Usage: node_root ( node )" ) ;
+    
+    pData = gHyp_stack_popLvalue ( pStack, pAI ) ;
+	  pResult = gHyp_data_new ( NULL ) ;
+
+    /* warn if argument is not a node, it still works though */
+    if( gHyp_data_getDataType ( pData ) != TYPE_LIST ) {
+      gHyp_instance_warning ( pAI, STATUS_INVALID, 
+		"%s is not a node, node_* functions are intended to be used with arguments of type list",
+		gHyp_data_getLabel( pData ) ) ;
+    }
+    /* copy label of node to buffer and set pointer */
+    pBuffer = buffer;
+    strcpy( pBuffer , gHyp_data_getLabel(pData) );
+    pBuffer += strlen( gHyp_data_getLabel(pData) ) ;
+    pAncestor = pData;
+    /* step up the hierarchy until we reach the root*/
+    while ( strcmp( gHyp_data_getLabel( gHyp_data_getParent( pAncestor ) ), "_main_" ) != 0 )
+    {
+      /*
+      gHyp_util_debug("buffer: %s", buffer);
+      gHyp_util_debug("node parent: %s", gHyp_data_getLabel( gHyp_data_getVariable( pAncestor )) ) ;
+      */
+      /*  check for curly bracketed index on the end and remove it*/
+      if( (i = gHyp_data_getTagIndex( pAncestor )) ) {
+        sprintf( ss, "{%d}", i ) ;
+      	pBuffer -= strlen( ss ) ;
+      }
+	  /* subtract node's variable label + 3 characters for the 2 "'" and the 1 dot (.) */ 
+	  pBuffer -= (3 + strlen( gHyp_data_getLabel( gHyp_data_getVariable( pAncestor ) ) ) );
+      pAncestor = gHyp_data_getParent( pAncestor );  
+    }
+    /* add a null  terminator */
+    strcpy( pBuffer, "\0" );
+    /* push the string to the stack */
+    gHyp_data_setStr ( pResult, buffer ) ;
+	gHyp_stack_push ( pStack, pResult ) ;
+  }
+}
+
+void gHyp_env_node_firstchild ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+	/* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: node_firstchild ( node )
+   *  Returns the label of the first child of node or an empty string
+   *  if no child is present.
+   *  
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   * Modifications:
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+  
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+    
+  else {
+ 
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+
+    sData
+      *pData,
+      *pChild,
+      *pResult ;
+
+    char
+      buffer[VALUE_SIZE+1],
+      *pBuffer ;
+
+    int
+      argCount = gHyp_parse_argCount ( pParse ) ;
+          
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 1 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+	  "Invalid arguments. Usage: node_firstchild ( node )" ) ;
+    
+    pData = gHyp_stack_popLvalue ( pStack, pAI ) ;
+    pResult = gHyp_data_new ( NULL ) ;
+
+    /* warn if argument is not a node, it still works though */
+    if( gHyp_data_getDataType ( pData ) != TYPE_LIST ) {
+      gHyp_instance_warning ( pAI, STATUS_INVALID, 
+		"%s is not a node, node_* functions are intended to be used with arguments of type list",
+		gHyp_data_getLabel( pData ) ) ;
+    }
+    
+    if( (pChild = gHyp_data_getFirstNode( pData )) )
+    {
+      pBuffer = buffer;
+      
+      /* copy old label to buffer */
+      strcpy( pBuffer , gHyp_data_getLabel(pData) );
+      pBuffer += strlen( gHyp_data_getLabel(pData) ) ;
+      /* stick the child's label  onto the end */
+      strcpy( pBuffer, ".'");
+      pBuffer += 2;
+      strcpy( pBuffer, gHyp_data_getLabel( pChild ) );
+      pBuffer += strlen( gHyp_data_getLabel( pChild ) );
+      strcpy( pBuffer, "'");
+      pBuffer += 1 ;
+      /* no need to check if a curly bracketed index is needed cause its the first child */
+  
+	      /* gHyp_util_debug("New String: %s", buffer ); */
+      
+      /* push the string to the stack */
+      gHyp_data_setStr ( pResult, buffer ) ;
+    }
+    else {  /* only leaves were found */       
+      gHyp_data_setStr ( pResult, "" ) ;
+    }
+
+    gHyp_stack_push ( pStack, pResult ) ;
+  }
+}
+
+void gHyp_env_node_lastchild ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+	/* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: node_lastchild ( node )
+   *  Returns the label of the last child of node or an empty string
+   *  if no child is present.
+   *  
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   * Modifications:
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+  
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+    
+  else {
+ 
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+
+    sData
+      *pData,
+      *pChild,
+      *pResult ;
+
+    char
+      buffer[VALUE_SIZE+1],
+      *pBuffer ;
+
+    int
+      argCount = gHyp_parse_argCount ( pParse ),
+      i ;
+          
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 1 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+	  "Invalid arguments. Usage: node_lastchild ( node )" ) ;
+    
+    pData = gHyp_stack_popLvalue ( pStack, pAI ) ;
+    pResult = gHyp_data_new ( NULL ) ;
+
+    /* warn if argument is not a node, it still works though */
+    if( gHyp_data_getDataType ( pData ) != TYPE_LIST ) {
+      gHyp_instance_warning ( pAI, STATUS_INVALID, 
+		"%s is not a node, node_* functions are intended to be used with arguments of type list",
+		gHyp_data_getLabel( pData ) ) ;
+    }
+
+    if( (pChild = gHyp_data_getLastNode( pData )) ) {
+
+      pBuffer = buffer;
+      /* copy old label to buffer */
+      strcpy( pBuffer , gHyp_data_getLabel(pData) );
+      pBuffer += strlen( gHyp_data_getLabel(pData) ) ;
+      /* stick the child's label  onto the end */
+      strcpy( pBuffer, ".'");
+      pBuffer += 2;
+      strcpy( pBuffer, gHyp_data_getLabel( pChild ) );
+      pBuffer += strlen( gHyp_data_getLabel( pChild ) );
+      strcpy( pBuffer, "'");
+      pBuffer += 1 ;
+      /* check if a curly bracketed index is needed */
+      if ( (i = gHyp_data_getTagIndex( pChild )) ) {
+        /* stick the curly index ending onto it */
+        sprintf ( pBuffer, "{%d}", i ) ;
+      }
+      /* gHyp_util_debug("New String: %s", buffer ); */
+      gHyp_data_setStr ( pResult, buffer ) ;
+    }
+    else { /* no child found */
+  	  gHyp_data_setStr ( pResult, "" ) ;
+	  }
+    gHyp_stack_push ( pStack, pResult ) ;  
+  }
+}
+
+void gHyp_env_node_nextsibling ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+	/* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: node_nextsibling ( node )
+   *  Returns the label of the next sibling of node or an empty string
+   *  if no next sibling is present.
+   *  
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   * Modifications:
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+  
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+    
+  else {
+ 
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+
+    sData
+      *pData,
+      *pSibling,
+      *pResult ;
+
+    char
+      buffer[VALUE_SIZE+1],
+      *pBuffer ,
+      ss[TAG_INDEX_BUFLEN] ;
+
+    int
+      argCount = gHyp_parse_argCount ( pParse ),
+      i ;
+          
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 1 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+	  "Invalid arguments. Usage: node_nextsibling ( node )" ) ;
+    
+    pData = gHyp_stack_popLvalue ( pStack, pAI ) ;
+    pResult = gHyp_data_new ( NULL ) ;
+
+    /* warn if argument is not a node, it still works though */
+    if( gHyp_data_getDataType ( pData ) != TYPE_LIST ) {
+      gHyp_instance_warning ( pAI, STATUS_INVALID,
+	  "%s is not a node, node_* functions are intended to be used with arguments of type list",
+	  gHyp_data_getLabel( pData ) ) ;
+    }
+    if ( (pSibling = gHyp_data_getNextNode( pData )) ) {
+      pBuffer = buffer;
+      /* copy label to buffer */
+      strcpy( pBuffer , gHyp_data_getLabel(pData) );     
+      pBuffer += strlen( gHyp_data_getLabel(pData) ) ;
+      /*  check for curly bracketed index on the end and remove it*/
+      if( (i = gHyp_data_getTagIndex( pData )) ) {
+        sprintf( ss, "{%d}", i ) ;
+      	pBuffer -= strlen( ss ) ;
+      }
+      /* subtract variable label + 1 character for the ending "'" */
+      pBuffer -= (1 + strlen( gHyp_data_getLabel( gHyp_data_getVariable(pData) ) ) );
+      /* stick the new label ending onto it */
+      strcpy( pBuffer, gHyp_data_getLabel( pSibling ) );
+      pBuffer += strlen( gHyp_data_getLabel( pSibling ) );
+      strcpy( pBuffer, "'");
+      pBuffer += 1 ;
+      /* check if a curly bracketed index is needed */
+      if ( (i = gHyp_data_getTagIndex( pSibling )) ) {
+        /* stick the curly index ending onto it */
+        sprintf ( pBuffer, "{%d}", i ) ;
+      }
+      /* gHyp_util_debug("Buffer String: %s", buffer ); */
+      /* push the string to the stack */
+      gHyp_data_setStr ( pResult, buffer ) ;
+    } 
+    else { 
+      /* return an empty string */
+      gHyp_data_setStr ( pResult, "" ) ;
+    }
+    gHyp_stack_push ( pStack, pResult ) ;  
+  }
+}
+
+void gHyp_env_node_prevsibling ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+	/* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: node_prevsibling ( node )
+   *  Returns the label of the previous sibling of node or an empty string
+   *  if no next sibling is present.
+   *  
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   * Modifications:
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+  
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+    
+  else {
+ 
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+
+    sData
+      *pData,
+      *pSibling,
+      *pResult ;
+
+    char
+      buffer[VALUE_SIZE+1],
+      *pBuffer,
+      ss[TAG_INDEX_BUFLEN] ;
+
+    int
+      argCount = gHyp_parse_argCount ( pParse ),
+      i ;
+          
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 1 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+	  "Invalid arguments. Usage: node_prevsibling ( node )" ) ;
+    
+    pData = gHyp_stack_popLvalue ( pStack, pAI ) ;
+    pResult = gHyp_data_new ( NULL ) ;
+
+    /* warn if argument is not a node, it still works though */
+    if( gHyp_data_getDataType ( pData ) != TYPE_LIST ) {
+        gHyp_instance_warning ( pAI, STATUS_INVALID, 
+	    "%s is not a node, node_* functions are intended to be used with arguments of type list",
+	    gHyp_data_getLabel( pData ) ) ;
+    }
+    if ( (pSibling = gHyp_data_getPrevNode ( pData )) ) { 
+      pBuffer = buffer;
+      /* copy old label to buffer */
+      strcpy( pBuffer , gHyp_data_getLabel(pData) );
+      pBuffer += strlen( gHyp_data_getLabel(pData) ) ;
+      /*  check for curly bracketed index and remove it*/
+      if( (i = gHyp_data_getTagIndex( pData )) ) {
+        sprintf( ss, "{%d}", i ) ;
+      	pBuffer -= strlen( ss ) ;
+      }
+      /* subtract variable label + 1 character for the ending "'" */
+      pBuffer -= (1 + strlen( gHyp_data_getLabel( gHyp_data_getVariable(pData) ) ) );
+      /* stick the new label ending onto it */
+      strcpy( pBuffer, gHyp_data_getLabel( pSibling ) );
+      pBuffer += strlen( gHyp_data_getLabel( pSibling ) );
+      strcpy( pBuffer, "'");
+      pBuffer += 1 ;
+      /* check if a curly bracketed index is needed */
+      if ( (i = gHyp_data_getTagIndex( pSibling )) ) {
+        /* stick the curly index ending onto it */
+        sprintf ( pBuffer, "{%d}", i ) ;
+      }
+      /* gHyp_util_debug("Buffer String: %s", buffer ); */
+      /* push the string to the stack */
+      gHyp_data_setStr ( pResult, buffer ) ;
+    }
+    else { /* return an empty string */
+      gHyp_data_setStr ( pResult, "" ) ;
+    }
+    gHyp_stack_push ( pStack, pResult ) ;   
+  }
+}
+
+void gHyp_env_node_nextfirstcousin ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+	/* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: node_nextfirstcousin ( node )
+   *  Returns the label of the next first cousin of node
+   *  (the first child of the node's parent's next sibling)
+   *  or an empty string if no next first cousin is present.
+   *  
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   * Modifications:
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+  
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+    
+  else {
+ 
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+
+    sData
+      *pData,
+      *pParent,
+      *pUncle,
+      *pCousin,
+      *pResult ;
+
+    char
+      buffer[VALUE_SIZE+1],
+      *pBuffer,
+      ss[TAG_INDEX_BUFLEN] ;
+
+    int
+      argCount = gHyp_parse_argCount ( pParse ),
+      i ;
+          
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 1 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+	  "Invalid arguments. Usage: node_nextfirstcousin ( node )" ) ;
+    
+    pData = gHyp_stack_popLvalue ( pStack, pAI ) ;
+	  pResult = gHyp_data_new ( NULL ) ;
+
+    /* warn if argument is not a node, it still works though */
+    if( gHyp_data_getDataType ( pData ) != TYPE_LIST ) {
+      gHyp_instance_warning ( pAI, STATUS_INVALID, 
+		"%s is not a node, node_* functions are intended to be used with arguments of type list",
+		gHyp_data_getLabel( pData ) ) ;
+    }
+
+    pParent = gHyp_data_getParent( pData );
+    
+    if ( strcmp( gHyp_data_getLabel( pParent ), "_main_" ) )
+    {  
+	  /* make sure pParent has a next sibling and that it is not the first of the list (wrap around) */
+      if ( (pUncle = gHyp_data_getNextNode( pParent )) )
+      {
+      	/* gHyp_util_debug("Next uncle found: %s", gHyp_data_getLabel( pUncle ) ); */
+        if ( (pCousin = gHyp_data_getFirstNode( pUncle )) ) { 
+  	      /* gHyp_util_debug("Next cousin Found: %s", gHyp_data_getLabel( pCousin ) ); */	  	
+		  pBuffer = buffer;
+	      /* copy node's label to buffer */
+	      strcpy( pBuffer , gHyp_data_getLabel(pData) );
+	      pBuffer += strlen( gHyp_data_getLabel(pData) ) ;
+	      /*  check for curly bracketed index and remove it*/
+	      if( (i = gHyp_data_getTagIndex( pData )) ) {
+            sprintf( ss, "{%d}", i ) ;
+      	    pBuffer -= strlen( ss ) ;
+          } 
+	      /* subtract child label (and the quotes and dot) */
+	      pBuffer -= (3 + strlen( gHyp_data_getLabel( gHyp_data_getVariable(pData) ) ) );
+	      /*  check for parent's curly bracketed index and remove it*/
+	      if( (i = gHyp_data_getTagIndex( pParent )) ) {
+            sprintf( ss, "{%d}", i ) ;
+      	    pBuffer -= strlen( ss ) ;
+          }
+		  /* subtract parent label (and the ending quote mark) */
+		  pBuffer -= (1 + strlen( gHyp_data_getLabel( pParent ) ) );
+	      /* add uncle's label */
+	      strcpy( pBuffer, gHyp_data_getLabel( pUncle ) );
+	      pBuffer += strlen( gHyp_data_getLabel( pUncle ) );
+	      strcpy( pBuffer, "'.'");
+	      pBuffer += 3;
+	      /* add cousin's label */
+	      strcpy( pBuffer, gHyp_data_getLabel( pCousin ) );
+	      pBuffer += strlen( gHyp_data_getLabel( pCousin ) );
+	      strcpy( pBuffer, "'");
+		  pBuffer += 1 ;
+	      /* check if a curly bracketed index is needed */
+	      if ( (i = gHyp_data_getTagIndex( pCousin )) ) {
+	        /* stick the curly index ending onto it */
+	        sprintf ( pBuffer, "{%d}", i ) ;
+	      }
+	      /* gHyp_util_debug("Buffer String: %s", buffer ); */
+	      gHyp_data_setStr ( pResult, buffer ) ;
+		}
+        else { /* no cousin node found */
+          gHyp_data_setStr ( pResult, "" ) ;
+          /* gHyp_util_debug("No next cousin node found"); */
+        }
+      }
+      else { /* no uncle found */
+      	gHyp_data_setStr ( pResult, "" ) ;
+      	/* gHyp_util_debug("No next uncle found"); */
+      }
+    }
+    else { /* no parent found */
+      gHyp_instance_warning ( pAI, STATUS_INVALID, 
+					"%s has no cousin, it is a root node", gHyp_data_getLabel( pData ) ) ;
+    	gHyp_data_setStr ( pResult, "" ) ;
+    	/* gHyp_util_debug("No parent found"); */
+    }
+    gHyp_stack_push ( pStack, pResult ) ;           
+  }
+}
+
+void gHyp_env_node_prevlastcousin ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+	/* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: node_prevsibling ( node )
+   *  Returns the label of the previous last cousin of node
+   *  (the last child of the node's parent's previous sibling )
+   *  or an empty string if no previous last cousin is present.  
+   *  
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   * Modifications:
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+  
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+    
+  else {
+ 
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+
+    sData
+      *pData,
+      *pParent,
+      *pUncle,
+      *pCousin,
+      *pResult ;
+
+    char
+      buffer[VALUE_SIZE+1],
+      *pBuffer,
+      ss[TAG_INDEX_BUFLEN] ;
+
+    int
+      argCount = gHyp_parse_argCount ( pParse ),
+      i ;
+          
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 1 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+	  "Invalid arguments. Usage: node_prevlastcousin ( node )" ) ;
+    
+    pData = gHyp_stack_popLvalue ( pStack, pAI ) ;
+	  pResult = gHyp_data_new ( NULL ) ;
+
+    /* warn if argument is not a node, it still works though */
+    if( gHyp_data_getDataType ( pData ) != TYPE_LIST ) {
+      gHyp_instance_warning ( pAI, STATUS_INVALID, 
+		"%s is not a node, node_* functions are intended to be used with arguments of type list",
+		gHyp_data_getLabel( pData ) ) ;
+    }
+
+    pParent = gHyp_data_getParent( pData );
+    
+    if ( strcmp( gHyp_data_getLabel( pParent ), "_main_" ) )
+    { 
+	  /* make sure pParent has a previous sibling and that it is not the first of the list (wrap around) */
+      if ( (pUncle = gHyp_data_getPrevNode( pParent )) )
+      {
+      	/* gHyp_util_debug("Previous uncle found: %s", gHyp_data_getLabel( pUncle ) ); */
+        if ( (pCousin = gHyp_data_getLastNode( pUncle )) ) {
+  		  /* gHyp_util_debug("Next cousin Found: %s", gHyp_data_getLabel( pCousin ) ); */	  	
+		  pBuffer = buffer;
+	      /* copy node's label to buffer */
+	      strcpy( pBuffer , gHyp_data_getLabel(pData) );
+	      pBuffer += strlen( gHyp_data_getLabel(pData) ) ;
+	      /*  check for curly bracketed index and remove it*/
+	      if( (i = gHyp_data_getTagIndex( pData )) ) {
+            sprintf( ss, "{%d}", i ) ;
+      	    pBuffer -= strlen( ss ) ;
+          }
+	      /* subtract child label (and the quotes and dot) */
+	      pBuffer -= (3 + strlen( gHyp_data_getLabel( gHyp_data_getVariable(pData) ) ) );
+	      /*  check for parent's curly bracketed index and remove it*/
+	      if( (i = gHyp_data_getTagIndex( pParent )) ) {
+            sprintf( ss, "{%d}", i ) ;
+      	    pBuffer -= strlen( ss ) ;
+          }
+		  /* subtract parent label (and the ending quote mark) */
+		  pBuffer -= (1 + strlen( gHyp_data_getLabel( pParent ) ) );
+	      /* add uncle's label */
+	      strcpy( pBuffer, gHyp_data_getLabel( pUncle ) );
+	      pBuffer += strlen( gHyp_data_getLabel( pUncle ) );
+	      strcpy( pBuffer, "'.'");
+	      pBuffer += 3;
+	      /* add cousin's label */
+	      strcpy( pBuffer, gHyp_data_getLabel( pCousin ) );
+	      pBuffer += strlen( gHyp_data_getLabel( pCousin ) );
+	      strcpy( pBuffer, "'");
+	      pBuffer += 1 ;
+	      /* check if a curly bracketed index is needed */
+	      if ( (i = gHyp_data_getTagIndex( pCousin )) ) {
+	        /* stick the curly index ending onto it */
+	        sprintf ( pBuffer, "{%d}", i ) ;
+	      }
+	      /* gHyp_util_debug("Buffer String: %s", buffer ); */
+	      
+	      gHyp_data_setStr ( pResult, buffer ) ;
+	    }
+		else { /* no cousin found at all */
+          gHyp_data_setStr ( pResult, "" ) ;
+	      /* gHyp_util_debug("No previous cousin nodes found"); */
+		}
+      }
+      else { /* no uncle found */
+      	gHyp_data_setStr ( pResult, "" ) ;
+      	/* gHyp_util_debug("No previous uncle found"); */
+      }
+    }
+    else { /* no parent found */
+      gHyp_instance_warning ( pAI, STATUS_INVALID, 
+		"%s has no cousin, it is a root node", gHyp_data_getLabel( pData ) ) ;
+    	gHyp_data_setStr ( pResult, "" ) ;
+    	/* gHyp_util_debug("No parent found"); */
+    }
+    gHyp_stack_push ( pStack, pResult ) ;           
+  }
+}
+
+void gHyp_env_node_getnodebyattr ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+	/* Description:
+   *
+   *  PARSE or EXECUTE the built-in function: node_getnodebyattr ( node, name, value )
+   *  Returns the label of the first child of node that contains an attribute
+   *  of specified name and value or an empty string if no child is present.
+   *  
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   * Modifications:
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+  
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+    
+  else {
+ 
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+
+    sData
+      *pData,
+      *pAttrVal,
+      *pAttrVar,
+      *pChild,
+      *pResult ;
+
+    char
+      buffer[VALUE_SIZE+1],
+      *pBuffer,
+      tempBuffer[VALUE_SIZE+1],
+      valueBuffer[VALUE_SIZE+1] ;
+
+    int
+      argCount = gHyp_parse_argCount ( pParse ),
+      i ;
+          
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 3 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+	  "Invalid arguments. Usage: node_getnodebyattr ( node, attr_name, attr_value )" ) ;
+  
+    pAttrVal = gHyp_stack_popRvalue( pStack, pAI ) ;
+    pAttrVar = gHyp_stack_popRvalue( pStack, pAI ) ;
+    pData = gHyp_stack_popLvalue ( pStack, pAI ) ;
+    pResult = gHyp_data_new ( NULL ) ;
+
+    /* error if argument are of wrong type */
+    if( gHyp_data_getDataType( pData ) != TYPE_LIST ||
+        gHyp_data_getDataType( pAttrVal ) != TYPE_STRING ||
+        gHyp_data_getDataType( pAttrVal ) != TYPE_STRING ) 
+      gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+	  "Invalid arguments. Usage: node_getnodebyattr ( node, attr_name, attr_value )" ) ;
+
+    if( (pChild = gHyp_data_getNodeByAttr( pData,
+                                           gHyp_data_getLabel(pAttrVar),
+                                           gHyp_data_getLabel(pAttrVal),
+                                           valueBuffer )) ) {                               	     
+      /*generate the ancestory chain back up to pData*/                         	
+      while( pChild != gHyp_data_getVariable( pData ) ) {
+      	pBuffer = buffer; 
+      	/* gHyp_util_debug("current ancestor: %s\n", gHyp_data_getLabel( pChild ) ); */
+      	strcpy( pBuffer, ".'");
+        pBuffer += 2;
+        strcpy( pBuffer, gHyp_data_getLabel( pChild ) );
+        pBuffer += strlen( gHyp_data_getLabel( pChild ) );
+        strcpy( pBuffer, "'");
+        pBuffer += 1 ;
+        /* check if a curly bracketed index is needed */
+        if ( (i = gHyp_data_getTagIndex( pChild )) ) {
+          sprintf ( pBuffer, "{%d}", i ) ;
+        }
+      	/* gHyp_util_debug("current ancestor: %s\n", buffer ) ; */
+        strcat( buffer, tempBuffer) ;
+        strcpy( tempBuffer, buffer) ;
+        /* gHyp_util_debug("current ancestry chain: %s\n", tempBuffer ) ; */
+      	pChild = gHyp_data_getParent( pChild );
+      }                           	
+      /* prepend root name to the ancestry chain */
+      strcpy( buffer , gHyp_data_getLabel(pData) );
+      strcat( buffer, tempBuffer );
+      /* gHyp_util_debug("New String: %s", buffer ); */
+      /* push the string to the stack */
+      gHyp_data_setStr ( pResult, buffer ) ;
+    }
+    else {  /* no match found */       
+      gHyp_data_setStr ( pResult, "" ) ;
+    }
+    gHyp_stack_push ( pStack, pResult ) ;
+  }
+}
+
+
+void gHyp_env_node_getnodebyname ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* YET TO BE COMPLETED */
 }

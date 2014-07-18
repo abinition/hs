@@ -10,8 +10,22 @@
  * Modifications:
  *
  *   $Log: load.c,v $
- *   Revision 1.6  2007-07-09 05:39:00  bergsma
- *   TLOGV3
+ *   Revision 1.51  2008-03-05 22:21:10  bergsma
+ *   Try and get recvmsg and sendmsg working for TRU64
+ *
+ *   Revision 1.50  2008-02-17 02:10:46  bergsma
+ *   Added deg2rad and rad2deg
+ *
+ *   Revision 1.49  2007-10-27 01:55:39  bergsma
+ *   newline
+ *
+ *   Revision 1.48  2007-07-11 18:51:16  mhohimer
+ *   Added new functions:
+node_name, node_parent, node_root, node_firstchild, node_lastchild, node_nextsibling,
+ *   node_prevsibling, node_nextfirstcousin, node_prevlastcousin, node_getnodebyattr
+ *
+ *   Revision 1.47  2007-07-09 05:35:30  bergsma
+ *   Add urlstring()
  *
  *   Revision 1.46  2007-06-16 17:57:43  bergsma
  *   palceholder for 'when'
@@ -336,6 +350,7 @@ void gHyp_load_new ()
   lHyp_load_newKey ( "tointernal" ,  gHyp_function_tointernal, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "encode" ,  gHyp_function_encode, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "decode" ,  gHyp_function_decode, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "urlstring" ,  gHyp_cgi_urlstring, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "urlencode" ,  gHyp_function_urlEncode, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "urldecode" ,  gHyp_function_urlDecode, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "vt2html" ,  gHyp_function_vt2html, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
@@ -411,6 +426,8 @@ void gHyp_load_new ()
   lHyp_load_newKey ( "secs_mlb" ,  gHyp_secs_mlb, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "secs_mhp" ,  gHyp_secs_mhp, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "secs_handle" ,  gHyp_secs_handle, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "secs_xml" ,  gHyp_secs_xml, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+
 
   /* Port functions */
   lHyp_load_newKey ( "port_service" ,  gHyp_port_service, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
@@ -425,7 +442,7 @@ void gHyp_load_new ()
   lHyp_load_newKey ( "port_binary" ,  gHyp_port_binary, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "port_eagain" ,  gHyp_port_eagain, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
 
-#if defined ( AS_UNIX ) && !defined (AS_TRUE64)
+#if defined ( AS_UNIX ) 
   lHyp_load_newKey ( "port_recvmsg" ,  gHyp_port_recvmsg, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "port_sendmsg" ,  gHyp_port_sendmsg, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
 #endif
@@ -464,6 +481,7 @@ void gHyp_load_new ()
   lHyp_load_newKey ( "ssl_enableSessions", gHyp_ssl_enableSessions, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "ssl_getState", gHyp_ssl_getState, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "ssl_setState", gHyp_ssl_setState, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "ssl_digest", gHyp_ssl_digest, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
 #endif
 
 #ifdef AS_MAPI
@@ -509,6 +527,17 @@ void gHyp_load_new ()
   lHyp_load_newKey ( "localhost" ,  gHyp_env_localhost, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "localaddr" ,  gHyp_env_localaddr, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "round" ,  gHyp_function_round, TOKEN_TYPECAST, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "node_name" ,  gHyp_env_node_name, TOKEN_TYPECAST, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "node_parent" ,  gHyp_env_node_parent, TOKEN_TYPECAST, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "node_root" ,  gHyp_env_node_root, TOKEN_TYPECAST, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "node_firstchild" ,  gHyp_env_node_firstchild, TOKEN_TYPECAST, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "node_lastchild" ,  gHyp_env_node_lastchild, TOKEN_TYPECAST, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "node_nextsibling" ,  gHyp_env_node_nextsibling, TOKEN_TYPECAST, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "node_prevsibling" ,  gHyp_env_node_prevsibling, TOKEN_TYPECAST, PRECEDENCE_UNARY ) ;  
+  lHyp_load_newKey ( "node_nextfirstcousin" ,  gHyp_env_node_nextfirstcousin, TOKEN_TYPECAST, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "node_prevlastcousin" ,  gHyp_env_node_prevlastcousin, TOKEN_TYPECAST, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "node_getnodebyattr" ,  gHyp_env_node_getnodebyattr, TOKEN_TYPECAST, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "node_getnodebyname" ,  gHyp_env_node_getnodebyname, TOKEN_TYPECAST, PRECEDENCE_UNARY ) ;
 
   /* Math functions */
   lHyp_load_newKey ( "max" ,  gHyp_operator_max, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
@@ -528,6 +557,8 @@ void gHyp_load_new ()
   lHyp_load_newKey ( "sqrt" ,  gHyp_operator_sqrt, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "tan" ,  gHyp_operator_sqrt, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "exp" ,  gHyp_operator_exp, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "deg2rad" ,  gHyp_operator_deg2rad, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "rad2deg" ,  gHyp_operator_rad2deg, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
 
 }
 
@@ -759,11 +790,11 @@ char *gHyp_load_fromStream (	sInstance *pAI,
 				  pConcept,
 				  pHyp, 
 				  pToken,
-				  (sBYTE) ( ch == '"' ? 
+				  (sBYTE) ( (ch == '"') ? 
 					    TOKEN_LITERAL :
-					    ch == '`' ? 
-					    TOKEN_RAW :
-					    TOKEN_UNIDENTIFIED ),
+					    ((ch == 96) ? 
+					     TOKEN_RAW :
+					     TOKEN_UNIDENTIFIED )),
 				  PRECEDENCE_OPERAND, 
 				  lineNo,
 				  gHyp_operand_token ) ;

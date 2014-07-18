@@ -2,9 +2,6 @@
  * Modifications:
  *
  * $Log: route.h,v $
- * Revision 1.5  2007-07-09 05:39:00  bergsma
- * TLOGV3
- *
  * Revision 1.6  2007-03-15 01:09:21  bergsma
  * Added "reply" function.
  *

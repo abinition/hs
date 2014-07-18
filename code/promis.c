@@ -11,9 +11,6 @@
  * Modifications:
  *
  *	$Log: promis.c,v $
- *	Revision 1.5  2007-07-09 05:39:00  bergsma
- *	TLOGV3
- *	
  *	Revision 1.28  2007-06-07 17:31:20  bergsma
  *	Close and reopen TEST file before we use it, because we were assuming it
  *	was already open, and this may not always be the case.

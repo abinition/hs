@@ -11,9 +11,6 @@
  * Modifications:
  *
  *	$Log: aimsg.c,v $
- *	Revision 1.5  2007-07-09 05:39:00  bergsma
- *	TLOGV3
- *	
  *	Revision 1.16  2004-12-13 04:56:42  bergsma
  *	In unparse, when processing tokens, must strcpy to token variable
  *	before doing util_parse on it.

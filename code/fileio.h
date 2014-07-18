@@ -3,9 +3,6 @@
  * Modifications:
  *
  * $Log: fileio.h,v $
- * Revision 1.5  2007-07-09 05:39:00  bergsma
- * TLOGV3
- *
  * Revision 1.12  2007-03-19 05:32:08  bergsma
  * New functions: min, max, pow, hypot, abs, acos, asin, atan,  ceil, cos,
  *  floor, log10, logN, sin, sqrt, tan, exp printf, sprintf, fprintf

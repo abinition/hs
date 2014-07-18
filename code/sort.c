@@ -10,9 +10,6 @@
  * Modifications:
  *
  *   $Log: sort.c,v $
- *   Revision 1.5  2007-07-09 05:39:00  bergsma
- *   TLOGV3
- *
  *   Revision 1.3  2002-11-14 01:43:57  bergsma
  *   Ditto.
  *

@@ -2,8 +2,22 @@
  * Modifications:
  *
  * $Log: env.h,v $
- * Revision 1.6  2007-07-09 05:39:00  bergsma
- * TLOGV3
+ * Revision 1.13  2007-09-03 06:24:08  bergsma
+ * No newlines at end of file
+ *
+ * Revision 1.12  2007-07-11 18:49:21  mhohimer
+ * added node_* functions:
+ * gHyp_env_node_name
+ * gHyp_env_node_parent
+ * gHyp_env_node_root
+ * gHyp_env_node_firstchild
+ * gHyp_env_node_lastchild
+ * gHyp_env_node_nextsibling
+ * gHyp_env_node_prevsibling
+ * gHyp_env_node_nextfirstcousin
+ * gHyp_env_node_prevlastcousin
+ * gHyp_env_node_getnodebyattr
+ * gHyp_env_node_getnodebyname -- YET TO BE WRITTEN
  *
  * Revision 1.11  2007-03-15 01:04:07  bergsma
  * Added smart-join-merge "sjm" function, as an option in mergeData.
@@ -79,3 +93,14 @@ extern void	gHyp_env_localhost ( sInstance*, sCode*, sLOGICAL ) ;
 extern void	gHyp_env_localaddr ( sInstance*, sCode*, sLOGICAL ) ;
 extern void	gHyp_env_appendval ( sInstance*, sCode*, sLOGICAL ) ;
 extern void	gHyp_env_insertval ( sInstance*, sCode*, sLOGICAL ) ;
+extern void	gHyp_env_node_name ( sInstance*, sCode*, sLOGICAL ) ;
+extern void	gHyp_env_node_parent ( sInstance*, sCode*, sLOGICAL ) ;
+extern void	gHyp_env_node_root ( sInstance*, sCode*, sLOGICAL ) ;
+extern void	gHyp_env_node_firstchild ( sInstance*, sCode*, sLOGICAL ) ;
+extern void	gHyp_env_node_lastchild ( sInstance*, sCode*, sLOGICAL ) ;
+extern void	gHyp_env_node_nextsibling ( sInstance*, sCode*, sLOGICAL ) ;
+extern void	gHyp_env_node_prevsibling ( sInstance*, sCode*, sLOGICAL ) ;
+extern void	gHyp_env_node_nextfirstcousin ( sInstance*, sCode*, sLOGICAL ) ;
+extern void	gHyp_env_node_prevlastcousin ( sInstance*, sCode*, sLOGICAL ) ;
+extern void	gHyp_env_node_getnodebyattr ( sInstance*, sCode*, sLOGICAL ) ;
+extern void	gHyp_env_node_getnodebyname ( sInstance*, sCode*, sLOGICAL ) ;

@@ -3,8 +3,11 @@
  * Modifications:
  *
  * $Log: sock.h,v $
- * Revision 1.5  2007-07-09 05:39:00  bergsma
- * TLOGV3
+ * Revision 1.19  2007-07-11 14:44:59  bergsma
+ * Add second argyment to ssl_digest
+ *
+ * Revision 1.18  2007-07-09 05:37:32  bergsma
+ * Add ssl_digest
  *
  * Revision 1.17  2006-11-13 02:11:34  bergsma
  * Added functions ssl_setState and ssl_getState
@@ -73,6 +76,7 @@ extern sLOGICAL	gHyp_sock_mkdir ( char* ) ;
 #ifdef AS_SSL
 extern void *gHyp_sock_ctxInit(char*,char*,char*);
 extern int gHyp_sock_password_cb(char *buf, int num, int rwflag, void *userdata ) ;
+extern void gHyp_sock_digest ( char *text, char *text2, char *digest ) ;
 extern sLOGICAL gHyp_sock_ctxCiphers ( void * ctx, char *ciphers ) ;
 extern sLOGICAL gHyp_sock_ctxCApath ( void * ctx, char *CApath ) ;
 extern sLOGICAL gHyp_sock_ctxCAfile ( void * ctx, char *CAfile ) ;
@@ -86,7 +90,7 @@ extern void gHyp_sock_enableSessions ( void *ctx ) ;
 extern sSSL* gHyp_sock_copySSL ( sSSL *pSSL ) ;
 extern sSSL* gHyp_sock_createSSL ( void *ctx, sLOGICAL isClient ) ;
 extern sData *gHyp_sock_getSSLstate(  sSSL *pSSL  ) ;
-extern sLOGICAL gHyp_sock_setSSLstate ( sSSL *pSSL, sData *pSSLdata ) ;
+extern sLOGICAL gHyp_sock_setSSLstate ( sSSL *pSSL, sData *pSSLdata, sSSL *pSSLORIG ) ;
 #endif
 extern int gHyp_sock_readJNI ( SOCKET s, 
 			char *pMsgOff,

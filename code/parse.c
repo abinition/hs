@@ -10,9 +10,6 @@
  * Modifications:
  *
  *   $Log: parse.c,v $
- *   Revision 1.5  2007-07-09 05:39:00  bergsma
- *   TLOGV3
- *
  *   Revision 1.10  2004-11-19 03:48:04  bergsma
  *   HS 3.4.0.   Added list indexing with {}.
  *

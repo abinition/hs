@@ -2,9 +2,6 @@
  * Modifications:
  *
  * $Log: type.h,v $
- * Revision 1.5  2007-07-09 05:39:00  bergsma
- * TLOGV3
- *
  * Revision 1.5  2005-03-09 04:20:28  bergsma
  * Added scopeof function
  *

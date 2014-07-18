@@ -1,0 +1,75 @@
+CONNECT()
+{
+  put ( "Received connect message from " + sender() ) ;
+  put ( "Sending back an event message" ) ;
+  s = "hello" ;
+  x = 1.2e3 ;
+  i = 123 ;
+  enable CONNECT ;
+  enable QUERY ;
+  enable QUERY2 ;
+  enable FOOBAR ;
+  enable FOOBAR2 ;
+  enable MESSAGE ;
+  enable DISCONNECT ;
+  enable ABORT ;
+  event ( sender(), "EVENT", { &s, &x, &i } ) ;
+  return ;
+}
+
+QUERY() 
+{
+  puts ( "Received QUERY message from " + sender() ) ;
+  puts { "s = '",s,"'" } ;
+  puts { "x = '",x,"'" } ;
+  puts { "i = '",i,"'" } ;
+  s = "world" ;
+debug(1023) ;
+  x = 3.2e1 ;
+debug 0 ;
+  i = 321 ;
+  puts { "s = '",s,"'" } ;
+  puts { "x = '",x,"'" } ;
+  puts { "i = '",i,"'" } ;
+  return ;
+}
+
+QUERY2()
+{
+  put ( "Received QUERY2 message from " + sender() ) ;
+  on_message return "$ACK" ;
+  query ( sender(), "QUERY" ) ;
+  return ;
+}
+
+FOOBAR() 
+{
+  put ( "Received FOOBAR message from " + sender() ) ;
+  sleep(15);
+  return ;
+}
+
+FOOBAR2() 
+{
+  put ( "Received FOOBAR2 message from " + sender() ) ;
+  return ;
+}
+
+MESSAGE() 
+{
+  return ;
+}
+
+
+DISCONNECT()
+{
+  exit() ;
+}
+
+ABORT()
+{
+  exit();
+}
+
+enable DISCONNECT ;
+enable ABORT ;

@@ -11,8 +11,8 @@
  * Modifications:
  *
  * $Log: hsms.c,v $
- * Revision 1.5  2007-07-09 05:39:00  bergsma
- * TLOGV3
+ * Revision 1.19  2008-02-12 23:11:05  bergsma
+ * VS 2008 Update
  *
  * Revision 1.18  2007-05-02 20:34:01  bergsma
  * Fix parseurl function.  Improve various print/debug/log statements.
@@ -1126,7 +1126,7 @@ int gHyp_hsms_outgoing ( sHsms *pHsms,
 
     /*gHyp_instance_setBeatTime ( pAI, gsCurTime+(int)pHsms->t6) ;*/
 
-    gHyp_instance_setWakeTime ( pAI, gsCurTime+(int)pHsms->t6) ;
+    gHyp_instance_setWakeTime ( pAI, (int)gsCurTime+(int)pHsms->t6) ;
 
     return gHyp_instance_read ( pAI ) ;
   }

@@ -10,8 +10,15 @@
  * Modifications:
  *
  *	$Log: tcp.c,v $
- *	Revision 1.5  2007-07-09 05:39:00  bergsma
- *	TLOGV3
+ *	Revision 1.29  2008-06-13 01:45:32  bergsma
+ *	Bad use of detecting localhost
+ *	
+ *	Revision 1.27  2008-05-03 21:42:14  bergsma
+ *	When incoming target is an ip address, don't assume that is the return
+ *	address, so we must resolve all incoming ip addresses further.
+ *	
+ *	Revision 1.26  2008-03-05 22:21:10  bergsma
+ *	Try and get recvmsg and sendmsg working for TRU64
  *	
  *	Revision 1.25  2007-02-17 01:53:13  bergsma
  *	Socket handoff does not work with TRUE64
@@ -970,7 +977,9 @@ SOCKET gHyp_tcp_checkInbound ( SOCKET s,
     /* Capture address. */
     strcpy ( pAddr, inet_ntoa (sock.sin_addr) ) ;
 
-    /* Is it in IP format? */
+    /* Resolve it further */
+    strcpy ( pHost, pAddr ) ;
+    gHyp_tcp_resolveHost ( pHost, pAddr ) ;
 
     /* Make IP address point to IP address */
     strcpy ( pHost, pAddr ) ; 
@@ -1011,7 +1020,7 @@ void gHyp_tcp_gethostname ( char *host, int size )
  gethostname ( host, size ) ;
 }
 
-#if defined (AS_UNIX) && !defined(AS_TRUE64)
+#if defined (AS_UNIX) 
 
 /* Support for functions port_sendmsg() and port_recvmsg(). */
 
@@ -1070,12 +1079,20 @@ sLOGICAL gHyp_tcp_sendmsg ( char *pClient, char *pService, SOCKET sendfd, int po
   struct iovec   iov[1];
   char buf[4] ; 
 
+#ifndef CMSG_SPACE
+#define CMSG_SPACE(len)	(_CMSG_ALIGN(sizeof(struct cmsghdr)) + _CMSG_ALIGN(len))
+#endif
+#ifndef CMSG_LEN
+#define CMSG_LEN(len)	(_CMSG_ALIGN(sizeof(struct cmsghdr)) + (len))
+#endif
+
   union {
     struct    cmsghdr cm;
     char      control[CMSG_SPACE(sizeof(int))];
   } control_un;
   struct cmsghdr *cmptr;
 
+#ifndef AS_TRUE64
   msg.msg_control = control_un.control;
   msg.msg_controllen = sizeof(control_un.control);
 
@@ -1085,6 +1102,10 @@ sLOGICAL gHyp_tcp_sendmsg ( char *pClient, char *pService, SOCKET sendfd, int po
   cmptr->cmsg_type = SCM_RIGHTS;
 
   *((int *) CMSG_DATA(cmptr)) = sendfd;
+#else
+  msg.msg_accrights = (char *)sendfd;
+  msg.msg_accrightslen = sizeof(sendfd);
+#endif
 
   msg.msg_name = NULL;
   msg.msg_namelen = 0;
@@ -1204,7 +1225,7 @@ SOCKET gHyp_tcp_recvmsg ( int s, int *pport )
   char buf[4] ;
   
   SOCKET
-    newfd;
+    newfd = INVALID_SOCKET;
 
   union {
     struct cmsghdr cm;
@@ -1212,8 +1233,13 @@ SOCKET gHyp_tcp_recvmsg ( int s, int *pport )
   } control_un;
   struct cmsghdr *cmptr;
 
+#ifndef AS_TRUE64
   msg.msg_control = control_un.control;
   msg.msg_controllen = sizeof(control_un.control);
+#else
+  msg.msg_accrights = (char *)newfd;
+  msg.msg_accrightslen = sizeof(newfd);
+#endif
 
   msg.msg_name = NULL;
   msg.msg_namelen = 0;
@@ -1231,6 +1257,7 @@ SOCKET gHyp_tcp_recvmsg ( int s, int *pport )
 
   }
 
+#ifndef AS_TRUE64
   if ( (cmptr=CMSG_FIRSTHDR(&msg)) != NULL &&
        cmptr->cmsg_len == CMSG_LEN(sizeof(int) ) ) {
 
@@ -1238,13 +1265,14 @@ SOCKET gHyp_tcp_recvmsg ( int s, int *pport )
         cmptr->cmsg_type == SCM_RIGHTS ) {
       
      newfd = *((int *) CMSG_DATA(cmptr));
-
+#endif
      port = (((unsigned int)(buf[0])) & 0x0ff) << 24;
      port |= (((unsigned int)(buf[1])) & 0x0ff) << 16;
      port |= (((unsigned int)(buf[2])) & 0x0ff) << 8;
      port |= (((unsigned int)(buf[3])) & 0x0ff);
      *pport = port ;
 
+#ifndef AS_TRUE64
     }
     else {
 
@@ -1258,6 +1286,7 @@ SOCKET gHyp_tcp_recvmsg ( int s, int *pport )
     gHyp_sock_close ( s, SOCKET_UNIX, "", "" ) ;
     newfd = INVALID_SOCKET;
   }
+#endif
 
   return newfd ;
 

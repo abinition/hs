@@ -4,8 +4,19 @@
  * Modifications:
  *
  * $Log: data.h,v $
- * Revision 1.5  2007-07-09 05:39:00  bergsma
- * TLOGV3
+ * Revision 1.13  2007-09-03 06:21:31  bergsma
+ * Remove const quallifiers
+ *
+ * Revision 1.12  2007-07-11 18:47:27  mhohimer
+ * Added new functions primarily intended to facilitate Node_* functions in env.c:
+gHyp_data_getPrev
+ * gHyp_data_getTagIndex
+ * gHyp_data_getChildNodeByIndex
+ * gHyp_data_getFirstNode
+ * gHyp_data_getLastNode
+ * gHyp_data_getNextNode
+ * gHyp_data_getPrevNode
+ * gHyp_data_getNodeByAttr
  *
  * Revision 1.11  2006-09-16 19:40:46  bergsma
  * Added gHyp_data_newVectorSrc
@@ -73,6 +84,7 @@ extern sLOGICAL		gHyp_data_isSibling ( sData *pData, sData *pChild ) ;
 extern sData* 		gHyp_data_getFirst ( sData* ) ;
 extern sData* 		gHyp_data_getLast ( sData* ) ;
 extern sData* 		gHyp_data_getNext ( sData* ) ;
+extern sData* 		gHyp_data_getPrev ( sData* ) ;
 extern int 		gHyp_data_getInt ( sData*, int, sLOGICAL ) ;
 extern unsigned long  	gHyp_data_getRaw ( sData*, int, sLOGICAL ) ;
 extern double 		gHyp_data_getDouble ( sData*, int, sLOGICAL ) ;
@@ -133,3 +145,11 @@ extern void 		gHyp_data_setHandle ( sData*, void* ) ;
 extern void 		gHyp_data_setHashed ( sData*, sLOGICAL ) ;
 extern char* 		gHyp_data_print ( sData* ) ;
 extern void 		gHyp_data_setText ( sData*, char*, int ) ;
+extern int          gHyp_data_getTagIndex ( sData* ) ;
+extern sData*       gHyp_data_getChildNodeByIndex( sData*, int ) ;
+extern sData*       gHyp_data_getFirstNode( sData* ) ;
+extern sData*       gHyp_data_getLastNode( sData* ) ;
+extern sData*       gHyp_data_getNextNode( sData* ) ;
+extern sData*       gHyp_data_getPrevNode( sData* ) ;
+extern sData*       gHyp_data_getNodeByAttr( sData*, char*, char*, char* ) ;
+

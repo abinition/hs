@@ -10,8 +10,14 @@
  * Modifications:
  *
  *   $Log: function.c,v $
- *   Revision 1.5  2007-07-09 05:39:00  bergsma
- *   TLOGV3
+ *   Revision 1.52  2008-02-12 23:10:29  bergsma
+ *   vt2html numCols and numRows are variables now,.
+ *
+ *   Revision 1.51  2007-10-27 01:55:12  bergsma
+ *   typo in round() function
+ *
+ *   Revision 1.50  2007-09-03 06:23:34  bergsma
+ *   Allow vt2html support different row and col counts
  *
  *   Revision 1.49  2007-06-20 21:09:24  bergsma
  *   Use popRdata, not popRvalue, when subsequently doing a data_getNext
@@ -2586,6 +2592,7 @@ static void lHyp_function_emitAction ( sData *pResult,
 
 
 static void lHyp_function_flushActions (   sData *pResult,
+				   int numRows,
 				   sBYTE  rowMap[VT_MAX_ROWS],
 				   sBYTE  flags3,
 				   int  numCols,
@@ -2686,7 +2693,8 @@ static void lHyp_function_flushActions (   sData *pResult,
     colspan = 0 ;
     allEqual = TRUE ;
 
-    for ( k=1;k<=VT_MAX_ROWS;k++ ) {
+    if ( doDebug ) gHyp_util_debug("Scanning %d rows, %d cols",numRows,numCols);
+    for ( k=1;k<=numRows;k++ ) {
 
       ir = rowMap [ k-1 ] ;
 
@@ -2814,7 +2822,7 @@ static void lHyp_function_flushActions (   sData *pResult,
 				colspan, 
 				last_rendition,
 				last_graphics,
-			        flags3,
+			    flags3,
 				token,
 				doDebug ) ;
     }
@@ -2867,8 +2875,10 @@ static sData* lHyp_function_vt2html ( sInstance *pAI,
     *pResult,
     *pLine,
     *pCol,
+    *pNumCols,
     *pSaveCol,
     *pRow,
+    *pNumRows,
     *pSaveRow,
     *pRendition,
     *pChr,
@@ -2908,7 +2918,7 @@ static sData* lHyp_function_vt2html ( sInstance *pAI,
     row,
     col,
     numCols,
-    maxRows,
+    numRows,
     save_col,
     save_row,
     context,
@@ -2971,6 +2981,8 @@ static sData* lHyp_function_vt2html ( sInstance *pAI,
      list state = {
 	int row,    // Cursor row position
 	int col,    // Cursor col position
+	int numCols,  // Now a variable, for smaller than 80x24
+	int numRows,  // Now a variable, for smaller than 80x24
 	byte rendition,  // Current rendition setting
 	binary graphics,	  // Current graphics mapping (G0,G1,G2,G3 mapping)
 	binary flags,	  // Current flags state (GL/GR mapping)
@@ -2995,7 +3007,7 @@ static sData* lHyp_function_vt2html ( sInstance *pAI,
 
      list screen = {
 
-	// 24 rows, labelled according to the id's of the rows
+	// <MAX_COL> cols <MAX_ROW> rows, labelled according to the id's of the rows
 	// in the html <TABLE> node that holds the VT screen
 	// The original order of the rows is r1, r, r3, r4,...r24,...
 	// however the combination of both scrolling and the setting 
@@ -3094,6 +3106,18 @@ static sData* lHyp_function_vt2html ( sInstance *pAI,
     gHyp_data_setVectorRaw ( pCol, &col, 0 ) ;
     gHyp_data_append ( pData, pCol ) ;
 
+    numCols = VT_MAX_COLS ;
+    pNumCols = gHyp_data_new ( "numCols" ) ;
+    gHyp_data_newVector ( pNumCols, TYPE_INTEGER, 1, TRUE ) ;
+    gHyp_data_setVectorRaw ( pNumCols, &numCols, 0 ) ;
+    gHyp_data_append ( pData, pNumCols ) ;
+
+    numRows = VT_MAX_ROWS ;
+    pNumRows = gHyp_data_new ( "numRows" ) ;
+    gHyp_data_newVector ( pNumRows, TYPE_INTEGER, 1, TRUE ) ;
+    gHyp_data_setVectorRaw ( pNumRows, &numRows, 0 ) ;
+    gHyp_data_append ( pData, pNumRows ) ;
+
     chr =  ' ' ;
     pChr = gHyp_data_new ( "chr" ) ;
     gHyp_data_newVector ( pChr, TYPE_UCHAR, 1, TRUE ) ;
@@ -3106,7 +3130,7 @@ static sData* lHyp_function_vt2html ( sInstance *pAI,
     gHyp_data_setVectorRaw ( pStartRow, &startRow, 0 ) ;
     gHyp_data_append ( pData, pStartRow ) ;
 
-    endRow = VT_MAX_ROWS ;
+    endRow = numRows ;
     pEndRow = gHyp_data_new ( "endRow" ) ;
     gHyp_data_newVector ( pEndRow, TYPE_INTEGER, 1, TRUE ) ;
     gHyp_data_setVectorRaw ( pEndRow, &endRow, 0 ) ;
@@ -3174,6 +3198,22 @@ static sData* lHyp_function_vt2html ( sInstance *pAI,
 
   }
 
+  pNumRows = gHyp_data_getChildByName ( pData, "numRows" ) ;
+  if ( !pNumRows ) {
+    pNumRows = gHyp_data_new ( "numRows" ) ;
+    gHyp_data_newVector ( pNumRows, TYPE_INTEGER, 1, TRUE ) ;
+    numRows = VT_MAX_ROWS ;
+    gHyp_data_setVectorRaw ( pNumRows, &numRows, 0 ) ;
+    gHyp_data_append ( pData, pNumRows ) ;
+  }
+
+  numRows = gHyp_data_getInt ( pNumRows, 0, TRUE ) ;
+  if ( numRows < 3 || numRows > VT_MAX_ROWS ) {
+    numRows = VT_MAX_ROWS ;
+    gHyp_data_setVectorRaw ( pNumRows, &numRows, 0 ) ;
+  }
+
+
   pRow = gHyp_data_getChildByName ( pData, "row" ) ;
   if ( !pRow ) {
     pRow = gHyp_data_new ( "row" ) ;
@@ -3184,7 +3224,7 @@ static sData* lHyp_function_vt2html ( sInstance *pAI,
   }
 
   row = gHyp_data_getInt ( pRow, 0, TRUE ) ;
-  if ( row < 1 || row > VT_MAX_ROWS ) {
+  if ( row < 1 || row > numRows ) {
     row = 1 ;
     gHyp_data_setVectorRaw ( pRow, &row, 0 ) ;
   }
@@ -3230,12 +3270,26 @@ static sData* lHyp_function_vt2html ( sInstance *pAI,
   }
   flags3 = gHyp_data_getInt ( pFlags3, 0, TRUE ) ;
 
-  /* Set number of columns */
-  numCols = ( flags3 & VT_FLAGS3_132_COL ) ? VT_132_COL : VT_80_COL  ;
+  pNumCols = gHyp_data_getChildByName ( pData, "numCols" ) ;
+  if ( !pNumCols ) {
+    pNumCols = gHyp_data_new ( "numCols" ) ;
+    gHyp_data_newVector ( pNumCols, TYPE_INTEGER, 1, TRUE ) ;
+    numCols = ( flags3 & VT_FLAGS3_132_COL ) ? VT_132_COL : VT_80_COL  ;
+    gHyp_data_setVectorRaw ( pNumCols, &numCols, 0 ) ;
+    gHyp_data_append ( pData, pNumCols ) ;
+  }
+
+  numCols = gHyp_data_getInt ( pNumCols, 0, TRUE ) ;
+  if ( numCols < 5 || numCols > VT_MAX_COLS ) {
+    /* Set number of columns */
+    numCols = ( flags3 & VT_FLAGS3_132_COL ) ? VT_132_COL : VT_80_COL  ;
+    gHyp_data_setVectorRaw ( pNumCols, &numCols, 0 ) ;
+  }
 
   pCol = gHyp_data_getChildByName ( pData, "col" ) ;
   if ( !pCol ) {
     pCol = gHyp_data_new ( "col" ) ;
+    gHyp_data_newVector ( pCol, TYPE_INTEGER, 1, TRUE ) ;
     col = 1 ;
     gHyp_data_setVectorRaw ( pCol, &col, 0 ) ;
     gHyp_data_append ( pData, pCol ) ;
@@ -3257,14 +3311,14 @@ static sData* lHyp_function_vt2html ( sInstance *pAI,
   }
 
   startRow = gHyp_data_getInt ( pStartRow, 0, TRUE ) ;
-  if ( startRow < 1 || startRow > VT_MAX_ROWS ) {
+  if ( startRow < 1 || startRow > numRows ) {
     startRow = 1 ;
     gHyp_data_setVectorRaw ( pStartRow, &startRow, 0 ) ;
   }
 
   pEndRow = gHyp_data_getChildByName ( pData, "endRow" ) ;
   if ( !pEndRow ) {
-    endRow = VT_MAX_ROWS ;
+    endRow = numRows ;
     pEndRow = gHyp_data_new ( "endRow" ) ;
     gHyp_data_newVector ( pEndRow, TYPE_INTEGER, 1, TRUE ) ;
     gHyp_data_setVectorRaw ( pEndRow, &endRow, 0 ) ;
@@ -3272,8 +3326,8 @@ static sData* lHyp_function_vt2html ( sInstance *pAI,
   }
 
   endRow = gHyp_data_getInt ( pEndRow, 0, TRUE ) ;
-  if ( endRow < startRow || endRow > VT_MAX_ROWS ) {
-    endRow = VT_MAX_ROWS ;
+  if ( endRow < startRow || endRow > numRows ) {
+    endRow = numRows ;
     gHyp_data_setVectorRaw ( pEndRow, &endRow, 0 ) ;
   }
 
@@ -3422,7 +3476,7 @@ static sData* lHyp_function_vt2html ( sInstance *pAI,
   }
 
   save_row = gHyp_data_getInt ( pSaveRow, 0, TRUE ) ;
-  if ( save_row < 1 || save_row > VT_MAX_ROWS ) {
+  if ( save_row < 1 || save_row > numRows ) {
     save_row = 1 ;
     gHyp_data_setVectorRaw ( pSaveRow, &save_row, 0 ) ;
   }
@@ -3491,7 +3545,7 @@ static sData* lHyp_function_vt2html ( sInstance *pAI,
    ******************************************************************************/
 
   /* The rowMap and Id's always starts off 1 to 1 */
-  for ( ir=0;ir<VT_MAX_ROWS;ir++ ) {
+  for ( ir=0;ir<numRows;ir++ ) {
     rowMap[ir] = ir ;
     rowId[ir] = ir+1 ;
   }
@@ -3510,7 +3564,7 @@ static sData* lHyp_function_vt2html ( sInstance *pAI,
 
     pNextRow = gHyp_data_getChildBySS ( pScreen, ir ) ; 
 
-    if ( ir >= VT_MAX_ROWS ) {
+    if ( ir >= numRows ) {
       /* Rid ourselves of any extra */
       assert ( FALSE ) ;
       gHyp_data_detach ( pNextRow ) ;
@@ -3571,7 +3625,7 @@ static sData* lHyp_function_vt2html ( sInstance *pAI,
 
   /* Fill in anything missing */
 
-  for ( ir=n;ir<VT_MAX_ROWS; ir++ ) {
+  for ( ir=n;ir<numRows; ir++ ) {
 
     sprintf ( id, "r%u", ir+1 ) ;
     pNextRow = gHyp_data_new ( id ) ;
@@ -3662,7 +3716,7 @@ static sData* lHyp_function_vt2html ( sInstance *pAI,
   /* RESET PAINTS THE ENTIRE SCREEN */
   if ( doReset ) {
     if ( doDebug ) gHyp_util_debug("INTERNAL RESET");
-    for ( ir=0;ir<VT_MAX_ROWS;ir++ ) {
+    for ( ir=0;ir<numRows;ir++ ) {
       for ( ic=0; ic<VT_MAX_COLS; ic++ ) {
 	/* Set as modified */
         pScreenFlags[ir][ic] |=  VT_FLAGS_MODIFIED ;
@@ -5786,7 +5840,7 @@ static sData* lHyp_function_vt2html ( sInstance *pAI,
 		if ( numeric_arg_count == 0 )
 		  numeric_args[numeric_arg_count] = 1 ;
 		else
-		  numeric_args[numeric_arg_count] = VT_MAX_ROWS ;
+		  numeric_args[numeric_arg_count] = numRows ;
 	      }
 	      gHyp_data_setVectorRaw ( pArgs, &numeric_args[numeric_arg_count], numeric_arg_count ) ;
 	    }
@@ -5794,7 +5848,7 @@ static sData* lHyp_function_vt2html ( sInstance *pAI,
 	      if ( numeric_arg_count == 0 )
 		numeric_args[numeric_arg_count] = 1 ;
 	      else
-		numeric_args[numeric_arg_count] = VT_MAX_ROWS ;
+		numeric_args[numeric_arg_count] = numRows ;
 	    }
 
 	    numeric_arg_count++;
@@ -6056,7 +6110,7 @@ static sData* lHyp_function_vt2html ( sInstance *pAI,
 	}
 	else {
 	  originStart = 1 ;
-	  originEnd = VT_MAX_ROWS ;
+	  originEnd = numRows ;
 	}
 
 	for ( k=0; k<arg;k++ ) {
@@ -6213,7 +6267,7 @@ static sData* lHyp_function_vt2html ( sInstance *pAI,
 	}
 	else {
 	  originStart = 1 ;
-	  originEnd = VT_MAX_ROWS ;
+	  originEnd = numRows ;
 	}
 
 	for ( k=0; k<arg;k++ ) {
@@ -6320,6 +6374,7 @@ static sData* lHyp_function_vt2html ( sInstance *pAI,
 	  }
 	  if ( isModified /*&& !doReset*/ ) {
 	    lHyp_function_flushActions ( pResult,
+				   numRows,
 				   rowMap,
 				   flags3,
 				   numCols,
@@ -6443,7 +6498,7 @@ static sData* lHyp_function_vt2html ( sInstance *pAI,
 	}
 	else {
 	  originStart = 1 ;
-	  originEnd = VT_MAX_ROWS ;
+	  originEnd = numRows ;
 	}
 
 	for ( k=0; k<arg;k++ ) {
@@ -6517,6 +6572,7 @@ static sData* lHyp_function_vt2html ( sInstance *pAI,
 	  }
 	  if ( isModified /*&& !doReset */ ) {
 	    lHyp_function_flushActions ( pResult,
+				   numRows,
 				   rowMap,
 				   flags3,
 				   numCols,
@@ -6616,7 +6672,7 @@ static sData* lHyp_function_vt2html ( sInstance *pAI,
 	}
 	else {
 	  originStart = 1 ;
-	  originEnd = VT_MAX_ROWS ;
+	  originEnd = numRows ;
 	}
 
 
@@ -6693,9 +6749,9 @@ static sData* lHyp_function_vt2html ( sInstance *pAI,
 	}
 	else {
 	  originStart = 1 ;
-	  originEnd = VT_MAX_ROWS ;
+	  originEnd = numRows ;
 	}
-	maxRows = originEnd - originStart + 1 ;
+	numRows = originEnd - originStart + 1 ;
 
 	if ( numeric_arg_count == 0 ) {
 	  numeric_arg_count = 2 ;
@@ -6745,7 +6801,7 @@ static sData* lHyp_function_vt2html ( sInstance *pAI,
 
 	ic = col-1 ; 
 	if ( doDebug ) gHyp_util_debug("TAB SET COLUMN %d",col ) ; 
-	for ( i=1;i<=VT_MAX_ROWS;i++ ) {
+	for ( i=1;i<=numRows;i++ ) {
 	  ir = rowMap[i-1];
 	  pScreenFlags[ir][ic] |= VT_FLAGS_TAB_STOP;
 	}
@@ -6764,7 +6820,7 @@ static sData* lHyp_function_vt2html ( sInstance *pAI,
 	  if ( doDebug ) gHyp_util_debug("CLEAR TAB AT COLUMN %d",col ) ; 
 
 	  ic = col-1 ;
-	  for ( i=1;i<=VT_MAX_ROWS;i++ ) {
+	  for ( i=1;i<=numRows;i++ ) {
 	    ir = rowMap[i-1];
 	    pScreenFlags[ir][ic] &= ~VT_FLAGS_TAB_STOP ;
 	  }
@@ -6773,7 +6829,7 @@ static sData* lHyp_function_vt2html ( sInstance *pAI,
 	else if ( arg == 3 ) {
 
 	  if ( doDebug ) gHyp_util_debug("CLEAR ALL TABS" ) ; 
-	  for ( i=1;i<=VT_MAX_ROWS;i++ ) {
+	  for ( i=1;i<=numRows;i++ ) {
 	    ir = rowMap[i-1];
 	    for ( ic=0;ic<VT_MAX_COLS;ic++ ) pScreenFlags[ir][ic] &= ~VT_FLAGS_TAB_STOP ;
 	  }
@@ -6829,7 +6885,7 @@ static sData* lHyp_function_vt2html ( sInstance *pAI,
 	      gHyp_data_setVectorRaw ( pChr, &chr, 0 ) ;
 
 	      /* Clear the screen area whenever we scale up to 132 column */
-	      for ( i=1;i<=VT_MAX_ROWS;i++ ) {
+	      for ( i=1;i<=numRows;i++ ) {
 
 		ir = rowMap[i-1];
 		for ( ic=0; ic<VT_MAX_COLS; ic++ ) {
@@ -6849,9 +6905,10 @@ static sData* lHyp_function_vt2html ( sInstance *pAI,
 	      
 	      if ( isModified ) {
 		lHyp_function_flushActions ( pResult,
+				   numRows,
 				   rowMap,
 				   flags3,
-				   VT_MAX_COLS,
+				   numCols,
 				   pScreenCharacter,
 				   pScreenRendition,
 				   pScreenFlags,
@@ -6886,7 +6943,7 @@ static sData* lHyp_function_vt2html ( sInstance *pAI,
 	      if ( doDebug ) gHyp_util_debug("SET: REVERSE VIDEO");
 
 	      if ( !(flags3&VT_FLAGS3_REVERSE )) {
-		for ( ir=0;ir<VT_MAX_ROWS;ir++ )
+		for ( ir=0;ir<numRows;ir++ )
 		  for ( ic=0; ic<VT_MAX_COLS; ic++ ) 
 		    pScreenFlags[ir][ic] |= VT_FLAGS_MODIFIED ;
 		isModified = TRUE ;
@@ -6973,7 +7030,7 @@ static sData* lHyp_function_vt2html ( sInstance *pAI,
 	      gHyp_data_setVectorRaw ( pChr, &chr, 0 ) ;
 
 	      /* Clear the screen area whenever we scale down to 80 column */
-	      for ( i=1;i<=VT_MAX_ROWS;i++ ) {
+	      for ( i=1;i<=numRows;i++ ) {
 
 		ir = rowMap[i-1];
 
@@ -6994,9 +7051,10 @@ static sData* lHyp_function_vt2html ( sInstance *pAI,
 	      
 	      if ( isModified ) {
 		lHyp_function_flushActions ( pResult,
+				   numRows,
 				   rowMap,
 				   flags3,
-				   VT_MAX_COLS,
+				   numCols,
 				   pScreenCharacter,
 				   pScreenRendition,
 				   pScreenFlags,
@@ -7037,7 +7095,7 @@ static sData* lHyp_function_vt2html ( sInstance *pAI,
 	       */
 	      if ( doDebug ) gHyp_util_debug("RESET: NORMAL VIDEO");
 	      if ( (flags3&VT_FLAGS3_REVERSE )) {
-		for ( ir=0;ir<VT_MAX_ROWS;ir++ )
+		for ( ir=0;ir<numRows;ir++ )
 		  for ( ic=0; ic<VT_MAX_COLS; ic++ ) 
 		    pScreenFlags[ir][ic] |= VT_FLAGS_MODIFIED ;
 		isModified = TRUE ;
@@ -7240,7 +7298,7 @@ static sData* lHyp_function_vt2html ( sInstance *pAI,
 
       case ACTION_EEEE :
 
-	for ( i=1;i<=VT_MAX_ROWS;i++ ) {
+	for ( i=1;i<=numRows;i++ ) {
 	  ir = rowMap[i-1];
 	  for ( ic=0; ic<numCols; ic++ ) {
 	    pScreenCharacter[ir][ic] = 'E' ;
@@ -7369,20 +7427,20 @@ static sData* lHyp_function_vt2html ( sInstance *pAI,
 	if ( numeric_arg_count == 0 ) {
 	  numeric_arg_count = 2 ;
 	  numeric_args[0] = 1 ;
-	  numeric_args[1] = VT_MAX_ROWS ;
+	  numeric_args[1] = numRows ;
 	}
 	else if ( numeric_arg_count == 1 ) {
 	  numeric_arg_count = 2 ;
-	  numeric_args[1] = VT_MAX_ROWS ;
+	  numeric_args[1] = numRows ;
 	}
 
 	startRow = numeric_args[0] ;
 	endRow = numeric_args[1] ;
 
 	if ( startRow < 1 ) startRow = 1 ;
-	if ( startRow > VT_MAX_ROWS ) startRow = VT_MAX_ROWS ;
+	if ( startRow > numRows ) startRow = numRows ;
 	if ( endRow < 1 ) endRow = 1 ;
-	if ( endRow > VT_MAX_ROWS ) endRow = VT_MAX_ROWS ;
+	if ( endRow > numRows ) endRow = numRows ;
 	if ( endRow < startRow ) endRow = startRow ;
 	gHyp_data_setVectorRaw ( pStartRow, &startRow, 0 ) ;
 	gHyp_data_setVectorRaw ( pEndRow, &endRow, 0 ) ;
@@ -7414,7 +7472,7 @@ static sData* lHyp_function_vt2html ( sInstance *pAI,
   	if (doDebug) gHyp_util_debug("ERASE IN CHARACTER from (%u,%u), arg=%u",row,col,m );
 
 	k = col-1 ;
-	for ( i=row;i<=VT_MAX_ROWS;i++ ) {
+	for ( i=row;i<=numRows;i++ ) {
 
 	  ir = rowMap[i-1];
 
@@ -7437,6 +7495,7 @@ static sData* lHyp_function_vt2html ( sInstance *pAI,
 	/*
 	if ( isModified ) {
 	  lHyp_function_flushActions ( pResult,
+				   numRows,
 				   rowMap,
 				   flags3,
 				   numCols,
@@ -7516,6 +7575,7 @@ static sData* lHyp_function_vt2html ( sInstance *pAI,
 	/*
 	if ( isModified ) {
 	  lHyp_function_flushActions ( pResult,
+				   numRows,
 				   rowMap,
 				   flags3,
 				   numCols,
@@ -7547,7 +7607,7 @@ static sData* lHyp_function_vt2html ( sInstance *pAI,
 	if ( m == 0 ) {
 
 	  k = col-1 ;
-	  for ( i=row;i<=VT_MAX_ROWS;i++ ) {
+	  for ( i=row;i<=numRows;i++ ) {
 	    ir = rowMap[i-1];
 	    for ( ic=k; ic<VT_MAX_COLS; ic++ ) {
 	      k = 0 ;
@@ -7584,7 +7644,7 @@ static sData* lHyp_function_vt2html ( sInstance *pAI,
 	}
 	else if ( m == 2 ) {
  
-	  for ( i=1;i<=VT_MAX_ROWS;i++ ) {
+	  for ( i=1;i<=numRows;i++ ) {
 	    ir = rowMap[i-1];
 	    for ( ic=0; ic<VT_MAX_COLS; ic++ ) {
 	      if ( doErase || pScreenCharacter[ir][ic] != ' ' ||
@@ -7602,6 +7662,7 @@ static sData* lHyp_function_vt2html ( sInstance *pAI,
 	/*
 	if ( isModified ) {
 	  lHyp_function_flushActions ( pResult,
+				   numRows,
 				   rowMap,
 				   flags3,
 				   numCols,
@@ -7646,7 +7707,7 @@ static sData* lHyp_function_vt2html ( sInstance *pAI,
   } /* End block */
 
   if ( hasPaged ) {
-    for ( ir=0;ir<VT_MAX_ROWS;ir++ ) {
+    for ( ir=0;ir<numRows;ir++ ) {
       for ( ic=0; ic<VT_MAX_COLS; ic++ ) {
 	/* Clear the page. */
         pScreenFlags[ir][ic] &= ~VT_FLAGS_PAGED ;
@@ -7655,7 +7716,10 @@ static sData* lHyp_function_vt2html ( sInstance *pAI,
   }
 
   if ( isModified ) {
-   lHyp_function_flushActions ( pResult,
+
+    if ( doDebug ) gHyp_util_debug("Flush %d rows, %d cols",numRows,numCols);
+    lHyp_function_flushActions ( pResult,
+  			 numRows,
 			 rowMap,
 			 flags3,
 			 numCols,
@@ -7825,7 +7889,7 @@ void gHyp_function_round ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     }
     if ( context== -2 && ss != -1 )
       gHyp_instance_error ( pAI, STATUS_BOUNDS, 
-			    "Subscript '%d' is out of bounds in strlen()",ss) ;
+			    "Subscript '%d' is out of bounds in round()",ss) ;
 
     gHyp_stack_push ( pStack, pResult ) ;
   }

@@ -10,8 +10,20 @@
 /* Modifications:
  *
  * $Log: ssl.c,v $
- * Revision 1.5  2007-07-09 05:39:00  bergsma
- * TLOGV3
+ * Revision 1.20  2008-05-03 21:44:17  bergsma
+ * Add placeholder extra arg (isCond) to ssl_assign
+ *
+ * Revision 1.19  2008-02-12 23:12:31  bergsma
+ * Placeholder for conditional SSL
+ *
+ * Revision 1.18  2007-09-25 17:50:19  bergsma
+ * Integrate SOCK_UNIX_LISTEN with SOCK_LISTEN
+ *
+ * Revision 1.17  2007-07-11 14:44:59  bergsma
+ * Add second argyment to ssl_digest
+ *
+ * Revision 1.16  2007-07-09 05:36:56  bergsma
+ * Add ssl_digest
  *
  * Revision 1.15  2007-05-09 00:43:19  bergsma
  * Problem with secs1_rawoutgoing - segmentation fault when pData str
@@ -476,6 +488,87 @@ void gHyp_ssl_CApath ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
   }
 }
 
+void gHyp_ssl_digest ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
+{
+  /* Description:
+   *
+   *    PARSE or EXECUTE the built-in function: ssl_digest ( )
+   *    Returns 1
+   *
+   * Arguments:
+   *
+   *    pAI                                                     [R]
+   *    - pointer to instance object
+   *
+   *    pCode                                                   [R]
+   *    - pointer to code object
+   *
+   * Return value:
+   *
+   *    none
+   *
+   */
+  sFrame        *pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse        *pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+
+  else {
+
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+
+    sData
+      *pResult,
+      *pData ;
+
+    int
+      n,
+      argCount = gHyp_parse_argCount ( pParse ) ;
+
+    char
+      digest[VALUE_SIZE+1],
+      text1[INTERNAL_VALUE_SIZE+1],
+      text2[INTERNAL_VALUE_SIZE+1] ;
+
+    /* Assume success */
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 1 && argCount!= 2 )
+      gHyp_instance_error ( pAI, STATUS_ARGUMENT,
+      "Invalid args. Usage: ssl_digest ( text1 [,text2 ] )");
+
+    if ( argCount == 2 ) {
+      /* Get the secondary text */
+      pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
+      n = gHyp_data_getStr ( pData,
+                             text2,
+                             INTERNAL_VALUE_SIZE,
+                             gHyp_data_getSubScript ( pData ),
+                             TRUE ) ;
+    }
+    else
+      strcpy ( text2, "" ) ;
+
+    /* Get the primary text */
+    pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
+    n = gHyp_data_getStr ( pData,
+                           text1,
+                           INTERNAL_VALUE_SIZE,
+                           gHyp_data_getSubScript ( pData ),
+                           TRUE ) ;
+
+    /* Get the SHA1 digest */
+    gHyp_sock_digest ( text1, text2, digest ) ;
+
+    pResult = gHyp_data_new ( NULL ) ;
+    gHyp_data_setStr ( pResult, digest ) ;
+    gHyp_stack_push ( pStack, pResult ) ;
+
+  }
+}
 
 void gHyp_ssl_auth ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 {
@@ -668,15 +761,23 @@ void gHyp_ssl_assign ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       *ctx;
 
     sLOGICAL
+      isConditionalSSL=FALSE,
       isClientSpecified,
       isClient=FALSE ;
 
     /* Assume success */
     gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
 
-    if ( argCount != 2 && argCount != 3 )
+    if ( argCount != 2 && argCount != 3 && argCount != 4 )
       gHyp_instance_error ( pAI, STATUS_ARGUMENT,
-      "Invalid args. Usage: hSSL = ssl_assign ( ssl_context_handle, handle [, isClient] )");
+      "Invalid args. Usage: hSSL = ssl_assign ( ssl_context_handle, handle [,isClient[,isCond]] )");
+
+    if ( argCount == 4 ) {
+      pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
+      isConditionalSSL = gHyp_data_getBool ( pData, gHyp_data_getSubScript ( pData ), TRUE );
+    }
+    else
+      isConditionalSSL = FALSE ;
 
     if ( argCount == 3 ) {
       pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
@@ -712,7 +813,7 @@ void gHyp_ssl_assign ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       if ( pChannel ) {
 
           if ( !isClientSpecified ) isClient = TRUE ;
-          pSSL = gHyp_sock_createSSL ( ctx, isClient ) ;
+          pSSL = gHyp_sock_createSSL ( ctx, isClient /*, isConditionalSSL*/ ) ;
           if ( pSSL == NULL )
             gHyp_instance_error ( pAI, STATUS_SSL, "No SSL bio created");
           gHyp_channel_setSSL ( pChannel, pSSL ) ;
@@ -720,7 +821,7 @@ void gHyp_ssl_assign ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       else if ( gHyp_concept_serviceHandle ( pConcept ) == fd ) {
 
           if ( !isClientSpecified ) isClient = FALSE ;
-          pSSL = gHyp_sock_createSSL ( ctx, isClient ) ;
+          pSSL = gHyp_sock_createSSL ( ctx, isClient /*, isConditionalSSL*/ ) ;
           if ( pSSL == NULL )
             gHyp_instance_error ( pAI, STATUS_SSL, "No SSL bio created");
           gHyp_concept_setSSL ( pConcept, pSSL ) ;
@@ -749,8 +850,8 @@ void gHyp_ssl_assign ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
         else {
 
           if ( !isClientSpecified )
-            isClient = !(gHyp_secs1_flags(pPort) & SOCKET_LISTEN) ;
-          pSSL = gHyp_sock_createSSL ( ctx, isClient ) ;
+            isClient = !(gHyp_secs1_flags(pPort) & (SOCKET_LISTEN | SOCKET_UNIX_LISTEN)) ;
+          pSSL = gHyp_sock_createSSL ( ctx, isClient /*, isConditionalSSL */) ;
           if ( pSSL == NULL )
             gHyp_instance_error ( pAI, STATUS_SSL, "No SSL bio created");
           gHyp_secs1_setSSL ( pPort, pSSL ) ;
@@ -773,8 +874,8 @@ void gHyp_ssl_assign ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
         else {
 
           if ( !isClientSpecified )
-            isClient = !(gHyp_hsms_flags(pHsms) & SOCKET_LISTEN) ;
-          pSSL = gHyp_sock_createSSL ( ctx, isClient ) ;
+            isClient = !(gHyp_hsms_flags(pHsms) & (SOCKET_LISTEN | SOCKET_UNIX_LISTEN)) ;
+          pSSL = gHyp_sock_createSSL ( ctx, isClient /*, isConditionalSSL*/ ) ;
           if ( pSSL == NULL )
             gHyp_instance_error ( pAI, STATUS_SSL, "No SSL bio created");
           gHyp_hsms_setSSL ( pHsms, pSSL ) ;
@@ -797,7 +898,7 @@ void gHyp_ssl_assign ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
         else {
 
           if ( !isClientSpecified )
-            isClient = !(gHyp_secs1_flags(pSecs1) & SOCKET_LISTEN) ;
+            isClient = !(gHyp_secs1_flags(pSecs1) & (SOCKET_LISTEN | SOCKET_UNIX_LISTEN)) ;
 
           pSSL = gHyp_sock_createSSL ( ctx, isClient ) ;
           if ( pSSL == NULL )
@@ -1194,7 +1295,8 @@ void gHyp_ssl_setState ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
     sSSL
       *pSSL,
-      *pSSL2 =NULL;
+      *pSSL2 =NULL,
+      *pSSL3 =NULL;
 
     /* Assume success */
     gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
@@ -1325,12 +1427,20 @@ void gHyp_ssl_setState ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       
       if ( pSSL2 ) {
 
-	/*pSSL2 = gHyp_sock_copySSL ( pSSL ) ;*/
+	/* Take from existing SSL connection */
 
-	/* We want to take this new SSL structure */
+	if ( pSSL2 == pSSL ) {
+	  /* Arg1 ID is the same as Arg3 ID.
+	   * We need to create a new SSL structure
+	   */
+	  gHyp_util_debug("Creating new SSL instance from CTX" ) ;
+	  pSSL2 = gHyp_sock_copySSL ( pSSL ) ;
+	}
+
+	/* We want to use this new SSL structure */
 
 	if ( pSSL ) {
-	  /* Old one exists.  Get rid of it first */
+	  /* Get rid of old one */
 	  gHyp_sock_deleteSSL ( pSSL ) ;
 	}
 
@@ -1338,7 +1448,9 @@ void gHyp_ssl_setState ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 	gHyp_secs1_setSSL ( pPort, pSSL2 ) ;
 
 	/* Remove SSL entry from other port */
-	gHyp_secs1_setSSL ( pPort2, NULL ) ;
+	if ( pPort2 != pPort ) {
+	  gHyp_secs1_setSSL ( pPort2, NULL ) ;
+	}
 
 	/* Switch */
 	pSSL = pSSL2 ;
@@ -1346,7 +1458,7 @@ void gHyp_ssl_setState ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       }
 
       /* Hack the SSL state. GRIM IT IS, BUT WHAT ELSE? . */
-      status = gHyp_sock_setSSLstate ( pSSL, pSSLdata ) ;
+      status = gHyp_sock_setSSLstate ( pSSL, pSSLdata, pSSL3 ) ;
     }
 
     gHyp_instance_pushSTATUS ( pAI, pStack ) ;

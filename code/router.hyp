@@ -1,0 +1,178 @@
+connect()
+{
+  puts "Connecting" ;
+  return "$ACK" ;
+}
+CONNECT() { return connect() ; }
+enable CONNECT ; 
+enable connect ;
+
+init()
+{
+  puts { "Initializing ",self() } ;
+
+  poll ;
+
+  /* Establish the error handlers */
+  on_message return MESSAGE_HANDLER() ;
+  on_alarm return ALARM_HANDLER() ;
+  on_error return ERROR_HANDLER() ;
+  on_interrupt return INTERRUPT_HANDLER() ;
+  on_pipe return PIPE_HANDLER() ; 
+  on_hangup return HANGUP_HANDLER() ;
+  on_timeout return TIMEOUT_HANDLER() ;
+  on_death return DEATH_HANDLER() ;
+
+  /* Establish death timer for start of a new day */
+  ansi_now = timestamp() ;
+  ansi_newDay = parsedate( date()+":000000" ) + (24*60*60) + 2 ;
+
+  secondsToDeath = ansi_newDay - ansi_now ;
+  lifetime ( secondsToDeath ) ;
+
+  /* Start new log file for current date */
+  logFileSpec = "\\local\\log\\router_" + date() + ".log" ;
+  puts { "Creating new logfile", logFileSpec } ;
+  puts { "------------ END OF LOG -------------------" } ;
+  //log ( logFileSpec ) ;
+  puts { "------------ START OF LOG -----------------" } ; 
+  
+  
+  /* Startup hyperscript archiver */
+  //timeout 60 ;
+  //ret = query ( "archiver", "CONNECT" ) ;
+
+  //if ( !ret )
+    //puts { "Failed to startup archiver, reason = ",ret } ;
+  return ;
+}
+
+disconnect()
+{
+  puts "disconnecting" ;
+}
+DISCONNECT() { return disconnect() ; }
+enable DISCONNECT ; 
+enable disconnect ;
+
+LIST()
+{
+  puts "listing" ;
+}
+'list'() { return LIST() ; }
+enable LIST ; 
+enable 'list' ;
+
+abort ()
+{  
+  puts "aborting" ;
+}
+ABORT() { return abort() ; }
+enable ABORT ;
+enable abort ;
+
+TERMINATE ()
+{
+  puts "terminating" ;
+  DONE() ;
+}
+enable TERMINATE ;
+
+DONE( str TEXT )
+{
+  puts TEXT ;
+  puts "...exiting" ;
+  exit ;
+}
+
+/***************************************************************************
+ *  H A N D L E R   S E C T I O N
+ ****************************************************************************/
+
+MESSAGE_HANDLER()
+{
+  puts { "Incoming message from ",sender()," requesting method ",method() } ;
+
+  /* Reinstate handler */
+  on_message return MESSAGE_HANDLER() ;
+
+  /* Allow message */
+  return "$ACK" ;
+}
+
+ALARM_HANDLER()
+{
+  return "%ALARM" ;
+}
+
+ERROR_HANDLER() 
+{
+  m = method() ;
+  text = { "%ERROR: run-time error occured in ",self(),
+	   " while executing method ",m } ;
+  *m = text ;
+  DONE ( text ) ;
+}
+
+INTERRUPT_HANDLER()
+{
+  text = { "%INTERRUPT: HyperScript was interrupted" } ;
+  DONE ( text ) ;
+}
+
+PIPE_HANDLER()
+{
+  text = { "%PIPE: signal received." } ;
+  DONE ( text ) ;
+}
+
+HANGUP_HANDLER()
+{
+  text = { "%HANGUP: signal received." } ;
+  DONE ( text ) ;
+}
+
+TIMEOUT_HANDLER()
+{
+  text = { "%TIMEOUT: signal received." } ;
+  return "$ACK" ;
+}
+
+DEATH_HANDLER()
+{
+  text = { "%DEATH: signal received." } ;
+  puts text ;
+
+  /* Establish death timer for start of a new day */
+  ansi_now = timestamp ;
+  ansi_newDay = parsedate ( date()+":000000" ) + (24*60*60) + 2 ;
+
+  secondsToDeath = ansi_newDay - ansi_now ;
+  lifetime ( secondsToDeath ) ;
+  on_death return DEATH_HANDLER() ;
+
+  /* Start new log file for current date */
+  logFileSpec = "\\local\\log\\router_" + date() + ".log" ;
+
+  puts { "Creating new logfile", logFileSpec } ;
+  puts { "------------ END OF LOG -------------------" } ;
+  log ( logFileSpec ) ;
+  puts { "------------ START OF LOG -----------------" } ;
+
+  return ;
+}
+
+SENDMAIL( str reason )
+{
+  subject = self(2) + " : router error" ;
+  filespec = "\\local\\log\\router_" + self(2) + ".txt" ;
+  h = fopen (filespec,"w");       
+  fputs ( reason, h ) ;
+  /*fputs ( {"OPERATOR = ",USERID}, h ) ;*/
+  fclose ( h ) ;
+  exec ( "mailx -s \"" + subject + "\" automation < " + filespec ) ;   
+}
+
+init();
+
+idle  ;

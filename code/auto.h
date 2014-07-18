@@ -3,8 +3,8 @@
  * Modifications:
  *
  * $Log: auto.h,v $
- * Revision 1.5  2007-07-09 05:39:00  bergsma
- * TLOGV3
+ * Revision 1.23  2007-09-26 00:36:59  bergsma
+ * Comment out math.h, use in operator.c only
  *
  * Revision 1.22  2007-05-08 01:27:49  bergsma
  * Make giMaxFrameDepth variable, tied to -x option.
@@ -100,7 +100,7 @@
 #include <ctype.h>	/* is* macros and functions */
 #include <string.h>	/* string functions */
 #include <setjmp.h>	/* setjmp and longjmp functions */
-#include <math.h>	/* math functions */
+/*#include <math.h>	 * math functions */
 
 #ifdef AS_MEMTRACK
 #include "memtrack.h"

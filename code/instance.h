@@ -3,8 +3,8 @@
  * Modifications:
  *
  * $Log: instance.h,v $
- * Revision 1.5  2007-07-09 05:39:00  bergsma
- * TLOGV3
+ * Revision 1.14  2008-02-17 02:10:17  bergsma
+ * Added secs_xml() function
  *
  * Revision 1.13  2007-02-26 02:35:01  bergsma
  * No longer user NULL_DEVICEID placeholder.  PORT and HTTP
@@ -76,6 +76,8 @@ extern int gHyp_instance_readProcess ( sInstance *pAI ) ;
 extern int gHyp_instance_readSignals ( sInstance *pAI ) ;
 extern void	gHyp_instance_setSecsMLB ( sInstance*, sBYTE ) ; 
 extern sBYTE	gHyp_instance_getSecsMLB ( sInstance* ) ;
+extern void	gHyp_instance_setSecsXML ( sInstance*, sLOGICAL ) ; 
+extern sLOGICAL	gHyp_instance_getSecsXML ( sInstance* ) ;
 extern void	gHyp_instance_setSecsMHP ( sInstance*, sWORD ) ; 
 extern sWORD	gHyp_instance_getSecsMHP ( sInstance* ) ;
 extern void 	gHyp_instance_setSecsReplyOut (sInstance*,sWORD,int,int,int,int);

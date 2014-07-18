@@ -2,8 +2,9 @@
 /* Modifications:
  *
  * $Log: hyp.h,v $
- * Revision 1.5  2007-07-09 05:39:00  bergsma
- * TLOGV3
+ * Revision 1.4  2008-05-03 21:43:55  bergsma
+ * Use giLineCount and giProgram count together to better determine the
+ * location of a program token code.
  *
  * Revision 1.3  2006-01-16 18:56:36  bergsma
  * HS 3.6.6
@@ -17,7 +18,7 @@
  */
 extern sHyp*	gHyp_hyp_new ( char * ) ;
 extern void 	gHyp_hyp_delete ( sHyp * ) ;
-extern void    	gHyp_hyp_traceReport ( int ) ;
+extern void    	gHyp_hyp_traceReport ( int, char* ) ;
 extern void    	gHyp_hyp_traceReset ( char * ) ;
 extern void gHyp_hyp_describe ( sHyp *pHyp ) ;
 extern char* gHyp_hyp_describe2 ( sHyp *pHyp, int hypIndex, char *pBuf, int buflen ) ;
@@ -39,7 +40,7 @@ extern int    	gHyp_hyp_execute ( sInstance*, sCode*);
 extern sCode*  	gHyp_hyp_code ( sHyp *, int ) ;
 extern void    	gHyp_hyp_error ( sHyp*, int, char*, ... ) ;
 extern sLOGICAL gHyp_hyp_okUnaryOperator ( sHyp * ) ;
-extern int	 gHyp_hyp_source ( sInstance*,sHyp *, FILE*, sLOGICAL ) ;
+extern int	 gHyp_hyp_source ( sInstance*,sHyp *, FILE*, char*, sLOGICAL ) ;
 extern sLOGICAL gHyp_hyp_load (	sInstance*, sConcept*, sHyp*, char*, sBYTE,
 				sBYTE, int, 
 				void (*pf)(sInstance*,sCode*,sLOGICAL) ) ;

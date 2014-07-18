@@ -11,8 +11,18 @@
  * Modifications:
  *
  *	$Log: instance.c,v $
- *	Revision 1.6  2007-07-09 05:39:00  bergsma
- *	TLOGV3
+ *	Revision 1.61  2008-05-03 21:43:55  bergsma
+ *	Use giLineCount and giProgram count together to better determine the
+ *	location of a program token code.
+ *	
+ *	Revision 1.60  2008-02-17 02:10:17  bergsma
+ *	Added secs_xml() function
+ *	
+ *	Revision 1.59  2008-02-12 23:11:29  bergsma
+ *	VS 2008 Update
+ *	
+ *	Revision 1.58  2007-09-25 17:50:19  bergsma
+ *	Integrate SOCK_UNIX_LISTEN with SOCK_LISTEN
  *	
  *	Revision 1.57  2007-05-02 20:34:01  bergsma
  *	Fix parseurl function.  Improve various print/debug/log statements.
@@ -362,6 +372,7 @@ struct instance_t
     sLOGICAL		rBit[MAX_DEVICES] ;
     sBYTE		mlb ; /* Minimumn length bytes */
     sWORD		mhp ; /* Minimumn hsms port */
+    sLOGICAL		xml ; /* If stored in xml format */
 
   } device ;
 
@@ -646,6 +657,7 @@ void gHyp_instance_swapDevices ( sInstance *pAI, sInstance *pAImain )
 
   pAI->device.mhp = pAImain->device.mhp ;
   pAI->device.mlb = pAImain->device.mlb ;
+  pAI->device.xml = pAImain->device.xml ;
 
   for ( i=0; i<DEVICE_HASH_TABLE_SIZE; i++ ) {
 
@@ -759,6 +771,7 @@ void gHyp_instance_init ( sInstance *pAI,
   pMethodVariable = gHyp_frame_createRootVariable ( pAI->exec.pFrame, "_main_" ) ;
 
   /* Create the area for the main and temporary code areas */
+  giLineCount = 0 ;
   pHyp = gHyp_hyp_new ( "_main_" ) ;
   pMethod = gHyp_method_new () ;
   gHyp_method_setHyp ( pMethod, pHyp ) ;
@@ -775,6 +788,7 @@ void gHyp_instance_init ( sInstance *pAI,
 
   /* Initialize/clear the device areas */
   pAI->device.mlb = -1 ;
+  pAI->device.xml = FALSE ; 
   pAI->device.mhp = SECS_MINIMUM_HSMS_PORT ;
   pAI->device.pHash = gHyp_hash_new ( DEVICE_HASH_TABLE_SIZE ) ;
   pAI->device.numDevices = 0 ;
@@ -1057,7 +1071,7 @@ int gHyp_instance_nextEvent ( sInstance *pAI )
     wakeup;
 	  
   /* Check the sanity of each time */
-  farAndAway = gsCurTime + MAX_ALARM_SECONDS + 1 ;
+  farAndAway = (int) gsCurTime + MAX_ALARM_SECONDS + 1 ;
 
   if ( pAI->exec.alarmTime != 0 ) {
     if ( pAI->exec.alarmTime < gsCurTime )
@@ -1094,11 +1108,11 @@ int gHyp_instance_nextEvent ( sInstance *pAI )
       pAI->exec.wakeTime = 0 ;
   }
 
-  alarmed = pAI->exec.alarmTime ? pAI->exec.alarmTime : farAndAway ;
-  death = pAI->exec.deathTime ? pAI->exec.deathTime : farAndAway ;
-  timeOut = pAI->exec.timeOutTime ? pAI->exec.timeOutTime : farAndAway ;
-  heartbeat = pAI->exec.beatTime ? pAI->exec.beatTime : farAndAway ;
-  wakeup = pAI->exec.wakeTime ? pAI->exec.wakeTime : farAndAway ;
+  alarmed = (int)   (pAI->exec.alarmTime ? pAI->exec.alarmTime : farAndAway );
+  death = (int)     (pAI->exec.deathTime ? pAI->exec.deathTime : farAndAway );
+  timeOut = (int)   (pAI->exec.timeOutTime ? pAI->exec.timeOutTime : farAndAway) ;
+  heartbeat = (int) (pAI->exec.beatTime ? pAI->exec.beatTime : farAndAway );
+  wakeup = (int)    (pAI->exec.wakeTime ? pAI->exec.wakeTime : farAndAway );
 
   /* CLEAR IT */
   pAI->exec.eventType = 0 ;
@@ -1140,7 +1154,7 @@ int gHyp_instance_nextEvent ( sInstance *pAI )
    */
   
  
-  return pAI->exec.eventTime ;
+  return (int) pAI->exec.eventTime ;
 }
 
 time_t gHyp_instance_getTimeOutTime ( sInstance *pAI )
@@ -2493,6 +2507,16 @@ sBYTE gHyp_instance_getSecsMLB ( sInstance *pAI )
   return pAI->device.mlb ;
 }
 
+void gHyp_instance_setSecsXML ( sInstance *pAI, sLOGICAL isXML ) 
+{
+  pAI->device.xml = isXML ;
+}
+
+sLOGICAL gHyp_instance_getSecsXML ( sInstance *pAI ) 
+{
+  return pAI->device.xml ;
+}
+
 void gHyp_instance_setSecsMHP ( sInstance *pAI, sWORD mhp ) 
 {
   pAI->device.mhp = mhp ;
@@ -3284,7 +3308,7 @@ void gHyp_instance_error ( sInstance *pAI, char *status, char *fmt, ... )
     maxIndex = gHyp_hyp_getHypCount ( pHyp ) ;
     if ( maxIndex > 0 ) {
       pCode = gHyp_hyp_code ( pHyp, MIN ( hypIndex, maxIndex-1 ) ) ;
-      gHyp_hyp_traceReport ( gHyp_hyp_line ( pCode ) ) ; 
+      gHyp_hyp_traceReport ( gHyp_hyp_line ( pCode ),gHyp_hyp_method ( pHyp ) ) ; 
     }
     pAI->signal.uERROR = 1 ;
 
@@ -4496,16 +4520,17 @@ sLOGICAL gHyp_instance_handleCondition ( sInstance * pAI )
   if ( ! gHyp_frame_testGlobalFlag ( pAI->exec.pFrame, FRAME_GLOBAL_TRUE ) )
     return FALSE ;
   else 
-    return (   	lHyp_instance_handleMessageInt ( pAI ) ||
-		lHyp_instance_handleMethod ( pAI ) ||
+    return (   	lHyp_instance_handleMessageInt  ( pAI ) ||
+		lHyp_instance_handleMethod      ( pAI ) ||
 		lHyp_instance_handleMessageCall ( pAI ) ||
-		lHyp_instance_handleError ( pAI ) ||
+		lHyp_instance_handleError       ( pAI ) ||
 		lHyp_instance_handleDereference ( pAI ) ||
-		lHyp_instance_handlePipe ( pAI ) ||
-		lHyp_instance_handleConnect ( pAI ) ||
-		lHyp_instance_handleHangup ( pAI ) ||
-		lHyp_instance_handleInterrupt ( pAI ) ||
-		lHyp_instance_handleAlarm ( pAI ) ) ;
+		lHyp_instance_handlePipe        ( pAI ) ||
+		lHyp_instance_handleConnect     ( pAI ) ||
+		lHyp_instance_handleHangup      ( pAI ) ||
+		lHyp_instance_handleInterrupt   ( pAI ) ||
+		lHyp_instance_handleAlarm       ( pAI ) 
+	   ) ;
 }
 
 int  gHyp_instance_run ( sInstance * pAIarg )

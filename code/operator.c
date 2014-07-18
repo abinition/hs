@@ -10,8 +10,11 @@
  * Modifications:
  *
  *   $Log: operator.c,v $
- *   Revision 1.5  2007-07-09 05:39:00  bergsma
- *   TLOGV3
+ *   Revision 1.23  2008-02-17 02:10:46  bergsma
+ *   Added deg2rad and rad2deg
+ *
+ *   Revision 1.22  2008-02-12 23:43:15  bergsma
+ *   VS 2008 update
  *
  *   Revision 1.21  2007-05-02 20:34:01  bergsma
  *   Fix parseurl function.  Improve various print/debug/log statements.
@@ -531,7 +534,11 @@ static sData *lHyp_operator_binaryOp (	sInstance	*pAI,
 	break ;
 
       case BINARY_HYPOT:
+#ifdef AS_WINDOWS
+	gHyp_data_setDouble ( pTmp, _hypot ( double1, double2 ) ) ;
+#else
 	gHyp_data_setDouble ( pTmp, hypot ( double1, double2 ) ) ;
+#endif
 	break ;
 
       default :	
@@ -758,7 +765,11 @@ static sData *lHyp_operator_binaryOp (	sInstance	*pAI,
 	break ;
 
       case BINARY_HYPOT:
+#ifdef AS_WINDOWS
+	gHyp_data_setDouble ( pTmp, _hypot ( double1, double2 ) ) ;
+#else
 	gHyp_data_setDouble ( pTmp, hypot ( double1, double2 ) ) ;
+#endif
 	break ;
 
       default :	
@@ -1018,6 +1029,18 @@ static sData *lHyp_operator_unaryOp (	sInstance	*pAI,
     case UNARY_ATAN:
       pTmp = gHyp_data_new ( NULL ) ;
       gHyp_data_setDouble ( pTmp, atan ( doubleVal ) ) ;
+      gHyp_data_append ( pResult, pTmp ) ;	
+      break ;
+
+    case UNARY_DEG2RAD:
+      pTmp = gHyp_data_new ( NULL ) ;
+      gHyp_data_setDouble ( pTmp,  (doubleVal*3.14159265358979323846/180.0)  ) ;
+      gHyp_data_append ( pResult, pTmp ) ;	
+      break ;
+
+    case UNARY_RAD2DEG:
+      pTmp = gHyp_data_new ( NULL ) ;
+      gHyp_data_setDouble ( pTmp, (doubleVal*180.0/3.14159265358979323846) ) ;
       gHyp_data_append ( pResult, pTmp ) ;	
       break ;
 
@@ -2699,6 +2722,116 @@ void gHyp_operator_exp ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 	
     pResult = lHyp_operator_unaryOp (	pAI, pFrame,
 					(char) UNARY_EXP,
+					pArg ) ;
+
+    gHyp_stack_push ( pStack, pResult ) ;
+  }
+}
+
+void gHyp_operator_deg2rad ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: deg2rad ( value )
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+
+  else {
+
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+    
+    sData
+      *pArg,
+      *pResult ;
+
+    int
+      argCount = gHyp_parse_argCount ( pParse ) ;
+
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 1  ) 
+      gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+	  "Invalid arguments. Usage: deg2rad ( value )" ) ;
+    
+    /* Get the arg off the stack */
+    pArg = gHyp_stack_popRdata ( pStack, pAI ) ;
+	
+    pResult = lHyp_operator_unaryOp (	pAI, pFrame,
+					(char) UNARY_DEG2RAD,
+					pArg ) ;
+
+    gHyp_stack_push ( pStack, pResult ) ;
+  }
+}
+
+void gHyp_operator_rad2deg ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: rad2deg ( value )
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+
+  else {
+
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+    
+    sData
+      *pArg,
+      *pResult ;
+
+    int
+      argCount = gHyp_parse_argCount ( pParse ) ;
+
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 1  ) 
+      gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+	  "Invalid arguments. Usage: rad2deg ( value )" ) ;
+    
+    /* Get the arg off the stack */
+    pArg = gHyp_stack_popRdata ( pStack, pAI ) ;
+	
+    pResult = lHyp_operator_unaryOp (	pAI, pFrame,
+					(char) UNARY_RAD2DEG,
 					pArg ) ;
 
     gHyp_stack_push ( pStack, pResult ) ;

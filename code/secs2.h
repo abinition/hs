@@ -2,9 +2,6 @@
  * Modifications:
  *
  * $Log: secs2.h,v $
- * Revision 1.5  2007-07-09 05:39:00  bergsma
- * TLOGV3
- *
  * Revision 1.4  2007-02-24 01:54:08  bergsma
  * Added secs_*_raw functions.
  *

@@ -2,8 +2,8 @@
  * Modifications:
  *
  * $Log: cgi.h,v $
- * Revision 1.5  2007-07-09 05:39:00  bergsma
- * TLOGV3
+ * Revision 1.13  2007-07-09 05:35:30  bergsma
+ * Add urlstring()
  *
  * Revision 1.12  2007-02-15 19:27:46  bergsma
  * Fix for datatype attribute, truncstrlen adjusments (added mayReturnChildLess)
@@ -44,6 +44,7 @@
  *
  */
 extern void	gHyp_cgi_parse ( sInstance *pAI, sFrame* ) ;
+extern void	gHyp_cgi_urlstring( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) ;
 extern void	gHyp_cgi_unescapeUrl(char *url) ;
 extern void     gHyp_cgi_plusToSpace( char *url) ;
 extern void	gHyp_cgi_xml ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) ; 

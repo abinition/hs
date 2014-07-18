@@ -11,8 +11,8 @@
  * Modifications:
  *
  * $Log: route.c,v $
- * Revision 1.5  2007-07-09 05:39:00  bergsma
- * TLOGV3
+ * Revision 1.16  2008-02-12 23:18:38  bergsma
+ * VS 2008 update
  *
  * Revision 1.15  2007-03-15 01:09:21  bergsma
  * Added "reply" function.
@@ -518,7 +518,7 @@ static void lHyp_route_QE (	sInstance 	*pAI,
 				       targetPath, 
 				       method, 
 				       transactionID,
-				       eventTime ) ;
+				       (int)eventTime ) ;
 
       gHyp_instance_setState ( pAI, STATE_QUERY ) ;
       gHyp_frame_setState ( pFrame, STATE_QUERY ) ;

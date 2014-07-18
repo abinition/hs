@@ -10,8 +10,9 @@
 /* Modifications: 
  *
  * $Log: frame.c,v $
- * Revision 1.5  2007-07-09 05:39:00  bergsma
- * TLOGV3
+ * Revision 1.21  2008-05-03 21:43:55  bergsma
+ * Use giLineCount and giProgram count together to better determine the
+ * location of a program token code.
  *
  * Revision 1.20  2007-05-08 01:27:49  bergsma
  * Make giMaxFrameDepth variable, tied to -x option.
@@ -2609,6 +2610,9 @@ void gHyp_frame_endStmt ( sFrame *pFrame, sInstance *pAI )
 	  */
 
 	  nextInstruction = methodIndex+1 ;
+
+	  /* Set the line count back to the current program count. */
+	  giLineCount = giProgramCount ;
 	}
       }
       

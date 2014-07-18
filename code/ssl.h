@@ -2,8 +2,8 @@
  * Modifications:
  *
  * $Log: ssl.h,v $
- * Revision 1.5  2007-07-09 05:39:00  bergsma
- * TLOGV3
+ * Revision 1.6  2007-07-09 05:36:56  bergsma
+ * Add ssl_digest
  *
  * Revision 1.5  2006-11-13 02:11:34  bergsma
  * Added functions ssl_setState and ssl_getState
@@ -29,6 +29,7 @@ extern void gHyp_ssl_keyFile ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
 extern void gHyp_ssl_certFile ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) ;
 extern void gHyp_ssl_CAfile ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) ;
 extern void gHyp_ssl_CApath ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) ;
+extern void gHyp_ssl_digest ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) ;
 extern void gHyp_ssl_auth ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) ;
 extern void gHyp_ssl_authClient ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) ;
 extern void gHyp_ssl_assign ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) ;

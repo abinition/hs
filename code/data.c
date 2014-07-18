@@ -11,8 +11,25 @@
  * Modifications:
  *
  * $Log: data.c,v $
- * Revision 1.5  2007-07-09 05:39:00  bergsma
- * TLOGV3
+ * Revision 1.34  2008-05-07 17:28:10  bergsma
+ * Don't interpret "-" or "+" as a number.
+ *
+ * Revision 1.33  2008-05-03 21:38:33  bergsma
+ * data_exchange did not work when there were 2 elements!!!
+ *
+ * Revision 1.32  2007-09-03 06:21:31  bergsma
+ * Remove const quallifiers
+ *
+ * Revision 1.31  2007-07-11 18:47:27  mhohimer
+ * Added new functions primarily intended to facilitate Node_* functions in env.c:
+gHyp_data_getPrev
+ * gHyp_data_getTagIndex
+ * gHyp_data_getChildNodeByIndex
+ * gHyp_data_getFirstNode
+ * gHyp_data_getLastNode
+ * gHyp_data_getNextNode
+ * gHyp_data_getPrevNode
+ * gHyp_data_getNodeByAttr
  *
  * Revision 1.30  2007-06-10 05:13:23  bergsma
  * Check for 0x0x in &p
@@ -816,7 +833,7 @@ void gHyp_data_exchange ( sData *pValue1, sData *pValue2 )
 
   if ( pNext1 == pValue2 && pPrev1 != pValue2 ) {
 
-    // P1 - 1 - 2 - N2  ==>  P1 - 2 - 1 - N2
+    /* P1 - 1 - 2 - N2  ==>  P1 - 2 - 1 - N2 */
     pNext2->pPrev  = pValue1 ;
     pValue1->pNext = pNext2 ;
     pValue1->pPrev = pValue2 ;
@@ -827,7 +844,7 @@ void gHyp_data_exchange ( sData *pValue1, sData *pValue2 )
   }
   else if ( pPrev1 == pValue2 && pNext1 != pValue2 ) {
 
-    // P2 - 2 - 1 - N1  ==>  P2 - 1 - 2 - N1  
+    /* P2 - 2 - 1 - N1  ==>  P2 - 1 - 2 - N1  */
     pNext1->pPrev  = pValue2 ;
     pValue2->pNext = pNext1 ;
     pValue2->pPrev = pValue1;
@@ -836,9 +853,13 @@ void gHyp_data_exchange ( sData *pValue1, sData *pValue2 )
     pPrev2->pNext  = pValue1; 
     
   }
+  else if ( pPrev1 == pValue2 && pNext1 == pValue2 ) {
+    /* Only two values */
+    pValue1->pParent->pData = pValue1->pParent->pData->pNext ; 
+  }
   else {
 
-    // P1 - 1 - N1 .... P2 - 2 - N2  ==>   P1 - 2 - N1 .... P2 - 1 - N2
+    /* P1 - 1 - N1 .... P2 - 2 - N2  ==>   P1 - 2 - N1 .... P2 - 1 - N2 */
     pNext2->pPrev  = pValue1 ;
     pValue1->pNext = pNext2 ;
     pValue1->pPrev = pPrev2 ;
@@ -1886,6 +1907,29 @@ sData* gHyp_data_getNext ( sData *pData )
   return pData->pNext ;
 }
 
+sData* gHyp_data_getPrev ( sData *pData )
+{
+  /* Description:
+   *
+   *	Get the previous member of a list.
+   *
+   * Arguments:
+   *
+   *	pData						[R]
+   *	- pointer to a data member in a list
+   *
+   * Return value:
+   *
+   *	Pointer to previous member in the list, or NULL
+   *
+   *
+   */
+  /* For references, recursively find the variable */
+  if ( pData->tokenType == TOKEN_REFERENCE && pData->p.rValue != NULL ) 
+    return gHyp_data_getPrev ( *pData->p.rValue ) ;
+  
+  return pData->pPrev ;
+}
 
 int gHyp_data_getInt ( sData *pData, int ss, sLOGICAL recurse )
 {
@@ -1972,7 +2016,8 @@ int gHyp_data_getInt ( sData *pData, int ss, sLOGICAL recurse )
       else
 	i = ul ;
     }		 
-    else if ( strspn ( pValue->pStrVal, "0123456789+-" ) == (size_t) j ) {
+    else if ( strspn ( pValue->pStrVal, "0123456789+-" ) == (size_t) j &&
+              strspn ( pValue->pStrVal, "+-" ) != (size_t) j ) {
       if ( sscanf ( pValue->pStrVal, "%ld", &ul ) != 1 ) 
 	i = 0 ;
       else
@@ -2148,7 +2193,8 @@ unsigned long gHyp_data_getRaw ( sData *pData, int ss, sLOGICAL recurse )
       if ( sscanf ( pValue->pStrVal+2, "%lx", &ul ) != 1 ) ul = 0 ;
       
     }		 
-    else if ( strspn ( pValue->pStrVal, "0123456789+-" ) == (size_t) j ) {
+    else if ( strspn ( pValue->pStrVal, "0123456789+-" ) == (size_t) j &&
+	      strspn ( pValue->pStrVal, "+-" ) != (size_t) j ) {
       if ( sscanf ( pValue->pStrVal, "%lu", &ul ) != 1 ) ul = 0 ;
     }
     else if ( j == 1 )
@@ -2978,7 +3024,8 @@ sData* gHyp_data_getAll ( sData 	*pData,
 	d = (double) ul ;
       }
     }		 
-    else if ( strspn ( pValue->pStrVal, "0123456789+-" ) == (size_t) j ) {
+    else if ( strspn ( pValue->pStrVal, "0123456789+-" ) == (size_t) j &&
+	    strspn ( pValue->pStrVal, "+-" ) != (size_t) j ) {
       if ( sscanf ( pValue->pStrVal, "%ld", (unsigned long*) &sl ) != 1 ) {
 	i = 0 ;
 	u = 0 ;
@@ -4275,7 +4322,8 @@ void gHyp_data_setToken ( sData *pData, char *pStr )
       }
     }
 
-    maybeInteger = (sLOGICAL) ( strspn(pStr,"0123456789+-") == (size_t)len ) ;
+    maybeInteger = (sLOGICAL) ( strspn(pStr,"0123456789+-") == (size_t)len &&
+      strspn ( pStr, "+-" ) != (size_t) len ) ;
     
     if ( maybeInteger ) {
       
@@ -5315,4 +5363,260 @@ void gHyp_data_setText ( sData *pData, char *pString, int n )
   }
 
   return ;
+}
+
+int gHyp_data_getTagIndex ( sData *pData ) {
+  /* Description:
+   *
+   *	Returns the index of a token with respect to
+   *    sibling elements that share the same label
+   *
+   * Arguments:
+   *
+   *	pData				[R]
+   *	- pointer to sData object
+   *
+   *	pString				[R]
+   *	- string
+   *
+   *    n
+   *    - string length
+   *
+   * Return value:
+   *
+   *	none
+   */
+  sData
+    *pPrev,
+    *pLast ;
+  int
+    i = 0 ;
+    
+  pPrev = gHyp_data_getPrev( pData ) ;
+  pLast = gHyp_data_getLast( gHyp_data_getParent( pData ) ) ;
+  pData = gHyp_data_getVariable( pData ) ;
+  while ( pPrev !=  pLast ) {
+  	if ( strcmp( gHyp_data_getLabel( pData ), gHyp_data_getLabel( pPrev ) ) == 0 )
+  	  i += 1 ;
+    pPrev =  gHyp_data_getPrev( pPrev ) ; 
+  }
+  return i ;
+}
+
+sData *gHyp_data_getChildNodeByIndex( sData *pParent, int index ) {
+  /* Description:
+   *
+   *	Returns the pointer of a child node at index or NULL
+   *
+   * Arguments:
+   *
+   *	pParent				[R]
+   *	- pointer to sData object
+   *
+   *	index				[R]
+   *	- integer
+   *
+   * Return value:
+   *
+   *	pointer to child node or NULL
+   */
+  sData
+    *pChild ;
+  int
+  	i,
+  	nodeNum = 0,  
+    count = gHyp_data_getCount( pParent ) ;
+    
+  if( (pChild = gHyp_data_getFirst( pParent )) ) {
+    for ( i = 0; i < count; i += 1 ) {
+      if ( gHyp_data_getDataType ( pChild ) == TYPE_LIST ) {
+      	if ( nodeNum == index ) return pChild ;
+        nodeNum += 1 ;
+      }  
+      pChild = gHyp_data_getNext( pChild ) ;
+    }
+  }
+  return NULL ;
+}
+
+sData *gHyp_data_getFirstNode( sData *pParent ) {
+  /* Description:
+   *
+   *	Returns the pointer of the first child node or NULL
+   *
+   * Arguments:
+   *
+   *	pParent				[R]
+   *	- pointer to sData object
+   *
+   * Return value:
+   *
+   *	pointer to first child node or NULL
+   */
+  sData
+    *pChild,
+    *pFirst = gHyp_data_getFirst( pParent ) ;
+
+  if( (pChild = pFirst) ) {
+    do {
+      if ( gHyp_data_getDataType ( pChild ) == TYPE_LIST ) return pChild ;
+      pChild = gHyp_data_getNext( pChild ) ;
+    } while ( pChild != pFirst ) ;
+  }
+  return NULL ;
+}
+
+sData *gHyp_data_getLastNode( sData *pParent ) {
+  /* Description:
+   *
+   *	Returns the pointer of the last child node or NULL
+   *
+   * Arguments:
+   *
+   *	pParent				[R]
+   *	- pointer to sData object
+   *
+   * Return value:
+   *
+   *	pointer to last child node or NULL
+   */
+  sData
+    *pChild,
+    *pLast = gHyp_data_getLast( pParent ) ;
+    
+  if( (pChild = pLast) ) {
+    do {
+      if ( gHyp_data_getDataType ( pChild ) == TYPE_LIST ) return pChild ;
+      pChild = gHyp_data_getPrev( pChild ) ;
+    } while ( pChild != pLast ) ;
+  }
+  return NULL ;
+}
+
+sData *gHyp_data_getNextNode( sData *pData ) {    	
+  /* Description:
+   *
+   *	Returns the pointer to the next node (of type list) or NULL
+   *    getNextNode does not wrap around
+   *
+   * Arguments:
+   *
+   *	pParent				[R]
+   *	- pointer to sData object
+   *
+   * Return value:
+   *
+   *	pointer to next node or NULL
+   */
+  sData
+    *pSibling,
+    *pFirst =  gHyp_data_getFirst( gHyp_data_getParent( pData ) ) ;
+          	
+  pSibling = pData ;
+  do {
+    pSibling = gHyp_data_getNext ( pSibling ) ;
+	if ( pSibling == pFirst ) return NULL ;
+  }
+  while ( gHyp_data_getDataType ( pSibling ) != TYPE_LIST ) ;
+  return pSibling ;
+}
+
+sData *gHyp_data_getPrevNode( sData *pData ) {    	
+  /* Description:
+   *
+   *	Returns the pointer to the previous node (of type list) or NULL
+   *    getPrevNode does not wrap around
+   *
+   * Arguments:
+   *
+   *	pParent				[R]
+   *	- pointer to sData object
+   *
+   * Return value:
+   *
+   *	pointer to previous node or NULL
+   */
+  sData
+    *pSibling,
+    *pLast =  gHyp_data_getLast( gHyp_data_getParent( pData ) ) ;
+          	
+  pSibling = pData ;
+  do {
+    pSibling = gHyp_data_getPrev ( pSibling ) ;
+	if ( pSibling == pLast ) return NULL ;
+  }
+  while ( gHyp_data_getDataType ( pSibling ) != TYPE_LIST ) ;
+  return pSibling ;
+}
+
+sData *gHyp_data_getNodeByAttr( sData *pData, char *attrName, char *attrValue, char *pValueBuffer ) {
+  /* Description: 
+   *
+   *	Traverse a datastructure via depth-first recursion and
+   *    returns the pointer to the first child node (of type list) of pData
+   *    that has an attribute variable matching attrName and attrValue
+   *    If no suitable node is found, returns NULL
+   *
+   * Arguments:
+   *
+   *	pParent				[R]
+   *	- pointer to sData object
+   * 
+   *    attrName
+   *    - string cooresponding to the attribute's variable label to search for
+   * 
+   *    attrValue
+   *    - string cooresponding to the attribute's value to search for
+   * 
+   *    pValueBuffer
+   *    - pointer to a character buffer of size VALUE_SIZE + 1
+   *      reserved for storing the attribute value. The function
+   *      is recursive and can use a gob more memory than needed if
+   *      this variable is not included.
+   *
+   * Return value:
+   *
+   *	pointer to node or NULL
+   */
+   
+  sData
+    *pAttr,
+    *pValue,
+    *pDescendent,
+    *pTest ;
+    
+  int
+    len ;
+    
+  pDescendent = gHyp_data_getFirstNode( pData ) ;
+  while ( pDescendent ) {
+    /* BEGIN ATTRIBUTE COMPARISON
+     * the function uses getChildByName, which only returns the first name;
+     * therefore, the function assumes that there is only one node with this label.
+     * If there are more than one and if "correct" one is not younger than
+     * the "incorrect one, we'll miss it.
+     */
+    if( (pAttr = gHyp_data_getChildByName( pDescendent, attrName )) &&
+         gHyp_data_getDataType( pAttr ) == TYPE_ATTR &&
+         gHyp_data_getTokenType( pAttr ) == TOKEN_VARIABLE )
+    {	 
+      /* gHyp_util_debug("attribute variable matches") ; */
+      /* now check attribute's value */
+	  if( (pValue = gHyp_data_getValue( pAttr, 0, 0 )) ) {
+	    len = MIN ( VALUE_SIZE , gHyp_data_bufferLen ( pValue, 0 ) ) ;
+	    memcpy ( pValueBuffer, gHyp_data_buffer(pValue,0), len ) ;
+	    *(pValueBuffer + len) = '\0' ;
+        /* gHyp_util_debug("attribute value found: %s", pValueBuffer); */
+        if( strcmp( pValueBuffer, attrValue ) == 0 ){
+          /* gHyp_util_debug("attribute value matches") ; */
+          return pDescendent ;
+		}
+      }
+    }
+    /* END ATTRIBUTE COMPARISON */
+    /* recursionion through all the offspring of the current pDescendent */
+    if( (pTest = gHyp_data_getNodeByAttr( pDescendent, attrName, attrValue, pValueBuffer )) ) return pTest ;
+    pDescendent = gHyp_data_getNextNode( pDescendent ) ;
+  }
+  return NULL ;
 }

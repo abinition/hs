@@ -2,11 +2,17 @@
 !
 !	Include file for AUTOSERVER.FOR, AUTOCLIENT.FOR, AUTOUTIL.FOR
 ! 
-	parameter	AUTOMAN_VERSION = 'AM V3.8-0'
+	parameter	AUTOMAN_VERSION = 'AM V3.8-2'
 !
 ! Modifications:
 !
 !	$Log: autodef.for,v $
+!	Revision 1.50  2008-02-12 23:03:04  bergsma
+!	V3.8.2 (compiled with VS C 2008)
+!	
+!	Revision 1.49  2007-09-03 06:21:09  bergsma
+!	HS3.8.1
+!	
 !	Revision 1.48  2006-10-27 17:23:41  bergsma
 !	HS 3.8.0   Support in UNIX for passing socket descriptors.
 !	

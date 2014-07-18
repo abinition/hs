@@ -3,8 +3,8 @@
  * Modifications:
  *
  * $Log: util.h,v $
- * Revision 1.5  2007-07-09 05:39:00  bergsma
- * TLOGV3
+ * Revision 1.17  2008-06-07 02:49:50  bergsma
+ * Added gHyp_util_breakTokenForMsg
  *
  * Revision 1.16  2007-06-16 17:55:51  bergsma
  * Make util_trim and util_trimWhitespace return length of string
@@ -118,4 +118,6 @@ extern char *gHyp_util_readStream (  char *pStream,
 				    FILE *pp )  ;
 
 extern void gHyp_util_breakStream ( char *buffer, int bufLen, sData *pParent, sLOGICAL isLineBased ) ;
+int gHyp_util_breakStringForMsg( char *buffer, int bufLen, int maxBufLen ) ;
+
 

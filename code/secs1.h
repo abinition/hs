@@ -2,8 +2,8 @@
  * Modifications:
  *
  * $Log: secs1.h,v $
- * Revision 1.5  2007-07-09 05:39:00  bergsma
- * TLOGV3
+ * Revision 1.11  2007-07-22 02:59:06  bergsma
+ * Add secs1_setHttp
  *
  * Revision 1.10  2006-10-11 16:16:20  bergsma
  * Make EAGAIN an optional feature that must be turned on.
@@ -88,6 +88,8 @@ extern LPOVERLAPPED	gHyp_secs1_overlapped ( sSecs1 *pSecs1 ) ;
 extern void		gHyp_secs1_setSSL ( sSecs1 *pSecs1, sSSL *pSSL ) ;
 extern int		gHyp_secs1_eagainTimeout(  sSecs1 *pSecs1, int timeout ) ;
 extern sHTTP*		gHyp_secs1_getHttp ( sSecs1 *pSecs1 ) ;
+extern void		gHyp_secs1_setHttp ( sSecs1 *pSecs1, sHTTP *pHTTP ) ;
+extern void gHyp_secs1_setHttp ( sSecs1 *pSecs1, sHTTP* pHTTP ) ; 
 extern sSSL*		gHyp_secs1_getSSL ( sSecs1 *pSecs1 ) ;
 extern sData*		gHyp_secs1_getEagain ( sSecs1 *pSecs1 ) ;
 extern sLOGICAL gHyp_secs1_doEagain ( sSecs1 *pSecs1 ) ;
