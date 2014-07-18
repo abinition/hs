@@ -123,9 +123,14 @@ void gHyp_operand_token ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 	gpsTempData = NULL ;
 	gpsTempData2 = NULL ;
 
-	if ( pVariable &&
-	     gHyp_data_getObjectType ( pVariable ) == DATA_OBJECT_METHOD ) {	    
-	  gHyp_instance_setMethodCall ( pAI ) ;
+	if ( pVariable ) {
+	  if ( gHyp_data_getObjectType ( pVariable ) == DATA_OBJECT_METHOD )  
+	    gHyp_instance_setMethodCall ( pAI ) ;
+	}
+	else {
+	  gHyp_data_delete ( pResult ) ;
+	  gHyp_data_delete ( pArgs ) ;
+	  gHyp_instance_error ( pAI, STATUS_UNDEFINED, "No method exists for variable %s", pToken ) ;
 	}
       }
       break ;

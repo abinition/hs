@@ -1135,7 +1135,8 @@ static sData* lHyp_env_map ( sData *pDst,
     value[VALUE_SIZE+1] ;
 
   int
-    i,
+    i,j,
+    numElements,
     n,
     streamLen=0,
     dstDataLen,
@@ -1175,27 +1176,38 @@ static sData* lHyp_env_map ( sData *pDst,
 
   if ( isVectorDst ) {
 
+    numElements = gHyp_data_getCount ( pDst ) ;
     gHyp_data_newVector ( pResult, 
 			  dstDataType, 
-			  gHyp_data_getCount ( pDst ),
+			  numElements,
 			  gHyp_data_isDynamic ( pDst ) ) ;
 
 
-    if ( !pStream ) return pResult ;
-    if ( isLittleEndian ) {
+    for ( j=0; j<numElements; j++ ) {
 
-      pBuf = pStream ;
-      for ( i=dstDataLen-1; i>=0; i-- ) endian.x.b[i] = *pBuf++ ;
-      gHyp_data_setVectorRaw ( pResult, 
+      if ( !pStream) return pResult ;
+      if ( isLittleEndian ) {
+
+	pBuf = pStream ;
+        for ( i=dstDataLen-1; i>=0; i-- ) endian.x.b[i] = *pBuf++ ;
+        gHyp_data_setVectorRaw ( pResult, 
 			       &endian.x.b, 
-			       sss ) ;
-    }
-    else
-      gHyp_data_setVectorRaw ( pResult, 
+			       j ) ;
+      }
+      else
+	gHyp_data_setVectorRaw ( pResult, 
   			       pStream, 
-			       sss ) ;
-    pStream += dstDataLen ;
-    *ppStream = pStream ;
+			       j ) ;
+      pStream += dstDataLen ;
+      *ppStream = pStream ;
+
+      /* Get more stream data if needed */
+      pStream = gHyp_util_readStream (	pStream, pAnchor, ppEndOfStream,
+					&streamLen, pStreamData, 
+					ppValue, pContextSrc, ss, isVectorSrc, 
+					NULL ) ;
+      *ppStream = pStream ;
+    }
     return pResult ;
   }
 

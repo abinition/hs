@@ -411,6 +411,8 @@ static int lHyp_sock_alarmHandler ( int signo )
 #else
 
   /* Longjmp out of here if a setjmp return point was set up */
+  if ( giJmpOverride ) longjmp ( gsJmpOverride, 1 ) ;
+
   if ( giJmpEnabled && giJmpLevel >= 0 )
     longjmp ( gsJmpStack[giJmpLevel], COND_NORMAL ) ;
 #endif
@@ -461,8 +463,8 @@ static int lHyp_sock_pipeHandler ( int signo )
 #else
 
   /* Longjmp out of here if a setjmp return point was set up */
-  if ( giJmpEnabled ) 
-    longjmp ( gsJmpStack[0], COND_FATAL ) ;
+  if ( giJmpOverride ) longjmp ( gsJmpOverride, 1 ) ;
+  if ( giJmpEnabled ) longjmp ( gsJmpStack[0], COND_FATAL ) ;
 #endif
 
   return 1 ;
@@ -508,7 +510,10 @@ static int lHyp_sock_ioHandler ( int signo )
   gHyp_signal_establish ( SIGIO, lHyp_sock_ioHandler ) ;
 
 #else
+
   /* Longjmp out of here if a setjmp return point was set up */
+  if ( giJmpOverride ) longjmp ( gsJmpOverride, 1 ) ;
+  
   if ( giJmpEnabled ) longjmp ( gsJmpStack[0], COND_FATAL ) ;
 #endif
 
@@ -542,11 +547,18 @@ static int lHyp_sock_intHandler ( int signo )
 
   gHyp_util_logWarning("CTRL/C");
 
-  if ( giLoopback != INVALID_SOCKET )
+  if ( giLoopback != INVALID_SOCKET ) {
+    /*gHyp_util_debug("Notifying through loopback");*/
     nBytes = gHyp_sock_write ( giLoopback, "|SIGINT|||", 10, giLoopbackType,
                               &gsLoopbackOverlapped, NULL ) ;
+  }
 
-  if ( gsSocketToCancel != INVALID_SOCKET ) gHyp_sock_cancelIO(gsSocketToCancel) ;
+  if ( gsSocketToCancel != INVALID_SOCKET ) {
+    /*gHyp_util_debug( "Cancel IO on %u",gsSocketToCancel);*/
+    gHyp_sock_cancelIO(gsSocketToCancel) ;
+  }
+
+  /*gHyp_util_debug( "Signal interrupt to instance" ) ;*/
   gHyp_instance_signalInterrupt ( 
 	gHyp_concept_getConceptInstance ( gpsConcept ) ) ;
   
@@ -554,9 +566,17 @@ static int lHyp_sock_intHandler ( int signo )
   /* Re-establish handler */
   gHyp_signal_establish ( SIGINT, lHyp_sock_intHandler ) ;
 #else
+
   /* Longjmp out of here if a setjmp return point was set up */
-  if ( giJmpEnabled && giJmpLevel >= 0 ) 
+  if ( giJmpOverride ) {
+    /*gHyp_util_debug( "Longjmp override" ) ;*/
+    longjmp ( gsJmpOverride, 1 ) ;
+  }
+
+  if ( giJmpEnabled && giJmpLevel >= 0 ) {
+    /*gHyp_util_debug("Longjump outa here to %p",gsJmpStack[giJmpLevel] );*/
     longjmp ( gsJmpStack[giJmpLevel], COND_NORMAL ) ;
+  }
 #endif
 
   return 1 ;
@@ -583,7 +603,6 @@ static int lHyp_sock_termHandler ( int signo )
   int
     nBytes ;
 
-   
   /* Set global flag */
   guSIGTERM = 1 ;
 
@@ -604,6 +623,8 @@ static int lHyp_sock_termHandler ( int signo )
 #else
 
   /* Longjmp out of here if a setjmp return point was set up */
+  if ( giJmpOverride ) longjmp ( gsJmpOverride, 1 ) ;
+  
   if ( giJmpEnabled && giJmpLevel >= 0 )
     longjmp ( gsJmpStack[giJmpLevel], COND_NORMAL ) ;
 #endif
@@ -633,7 +654,6 @@ static int lHyp_sock_hupHandler ( int signo )
   int
     nBytes ;
 
-   
   /* Set global flag */
   guSIGHUP = 1 ;
 
@@ -653,6 +673,8 @@ static int lHyp_sock_hupHandler ( int signo )
   gHyp_signal_establish ( SIGHUP, lHyp_sock_hupHandler ) ;
 #else
   /* Longjmp out of here if a setjmp return point was set up */
+  if ( giJmpOverride ) longjmp ( gsJmpOverride, 1 ) ;
+
   if ( giJmpEnabled && giJmpLevel >= 0 ) 
     longjmp ( gsJmpStack[giJmpLevel], COND_NORMAL ) ;
 #endif
@@ -4588,7 +4610,11 @@ static int lHyp_sock_select_read_objects ( sConcept *pConcept, sData *pSockets )
     *pHsms ;
 
   sInstance
+    *pAIassigned,
     *pAI=NULL ;
+
+  sWORD
+    id ;
 
   sBYTE
     objectType ;
@@ -4700,7 +4726,9 @@ static int lHyp_sock_select_read_objects ( sConcept *pConcept, sData *pSockets )
                                        DATA_OBJECT_HSMS,
                                        (void (*)(void*))gHyp_hsms_delete ) ;
         msgLen = 0 ;
-	gHyp_instance_signalConnect ( pAI, newSocket, port, NULL_DEVICEID ) ;
+        pAIassigned = gHyp_concept_getInstForFd ( pConcept, socket ) ;
+	id = pAIassigned == NULL ? NULL_DEVICEID : gHyp_instance_getDeviceId ( pAIassigned, socket ) ;
+	gHyp_instance_signalConnect ( pAI, newSocket, port, id ) ;
       }
       else if ( flags == (PROTOCOL_SECS1 | SOCKET_LISTEN) ) {
 
@@ -4725,7 +4753,9 @@ static int lHyp_sock_select_read_objects ( sConcept *pConcept, sData *pSockets )
                                        DATA_OBJECT_SECS1,
                                        (void (*)(void*))gHyp_secs1_delete ) ;
         msgLen = 0 ;
-	gHyp_instance_signalConnect ( pAI, newSocket, port, NULL_DEVICEID ) ;
+        pAIassigned = gHyp_concept_getInstForFd ( pConcept, socket ) ;
+	id = pAIassigned == NULL ? NULL_DEVICEID : gHyp_instance_getDeviceId ( pAIassigned, socket ) ;
+	gHyp_instance_signalConnect ( pAI, newSocket, port, id ) ;
       }
       else if ( flags == (PROTOCOL_NONE | SOCKET_LISTEN) ) {
 
@@ -4750,7 +4780,9 @@ static int lHyp_sock_select_read_objects ( sConcept *pConcept, sData *pSockets )
                                        DATA_OBJECT_PORT,
                                        (void (*)(void*))gHyp_secs1_delete ) ;
         msgLen = 0 ;
-	gHyp_instance_signalConnect ( pAI, newSocket, port, NULL_DEVICEID ) ;
+        pAIassigned = gHyp_concept_getInstForFd ( pConcept, socket ) ;
+	id = pAIassigned == NULL ? NULL_DEVICEID : gHyp_instance_getDeviceId ( pAIassigned, socket ) ;
+	gHyp_instance_signalConnect ( pAI, newSocket, port, id ) ;
       }
       else if ( flags == (PROTOCOL_HTTP | SOCKET_LISTEN) ) {
 
@@ -4775,7 +4807,9 @@ static int lHyp_sock_select_read_objects ( sConcept *pConcept, sData *pSockets )
                                        DATA_OBJECT_HTTP,
                                        (void (*)(void*))gHyp_secs1_delete ) ;
         msgLen = 0 ;
-	gHyp_instance_signalConnect ( pAI, newSocket, port, NULL_DEVICEID ) ;
+        pAIassigned = gHyp_concept_getInstForFd ( pConcept, socket ) ;
+	id = pAIassigned == NULL ? NULL_DEVICEID : gHyp_instance_getDeviceId ( pAIassigned, socket ) ;
+	gHyp_instance_signalConnect ( pAI, newSocket, port, id ) ;
       }
       else if ( flags & PROTOCOL_NONE ) {
           msgLen = gHyp_secs1_rawIncoming ( (sSecs1*) pObject, pConcept, pAI, DATA_OBJECT_PORT ) ;

@@ -19,7 +19,7 @@ $!
 $! Determine what TCP/IP vendor software is going to be used
 $!
 $ if f$search ( "sys$library:ucx$ipc_shr.exe" ) .nes. "" .and. -
-     f$search ( "sys$library:tcpip$ipc_shr.exe") .eqs. "" ) 
+     f$search ( "sys$library:tcpip$ipc_shr.exe") .eqs. ""
 $ then
 $
 $   ! UCX - old style
@@ -28,7 +28,7 @@ $   runlib == "sys$library:ucx$ipc_shr/share"
 $
 $ else
 $ if f$search ( "sys$library:ucx$ipc_shr.exe" ) .eqs. "" .and. -
-     f$search ( "sys$library:tcpip$ipc_shr.exe") .nes. "" ) 
+     f$search ( "sys$library:tcpip$ipc_shr.exe") .nes. ""
 $ then
 $
 $   ! UCX - New style

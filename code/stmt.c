@@ -662,18 +662,17 @@ void gHyp_stmt_bList ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
       pValue2 = gHyp_data_getValue ( pList, gHyp_data_getSubScript ( pList ), TRUE ) ;
 
-
-      /* See if we should be executing a method */
+      /* Not sure what this is here for, must have been a cut/paste error
       if ( gHyp_data_getObjectType ( pValue ) == DATA_OBJECT_METHOD ) {
 
-	/* Object pointed to has an enclosed method - execute it */ 
+	* Object pointed to has an enclosed method - execute it *
 	pValue2 = gHyp_data_new ( "_parms_" ) ;
 	gHyp_data_append ( pValue2, pList ) ;
 	pList = pValue2 ;
 	gHyp_instance_setMethodCall ( pAI ) ;
 
       } 
-      else if ( pValue2 && gHyp_data_getParent ( pValue2 ) != pValue ) {
+      else */if ( pValue2 && gHyp_data_getParent ( pValue2 ) != pValue ) {
 
         if ( gHyp_data_getDataType (pValue2) == TYPE_ATTR  &&
 	     gHyp_data_getTokenType(pValue2) == TOKEN_VARIABLE ) {

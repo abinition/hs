@@ -547,9 +547,14 @@ char *gHyp_cgi_parseXML ( char *pStream,
      * 2. It will not match and we will need to deal with that condition.
      */
 
-    pExpectedEndTag = gHyp_data_getLabel ( pParentTag ) ;
-    strcpy ( tag2_lc, pExpectedEndTag ) ;
-    gHyp_util_lowerCase ( tag2_lc, strlen ( tag2_lc ) ) ;
+    if ( pParentTag == NULL ) 
+      strcpy ( tag2_lc, tag_lc ) ;
+    else {
+      
+      pExpectedEndTag = gHyp_data_getLabel ( pParentTag ) ;
+      strcpy ( tag2_lc, pExpectedEndTag ) ;
+      gHyp_util_lowerCase ( tag2_lc, strlen ( tag2_lc ) ) ;
+    }
 
     if ( strcmp ( tag_lc, tag2_lc ) == 0 ) {
 

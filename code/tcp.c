@@ -10,6 +10,10 @@
  * Modifications:
  *
  *	$Log: tcp.c,v $
+ *	Revision 1.14  2005/01/02 01:40:46  bergsma
+ *	GetHostByAddr is not  necessary when we are requesting an connection,
+ *	to an IP address, just get the ip address from inet_addr
+ *	
  *	Revision 1.13  2004/10/21 04:06:41  bergsma
  *	Use gethostbyaddr instead of gethostbyname for connection requests to
  *	IP addresses.
@@ -100,7 +104,6 @@
 
 /**********************	INTERNAL GLOBAL VARIABLES ****************************/
 
-static          jmp_buf         gsJmpConnect ;
 static		SOCKET		giSocket = INVALID_SOCKET ;
 
 /********************** INTERNAL OBJECT STRUCTURES ***************************/
@@ -221,7 +224,7 @@ static int lHyp_tcp_alarmHandler ( int signo )
     gHyp_sock_close ( giSocket, SOCKET_TCP, "", "" ) ;
     giSocket = INVALID_SOCKET ;
   }
-  longjmp ( gsJmpConnect, 1 ) ;
+  if ( giJmpOverride ) longjmp ( gsJmpOverride, 1 ) ;
   return 1 ;
 }
 #endif
@@ -395,6 +398,11 @@ sLOGICAL gHyp_tcp_resolveHost ( char* pHost, char *pAddr )
     host[HOST_SIZE+1],
     addr[HOST_SIZE+1] ;
 
+  /*
+  struct in_addr 
+    inp ;
+  */
+
   sLOGICAL
     inAddrForm,
     doAlias = FALSE ;
@@ -402,6 +410,7 @@ sLOGICAL gHyp_tcp_resolveHost ( char* pHost, char *pAddr )
   /* Initialize result */
   strcpy ( pAddr, pHost ) ;
 
+  /*inAddrForm = ( (inet_aton ( pHost, &inp ) ) != 0 ) ; */
   inAddrForm = ( (i = inet_addr ( pHost ) ) != INADDR_NONE ) ; 
   
   /* Get the fully resolved IP name for the requested host */  
@@ -532,6 +541,11 @@ SOCKET gHyp_tcp_request ( char* pHost, int port )
   struct hostent
     h,*hp ;
   
+  /*
+  struct in_addr 
+    inp ;
+  */
+
   sSockINET
     sock ;
 
@@ -562,22 +576,17 @@ SOCKET gHyp_tcp_request ( char* pHost, int port )
 
   /* Get the address of the requested host */ 
   /* Request a tcp/ip socket connection on a remote host */
-			
+	
+  /* Initialize the socket structure */
+  memset( (char*)&sock, (char)0, sizeof ( sSockINET ) ) ;
+  sock.sin_family 	= AF_INET ;
+  sock.sin_port 	= htons ( (unsigned short) port ) ; 
+
+  /*inAddrForm = ( (inet_aton ( pHost, &inp ) ) != 0 ) ; */
   inAddrForm = ( (i = inet_addr ( pHost ) ) != INADDR_NONE ) ; 
 
   if ( inAddrForm ) {
-
-    gHyp_util_logInfo("GetHostByAddr: %s",pHost) ;
-    hp = gethostbyaddr(  	(char*)&i,
-				sizeof(i),
-				AF_INET ) ;
-
-    if ( !hp ) {
-       gHyp_util_logError (	"(%s) for address '%s'",
-      				lHyp_tcp_herror(), 
-				pHost ) ;
-       return INVALID_SOCKET ;
-    }
+    sock.sin_addr.s_addr = i ;
   }
   else {
 
@@ -586,17 +595,12 @@ SOCKET gHyp_tcp_request ( char* pHost, int port )
       gHyp_util_logError(	"(%s) for host '%s'", lHyp_tcp_herror(), pHost ) ;
       return INVALID_SOCKET ;
     }
+    h = *hp ;
+    sock.sin_addr = * ((struct in_addr*) h.h_addr ) ;
   }
 
   /* Copy hostent structure to safe place */
-  h = *hp ;
 
-  /* Initialize the socket structure */
-  memset( (char*)&sock, (char)0, sizeof ( sSockINET ) ) ;
-  sock.sin_family 	= AF_INET ;
-  sock.sin_port 	= htons ( (unsigned short) port ) ; 
-  /*memmove((char*) &sock.sin_addr, h.h_addr, h.h_length ) ;*/
-  sock.sin_addr = * ((struct in_addr*) h.h_addr ) ;
   sockLen = sizeof ( sSockINET ) ;
   
   /* Create the socket */
@@ -613,10 +617,12 @@ SOCKET gHyp_tcp_request ( char* pHost, int port )
   gHyp_signal_establish ( SIGALRM, lHyp_tcp_alarmHandler ) ;
   gHyp_signal_unblock ( SIGALRM ) ;
   alarm ( CONNECT_TIMEOUT ) ;
-  if ( (jmpVal = setjmp ( gsJmpConnect )) ) return INVALID_SOCKET ;
+  giSocketToCancel = giSocket ;
+  if ( (jmpVal = setjmp ( gsJmpOverride )) ) return INVALID_SOCKET ;
 #endif
 
   /* Connect to the INET host */
+  gHyp_util_debug("Connecting");
   if ( connect ( giSocket, (sSockGENERIC*)&sock, sockLen ) == INVALID_SOCKET ) {
     gHyp_util_sysError ( "Failed to connect to internet host '%s'", pHost ) ;
     gHyp_sock_close ( giSocket, SOCKET_TCP, pHost, "" ) ;
@@ -718,7 +724,13 @@ SOCKET gHyp_tcp_make ( char *pService, char *pLocalAddr, sLOGICAL bindAll )
     *sp ;
 
   struct hostent
-    h,*hp ;
+    h,
+    *hp=NULL ;
+
+  /*
+  struct in_addr
+    inp ;
+  */
 
   unsigned long
       i ;
@@ -765,29 +777,10 @@ SOCKET gHyp_tcp_make ( char *pService, char *pLocalAddr, sLOGICAL bindAll )
   isLocalAddr = FALSE ;
   inAddrForm = FALSE ;
 
-  if ( pLocalAddr ) inAddrForm = ( (i = inet_addr ( pLocalAddr ) ) != INADDR_NONE ) ; 
+  /*inAddrForm = ( (inet_aton ( pHost, &inp ) ) != 0 ) ;*/ 
+  inAddrForm = ( (i = inet_addr ( pLocalAddr ) ) != INADDR_NONE ); 
 
-  if ( inAddrForm ) {
-
-    if ( strncmp ( pLocalAddr, "127.", 4 ) == 0 ) {
-      isLocalAddr = TRUE ;
-    }
-    else {
-      gHyp_util_logInfo("GetHostByAddr: %s",pLocalAddr) ;
-      hp = gethostbyaddr(  	(char*)&i,
-				sizeof(i),
-				AF_INET ) ;
-
-      if ( !hp )
-	gHyp_util_logWarning(	"(%s) for local address '%s'",
-      				lHyp_tcp_herror(), 
-				pLocalAddr ) ;
-      else 
-        h = *hp ;
-    }
-
-  }
-  else if ( pLocalAddr ) {
+  if ( !inAddrForm ) {
 
     gHyp_util_logInfo("GetHostByName: %s",pLocalAddr) ;
     hp = gethostbyname ( pLocalAddr ) ;
@@ -798,8 +791,6 @@ SOCKET gHyp_tcp_make ( char *pService, char *pLocalAddr, sLOGICAL bindAll )
     else
       h = *hp ;
   }
-  else
-    hp = NULL ;
 
   /* Initialize the socket structure */
   memset( (char*) &sock, (char)0, sizeof ( sock ) ) ;
@@ -807,13 +798,12 @@ SOCKET gHyp_tcp_make ( char *pService, char *pLocalAddr, sLOGICAL bindAll )
 
   if ( bindAll ) 
     sock.sin_addr.s_addr = htonl ( INADDR_ANY ) ;
+  else if ( inAddrForm ) 
+    sock.sin_addr.s_addr = i ;
   else if ( hp )
     sock.sin_addr = * ((struct in_addr*) h.h_addr ) ;
-  else if ( isLocalAddr ) 
-    sock.sin_addr.s_addr = i ;
   else
     sock.sin_addr.s_addr = htonl ( INADDR_ANY ) ;
-
 
   sock.sin_port 	 = htons ( (unsigned short) giServicePort ) ; 
   sockLen 		 = sizeof ( sSockINET ) ; 

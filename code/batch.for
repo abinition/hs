@@ -323,6 +323,7 @@
      &                  wipCountRunning,
      &                  logFileLen,
      &                  bufferLen,
+     &					eqpidlen,
      &                  eqpWipCount
 
         logical*4       found
@@ -344,8 +345,6 @@
         integer*4                       lotKtime
         integer*4                       lotQtime
 
-	integer*4	bufferlen, eqpidlen
-	character*60	buffer
         character*(TYP__EQPIDSZ)        strip_eqpId
 
 ! Code:

@@ -747,7 +747,9 @@ void gHyp_secs_open ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       else if ( isHSMS ) {
 	
 	/* Request a connection */
+        giJmpOverride = TRUE ;
 	secsFd = gHyp_tcp_request ( pDevice, port ) ;
+        giJmpOverride = FALSE ;
 	
 	if ( secsFd == INVALID_SOCKET ) {
 	  gHyp_instance_warning ( pAI,
@@ -784,7 +786,9 @@ void gHyp_secs_open ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
 	/* SECS1 device on terminal server */
 	/* Request a connection. */
+        giJmpOverride = TRUE ;
 	secsFd = gHyp_tcp_request ( pDevice, port ) ;
+        giJmpOverride = FALSE ;
 	
 	if ( secsFd == INVALID_SOCKET ) {
 	  gHyp_instance_warning ( pAI,

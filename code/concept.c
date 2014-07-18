@@ -161,6 +161,8 @@ SOCKET          gsSocketToCancel ; /* If cancel I/O is needed. */
 
 int             giJmpLevel ; /* Current depth of saved jmp env */
 jmp_buf         gsJmpStack[MAX_JMP_LEVEL+1] ; /* For setjmp,longjmp */ 
+jmp_buf         gsJmpOverride ; /* Overrides gsJmpStack */ 
+sLOGICAL        giJmpOverride ; /* Overrides gsJmpStack */ 
 FILE*           gsPP ;          /* Hyperscript input stream */
 sAImsg*         gpsAImsg  ;     /* Working message structure */
 
@@ -527,6 +529,7 @@ SOCKET gHyp_concept_createService( sConcept *pConcept, char *pService )
       giARservicePort = giServicePort ;
 
       /* Request a TCP loopback interface */
+      giJmpOverride = TRUE ;
       if ( (giListenLoopback_W = gHyp_tcp_request ( gzLocalHost, giARservicePort )) == 
 	   INVALID_SOCKET )
          gHyp_util_logError ( "Failed to create loopback listen handle to '%s' on port %d", 
@@ -534,6 +537,7 @@ SOCKET gHyp_concept_createService( sConcept *pConcept, char *pService )
       else
         gHyp_util_logInfo ( "Created loopback listen handle to '%s' on port %d", 
                                       gzLocalHost, giARservicePort ) ;
+      giJmpOverride = FALSE ;
     }
     return pConcept->link.listenTCP ;
   }
@@ -567,6 +571,7 @@ sLOGICAL gHyp_concept_init ( sConcept *pConcept,
   gsCurTime = time ( NULL ) ;
   giJmpLevel = -1 ;
   giJmpEnabled = FALSE ;
+  giJmpOverride = FALSE ;
   gpsConcept = pConcept ;
   gpsAImsg = gHyp_aimsg_new ( ) ; 
   giMaxExprSize = maxExprSize ;

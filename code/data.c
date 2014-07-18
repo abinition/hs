@@ -1199,8 +1199,12 @@ void gHyp_data_moveValues ( sData *pDst, sData *pSrc )
     ss,
     context ;
 
-  /* Move the data to another variable */
-  /*gHyp_data_deleteValues ( pDst ) ;*/
+  if ( gHyp_data_getDataType ( pDst ) > TYPE_STRING ||
+       gHyp_data_getDataType ( pSrc ) > TYPE_STRING ) 
+    return ;
+
+
+  /* List to list */
   pValue = NULL ;
   ss = -1 ; context = -1 ;
   while ( (pValue = gHyp_data_nextValue ( pSrc, 
@@ -1257,6 +1261,8 @@ void gHyp_data_copyValues ( sData *pDst, sData *pSrc )
     gHyp_data_copyValues ( *pDst->p.rValue, pSrc ) ;    
     return ;
   }
+
+  assert ( gHyp_data_getDataType ( pDst ) <= TYPE_STRING ) ;
 
   /* First delete any destination values */
   gHyp_data_deleteValues ( pDst ) ;

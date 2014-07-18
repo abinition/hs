@@ -178,6 +178,8 @@ extern sLOGICAL		giJmpEnabled ;  /* If longjmp is enabled from handlers*/
 extern SOCKET           gsSocketToCancel ;/* Should we want to cancel I/O */
 extern int		giJmpLevel ;    /* Current depth of saved jmp env */
 extern jmp_buf		gsJmpStack[MAX_JMP_LEVEL+1] ; /* For setjmp,longjmp */ 
+extern jmp_buf		gsJmpOverride ;  /* Jump Override */
+extern sLOGICAL		giJmpOverride ;  /* If longjmp override should be done */
 extern FILE*		gsPP ;		/* Hyperscript input stream */
 extern sAImsg*		gpsAImsg  ;	/* Working message structure */
 

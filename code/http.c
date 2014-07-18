@@ -491,7 +491,9 @@ void gHyp_http_open ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       
       /* Device is on terminal server */
       /* Request a connection. */
+      giJmpOverride = TRUE ;
       portFd = gHyp_tcp_request ( pDevice, port ) ;
+      giJmpOverride = FALSE ;
       
       if ( portFd == INVALID_SOCKET ) {
 	gHyp_instance_warning ( pAI,

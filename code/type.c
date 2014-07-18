@@ -248,33 +248,36 @@ sData *gHyp_type_assign ( sInstance *pAI,
       srcDataType = gHyp_data_getDataType (pSrcData ) ;
       if ( srcDataType == TYPE_CHAR || srcDataType == TYPE_UCHAR || 
 	   srcDataType == TYPE_ATTR || srcDataType == TYPE_UNICODE ) {
-	i = 0 ;
-	value[0] = '\0' ;
-	while ((pValue = gHyp_data_nextValue ( pSrcData, 
+	do {
+	  i = 0 ;
+	  value[0] = '\0' ;
+	  while ( i < VALUE_SIZE &&
+		  (pValue = gHyp_data_nextValue ( pSrcData, 
 					       pValue, 
 					       &context,
-					       sss )) &&
-	       i < VALUE_SIZE ) {
+					       sss )) ) {
 
-	  c = (char) gHyp_data_getRaw ( pValue,
+	    c = (char) gHyp_data_getRaw ( pValue,
 					context,
 					isVectorSrc ) ;
-	  value[i++] = c ;
-	}
-	if ( context == -2 && sss != -1 ) {
-	  gHyp_data_delete( pResult ) ;
-	  strcpy ( variable, gHyp_data_getLabel(pSrcData) ) ;
-    	  if ( freeSrcDataOnError && pSrcData ) gHyp_data_delete ( pSrcData ) ;
-	  gHyp_instance_error ( pAI, STATUS_BOUNDS, 
-				"Subscript '%d' is out of bounds in %s",
-				sss,
-				variable) ;
-	}
+	    value[i++] = c ;
+	  }
+	  if ( context == -2 && sss != -1 ) {
+	    gHyp_data_delete( pResult ) ;
+	    strcpy ( variable, gHyp_data_getLabel(pSrcData) ) ;
+    	    if ( freeSrcDataOnError && pSrcData ) gHyp_data_delete ( pSrcData ) ;
+	    gHyp_instance_error ( pAI, STATUS_BOUNDS, 
+	 			  "Subscript '%d' is out of bounds in %s",
+				  sss,
+				  variable) ;
+	  }
 	
-	value[i] = '\0' ;
-	pValue2 = gHyp_data_new ( NULL ) ;
-	gHyp_data_setStr_n ( pValue2, value, i ) ;
-	gHyp_data_append ( pResult, pValue2 ) ;
+	  value[i] = '\0' ;
+	  pValue2 = gHyp_data_new ( NULL ) ;
+	  gHyp_data_setStr_n ( pValue2, value, i ) ;
+	  gHyp_data_append ( pResult, pValue2 ) ;
+	} 
+	while ( pValue != NULL ) ;
       }
       else {
 
@@ -792,46 +795,49 @@ sData *gHyp_type_assign ( sInstance *pAI,
 	       (srcDataType == TYPE_CHAR || srcDataType == TYPE_UCHAR || 
 	        srcDataType == TYPE_ATTR || srcDataType == TYPE_UNICODE ) ) {
 
-	    i = 0 ;
-	    value[0] = '\0' ;
 	    pValue = NULL ;
-	    copySize = MIN ( copySize, VALUE_SIZE ) ;
-	    for ( i=0; i<copySize; i++ ) {
+	    do {
+	      i = 0 ;
+	      value[0] = '\0' ;
+	      copySize = MIN ( copySize, VALUE_SIZE ) ;
+	      for ( i=0; i<copySize; i++ ) {
 
-	      if ( i == 0 || pValue ) {
+		if ( i == 0 || pValue ) {
 
-		pValue = gHyp_data_nextValue( pSrcData,
+		  pValue = gHyp_data_nextValue( pSrcData,
 					      pValue,
 					      &context,
 					      sss ) ; 
 
-		if ( context== -2 && sss != -1 ) {
-		  if ( pResult  ) gHyp_data_delete ( pResult  ) ;	      
-		  if ( pSourceData ) gHyp_data_delete ( pSourceData ) ;	 
-	          strcpy ( variable, gHyp_data_getLabel(pSrcData) ) ;
- 	  	  if ( freeSrcDataOnError && pSrcData ) gHyp_data_delete ( pSrcData ) ;
-		  gHyp_instance_error ( 
+		  if ( context== -2 && sss != -1 ) {
+		    if ( pResult  ) gHyp_data_delete ( pResult  ) ;	      
+		    if ( pSourceData ) gHyp_data_delete ( pSourceData ) ;	 
+		    strcpy ( variable, gHyp_data_getLabel(pSrcData) ) ;
+ 	  	    if ( freeSrcDataOnError && pSrcData ) gHyp_data_delete ( pSrcData ) ;
+		      gHyp_instance_error ( 
 		     pAI, STATUS_BOUNDS, 
-		     "Subscript '%d' is out of bounds in %s",
-		     sss,
-		     variable) ;
+		      "Subscript '%d' is out of bounds in %s",
+		      sss,
+		      variable) ;
+		  }
 		}
+
+		if ( pValue )
+		  c = (char) gHyp_data_getRaw ( pValue,
+		  			  context,
+					isVectorSrc ) ;
+		else
+		  c = ' ' ;
+
+		value[i] = c ;
 	      }
 
-	      if ( pValue )
-		c = (char) gHyp_data_getRaw ( pValue,
-				       context,
-				       isVectorSrc ) ;
-	      else
-		c = ' ' ;
-
-	      value[i] = c ;
-	    }
-
-	    value[i] = '\0' ;
-	    pValue2 = gHyp_data_new ( NULL ) ;
-	    gHyp_data_setStr_n ( pValue2, value, i ) ;
-	    gHyp_data_append ( pVariable, pValue2 ) ;
+	      value[i] = '\0' ;
+	      pValue2 = gHyp_data_new ( NULL ) ;
+	      gHyp_data_setStr_n ( pValue2, value, i ) ;
+	      gHyp_data_append ( pVariable, pValue2 ) ;
+	    } 
+	    while ( pValue != NULL ) ;
 	  }
 	  else {
 

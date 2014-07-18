@@ -2488,9 +2488,9 @@ char *gHyp_util_readStream (  char *pStream,
 			      sLOGICAL isVector,
 			      FILE *pp )  
 {
-  /* The function of this routine is to keep the XML buffer filled.
+  /* The function of this routine is to keep the buffer filled.
    * The data can either come from a FILE* (pp) or a sData* (pStreamData).   
-   * In either case, the XML buffer is 3 times the size 
+   * In either case, the buffer is 3 times the size 
    * of what can be read from pp or pStreamData ( MAX_INPUT_LENGTH ).
    * The buffer is filled until it exceeds MAX_INPUT_LENGTH*2.
    * When the current processing pointer exceeds MAX_INPUT_LENGTH, then

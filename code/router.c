@@ -734,9 +734,11 @@ int gHyp_router_message ( sConcept *pConcept,
       
       /* Try TCP/IP */
       if ( pTargetData == NULL ) {
-		socket = gHyp_tcp_request ( pTargetHost, giARservicePort ) ;
-		if ( socket != INVALID_SOCKET )
-		  pTargetData = gHyp_sock_createNetwork ( pHosts,
+        giJmpOverride = TRUE ;
+	socket = gHyp_tcp_request ( pTargetHost, giARservicePort ) ;
+        giJmpOverride = FALSE ;
+	if ( socket != INVALID_SOCKET )
+	  pTargetData = gHyp_sock_createNetwork ( pHosts,
 						  pTargetHost,
 						  targetAddr,
 						  socket ) ;

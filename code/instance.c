@@ -960,7 +960,7 @@ sLOGICAL gHyp_instance_isSignal ( sInstance *pAI )
 	   pAI->signal.uINT  == 1 ||
 	   pAI->signal.uPIPE == 1 ||
 	   pAI->signal.uHUP  == 1 ||
-	   pAI->signal.uCONNECT ) ;
+	   pAI->signal.uCONNECT == 1 ) ;
 }
 
 void  gHyp_instance_signalPipe ( sInstance *pAI, int sigarg, int sigarg2, int sigarg3 )
@@ -3005,7 +3005,7 @@ static sLOGICAL lHyp_instance_handleError ( sInstance * pAI )
 
   /* If local is set, then create local data */
   if ( !gHyp_frame_isGlobalScope ( pAI->exec.pFrame ) ) {
-    pMethodData = gHyp_data_new ( "_handler_" ) ;
+    pMethodData = gHyp_data_new ( "_error_handler_" ) ;
     gHyp_data_setHashed ( pMethodData, TRUE ) ;
     gHyp_frame_setMethodData ( pAI->exec.pFrame, pMethodData );
   }
@@ -3381,7 +3381,7 @@ static sLOGICAL lHyp_instance_handleAlarm ( sInstance *pAI )
     
     /* If local is set, then create local data */
     if ( !gHyp_frame_isGlobalScope ( pAI->exec.pFrame ) ) {
-      pMethodData = gHyp_data_new ( "_handler_" ) ;
+      pMethodData = gHyp_data_new ( "_alarm_handler_" ) ;
       gHyp_data_setHashed ( pMethodData, TRUE ) ;
       gHyp_frame_setMethodData ( pAI->exec.pFrame, pMethodData );
     }
@@ -3484,7 +3484,7 @@ static sLOGICAL lHyp_instance_handleAlarm ( sInstance *pAI )
     
     /* If local is set, then create local data */
     if ( !gHyp_frame_isGlobalScope ( pAI->exec.pFrame ) ) {
-      pMethodData = gHyp_data_new ( "_handler_" ) ;
+      pMethodData = gHyp_data_new ( "_death_handler_" ) ;
       gHyp_data_setHashed ( pMethodData, TRUE ) ;
       gHyp_frame_setMethodData ( pAI->exec.pFrame, pMethodData );
     }
@@ -3567,7 +3567,7 @@ static sLOGICAL lHyp_instance_handleInterrupt ( sInstance *pAI )
 
   /* If local is set, then create local data */
   if ( !gHyp_frame_isGlobalScope ( pAI->exec.pFrame ) ) {
-    pMethodData = gHyp_data_new ( "_handler_" ) ;
+    pMethodData = gHyp_data_new ( "_interrupt_handler_" ) ;
     gHyp_data_setHashed ( pMethodData, TRUE ) ;
     gHyp_frame_setMethodData ( pAI->exec.pFrame, pMethodData );
   }
@@ -3641,7 +3641,7 @@ static sLOGICAL lHyp_instance_handleHangup ( sInstance *pAI )
 
   /* If local is set, then create local data */
   if ( !gHyp_frame_isGlobalScope ( pAI->exec.pFrame ) ) {
-    pMethodData = gHyp_data_new ( "_handler_" ) ;
+    pMethodData = gHyp_data_new ( "_hangup_handler_" ) ;
     gHyp_data_setHashed ( pMethodData, TRUE ) ;
     gHyp_frame_setMethodData ( pAI->exec.pFrame, pMethodData );
   }
@@ -3703,7 +3703,7 @@ static sLOGICAL lHyp_instance_handleConnect ( sInstance *pAI )
 
   /* If local is set, then create local data */
   if ( !gHyp_frame_isGlobalScope ( pAI->exec.pFrame ) ) {
-    pMethodData = gHyp_data_new ( "_handler_" ) ;
+    pMethodData = gHyp_data_new ( "_connect_handler_" ) ;
     gHyp_data_setHashed ( pMethodData, TRUE ) ;
     gHyp_frame_setMethodData ( pAI->exec.pFrame, pMethodData );
   }
@@ -3783,7 +3783,7 @@ static sLOGICAL lHyp_instance_handlePipe ( sInstance *pAI )
 
   /* If local is set, then create local data */
   if ( !gHyp_frame_isGlobalScope ( pAI->exec.pFrame ) ) {
-    pMethodData = gHyp_data_new ( "_handler_" ) ;
+    pMethodData = gHyp_data_new ( "_pipe_handler_" ) ;
     gHyp_data_setHashed ( pMethodData, TRUE ) ;
     gHyp_frame_setMethodData ( pAI->exec.pFrame, pMethodData );
   }
@@ -3840,7 +3840,7 @@ static sLOGICAL lHyp_instance_handleMessageInt ( sInstance *pAI )
 
   /* If local is set, then create local data */
    if ( !gHyp_frame_isGlobalScope ( pAI->exec.pFrame ) ) {
-    pMethodData = gHyp_data_new ( "_handler_" ) ;
+    pMethodData = gHyp_data_new ( "_message_handler_" ) ;
     gHyp_data_setHashed ( pMethodData, TRUE ) ;
     gHyp_frame_setMethodData ( pAI->exec.pFrame, pMethodData );
   }

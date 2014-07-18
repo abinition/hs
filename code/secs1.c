@@ -11,6 +11,9 @@
  * Modifications:
  *
  *   $Log: secs1.c,v $
+ *   Revision 1.14  2005/01/02 01:47:20  bergsma
+ *   Port messages must use TRANSACTION ID 00000001
+ *
  *   Revision 1.13  2004/11/19 03:51:01  bergsma
  *   Initialize TID on port message to random8 instead of 0000001
  *
@@ -1907,7 +1910,6 @@ int gHyp_secs1_incoming ( sSecs1 *pSecs1,
 	
 	/*gHyp_util_debug ( "Taking device id %d from port %d to port %d",
 			    id, pSecs1->parentSocket, pSecs1->fd );
-	 
 	*/
 
 	/* Take any SSL structures as well */
@@ -2178,6 +2180,7 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
     sender[SENDER_SIZE+1],
     method[METHOD_SIZE+1],
     mode[MODE_SIZE+1],
+    tid[FIELD_SIZE+1],
     value[VALUE_SIZE+2+1] ; /* Room for 2 extra characters.*/
 
   sData
@@ -2351,10 +2354,10 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
     pBuf = buffer ;
     pEndBuf = pBuf + nBytes ;
     
+    /*
     if ( nBytes == 16414 ) {
       gHyp_util_debug("%d bytes",nBytes);
     }
-    /*
     gHyp_util_debug("---------------------------------------------");
     gHyp_util_debug("%s",pBuf);
     gHyp_util_debug("---------------------------------------------");
@@ -3243,13 +3246,14 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
       }
     
       /*gHyp_util_debug("Received %d/%s = %s",id,mode,gHyp_data_print(pTV));*/
+      strcpy ( tid, "00000001" ) ;/*gHyp_util_random8() ;*/
       pMsg = gHyp_aimsg_initUnparsePartial ( 
 		gHyp_instance_incomingMsg ( pAI ),
 		target,
 		mode,
 		method,
 		sender,
-		gHyp_util_random8(),
+		tid,
 		gHyp_util_timeStamp ( gsCurTime ),
 		pTV ) ;
 
@@ -3272,6 +3276,9 @@ int gHyp_secs1_rawOutgoing ( sSecs1 *pPort, sInstance *pAI, sData *pData, int id
   sLOGICAL
     isVector ;
   
+  sBYTE
+    dataType ;
+
   sData
     *pResult ;
 
@@ -3296,7 +3303,8 @@ int gHyp_secs1_rawOutgoing ( sSecs1 *pPort, sInstance *pAI, sData *pData, int id
   pEndCmd = pCmd + PORT_READ_SIZE ;    
   pResult = NULL ;
 
-  isVector = ( gHyp_data_getDataType ( pData ) > TYPE_STRING ) ;
+  dataType = gHyp_data_getDataType ( pData ) ;
+  isVector = ( dataType > TYPE_STRING ) ;
   ss = gHyp_data_getSubScript ( pData ) ; 
   context = -1 ;
   count = 0 ;
@@ -3304,19 +3312,30 @@ int gHyp_secs1_rawOutgoing ( sSecs1 *pPort, sInstance *pAI, sData *pData, int id
 					   pResult,
 					   &context,
 					   ss ))) {
-    valueLen = gHyp_data_getStr ( pResult, 
+
+    if ( isVector && dataType <= TYPE_ATTR ) {
+      valueLen = gHyp_data_bufferLen( pResult, context ) ;
+      pStr = gHyp_data_buffer ( pResult, context ) ;
+      context+=valueLen ;
+    }
+    else {
+      valueLen = gHyp_data_getStr ( pResult, 
 				  value, 
 				  VALUE_SIZE, 
 				  context, 
 				  isVector ) ;
-    pStr = value ;
-    
+      pStr = value ;
+    }
+
     if ( (pCmd + valueLen) > pEndCmd ) {
 
       /* Write out what's there and start another buffer */
       *pCmd = '\0' ;	
       cmdLen = pCmd - command ;
-      /*gHyp_util_debug("%s",command);*/
+      assert ( cmdLen > 0 ) ; 
+
+      /*gHyp_util_debug("Writing port %d, %d bytes",pPort->fd, cmdLen);*/
+      /*gHyp_util_debug("+ %d bytes",cmdLen);*/
 
       nBytes = gHyp_sock_write ( (SOCKET) pPort->fd, 
 			         command, 
@@ -3336,17 +3355,22 @@ int gHyp_secs1_rawOutgoing ( sSecs1 *pPort, sInstance *pAI, sData *pData, int id
 
 	/* Some or all bytes were written */
 
-	/* Reset start of buffer */
 	pCmd = command ;
 	pEndCmd = pCmd + PORT_READ_SIZE ;
 
 	if ( nBytes < cmdLen ) {
 
-	  /* Not all was written, add in remainder */
-	  remainder = cmdLen - nBytes ;
-	  memcpy ( pCmd, pCmd+nBytes, remainder ) ;
-	  pCmd+=remainder ;
+	  if ( nBytes > 0 ) {
+
+	    /* Not all was written, shift remainder to start of buffer */
+	    remainder = cmdLen - nBytes ;
+	    memmove ( pCmd, pCmd+nBytes, remainder ) ;
+	    pCmd+=remainder ;
+	    *pCmd = '\0' ;
+	  }
+
 	  gHyp_util_logInfo("Network pipe full, sleeping for 100 usec");
+
 	  count = 0 ;
 	  usleep ( 100 );
     	  if ( (pCmd + valueLen) > pEndCmd ) {
@@ -3358,17 +3382,20 @@ int gHyp_secs1_rawOutgoing ( sSecs1 *pPort, sInstance *pAI, sData *pData, int id
 	  }
 	}
 	else
+	  /* Successful write.  Keep track of how many writes we do in a row */
 	  count++ ;
 
 	if ( count > 10 ) { 
+	  /* Too many writes (arbitrary 10) needs a pause */
 	  gHyp_util_logInfo(("Network pipe full, sleeping for 100 usec"));
 	  count = 0 ;
 	  usleep ( 100 );
 	}
       }
-    } 
+    }
+    
     memcpy ( pCmd, pStr, valueLen ) ;
-    pCmd += valueLen ;   
+    pCmd += valueLen ;
 
   }
   if ( context== -2 && ss != -1 ) 

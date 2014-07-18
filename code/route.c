@@ -1196,8 +1196,10 @@ void gHyp_route_open ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 				MAX_PORT_NUMBER ) ;
 
     if ( gHyp_tcp_resolveHost ( pHost, targetAddr ) ) {
-  
+ 
+      giJmpOverride = TRUE ;      
       fd = gHyp_tcp_request ( pHost, port ) ;
+      giJmpOverride = FALSE ;
       
       if ( fd == INVALID_SOCKET ) {
 	gHyp_instance_warning ( pAI,
