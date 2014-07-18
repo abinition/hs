@@ -16,6 +16,9 @@ $!
 $! Modifications:
 $!
 $!   $Log: compile_hs.com,v $
+$!   Revision 1.7  2009-03-01 22:24:51  bergsma
+$!   no message
+$!
 $!   Revision 1.6  2006-12-09 00:06:44  bergsma
 $!   Move gpsAI and gpsAImain to global external status out of hs.c.
 $!
@@ -132,6 +135,10 @@ $! 4. Needed for SQL access
 $!
 $ ccc sql.c
 $!
+$! 5. Needed for GD access
+$!
+$ ccc gd.c
+$!
 $!  Insert into PROMIS library 
 $!
 $ libr prom:promis -
@@ -146,6 +153,7 @@ env.obj+-
 fileio.obj+-
 frame.obj+-
 function.obj+-
+gd.obj+-
 hash.obj+-
 hsms.obj+-
 hyp.obj+-
@@ -201,6 +209,7 @@ env.obj+-
 fileio.obj+-
 frame.obj+-
 function.obj+-
+gd.obj+-
 hash.obj+-
 hs.obj+-
 hsms.obj+-

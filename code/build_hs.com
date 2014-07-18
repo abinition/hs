@@ -16,6 +16,9 @@ $!
 $! Modifications:
 $!
 $!   $Log: build_hs.com,v $
+$!   Revision 1.10  2009-03-01 22:24:51  bergsma
+$!   no message
+$!
 $!   Revision 1.9  2005-05-10 17:29:48  bergsma
 $!   Typo, hs.olb should be hs_non_promis.olb
 $!
@@ -131,6 +134,11 @@ $!
 $ ccc sql.c
 $
 $!
+$! 3. Needed for GD access
+$!
+$ ccc gd.c
+$
+$!
 $! Create new library
 $!
 $ if f$search ("hs_non_promis.olb") .nes. "" then $ delete hs_non_promis.olb;*
@@ -151,6 +159,7 @@ env.obj+-
 fileio.obj+-
 frame.obj+-
 function.obj+-
+gd.obj+-
 hash.obj+-
 hsms.obj+-
 hs.obj+-

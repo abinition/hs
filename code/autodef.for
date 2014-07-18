@@ -2,11 +2,19 @@
 !
 !	Include file for AUTOSERVER.FOR, AUTOCLIENT.FOR, AUTOUTIL.FOR
 ! 
-	parameter	AUTOMAN_VERSION = 'AM V3.8-4'
+	parameter	AUTOMAN_VERSION = 'AM V3.8-5'
 !
 ! Modifications:
 !
 !	$Log: autodef.for,v $
+!	Revision 1.53  2009-06-12 05:01:48  bergsma
+!	HS 385 Final Checkin and TAG -
+!	
+!	Revision 1.52  2008-11-30 22:33:23  bergsma
+!	V 3.8.4
+!	
+!	Make -x use less frame space.
+!	
 !	Revision 1.51  2008-07-07 15:22:59  bergsma
 !	Update to HS 3.8.3
 !	

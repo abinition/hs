@@ -143,13 +143,14 @@ DEATH_HANDLER()
   text = { "%DEATH: signal received." } ;
   puts text ;
 
+  on_death return DEATH_HANDLER() ;
+
   /* Establish death timer for start of a new day */
   ansi_now = timestamp ;
   ansi_newDay = parsedate ( date()+":000000" ) + (24*60*60) + 2 ;
 
   secondsToDeath = ansi_newDay - ansi_now ;
   lifetime ( secondsToDeath ) ;
-  on_death return DEATH_HANDLER() ;
 
   /* Start new log file for current date */
   logFileSpec = "\\local\\log\\router_" + date() + ".log" ;

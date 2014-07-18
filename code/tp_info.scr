@@ -30,6 +30,7 @@ CONNECT()
 
   /* TP methods */
   enable GET_EQPID_STATUS ;
+  enable GET_FILE_FIELDS ;
 
   /* Enable timestamps */
   timestamp (1);
@@ -41,13 +42,23 @@ CONNECT()
   idle () ;
 }
 
-GET_EQPID_STATUS()
+list MESSAGE_HANDLER()
+{
+  on_message return MESSAGE_HANDLER() ;
+  return "$ACK" ;
+} ;
+on_message return MESSAGE_HANDLER() ;
+
+
+list GET_EQPID_STATUS()
 {
   /* Required tokens and values:
    *
    *   EQPID
    *
    * Reply Tokens:
+   *   EQPTYPE  - optional
+   *   LOCATION - optional
    *   STATUS   - PROMIS equipment status
    */
 
@@ -69,17 +80,155 @@ GET_EQPID_STATUS()
        eqps.rectype != "C" )
     return DONE_GET_EQPID_STATUS ( { "%PROMIS: no such equipment: ",EQPID });
    
-  return DONE_GET_EQPID_STATUS ( eqps.status ) ;
-}
+  EQPTYPE = trim eqps.eqptyp ;
 
-DONE_GET_EQPID_STATUS( str TEXT )
+  pclose "tbls" ;
+  puts {"...getting EQUN record for ",eqps.eqpid } ;
+  ret = pget ( "tbls.tblskey", "eq", "EQUN" + trim(eqps.eqpid) ) ;
+  if ( !ret ) return DONE_GET_EQPID_STATUS ( { "%PROMIS: no such equipment: ",EQPID });
+  tbls.tablename ;
+  LOCATION = trim equn.locationid ;
+
+  return DONE_GET_EQPID_STATUS ( trim eqps.status ) ;
+};
+
+list DONE_GET_EQPID_STATUS( str TEXT )
+{
+  puts TEXT ;
+  EXIT_FUNCTION() ;
+  QUIT_FUNCTION() ;
+  undef LOCATION ;
+  undef EQPTYPE ;
+  undef EQPID ;
+  return TEXT ;
+};
+
+list GET_FILE_FIELDS()
+{
+  /* Required tokens and values:
+   *
+   *   FILE
+   *   KEYNAME
+   *   KEYVALUE
+   *
+   * Reply Tokens:
+   *   <fieldname> - optional
+   */
+
+  /* *****************************************************************
+   *                         INITIALIZE
+   *******************************************************************/
+  /* Check arguments */
+  if ( !exists (FILE)     || count (FILE) == 0 ||
+       !exists (KEYNAME)  || count (KEYNAME) == 0 ||
+       !exists (KEYVALUE) || count (KEYVALUE) == 0 ) {
+
+    /* Bad arguments */
+    return DONE_GET_FILE_FIELDS ( {"%ARGS: Invalid arguments supplied"} ) ; 
+  }
+
+  str promis_file = trim tolower FILE ;
+  ret = popen promis_file ;
+
+  if ( !ret ) return DONE_GET_FILE_FIELDS ( 
+        {"%FILE: Could not open PROMIS file ",promis_file});
+
+  str promis_key = promis_file + "." + tolower KEYNAME ;
+
+  str promis_key_value = trim pack str KEYVALUE ;
+
+  ret = pget ( promis_key, "eq", promis_key_value ) ;
+  if ( !ret )  return DONE_GET_FILE_FIELDS ( 
+        {"Could not get key ",promis_key," for value ",promis_key_value});
+
+  n = count args ;
+  for ( i=0; i<n; i++ ) {
+
+    str fieldname = args[i] ;
+
+    if ( count (*fieldname) == 0 ) {
+
+      str promis_field = promis_file + "." + trim tolower fieldname ;
+
+      if ( exists ( *promis_field ) ) {
+        *fieldname = trim *promis_field ;
+      }
+    }
+  }
+
+   return DONE_GET_FILE_FIELDS("$ACK") ;
+} ;
+
+
+list DONE_GET_FILE_FIELDS( str TEXT )
+{
+  puts TEXT ;
+  EXIT_FUNCTION() ;
+  QUIT_FUNCTION() ;
+  undef FILE ;
+  undef KEYNAME ;
+  undef KEYVALUE ;
+  return TEXT ;
+};
+
+list GET_RUNNING_LOTIDS()
+{
+  /* Required tokens and values:
+   *
+   *   EQPID
+   *
+   * Reply Tokens:
+   *  LOTID
+   */
+
+  /* *****************************************************************
+   *                         INITIALIZE
+   *******************************************************************/
+  /* Check arguments */
+  if ( !exists (EQPID) || count (EQPID) == 0 ) {
+
+    /* Bad arguments */
+    return DONE_GET_RUNNING_LOTIDS ( {"%ARGS: Invalid arguments supplied"} ) ; 
+  }
+
+   /* Get location */
+   pclose "tbls" ;
+   puts {"...getting EQUN record for ",EQPID } ;
+   ret = pget ( "tbls.tblskey", "eq", "EQUN" + toupper(trim(EQPID)) ) ;
+   if ( !ret ) return DONE_GET_RUNNING_LOTIDS ( {"%PROMIS: no such equipment: ",EQPID });
+   tbls.tablename ;
+   LOCATION = trim equn.locationid ;
+
+   /* Get running lotids */
+   pexec("quit equip");
+   pcapture 1 ;
+   ret = pexec( "eq "+LOCATION+" i "+EQPID);
+   pcapture 0 ;
+   if ( !exists(_promis_data_))
+     return DONE_GET_RUNNING_LOTIDS ( {"%PROMIS: no _promis_data_" } ) ;
+ 
+   str tok ;
+   LOTID = {} ;
+   n = count _promis_data_ ;
+   for ( i=0;i<n;i++ ) {
+     if ( i>3 ) {
+       tok = strtok ( _promis_data_[i] ) ;
+       if ( count ( tok ) == 3 ) LOTID = { LOTID, tok[0] } ;
+     }
+   }
+
+   return DONE_GET_RUNNING_LOTIDS("$ACK") ;
+} ;
+
+list DONE_GET_RUNNING_LOTIDS( str TEXT )
 {
   puts TEXT ;
   EXIT_FUNCTION() ;
   QUIT_FUNCTION() ;
   undef EQPID ;
   return TEXT ;
-}
+};
+
 
 EXIT_FUNCTION()
 {

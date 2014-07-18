@@ -19,6 +19,4 @@ automan4.for
 autoutil.for
 batch.for
 >IE
->ES
-[.see]aeqsee.bld       			 ! See example controller
->EE
+
