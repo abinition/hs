@@ -2,6 +2,12 @@
  * Modifications:
  *
  * $Log: secs1.h,v $
+ * Revision 1.8  2006/01/23 05:12:02  bergsma
+ * Added port_binary() function.
+ *
+ * Revision 1.7  2005/02/15 07:09:02  bergsma
+ * Add gHyp_secs1_setForwardPorts().
+ *
  * Revision 1.6  2004/10/16 05:03:22  bergsma
  * Added gHyp_secs1_getHttp function.
  *
@@ -72,6 +78,9 @@ extern void		gHyp_secs1_setSSL ( sSecs1 *pSecs1, sSSL *pSSL ) ;
 extern sHTTP*		gHyp_secs1_getHttp ( sSecs1 *pSecs1 ) ;
 extern sSSL*		gHyp_secs1_getSSL ( sSecs1 *pSecs1 ) ;
 extern sData*		gHyp_secs1_getForwardPorts ( sSecs1 *pSecs1 ) ;
+extern void		gHyp_secs1_setForwardPorts ( sSecs1 *pSecs1, sData* pfp ) ;
+extern void gHyp_secs1_setBinary( sSecs1* pSecs1, sLOGICAL isBinary ) ;
+extern sLOGICAL gHyp_secs1_isBinary( sSecs1* pSecs1 ) ;
 extern void		gHyp_secs1_addForwardPort ( sSecs1 *pSecs1, int from_id, int to_id ) ;
 extern sData*		gHyp_secs1_copyForwardPort ( sSecs1 *pSecs1, int  ) ;
 extern void		gHyp_secs1_removeForwardPort ( sSecs1 *pSecs1, int from_id, int to_id ) ;

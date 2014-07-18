@@ -3,6 +3,10 @@
 ! Modifications:
 !
 ! $Log: autofil.for,v $
+! Revision 1.3  2005/04/22 19:23:50  bergsma
+! When reading TLOG records, use only one slot in aeqssp_fildata, this prevents
+! an overflow in the array.
+!
 ! Revision 1.2  2002/09/16 15:16:47  bergsma
 ! Added packstart and packsize so that unpacking a PROMIS record could be
 ! delayed as long as possible.
@@ -75,6 +79,7 @@
 	integer*4		aeqSsp_autoFil_fileId( MAX_AUTO_FILES )
 	logical*4		aeqSsp_autoFil_isOpen ( MAX_AUTO_FILES )
 	logical*4		aeqSsp_autoFil_isFresh ( MAX_AUTO_FILES )
+	logical*4		aeqSsp_autoFil_isFromTLOG ( MAX_AUTO_FILES )
         integer*4               aeqSsp_autoFil_packStart ( MAX_AUTO_FILES )
         integer*4               aeqSsp_autoFil_packSize ( MAX_AUTO_FILES )
 
@@ -109,6 +114,7 @@
      &                          aeqSsp_autoFil_packStart,
      &                          aeqSsp_autoFil_packSize,
      &				aeqSsp_autoFil_isFresh,
+     &				aeqSsp_autoFil_isFromTLOG,
      &				aeqSsp_autoFil_file,
      &				aeqSsp_autoFil_ACTL,
      &                          aeqSsp_autoFil_RECP,

@@ -10,6 +10,9 @@
  * Modifications:
  *
  * $Log: typdef.h,v $
+ * Revision 1.5  2005/02/15 06:58:37  bergsma
+ * No newline at end of file
+ *
  * Revision 1.4  2004/12/26 17:21:24  jbergsma
  * Avoid multiple includes
  *

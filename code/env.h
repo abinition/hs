@@ -2,6 +2,16 @@
  * Modifications:
  *
  * $Log: env.h,v $
+ * Revision 1.10  2005/07/23 22:34:41  bergsma
+ * Added insertbefore and insertafter
+ *
+ * Revision 1.9  2005/05/10 17:31:38  bergsma
+ * Added "env" function
+ *
+ * Revision 1.8  2005/03/09 04:15:12  bergsma
+ * Added appendval and insertval.  Also, disallow append or insert of a variable
+ * unto itself.  Needed new gHyp_data_isSilbing function.
+ *
  * Revision 1.7  2004/10/16 04:40:45  bergsma
  * Added unmap() function
  *
@@ -48,6 +58,8 @@ extern sData*	gHyp_env_mergeData ( sData*, sData*, sInstance*, int, sLOGICAL, sL
 extern void	gHyp_env_sort ( sInstance*, sCode*, sLOGICAL ) ;
 extern void	gHyp_env_reverse ( sInstance*, sCode*, sLOGICAL ) ;
 extern void	gHyp_env_insert ( sInstance*, sCode*, sLOGICAL ) ;
+extern void	gHyp_env_insertbefore ( sInstance*, sCode*, sLOGICAL ) ;
+extern void	gHyp_env_insertafter ( sInstance*, sCode*, sLOGICAL ) ;
 extern void	gHyp_env_append ( sInstance*, sCode*, sLOGICAL ) ;
 extern void	gHyp_env_remove ( sInstance*, sCode*, sLOGICAL ) ;
 extern void	gHyp_env_chop ( sInstance*, sCode*, sLOGICAL ) ;
@@ -55,5 +67,8 @@ extern void	gHyp_env_detach ( sInstance*, sCode*, sLOGICAL ) ;
 extern void	gHyp_env_quiet ( sInstance*, sCode*, sLOGICAL ) ;
 extern void	gHyp_env_verify ( sInstance*, sCode*, sLOGICAL ) ;
 extern void	gHyp_env_version ( sInstance*, sCode*, sLOGICAL ) ;
+extern void	gHyp_env_env ( sInstance*, sCode*, sLOGICAL ) ;
 extern void	gHyp_env_localhost ( sInstance*, sCode*, sLOGICAL ) ;
 extern void	gHyp_env_localaddr ( sInstance*, sCode*, sLOGICAL ) ;
+extern void	gHyp_env_appendval ( sInstance*, sCode*, sLOGICAL ) ;
+extern void	gHyp_env_insertval ( sInstance*, sCode*, sLOGICAL ) ;

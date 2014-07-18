@@ -26,6 +26,7 @@
  *  Richard Heathfield may be contacted by email at:
  *     binary@eton.powernet.co.uk
  *
+ *
  */
 #include <stdio.h>
 #include <stdlib.h>

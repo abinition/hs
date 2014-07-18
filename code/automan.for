@@ -62,6 +62,22 @@
 ! Modifications:
 !
 !   $Log: automan.for,v $
+!   Revision 1.5  2005/09/28 04:42:56  bergsma
+!   OPCERT Functionality
+!
+!   Revision 1.4  2005/09/25 20:10:40  bergsma
+!   Up to V3.6.3
+!   Add opcert code.
+!   Changes to function VT2HTML
+!   Bug in EAGAIN waiting for UNIX fifo's or network sockets
+!   AUTOROUTER loigical must be uppercase on VMS
+!
+!   Revision 1.3  2005/08/12 01:16:16  bergsma
+!   no message
+!
+!   Revision 1.7  2005/04/13 13:49:30  bergsma
+!   HS 3.5.6
+!
 !   Revision 1.2  2003/01/16 14:32:07  bergsma
 !   V3.1.0
 !   Added Modification tags.
@@ -1823,6 +1839,13 @@
 	  aeqSsp_autoTbl_log = .false.
 	endif
 
+        call Lib$Sys_TrnLog( 'OPTION_AUTO_OPCERT', bufferLen, buffer,, )
+        if ( buffer(:bufferLen) .eq. 'YES' ) then
+          aeqSsp_autoTbl_opcert = .true.
+        else
+          aeqSsp_autoTbl_opcert = .false.
+        endif
+
 	call Lib$Sys_TrnLog( 'AUTOROUTER', bufferLen, buffer,, )
 	if ( buffer(:bufferLen) .eq. 'AUTOROUTER' ) then
 	  aeqSsp_autoTbl_router = 'ROUTER'
@@ -1842,13 +1865,6 @@
 	  aeqSsp_autoTbl_mbxRouterLen = bufferLen + 1 + aeqSsp_autoTbl_routerLen 
 	endif
 
-	! Initialize parameter lookup tables (full Initialization)
-	!!!call Tst_ParmUtil_TstPrmComInit( .true. )
-
-	! Check for $AUTO_* parameter. Return if not enabled
-	if ( .not. aeqSsp_autoMan_getParm(	'$AUTO_'//paramSuffix,
-     &			        		aeqSsp_autoTbl_parmSource,
-     &						parmVal ) ) return
 
 	!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	! INITIALIZE
@@ -1869,6 +1885,24 @@
 	aeqSsp_autoTbl_senderObjectLen = 0
 	aeqSsp_autoTbl_senderNode = ' '
 	aeqSsp_autoTbl_senderNodeLen = 0
+
+
+	! Initialize parameter lookup tables (full Initialization)
+	!!!call Tst_ParmUtil_TstPrmComInit( .true. )
+
+	! Check for $AUTO_* parameter. Return if not enabled
+	if ( .not. aeqSsp_autoMan_getParm(	'$AUTO_'//paramSuffix,
+     &			        		aeqSsp_autoTbl_parmSource,
+     &						parmVal ) ) then
+
+	  ! Before we say there's no automation, was the OPCERT parameter
+	  ! set?  If so, set the target and exit.
+
+          if ( aeqSsp_autoTbl_opcert .eq. .false. ) return
+
+	  parmVal = 'OPCERT'
+
+        endif
 
 	!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	! GET AUTOMATION TARGET 
@@ -6587,7 +6621,7 @@
 
 	  ! It's not one we know about.
 	  call aeqSsp_automan_outMessage( 
-     &		'Timer or other signal occurred.\n. Continuing... !!!',
+     &		'Timer or other signal occurred.\n',
      &		.true. )
 
    	  !aeqSsp_autoMan_handler = SS$_RESIGNAL

@@ -10,6 +10,32 @@
 /* Modifications: 
  *
  * $Log: router.c,v $
+ * Revision 1.28  2006/08/22 18:46:27  bergsma
+ * Return COND_NORMAL when the message is queued (is for us).
+ *
+ * Revision 1.27  2006/08/09 00:51:22  bergsma
+ * Undo last change to createNetwork
+ *
+ * Revision 1.26  2006/08/08 20:50:59  bergsma
+ * In createNetwork, prevent closing of valid socket on another IP channel.
+ *
+ * Revision 1.25  2006/02/09 05:09:41  bergsma
+ * Added comment
+ *
+ * Revision 1.24  2005/10/15 21:42:09  bergsma
+ * Added renameto functionality.
+ *
+ * Revision 1.23  2005/01/31 06:00:18  bergsma
+ * The offset in the buffer for the next read must be returned in a pointer to a int,
+ * it is not safe to use strlen() on the buffer later to calculate it.
+ *
+ * Revision 1.22  2005/01/25 05:51:26  bergsma
+ * Uncomment SIGNAL Message
+ *
+ * Revision 1.21  2005/01/10 20:20:26  bergsma
+ * Added debug statements when sock reads do not start
+ * fromt the beginning of the buffer.
+ *
  * Revision 1.20  2004/12/13 04:54:24  bergsma
  * Don't memmove unless required.
  *
@@ -253,7 +279,9 @@ int gHyp_router_message ( sConcept *pConcept,
   int
     cond=COND_SILENT,
     n,
-    msgLen,
+    msgLen ;
+
+  SOCKET
     socket;
 
   sInstance
@@ -728,7 +756,7 @@ int gHyp_router_message ( sConcept *pConcept,
 
       pTargetData = gHyp_sock_findNetwork ( pHosts, targetAddr )  ;
       if ( pTargetData == NULL ) gHyp_util_logError ( 
-		 "Network connection does not exist to '%s'", pTargetHost ) ;
+		 "Network connection does not exist to '%s' at '%s'", pTargetHost, targetAddr ) ;
 
       /* If connection does not exist attempt TCP/IP */
       
@@ -854,13 +882,14 @@ int gHyp_router_message ( sConcept *pConcept,
 					  NULL, /* ok if 4th arg is FALSE */
 				          pTargetInstance,
 					  targetRoot2,
-				          FALSE ) ;
+				          FALSE, FALSE, TRUE ) ;
       }
       if ( pAI ) {
 	if ( guDebugFlags & DEBUG_DIAGNOSTICS )
 	  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
 			       "Found instance %s#%s",pTargetInstance,pTargetConcept) ;
 	gHyp_aimsg_initParse ( gHyp_instance_incomingMsg(pAI), (char*) pMsg ) ;
+	cond = COND_NORMAL ;
       }
     }
   }
@@ -920,7 +949,7 @@ int gHyp_router_process ( sConcept *pConcept,
 			  char *pMsgBuf, 
 			  char *pMsgOff,
 			  int nBytes,
-			  int maxMessageSize,
+			  int *pOffset,
 			  char *pMsgAddr )
 {
   /* Description:
@@ -946,8 +975,9 @@ int gHyp_router_process ( sConcept *pConcept,
    *	nBytes			[R]
    *	- number of bytes from pMsgOff to end of message
    *
-   *	maxMessageSize		[R]
-   *	- maximum message size supported by fifo, tcp/ip, etc..
+   *	pOffset			 [W]
+   *    - the offset to the next read for the buffer
+   *
    *
    * Return value:
    *
@@ -975,9 +1005,9 @@ int gHyp_router_process ( sConcept *pConcept,
   /* Process all messages in the buffer */
   eob = pMsgOff + nBytes ;
   *eob = '\0' ;
+  *pOffset = 0 ;
 
   do {
-  
     /* Point to start of next message. When this function
      * starts, pNextMsg is always the beginning of the buffer/
      */
@@ -993,6 +1023,12 @@ int gHyp_router_process ( sConcept *pConcept,
       /*gHyp_util_debug("Bad message '%s'",pNextMsg);*/
       break ;
     }
+
+    /* Report anything we skipped over *
+    if ( pMsg > pNextMsg ) {
+      gHyp_util_logWarning ( "Skipped over characters" ) ;
+    }
+    */
 
     /* Skip across multiple | characters */
     while ( *(pMsg+1) == '|' ) pMsg++ ; 
@@ -1038,12 +1074,14 @@ int gHyp_router_process ( sConcept *pConcept,
       if ( msgLen <= MAX_MESSAGE_SIZE ) {
 	
 	/* Shift the truncated message to the start of the buffer */
-        gHyp_util_debug ( "Left shifting %d bytes, reading again", msgLen ) ;
+        gHyp_util_logWarning ( "Left shifting %d bytes, reading again", msgLen ) ;
 	if ( pMsg > pMsgBuf ) memmove ( pMsgBuf, pMsg, msgLen ) ;
 	
 	/* Remember where the next read will start from. */
 	pMsgBuf += msgLen ;
 	
+	*pOffset = msgLen ;
+
 	/* Don't process the message, wait until next read gets the rest. */
 	pMsg = NULL ;
       }
@@ -1082,11 +1120,15 @@ int gHyp_router_process ( sConcept *pConcept,
 	     strncmp ( pMsg, "|SIGHUP||", 9) == 0 ||
 	     strncmp ( pMsg, "|SIGINT||", 9) == 0 ||
 	     strncmp ( pMsg, "|SIGTERM||", 10) == 0 ) ) {
-	/*gHyp_util_debug("SIGNAL MESSAGE");*/
+	gHyp_util_logInfo("SIGNAL Message %s",pMsg);
 	stat = COND_NORMAL ;
       }
       else
-	stat = gHyp_router_message ( pConcept, pClients, pHosts, pMsg, pMsgAddr ) ;
+	stat = gHyp_router_message ( pConcept, 
+				     pClients, 
+				     pHosts, 
+				     pMsg, 
+				     pMsgAddr ) ;
 
       if ( stat == COND_NORMAL ) cond = COND_NORMAL ;
       *eom = saveChar ;

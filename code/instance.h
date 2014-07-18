@@ -3,6 +3,25 @@
  * Modifications:
  *
  * $Log: instance.h,v $
+ * Revision 1.10  2006/01/19 20:28:01  bergsma
+ * Added gHyp_instance_hasNullDeviceId, this allows different instances to
+ * do listen socket assignments to the same socket.
+ *
+ * Revision 1.9  2006/01/16 18:56:36  bergsma
+ * HS 3.6.6
+ * 1. Save query timeout events.  Don't let queries repeat indefinitely.
+ * 2. Rework DEBUG_DIAGNOSTIC debugging.  Less overhead.
+ *
+ * Revision 1.8  2005/11/23 16:57:17  bergsma
+ * Added gHyp_instance_swapDevices
+ *
+ * Revision 1.7  2005/10/15 21:42:09  bergsma
+ * Added renameto functionality.
+ *
+ * Revision 1.6  2005/01/25 05:48:00  bergsma
+ * Fix problem where wakeup from SLEEP not always detected, if colliding with
+ * HEARTBEAT.
+ *
  * Revision 1.5  2004/04/29 08:34:41  bergsma
  * Device Id is unique and is used interchangeably between PORT, HSMS, SECSI, and HTTP sockets.
  * Better handling of fd/id tables.
@@ -23,8 +42,10 @@ extern void    	gHyp_instance_init ( sInstance*, sConcept*, char*, char* ) ;
 extern void    	gHyp_instance_delete ( sInstance * ) ;
 extern sConcept *gHyp_instance_getConcept ( sInstance *pAI ) ;
 extern void gHyp_instance_swapFrames ( sInstance *pAI, sInstance *pAImain ) ;
+extern void gHyp_instance_swapData ( sInstance *pAI, sInstance *pAImain ) ;
+extern void gHyp_instance_swapDevices ( sInstance *pAI, sInstance *pAImain ) ;
 extern sFrame* 	gHyp_instance_frame ( sInstance *) ;
-extern void    	gHyp_instance_setExpectedReply(sInstance*,char*,char*,char*);
+extern void    	gHyp_instance_setExpectedReply(sInstance*,char*,char*,char*,int);
 extern void    	gHyp_instance_requeue ( sInstance* ) ;
 extern void  gHyp_instance_signalPipe ( sInstance *pAI, int sigarg, int sigarg2, int sigarg3 ) ;
 extern void  gHyp_instance_signalHangup ( sInstance *pAI, int sigarg, int sigarg2, int sigarg3 ) ;
@@ -62,6 +83,7 @@ extern void gHyp_instance_deleteFd ( sInstance *pAI, SOCKET fd ) ;
 extern SOCKET	gHyp_instance_getDeviceFd ( sInstance *, sWORD ) ;
 extern sWORD    gHyp_instance_getDeviceId ( sInstance *pAI, SOCKET fd ) ;
 extern sLOGICAL gHyp_instance_hasDeviceId ( sInstance *pAI, SOCKET fd ) ;
+extern sLOGICAL gHyp_instance_hasNullDeviceId ( sInstance *pAI, SOCKET fd ) ;
 extern sLOGICAL gHyp_instance_isRbitSet ( sInstance *, sWORD ) ;
 extern void	gHyp_instance_portEnable ( sInstance*, sWORD , sData* ) ;
 extern void	gHyp_instance_portDisable ( sInstance*, sWORD ) ;
@@ -91,6 +113,8 @@ extern void    	gHyp_instance_setMessageHandler ( sInstance *, int, sHyp* ) ;
 extern void    	gHyp_instance_setMethodCall ( sInstance * ) ;
 extern void    	gHyp_instance_setDerefHandler (sInstance *,int, sHyp* );
 extern void	gHyp_instance_setBeatTime ( sInstance *, int );
+extern void	gHyp_instance_setWakeTime ( sInstance *, int );
+extern time_t	gHyp_instance_getWakeTime ( sInstance * );
 extern time_t	gHyp_instance_getTimeOutTime ( sInstance *);
 extern void	gHyp_instance_cancelTimeOut ( sInstance *);
 extern void    	gHyp_instance_initTimeOut ( sInstance *, int ) ;

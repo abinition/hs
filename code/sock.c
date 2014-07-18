@@ -11,6 +11,129 @@
  * Modifications:
  *
  *	$Log: sock.c,v $
+ *	Revision 1.63  2006/08/22 13:33:11  bergsma
+ *	Warn when new socket is not assigned
+ *	
+ *	Revision 1.62  2006/08/09 06:00:09  bergsma
+ *	Clear alias table when zero bytes received on network connection
+ *	
+ *	Revision 1.61  2006/08/09 00:53:14  bergsma
+ *	Added information to see what address is connecting in createNetwork
+ *	
+ *	Revision 1.60  2006/08/09 00:51:22  bergsma
+ *	Undo last change to createNetwork
+ *	
+ *	Revision 1.59  2006/08/08 21:20:37  bergsma
+ *	no message
+ *	
+ *	Revision 1.58  2006/08/08 21:05:28  bergsma
+ *	no message
+ *	
+ *	Revision 1.57  2006/08/08 20:50:32  bergsma
+ *	In createNetwork, prevent closing of valid socket on another IP channel.
+ *	
+ *	Revision 1.56  2006/01/19 20:38:21  bergsma
+ *	typo
+ *	
+ *	Revision 1.55  2006/01/19 19:38:16  bergsma
+ *	Undefined pAIassigned caused traceback.
+ *	
+ *	Revision 1.54  2006/01/18 01:35:38  bergsma
+ *	SSL: Trap ( filterBioPending > 0 ) erro
+ *	
+ *	Revision 1.53  2006/01/18 01:22:21  bergsma
+ *	More debug statements.
+ *	
+ *	Revision 1.52  2006/01/18 00:56:32  bergsma
+ *	More debug statements.
+ *	
+ *	Revision 1.51  2006/01/18 00:42:37  bergsma
+ *	More debug statements.
+ *	
+ *	Revision 1.50  2006/01/17 19:02:32  bergsma
+ *	More debug statements.
+ *	
+ *	Revision 1.49  2005/12/27 02:53:24  bergsma
+ *	Removed functions ssl_certfile and ssl_keyfile
+ *	
+ *	Revision 1.48  2005/12/23 15:22:00  bergsma
+ *	Change util_debug to util_logInfo for some SSL actions
+ *	
+ *	Revision 1.47  2005/12/17 20:41:47  bergsma
+ *	no message
+ *	
+ *	Revision 1.46  2005/11/29 15:22:35  bergsma
+ *	Put isWriter and isReader against filterBioPending
+ *	
+ *	Revision 1.45  2005/11/23 15:55:44  bergsma
+ *	pAIassigned was not being used for CONNECT signals.
+ *	
+ *	Revision 1.44  2005/11/06 16:46:13  bergsma
+ *	wait time in EWOULDBLOCK write requests should not take longer than
+ *	4 seconds - an arbitrary value but ...
+ *	
+ *	Revision 1.43  2005/10/25 16:39:37  bergsma
+ *	Added usleep() function
+ *	
+ *	Revision 1.42  2005/10/15 21:44:13  bergsma
+ *	Fix for VMS problem case:  1 port, no loopback, cannot read mailbox!
+ *	
+ *	Revision 1.41  2005/09/25 20:10:40  bergsma
+ *	Up to V3.6.3
+ *	Add opcert code.
+ *	Changes to function VT2HTML
+ *	Bug in EAGAIN waiting for UNIX fifo's or network sockets
+ *	AUTOROUTER loigical must be uppercase on VMS
+ *	
+ *	Revision 1.40  2005/09/12 00:47:36  bergsma
+ *	Changed wording of logInfo message.
+ *	
+ *	Revision 1.39  2005/09/09 09:44:42  bergsma
+ *	Removed uncessary warning print statements.
+ *	
+ *	Revision 1.38  2005/09/08 13:38:55  bergsma
+ *	When partial socket write and EAGAIN, try again.
+ *	
+ *	Revision 1.37  2005/07/23 22:33:06  bergsma
+ *	ssl fixes
+ *	
+ *	Revision 1.36  2005/04/13 13:45:54  bergsma
+ *	HS 3.5.6
+ *	Added sql_toexternal.
+ *	Fixed handling of strings ending with bs (odd/even number of backslashes)
+ *	Better handling of exception condition.
+ *	
+ *	Revision 1.35  2005/03/17 00:08:46  bergsma
+ *	HS 3.5.1 Patches for DECC compiler
+ *	
+ *	Revision 1.34  2005/03/16 23:53:21  bergsma
+ *	V 3.5.1 - fixes for use with DECC compiler.
+ *	
+ *	Revision 1.33  2005/03/09 04:19:08  bergsma
+ *	Fix spin that occurred when write to mailslot produced 0 bytes
+ *	
+ *	Revision 1.32  2005/02/25 04:00:51  bergsma
+ *	HS 3.4.5
+ *	Make mailslot read/writes non-blocking.
+ *	
+ *	Revision 1.31  2005/02/15 07:06:40  bergsma
+ *	When new sockets are created, take the assigned id's immediately, so that
+ *	they are already assigned when the connect_handler is invoked.
+ *	
+ *	Revision 1.30  2005/01/31 05:57:37  bergsma
+ *	1. For VMS, must use socketToCancel in lHyp_sock_read
+ *	2. For WINDOWS, offset to read buffer cannot be calculated with strlen,
+ *	rather it must be calculated in gHyp_router_process.
+ *	
+ *	Revision 1.29  2005/01/25 05:54:43  bergsma
+ *	1. Detect Network FULL (EAGAIN/EWOULDBLOCK) and use increasing sleep to
+ *	resolve stall.
+ *	2. Separate SIGINT from SIGTERM.
+ *	
+ *	Revision 1.28  2005/01/10 20:19:17  bergsma
+ *	(Remove later)  Added debug statements when sock reads do not start
+ *	fromt the beginning of the buffer.
+ *	
  *	Revision 1.27  2004/12/26 17:22:44  jbergsma
  *	Notify client when mailslot has been opened
  *	
@@ -125,12 +248,22 @@
  */
 
 /********************** AUTOROUTER INTERFACE ********************************/
-#if defined ( WIN32 ) || defined ( __WIN32 )
+#if defined ( WIN32 ) || defined ( __WIN32 ) || defined ( _WIN32_WCE )
+
 #define AS_WINDOWS 1
+
+#ifdef _WIN32_WCE
+#define AS_PPC 1
+#endif
+
 #elif defined ( __VMS )
+
 #define AS_VMS 1
+
 #else
+
 #define AS_UNIX 1
+
 #endif
 
 #include <sys/stat.h>
@@ -224,6 +357,7 @@ typedef long    fd_set ;
 /* Buffer for fifo reads - twice the size of max msg length. */
 static char             gzInboxBuf[MAX_BUFFER_SIZE+1];
 static char*            gpzInboxOffset ;
+static int              giInboxOffset ;
 static int              giInboxMaxMsgSize ;
 static int              giInboxNbytes ;
 static OVERLAPPED       gsInboxOverlapped ;
@@ -267,7 +401,7 @@ struct ssl_t {
   BIO *outBio ;
   BIO *inBio ;
   sLOGICAL isClient ;
-  void *session ;
+  int state ;
 } ;
 #endif
 
@@ -367,6 +501,17 @@ extern pid_t waitpid(pid_t pid, int *status, int options);
 #endif
 #endif
 
+#if defined ( AS_VMS ) || defined ( AS_WINDOWS )
+#ifndef AS_DECC
+void usleep ( unsigned long useconds )
+{
+  struct timeval timeout ;
+  timeout.tv_sec = useconds / 1000 ;
+  timeout.tv_usec = useconds % 1000 ;
+  select ( 0, NULL, NULL, NULL, &timeout ) ;
+}
+#endif
+#endif
 
 #ifdef SIGALRM
 static int lHyp_sock_alarmHandler ( int signo )
@@ -394,14 +539,16 @@ static int lHyp_sock_alarmHandler ( int signo )
   gHyp_util_logWarning("ALARM") ;
 
   if ( giLoopback != INVALID_SOCKET ) {
+    /*gHyp_util_debug("ALARM message to loopback");*/
     nBytes = gHyp_sock_write ( giLoopback, "|SIGALRM|||", 11, giLoopbackType
                                ,&gsLoopbackOverlapped, NULL 
                                );
-    if ( nBytes <= 0 ) guSIGINT = 1 ;
+    if ( nBytes <= 0 ) guSIGTERM = 1 ;
   }
   
   /*gHyp_util_debug("Cancelling i/o on %d",gsSocketToCancel);*/
-  if ( gsSocketToCancel != INVALID_SOCKET ) gHyp_sock_cancelIO ( gsSocketToCancel ) ;   
+  if ( gsSocketToCancel != INVALID_SOCKET ) 
+    gHyp_sock_cancelIO ( gsSocketToCancel ) ;   
 
 #ifdef AS_VMS
 
@@ -450,10 +597,11 @@ static int lHyp_sock_pipeHandler ( int signo )
   if ( giLoopback != INVALID_SOCKET ) {
     nBytes = gHyp_sock_write ( giLoopback, "|SIGPIPE|||", 11, giLoopbackType,
                                &gsLoopbackOverlapped, NULL );
-    if ( nBytes <= 0 ) guSIGINT = 1 ;
+    if ( nBytes <= 0 ) guSIGTERM = 1 ;
   }
   
-  if ( gsSocketToCancel != INVALID_SOCKET ) gHyp_sock_cancelIO(gsSocketToCancel) ;
+  if ( gsSocketToCancel != INVALID_SOCKET ) 
+    gHyp_sock_cancelIO(gsSocketToCancel) ;
 
 #ifdef AS_VMS
 
@@ -499,10 +647,11 @@ static int lHyp_sock_ioHandler ( int signo )
   if ( giLoopback != INVALID_SOCKET ) {
     nBytes = gHyp_sock_write ( giLoopback, "|SIGIO|||", 9, giLoopbackType,
                                 &gsLoopbackOverlapped, NULL      );
-    if ( nBytes <= 0 ) guSIGINT = 1 ;
+    if ( nBytes <= 0 ) guSIGTERM = 1 ;
   }
 
-  if ( gsSocketToCancel != INVALID_SOCKET ) gHyp_sock_cancelIO(gsSocketToCancel) ;      
+  if ( gsSocketToCancel != INVALID_SOCKET ) 
+    gHyp_sock_cancelIO(gsSocketToCancel) ;      
 
 #ifdef AS_VMS
 
@@ -547,24 +696,24 @@ static int lHyp_sock_intHandler ( int signo )
 
   gHyp_util_logWarning("CTRL/C");
 
+  /*gHyp_util_debug( "Signal interrupt to instance" ) ;*/
+  gHyp_instance_signalInterrupt ( 
+	gHyp_concept_getConceptInstance ( gpsConcept ) ) ;
+
   if ( giLoopback != INVALID_SOCKET ) {
     /*gHyp_util_debug("Notifying through loopback");*/
     nBytes = gHyp_sock_write ( giLoopback, "|SIGINT|||", 10, giLoopbackType,
                               &gsLoopbackOverlapped, NULL ) ;
   }
-
   if ( gsSocketToCancel != INVALID_SOCKET ) {
     /*gHyp_util_debug( "Cancel IO on %u",gsSocketToCancel);*/
     gHyp_sock_cancelIO(gsSocketToCancel) ;
   }
-
-  /*gHyp_util_debug( "Signal interrupt to instance" ) ;*/
-  gHyp_instance_signalInterrupt ( 
-	gHyp_concept_getConceptInstance ( gpsConcept ) ) ;
   
 #ifdef AS_VMS
   /* Re-establish handler */
   gHyp_signal_establish ( SIGINT, lHyp_sock_intHandler ) ;
+  giCondition = 1620 ;
 #else
 
   /* Longjmp out of here if a setjmp return point was set up */
@@ -611,10 +760,11 @@ static int lHyp_sock_termHandler ( int signo )
   if ( !giJmpEnabled && giLoopback != INVALID_SOCKET ) {
     nBytes = gHyp_sock_write ( giLoopback, "|SIGTERM|||", 11, giLoopbackType,
                             &gsLoopbackOverlapped, NULL );
-    if ( nBytes <= 0 ) guSIGINT = 1 ;
+    if ( nBytes <= 0 ) guSIGTERM = 1 ;
   }
 
-  if ( gsSocketToCancel != INVALID_SOCKET ) gHyp_sock_cancelIO(gsSocketToCancel) ;
+  if ( gsSocketToCancel != INVALID_SOCKET ) 
+    gHyp_sock_cancelIO(gsSocketToCancel) ;
 
 #ifdef AS_VMS
 
@@ -662,10 +812,11 @@ static int lHyp_sock_hupHandler ( int signo )
   if ( !giJmpEnabled && giLoopback != INVALID_SOCKET ) {
     nBytes = gHyp_sock_write ( giLoopback, "|SIGHUP|||", 10, giLoopbackType,
       &gsLoopbackOverlapped,NULL);
-    if ( nBytes <= 0 ) guSIGINT = 1 ;
+    if ( nBytes <= 0 ) guSIGTERM = 1 ;
   }
 
-  if ( gsSocketToCancel != INVALID_SOCKET ) gHyp_sock_cancelIO(gsSocketToCancel) ;
+  if ( gsSocketToCancel != INVALID_SOCKET ) 
+    gHyp_sock_cancelIO(gsSocketToCancel) ;
 
 #ifdef AS_VMS
 
@@ -713,7 +864,7 @@ static int lHyp_sock_qioAST2( int channel )
     /*gHyp_util_debug("SIGMBX");*/
     nBytes = gHyp_sock_write ( giLoopback, "|SIGMBX|||", 10, giLoopbackType,
       &gsLoopbackOverlapped,NULL);
-    if ( nBytes <= 0 ) guSIGINT = 1 ;
+    if ( nBytes <= 0 ) guSIGTERM = 1 ;
   }
 
 #endif
@@ -730,8 +881,12 @@ sLOGICAL gHyp_sock_init ( )
   WSADATA wsaData;
   int err;
  
+#ifdef AS_PPC
+  wVersionRequested = MAKEWORD( 1, 1 );
+#else
   wVersionRequested = MAKEWORD( 2, 2 );
- 
+#endif
+  
   err = WSAStartup( wVersionRequested, &wsaData );
   if ( err != 0 )
     /* Tell the user that we could not find a usable */
@@ -820,6 +975,21 @@ sLOGICAL gHyp_sock_init ( )
   return TRUE ;
 }
 
+void gHyp_sock_usleep( unsigned int waitTime ) {
+
+  gHyp_util_logWarning ( "Sleeping for %u microseconds", waitTime ) ;
+
+#ifndef AS_WINDOWS
+  /* Microseconds */
+  usleep ( waitTime ) ;
+
+#else
+  /* Milliseconds  */
+  Sleep ( waitTime/1000 ) ;
+#endif
+
+}
+
 void gHyp_sock_clearReadFDS ()
 {
   /* Description:
@@ -900,7 +1070,11 @@ static HANDLE lHyp_sock_openFifo ( char *path, sLOGICAL isRead, sLOGICAL isWrite
     return INVALID_HANDLE_VALUE ;
   }
 
-  s = CreateFile( path, 
+    s = CreateFile( 
+#ifdef AS_PPC 
+  (const unsigned short*)
+#endif
+		  path, 
                   flags,  
                   flags2,
                   NULL,                        
@@ -964,11 +1138,17 @@ static HANDLE lHyp_sock_openFifo ( char *path, sLOGICAL isRead, sLOGICAL isWrite
   }
 #elif defined ( FIOCLEX )
 
+  
+  gHyp_tcp_setup ( (SOCKET) s ) ;
+
+/*
 #ifdef AS_WINDOWS
   if ( ioctlsocket ( s, FIOCLEX ) == -1 ) {
 #else
   if ( ioctl ( s, FIOCLEX ) == -1 ) {
 #endif
+*/
+
     gHyp_util_sysError ( "Failed to FIOCLEX on FIFO" ) ;
     return INVALID_HANDLE_VALUE ;
   }
@@ -1044,7 +1224,11 @@ HANDLE gHyp_sock_fifo ( char *path,
     sa.bInheritHandle = FALSE;
     sa.lpSecurityDescriptor = &sd;
 
-    s = CreateMailslot( path, 
+    s = CreateMailslot( 
+#ifdef AS_PPC 
+  (const unsigned short*)
+#endif
+			path, 
                         MAX_MESSAGE_SIZE,
                         MAILSLOT_WAIT_FOREVER,/* no time-out for operations */
                         &sa );                /* security attributes */
@@ -1138,6 +1322,7 @@ sLOGICAL gHyp_sock_mkdir ( char *path )
 }
 
 #ifdef AS_SSL
+
 /* Print SSL errors and exit*/
 static sLOGICAL lHyp_sock_sslError ( char *string )
 {
@@ -1173,6 +1358,16 @@ static int lHyp_sock_verify_callback ( int ok, X509_STORE_CTX *ctx )
     depth ;
 
   
+  /* This callback routine is called so that we can have
+   * control of certificate validation.
+   *
+   * This routine is a 'work-in-progress', there are
+   * many ctx-error types that would otherwise cause
+   * a reject of the certificate, we have but a few
+   * cases for now.
+   *
+   */
+
   err_cert = X509_STORE_CTX_get_current_cert(ctx);
   err = X509_STORE_CTX_get_error(ctx);
   depth = X509_STORE_CTX_get_error_depth(ctx);
@@ -1215,26 +1410,31 @@ static int lHyp_sock_verify_callback ( int ok, X509_STORE_CTX *ctx )
 	break ;
 
       case X509_V_ERR_UNABLE_TO_VERIFY_LEAF_SIGNATURE: /* 21 */
+
 	gHyp_util_logWarning("Unable to verify leaf signature");
 	break ;
 
       case X509_V_ERR_CERT_UNTRUSTED: /* 27 */
 	gHyp_util_logWarning("Cert untrusted");
+
 	break ;
 
     }
   }
 
-  if ( ok ) gHyp_util_debug("CERT OK");
+  if ( ok ) gHyp_util_logInfo ("SSL CERTIFICATE is OK");
   return (ok);
 }
 
-/*The password code is not thread safe*/
 int gHyp_sock_password_cb(char *buf, int num, int rwflag, void *userdata )
 {
+  /* A password callback routine. 
+   *
+   *
+   */
   if ( num < (int) strlen(gzPass)+1 ) return 0;
   strcpy(buf,gzPass);
-  gHyp_util_debug("SSL password check of %s",buf );
+  gHyp_util_logInfo("SSL password check of %s",buf );
 
   return (strlen(gzPass)) ;
 }
@@ -1246,7 +1446,7 @@ void *gHyp_sock_ctxInit( char *certFile, char *keyFile, char *password )
   
   /* Global system initialization*/
   if ( !guSSLinitialized ) {
-    gHyp_util_debug("Initializing SSL");
+    gHyp_util_logInfo("Initializing SSL");
     RAND_seed(gzRandomSeed, sizeof gzRandomSeed);
     SSL_library_init();
     SSL_load_error_strings();
@@ -1268,8 +1468,12 @@ void *gHyp_sock_ctxInit( char *certFile, char *keyFile, char *password )
     return NULL ;
   }
 
+  /* SSL servers always have certificate files to present to the
+   * client, clients sometimes do, sometimes do not.
+   */
   if ( !certFile ) return (void*) ctx ;
 
+  /* First see if the certificate file is valid */
   if ( !SSL_CTX_use_certificate_file( ctx,
 				      certFile,
 				      SSL_FILETYPE_PEM ) ) {
@@ -1277,11 +1481,19 @@ void *gHyp_sock_ctxInit( char *certFile, char *keyFile, char *password )
     return NULL ;
   }
   
+  /* Next, sometimes the keyfile is protected by a password,
+   * if so, we store the password in a temporary location, and
+   * specify a callback routine that will be called when its time
+   * to validate the password.
+   */
   if ( password ) {
     strcpy (  gzPass, password ) ;
     SSL_CTX_set_default_passwd_cb ( ctx, gHyp_sock_password_cb ) ;
   }
 
+  /* The keyfile contains the private key used to establish
+   * the SSL session.
+   */
   if ( keyFile ) {
     if ( !(SSL_CTX_use_PrivateKey_file (  ctx,
 					  keyFile,
@@ -1290,6 +1502,7 @@ void *gHyp_sock_ctxInit( char *certFile, char *keyFile, char *password )
       return NULL ;
     }
   }
+
   return (void*) ctx ;
 
 }
@@ -1309,51 +1522,58 @@ void gHyp_sock_deleteSSL ( sSSL *pSSL )
   ReleaseMemory ( pSSL ) ;
 }
 
-void gHyp_sock_setSession ( sSSL *pSSL, void *session  ) 
+/*
+ * HOW-TO SESSION RESUMPTION
+ *
+ * // A, Client SSL connection to socket h1.
+ * //    It must save its session handle.
+ *. 
+ * handle hSSL = ssl_new() ;
+ * handle sessionSSL == ssl_getSession ( hSSL ) ;
+ * ssl_assign ( hSSL, h1 );
+ *
+ * // B. Second client SSL connection to socket h2
+ * //    It uses the previous session handle
+ *
+ * handle hSSL2 = ssl_new() ;
+ * ssl_assign ( hSSL2, h2 ) ;
+ * ssl_setSession ( hSSL2, sessionSSL ) ;
+ * ssl_assign ( hSSL2, h2 ) ;
+ *
+ * // At sever end, it must activate session caching
+ *
+ * handle h_listen = http_service ( 443 ) ;
+ * handle hSSL_server = ssl_new()
+ * ssl_assign ( hSSL_server, handle_listen ) ;
+ * int context = 1 ;  // Any number will do.
+ * ssl_enableSessions ( hSSL_server ) ;
+ *
+ */
+
+void gHyp_sock_setSession ( void *ctx, void *session  ) 
+{    
+  SSL_set_session ( ctx, session ) ;
+}
+
+void *gHyp_sock_getSession ( void *ctx ) 
 {  
-  
-  pSSL->session = session ;
+  return SSL_get1_session ( ctx ) ;
 }
 
-void *gHyp_sock_getSession ( sSSL *pSSL ) 
+static int s_server_session_id_context = 1 ;
+void gHyp_sock_enableSessions ( void *ctx ) 
 {  
-  pSSL->session = SSL_get1_session ( pSSL->ssl ) ;
-  return pSSL->session ;
+   SSL_CTX_set_session_id_context(
+      ctx,
+      (void*)&s_server_session_id_context,
+      sizeof s_server_session_id_context);
 }
 
-sLOGICAL gHyp_sock_ctxCert ( void *ctx, char *certFile ) 
-{ 
-  SSL_CTX* sslCtx = (SSL_CTX*) ctx ;
-  if ( !SSL_CTX_use_certificate_file( sslCtx,
-				      "cacert.pem",
-				      SSL_FILETYPE_PEM ) )
-    return lHyp_sock_sslError("No certificate in PEM file");
-
-  gHyp_sock_ctxKey ( (void*) ctx, "privkey.pem", "abinition" ) ;
-
-  return TRUE ;
-}
-
-sLOGICAL gHyp_sock_ctxKey ( void *ctx, char *keyFile, char *password ) 
-{ 
-  SSL_CTX* sslCtx = (SSL_CTX*) ctx ;
-  int n = MIN ( strlen(password), VALUE_SIZE ) ;
-  strncpy ( gzPass, password, n ) ;
-  gzPass[n] = '\0' ;
-
-  gHyp_util_debug("Setting password callback for %s in %s",keyFile,password);
-  SSL_CTX_set_default_passwd_cb ( sslCtx, gHyp_sock_password_cb ) ;
-  if ( !(SSL_CTX_use_PrivateKey_file (	sslCtx,
-					keyFile,
-					SSL_FILETYPE_PEM ) ) )
-    return lHyp_sock_sslError("Cannot read key file");
-  
-  return TRUE ;
-
-}
 
 sLOGICAL gHyp_sock_ctxCApath ( void *ctx, char *CApath ) 
 {
+  /* Set the path to the Certificate Authority */
+
   if (	!SSL_CTX_load_verify_locations( ctx, NULL, CApath) ||
 	!SSL_CTX_set_default_verify_paths ( ctx ) )
     return lHyp_sock_sslError("Failed to load/set verify of CA path");
@@ -1363,6 +1583,9 @@ sLOGICAL gHyp_sock_ctxCApath ( void *ctx, char *CApath )
 
 sLOGICAL gHyp_sock_ctxCAfile ( void *ctx, char *CAfile ) 
 {
+
+  /* Set a certificate file to be used as the Certificate Authority..*/
+
   if (	!SSL_CTX_load_verify_locations( ctx, CAfile, NULL ) ||
 	!SSL_CTX_set_default_verify_paths ( ctx ) )
     return lHyp_sock_sslError("Failed to load/set verify of CA file");
@@ -1372,12 +1595,17 @@ sLOGICAL gHyp_sock_ctxCAfile ( void *ctx, char *CAfile )
 
 sLOGICAL gHyp_sock_ctxCiphers ( void *ctx, char *ciphers ) 
 { 
+  /* Set a list of ciphers that we will support */
+
   SSL_CTX_set_cipher_list( (SSL_CTX*) ctx, ciphers ) ;
   return TRUE ;
 }
 
 sLOGICAL gHyp_sock_ctxAuth ( void *ctx )
 {    
+  /* Calling this method as a SSL server will request SSL to
+   * verify a certificate from the client.but not force it.
+   */
   SSL_CTX_set_verify( ctx,
 		      SSL_VERIFY_PEER,
 		      lHyp_sock_verify_callback);
@@ -1386,6 +1614,9 @@ sLOGICAL gHyp_sock_ctxAuth ( void *ctx )
 
 sLOGICAL gHyp_sock_ctxAuthClient ( void *ctx ) 
 {
+  /* Calling this method as a SSL server will force SSL to
+   * verify a certificate from the client.
+   */
   SSL_CTX_set_verify( ctx, 
 		      SSL_VERIFY_PEER |
 		      SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
@@ -1395,6 +1626,7 @@ sLOGICAL gHyp_sock_ctxAuthClient ( void *ctx )
 
 sSSL *gHyp_sock_copySSL ( sSSL *pSSL )
 {
+  if ( pSSL == NULL ) return NULL ;
   return gHyp_sock_createSSL ( pSSL->sslCtx, pSSL->isClient ) ;
 }
 
@@ -1413,7 +1645,9 @@ sSSL *gHyp_sock_createSSL ( void *ctx, sLOGICAL isClient )
 
   ssl = SSL_new ( (SSL_CTX*) ctx ) ;
 
-  gHyp_util_debug("Created new SSL object");
+  if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
+      "Created new SSL object");
 
   if ( !(BIO_new_bio_pair (  &internalBIO, MAX_MESSAGE_SIZE, 
 			     &networkBIO, MAX_MESSAGE_SIZE ) ) ) {
@@ -1429,12 +1663,23 @@ sSSL *gHyp_sock_createSSL ( void *ctx, sLOGICAL isClient )
   }
 
   if ( isClient ) {
-    gHyp_util_debug("Setting SSL to connect state");
+
+    if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
+      "Setting SSL to connect state");
+
     SSL_set_connect_state ( ssl ) ;
+
   }
   else {
-    gHyp_util_debug("Setting SSL to accept state");
+
+    if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
+	"Setting SSL to accept state");
+
     SSL_set_accept_state( ssl);
+
+    /*gHyp_sock_enableSessions ( ctx ) ;*/
   }
   SSL_set_bio ( ssl, internalBIO, internalBIO );
 
@@ -1448,8 +1693,12 @@ sSSL *gHyp_sock_createSSL ( void *ctx, sLOGICAL isClient )
   pSSL->ssl = ssl ;
   pSSL->sslCtx = (SSL_CTX*) ctx ;
   pSSL->isClient = isClient ;
-  pSSL->session = NULL ;
+  pSSL->state = -1 ; /* No state */
 
+  /*
+  pSSL->keyFile = NULL ;
+  pSSL->password = NULL ;
+  */
   return pSSL ;
 }
 #endif
@@ -1504,7 +1753,7 @@ static int lHyp_sock_read ( SOCKET s,
     status ;
 #endif
 
-  gsSocketToCancel = s ;
+  if ( giLoopback == INVALID_SOCKET ) gsSocketToCancel = s ;
 
   if ( timeout != 0 ) {
 
@@ -1946,7 +2195,9 @@ static int lHyp_sock_read ( SOCKET s,
     errno = GetLastError() ;
 #endif
     
-    if ( errno == EAGAIN || errno == EWOULDBLOCK ) return 0 ;
+    if ( 
+	  errno == EAGAIN || 
+	  errno == EWOULDBLOCK ) return 0 ;
     
     /* Otherwise there was a problem. */
     if ( !silent ) gHyp_util_sysError ( "Failed to read from socket (%d)", s ) ;
@@ -2006,27 +2257,50 @@ static int lHyp_sock_write ( SOCKET s,
     dwError ;
 #endif
 
-  int           
+  sLOGICAL 
+    socketFull=FALSE ;
+
+#ifdef AS_WINDOWS
+
+#define INITIAL_WAIT_TIME       64
+#define MAX_WAIT_TIME	      2048
+
+#else
+
+#define INITIAL_WAIT_TIME       64000
+#define MAX_WAIT_TIME	      2048000
+
+#endif
+
+  unsigned int
+    waitTime = INITIAL_WAIT_TIME ;
+  
+  int
     nBytes=0 ;
   
-  switch ( channelType ) {
+  while ( nBytes == 0 ) {
 
-  case SOCKET_TCP:
-    nBytes = send ( s, pMsg, msgLen, 0 ) ;
-    break ;
+    switch ( channelType ) {
+
+      case SOCKET_TCP:
+
+        /*gHyp_util_debug("write to socket %d, %d",s, msgLen );*/
+        nBytes = send ( s, pMsg, msgLen, 0 ) ;
+
+      break ;
     
-  case SOCKET_SERIAL:
-  case SOCKET_FIFO:
+    case SOCKET_SERIAL:
+    case SOCKET_FIFO:
     
 #ifdef AS_VMS
-    /* VMS land */
+      /* VMS land */
 
-    if ( channelType == SOCKET_FIFO )
-      func = (IO$_WRITEVBLK | IO$M_NOW | IO$M_NORSWAIT ) ;
-    else if ( channelType == SOCKET_SERIAL )
-      func = IO$_WRITEVBLK ;
+      if ( channelType == SOCKET_FIFO )
+	func = (IO$_WRITEVBLK | IO$M_NOW | IO$M_NORSWAIT ) ;
+      else if ( channelType == SOCKET_SERIAL )
+        func = IO$_WRITEVBLK ;
 
-    status = sys$qiow ( 0,
+      status = sys$qiow ( 0,
                         s,
                         func,
                         (short*)pOverlapped,
@@ -2035,68 +2309,119 @@ static int lHyp_sock_write ( SOCKET s,
                         msgLen,
                         0,0,0,0 ) ;
 
-    if ( silent ) {
-      if ( !(status & 1) || !(pOverlapped->ioStatus & 1) ) return COND_ERROR ;
-    }
-    else if ( !gHyp_util_check ( status, pOverlapped->ioStatus ) ) {
-      gHyp_util_logError ( 
-        "Failed to write to MBX socket (%u)", s ) ;
-      return -1 ;
-    }
-    nBytes = pOverlapped->nBytes ;
-    break ;
+      if ( silent ) {
+	if ( !(status & 1) || !(pOverlapped->ioStatus & 1) ) return COND_ERROR ;
+      }
+      else if ( !gHyp_util_check ( status, pOverlapped->ioStatus ) ) {
+	gHyp_util_logError ( 
+	  "Failed to write to MBX socket (%u)", s ) ;
+	return -1 ;
+      }
+      nBytes = pOverlapped->nBytes ;
+      break ;
 #else
 #ifndef AS_WINDOWS
-    /*gHyp_util_debug("write to socket %d, %s",s, pMsg );*/
-    nBytes = write ( s, pMsg, msgLen ) ;
-    break ;
+      /*gHyp_util_debug("write to fifo %d, %s",s, pMsg );*/
+      nBytes = write ( s, pMsg, msgLen ) ;
+      break ;
 #else
-    status = WriteFile( (HANDLE) s, 
+      status = WriteFile( (HANDLE) s, 
                         pMsg, 
                         msgLen, 
                         &nBytes, 
                         pOverlapped) ;
         
         
-    if ( !status ) {
-       dwError = GetLastError() ;
-          if ( dwError == ERROR_IO_PENDING ) {
-            /*gHyp_util_debug("Pending write I/O");*/
-            if ( GetOverlappedResult( (HANDLE) s, pOverlapped, &nBytes, TRUE ) ) {
-               ResetEvent ( pOverlapped->hEvent ) ;
-            }
-            else {
-              if ( !silent ) gHyp_util_sysError ( "Failed to get overlapped result from socket %d",s ) ;
-              nBytes = -1 ;
-        }
+      if ( !status ) {
+	dwError = GetLastError() ;
+        if ( dwError == ERROR_IO_PENDING ) {
+	  /*gHyp_util_debug("Pending write I/O");*/
+          if ( GetOverlappedResult( (HANDLE) s, pOverlapped, &nBytes, TRUE ) ) {
+	    ResetEvent ( pOverlapped->hEvent ) ;
+          }
+          else {
+            if ( !silent ) gHyp_util_sysError ( "Failed to get overlapped result from socket %d",s ) ;
+            nBytes = -1 ;
+	  }
+	}
+      }
+
+      break ;
+#endif
+#endif
+    }
+
+    if ( nBytes == -1 ) {
+
+      /* Write error */
+    
+#ifdef AS_WINDOWS
+      errno = GetLastError() ;
+#endif
+    
+      if ( 
+	    errno != EAGAIN &&
+	    errno != EWOULDBLOCK ) {
+
+	if ( !silent ) gHyp_util_sysError ( "Failed to write to socket (%d)", s ) ;
+	return -1 ;
+      }
+      else {
+	if ( !silent ) gHyp_util_logWarning ( "Socket %d is full", s ) ;
+	socketFull = TRUE ;
+	nBytes = 0 ;
       }
     }
 
-    break ;
-#endif
-#endif
-  }
+    if ( nBytes < msgLen && nBytes >= 0 ) {
 
-  if ( nBytes == -1 ) {
+      if ( !silent )
+	gHyp_util_logWarning ( "Wrote %u out of %u bytes to socket %d", nBytes, msgLen, s ) ; 
 
-    /* Write error */
-    
-#ifdef AS_WINDOWS
-    errno = GetLastError() ;
+      if ( socketFull || nBytes > 0 ) {
+
+	/* We need to set the write selector so that we can know when its
+	 * ok to write to the socket
+	 */
+      
+#ifndef AS_WINDOWS
+	/* Microseconds - 4 million is the highest - 4 secons */
+	gHyp_util_logWarning ( "Sleeping for %u milliseconds", waitTime/1000 ) ;
+	usleep ( waitTime ) ;
+
+#else
+	/* Milliseconds - 4000 is the highest = 4 seconds */
+	gHyp_util_logWarning ( "Sleeping for %u milliseconds", waitTime ) ;
+	Sleep ( waitTime ) ;
 #endif
-    
-    if ( errno != EAGAIN && errno != EWOULDBLOCK ) {
 
-      if ( !silent ) gHyp_util_sysError ( "Failed to write to socket (%d)", s ) ;
-      return -1 ;
+	if ( nBytes > 0 ) {
+	  pMsg += nBytes ;
+	  msgLen -= nBytes ;
+	  waitTime = INITIAL_WAIT_TIME ;
+	} 
+	else
+	  waitTime *= 2 ; 
+
+	nBytes = 0 ;
+
+        /* Wait successively twice as long as the time before.
+         * 64000 128000 256000 512000 1024000 2048000 micoseconds.
+         * That sum totals almost 4 seconds, long enough because otherwise
+	 * other sockets would not get serviced.  Another solution is to
+	 * save the buffer and go back to the main select statement, where the
+	 * write operation would be retried a few times, simultaneously allowing
+	 * other sockets to be serviced.  But all this would be only 
+	 * useful in query() operations, not event().
+         */
+	if ( waitTime > MAX_WAIT_TIME ) break ;
+
+      }
+      else
+        /* Not socket full */
+	nBytes = -1 ;
     }
-    else
-      nBytes = 0 ;
-  }     
-
-  if ( nBytes < msgLen && nBytes >= 0 )
-    if ( !silent ) gHyp_util_logWarning ( "Wrote only %u of %u bytes to socket",
-			   nBytes, msgLen ) ;
+  }
 
   return nBytes ;   
 }
@@ -2153,7 +2478,9 @@ static int lHyp_sock_doSSL( sSSL* pSSL,
     *pSSLbuf ;
 
   if ( pNbytes == NULL ) {
-    if ( DEBUG ) gHyp_util_debug("SSL write, %d bytes",nBytes);
+    if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
+	"SSL write, %d bytes",nBytes);
     isWriter = TRUE ;
     shouldWrite = TRUE ;
     sslTimeout = SSL_WAIT_INCREMENT ;
@@ -2161,15 +2488,48 @@ static int lHyp_sock_doSSL( sSSL* pSSL,
     numBytes = nBytes ;
   }
   else {
-    if ( DEBUG ) gHyp_util_debug("SSL read, max %d bytes, to=%d",nBytes,timeout) ;
+    if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
+	"SSL read, max %d bytes, to=%d",nBytes,timeout) ;
     isReader = TRUE ;
     sslTimeout = timeout ;
     maxBytes = nBytes ;
     numBytes = 0 ;
   }
-  if ( SSL_in_init ( pSSL->ssl ) )
-    gHyp_util_logInfo ( "In SSL handshake - %s",
-			SSL_state_string_long( pSSL->ssl ) ) ;
+  if ( SSL_in_init ( pSSL->ssl ) ) {
+
+    if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
+	"In SSL handshake - %s", SSL_state_string_long( pSSL->ssl ) ) ;
+
+    pSSL->state = -1 ;
+
+    if ( pSSL->isClient ) {
+      /* Client - we do sessions */
+    }
+    else {
+      /* Server - we do sessions */
+      /*
+      SSL_set_verify(ssl,SSL_VERIFY_PEER |
+      SSL_VERIFY_FAIL_IF_NO_PEER_CERT,0);
+      */
+      /* Stop the client from just resuming the
+         un-authenticated session */
+      /*
+      SSL_set_session_id_context(ssl,
+        (void *)&s_server_auth_session_id_context,
+        sizeof(s_server_auth_session_id_context));
+      
+      if(SSL_renegotiate(ssl)<=0)
+        berr_exit("SSL renegotiation error");
+      if(SSL_do_handshake(ssl)<=0)
+        berr_exit("SSL renegotiation error");
+      ssl->state=SSL_ST_ACCEPT;
+      if(SSL_do_handshake(ssl)<=0)
+        berr_exit("SSL renegotiation error");
+      */
+    }
+  }
 
   pBuf = pMsg ;
   pSSLbuf = gzSSLbuf ;
@@ -2177,13 +2537,13 @@ static int lHyp_sock_doSSL( sSSL* pSSL,
   do {
   
     /*****************************************************************
-     * Write decrypted data from application into engine
+     * Write decrypted data from application into the engine
      * if the SSL engine says we should and if there are
      * still decrypted bytes left to write.
      * 
-     * This section is only called for SSL write operations.
+     * This section is only done for SSL write operations.
      */
-    if ( (shouldWrite && numBytes > 0) || filterBioPending > 0 ) {
+    if ( (shouldWrite && numBytes > 0) || (isWriter && filterBioPending > 0 )) {
 
       /* We must always write what the application requested */
       nWriteFilter = BIO_write( pSSL->filterBio, pBuf, numBytes );
@@ -2194,18 +2554,24 @@ static int lHyp_sock_doSSL( sSSL* pSSL,
 	  gHyp_util_logError ( "SSL App->Filter handshake error" ) ;
 	  return -1 ;
 	}
-        if ( DEBUG ) gHyp_util_debug("Retry App->Filter BIO_write later" ) ;
+        if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+	  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
+	    "Retry App->Filter BIO_write later" ) ;
       }	
   
       else if ( nWriteFilter == 0 ) {
 
-	/*gHyp_util_logWarning ( "SSL App->Filter BIO_write error" ) ;*/
-	/*return -1 ;*/
+	if ( filterBioPending > 0 ) {
+	  gHyp_util_logWarning ( "SSL App->Filter BIO_write error" ) ;
+	  return -1 ;
+	}
       }
       else {
 
 	/* Engine accepted write. */
-        if ( DEBUG ) gHyp_util_debug("App->Filter BIO_write, %d bytes",nWriteFilter ) ;
+        if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+	  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
+	    "App->Filter BIO_write, %d bytes",nWriteFilter ) ;
         /*if ( DEBUG ) gHyp_util_debug("[%.*s]",nWriteFilter,pBuf);*/
 	 
 	numBytes -= nWriteFilter ;
@@ -2213,14 +2579,16 @@ static int lHyp_sock_doSSL( sSSL* pSSL,
         maxWait = SSL_TIMEOUT  ;
 	if ( numBytes <= 0 ) {
 	  shouldWrite = FALSE ;
-          if ( DEBUG ) gHyp_util_debug("App->Filter BIO_write all done" ) ;
+          if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+	    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
+	      "App->Filter BIO_write all done" ) ;
 	}
       }
     }
    
   
     /*****************************************************************
-     * Read encrypted data from engine and return to application.
+     * Read encrypted data from engine and return it to application.
      *
      * This section will only happen for SSL read operations.
      *
@@ -2229,10 +2597,12 @@ static int lHyp_sock_doSSL( sSSL* pSSL,
      * being produced.
      * 
      */
-    if ( shouldRead || filterBioPending > 0 ) {
+    if ( shouldRead || (isReader && filterBioPending > 0 ) ) {
 
       if ( bytesRead >= maxBytes ) {
-	if ( DEBUG ) gHyp_util_debug("Received maxumum %d bytes",bytesRead);
+	 if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+            gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
+	      "Received maximum of %d bytes",bytesRead);
       }
 
       /* Read decrypted data from engine into application */
@@ -2244,13 +2614,17 @@ static int lHyp_sock_doSSL( sSSL* pSSL,
 	  gHyp_util_logError ( "SSL App<-Filter handshake error" ) ;
 	  return -1 ;
 	}
-        if ( DEBUG ) gHyp_util_debug("Retry App<-Filter BIO_read later" ) ;
+         if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+	  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
+	    "Retry App<-Filter BIO_read later" ) ;
       }	
 
       else if ( nReadFilter == 0 ) {
 
-	/*gHyp_util_logWarning ( "SSL App<-Filter BIO_read error" ) ;*/
-	/*return -1 ; */
+	if ( filterBioPending > 0 ) {
+	  gHyp_util_logWarning ( "SSL App<-Filter BIO_read error" ) ;
+	  return -1 ; 
+	}
       }
       else {
 
@@ -2263,11 +2637,13 @@ static int lHyp_sock_doSSL( sSSL* pSSL,
 	 * give it any more right now
 	 */
 
-        if ( DEBUG ) gHyp_util_debug("App<-Filter BIO_read, %d bytes",nReadFilter ) ;
+        if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+	  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
+	  "App<-Filter BIO_read, %d bytes",nReadFilter ) ;
 	memcpy ( pBuf, pSSLbuf, nReadFilter ) ;
 	pBuf[nReadFilter] = '\0' ;
 	if ( DEBUG ) {
-	  n = gHyp_util_unparseString ( debug, pBuf, nReadFilter, 60, FALSE, FALSE, "" ) ; 
+	  n = gHyp_util_unparseString ( debug, pBuf, nReadFilter, 60, FALSE, FALSE,FALSE, "" ) ; 
 	  debug[n] = '\0' ;
 	  gHyp_util_debug(debug) ;
 	}
@@ -2284,11 +2660,13 @@ static int lHyp_sock_doSSL( sSSL* pSSL,
      * are still bytes left to write.
      * 
      */
-    if ( (isReader&&bytesRead==0) || numBytes > 0 ) {
+    if ( (isReader && bytesRead==0) || numBytes > 0 ) {
 
       nWriteOut = BIO_get_write_guarantee ( pSSL->outBio ) ;
 
-      if ( DEBUG ) gHyp_util_debug("Guarantee %d bytes write into engine",nWriteOut,maxBytes ) ;
+      if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
+	  "Guarantee %d bytes write into engine",nWriteOut,maxBytes ) ;
       
       /*
       nReadSock = BIO_get_read_request ( pSSL->outBio ) ;
@@ -2308,13 +2686,18 @@ static int lHyp_sock_doSSL( sSSL* pSSL,
 				  pOverlapped,
 				  FALSE ) ;
 
-	if ( DEBUG ) gHyp_util_debug("Engine<-Socket read, %d bytes, timeout=%d",nReadSock,sslTimeout ) ;
+	if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+	  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
+	    "Engine<-Socket read, %d bytes, timeout=%d",nReadSock,sslTimeout ) ;
 
+	/* The first time around the timeout is zero, after that we
+	 * set it to a small amount, so that we don't do a tight CPU spin
+	 */
 	if ( sslTimeout == 0 ) sslTimeout = SSL_WAIT_INCREMENT ;
 
 	/* 0 = no data, -1 = error, > 1 = nBytes */
 	if ( nReadSock < 0 ) {
-	  gHyp_util_logError ( "Failed Engine<-Socket" ) ;
+	  gHyp_util_logWarning ( "Failed Engine<-Socket" ) ;
 	  return -1 ;
 	}
 	else if ( nReadSock == 0 ) {
@@ -2331,7 +2714,9 @@ static int lHyp_sock_doSSL( sSSL* pSSL,
 	  nWriteOut = BIO_write( pSSL->outBio, pSSLbuf, nReadSock ) ;
 	  maxWait = SSL_TIMEOUT ; /* Reset maximum wait */
 
-	  if ( DEBUG ) gHyp_util_debug("Filter<-Engine BIO_write, %d bytes",nWriteOut ) ;
+          if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+	    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
+	      "Filter<-Engine BIO_write, %d bytes",nWriteOut ) ;
 	}
       }
     }
@@ -2343,15 +2728,17 @@ static int lHyp_sock_doSSL( sSSL* pSSL,
      */
 
     outBioPending = BIO_ctrl_pending ( pSSL->outBio ) ;
-    if ( DEBUG ) gHyp_util_debug("Out BIO Pending = %d bytes",outBioPending);     
+    if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
+	"Out BIO Pending = %d bytes",outBioPending);     
     
     if ( outBioPending > 0 ) {
 
-      if ( DEBUG ) gHyp_util_debug("Engine->Socket, %d bytes pending",outBioPending ) ;
-
       nReadOut = BIO_nread ( pSSL->outBio, &pDataBuf, outBioPending ) ;
 
-      if ( DEBUG ) gHyp_util_debug("Engine->Socket, %d bytes ready to write",nReadOut ) ;
+      if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
+	  "Engine->Socket, %d bytes ready to write",nReadOut ) ;
 
       if ( nReadOut > 0 ) {
 
@@ -2362,18 +2749,16 @@ static int lHyp_sock_doSSL( sSSL* pSSL,
 					pOverlapped,
 					FALSE ) ;
 
-	if ( nWriteSock < 0 ) {
-	  gHyp_util_logError ( "Failed Engine->Socket write" ) ;
+	if ( nWriteSock <= 0 ) {
+	  gHyp_util_logWarning ( "Failed Engine->Socket write" ) ;
 	  return -1 ;
 	}
-	else if ( nWriteSock == 0 ) {
-	  gHyp_util_logError ( "Zero bytes for Engine->Socket write" ) ;
-	  return 0 ;
-	}
 	else {
-	  if ( DEBUG ) gHyp_util_debug("Engine->Socket write, %d bytes",nWriteSock ) ;
-	  outBioPending -= nWriteSock ;
+	  if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+            gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
+	      "Engine->Socket write, %d bytes",nWriteSock ) ;
 	  maxWait = SSL_TIMEOUT  ;
+	  outBioPending -= nWriteSock ;
 	}
       }
     }
@@ -2383,19 +2768,22 @@ static int lHyp_sock_doSSL( sSSL* pSSL,
     shouldWrite = BIO_should_write ( pSSL->filterBio ) ;
     shouldRead = BIO_should_read   ( pSSL->filterBio ) ;
     
-    if ( DEBUG ) {
-      gHyp_util_debug("Filter BIO shouldWrite = %d",shouldWrite);
-      gHyp_util_debug("Filter BIO shouldRead = %d",shouldRead);
-      gHyp_util_debug("Filter BIO pending = %d",filterBioPending);     
-    }
-
+    if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
+	"Filter BIO shouldWrite = %d, Filter BIO shouldRead = %d, Filter BIO pending = %d",
+	shouldWrite,
+        shouldRead,
+        filterBioPending);
   
     if (  isWriter && 
 	  outBioPending == 0 && 
 	  !shouldWrite &&
 	  filterBioPending == 0 &&
 	  numBytes == 0 ) {
-      if ( DEBUG ) gHyp_util_debug("SSL write, handshake finished");
+      if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
+	  "SSL write, handshake finished");
+
       break ;
     }
 
@@ -2403,7 +2791,10 @@ static int lHyp_sock_doSSL( sSSL* pSSL,
 	      bytesRead > 0 &&
 	      outBioPending == 0 && 
 	      filterBioPending == 0 ) {
-      if ( DEBUG ) gHyp_util_debug("SSL read, handshake finished");
+      if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
+	  "SSL read, handshake finished");
+
       break ;
     }
 
@@ -2414,7 +2805,7 @@ static int lHyp_sock_doSSL( sSSL* pSSL,
 
     if ( maxWait <= 0 ) { 
 
-      gHyp_util_logError("SSL timeout - maybe increase past %d milliseconds",SSL_TIMEOUT);
+      gHyp_util_logWarning("SSL timeout - maybe increase past %d milliseconds",SSL_TIMEOUT);
       break ;
     }
 
@@ -2428,11 +2819,31 @@ static int lHyp_sock_doSSL( sSSL* pSSL,
 
   if ( pNbytes ) *pNbytes = nBytes ;
 
-  if ( DEBUG ) {
+  if ( guDebugFlags & DEBUG_DIAGNOSTICS ) {
     if ( isReader ) 
-      gHyp_util_debug("DONE SSL, received %d bytes",nBytes);
+      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
+	"DONE SSL, received %d bytes",nBytes);
     else
-      gHyp_util_debug("DONE SSL, wrote %d bytes",nBytes);
+      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
+	"DONE SSL, wrote %d bytes",nBytes);
+  }
+
+  if ( pSSL->state == -1 ) {
+
+    pSSL->state = SSL_session_reused( pSSL->ssl );
+    if ( guDebugFlags & DEBUG_DIAGNOSTICS ) {
+
+      if ( pSSL->state == 1 ) {
+        gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
+		"Previous SSL session has been reused" ) ;
+      }
+      else {
+	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
+	  "New SSL session negotiated." ) ;
+      }
+    }
+
+    /*gHyp_util_debug("Cache mode is %x",SSL_CTX_get_session_cache_mode( pSSL->sslCtx ) ) ;*/
   }
 
   return nBytes ;
@@ -2546,7 +2957,7 @@ static sLOGICAL lHyp_sock_setDMBX ( char *mbxName )
    *
    *    Set the name of the FASTech DMBX.
    *    If the the FASTech DMBX does not exist, the function call still
-   *    returns true. Psycho!
+   *    return true. Psycho!
    *
    * Arguments:
    *
@@ -2643,7 +3054,7 @@ void gHyp_sock_close ( SOCKET socket, short channelType, char* target, char* pat
                         socket, target ) ;
   case SOCKET_LISTEN:
     if ( channelType == SOCKET_LISTEN )
-      gHyp_util_logInfo ( "Closing TCP service connection (%d) to host '%s'",
+      gHyp_util_logInfo ( "Closing TCP listen connection (%d) to port '%s'",
                           socket, target ) ;
     
 #ifdef AS_WINDOWS
@@ -3040,7 +3451,7 @@ static sChannel* lHyp_sock_channel ( char *object,
   return pChannel ;
 }
 
-sData* gHyp_sock_createNetwork ( sData *pHosts, char *host, char *addr, int s )
+sData* gHyp_sock_createNetwork ( sData *pHosts, char *host, char *addr, SOCKET s )
 {
   /* Description:
    *
@@ -3053,40 +3464,45 @@ sData* gHyp_sock_createNetwork ( sData *pHosts, char *host, char *addr, int s )
   sData
     *pData = gHyp_data_getChildByName ( pHosts, addr )  ;
 
-  sChannel*
-    pChannel = NULL ;
+  sChannel
+    *pChannel = NULL ;
 
   SOCKET
     socket ;
 
   /* Look to see if the connection already exists */
-  if ( pData ) 
-    pChannel = (sChannel *) gHyp_data_getObject ( pData ) ;
+  if ( pData ) pChannel = (sChannel *) gHyp_data_getObject ( pData ) ;
 
   if ( pChannel ) {
 
     /* Get old socket value */
     socket = gHyp_channel_socket ( pChannel ) ; 
      
-    /* Socket is already defined! */
     gHyp_util_logInfo ( 
-      "Closing existing network socket (%u) assigned to host '%s' at '%s'", 
-      socket,
-      gHyp_channel_path ( pChannel ),
-      gHyp_channel_target ( pChannel ) ) ;
+		"Closing existing network socket (%u) assigned to host '%s' at '%s'", 
+		socket,
+		gHyp_channel_path ( pChannel ),
+		gHyp_channel_target ( pChannel ) ) ;
 
     gHyp_data_detach ( pData ) ;
     gHyp_data_delete ( pData ) ;
     pData = NULL ;
-
+    pChannel = NULL ;
   }
   
-  /* Create new socket descriptor */
-  pChannel = gHyp_channel_new ( addr, 
-                                host,
-                                (short)(SOCKET_TCP | PROTOCOL_AI),
-                                s ) ;
-  
+  if ( !pChannel ) {
+    /* Create new socket descriptor */
+    pChannel = gHyp_channel_new (	addr, 
+					host,
+					(short)(SOCKET_TCP | PROTOCOL_AI),
+					s ) ;
+    gHyp_util_logInfo ( 
+		"Created network socket (%u) assigned to host '%s' at '%s'", 
+		s,
+		host,
+		addr ) ;
+  }
+
   if ( !pData ) {
     pData = gHyp_data_new ( addr ) ;
     gHyp_data_setObject ( pData,
@@ -3672,7 +4088,14 @@ static sLOGICAL lHyp_sock_exec (        char *file,
 
   /*gHyp_util_debug("(%s) %s",file,argvs);*/
   // Start the child process. 
-  if( !CreateProcess( file, // No module name (use command line). 
+  if( !CreateProcess(
+#ifdef AS_PPC 
+  (const unsigned short*)
+#endif     
+	file, // No module name (use command line).
+#ifdef AS_PPC 
+  (unsigned short*)
+#endif 	
         argvs,            // Command line.args 
         NULL,             // Process handle not inheritable. 
         NULL,             // Thread handle not inheritable. 
@@ -4335,7 +4758,11 @@ sLOGICAL gHyp_sock_flushBuffer ( char *path )
     fd ;
 
 #ifdef AS_WINDOWS
-  fd = CreateFile(path,           // create path
+  fd = CreateFile(
+#ifdef AS_PPC 
+  (const unsigned short*)
+#endif
+	    path,           // create path
              GENERIC_WRITE,                // open for writing 
              0,                            // do not share 
              NULL,                         // no security 
@@ -4403,7 +4830,11 @@ sLOGICAL gHyp_sock_loadBuffer ( char *path )
 
 #else
 
-  fd = CreateFile ( path,
+  fd = CreateFile ( 
+#ifdef AS_PPC 
+  (const unsigned short*)
+#endif		    
+		    path,
                     GENERIC_READ,
                     0,                /* Share mode */
                     NULL,             /* Pointer to security attribute */
@@ -4604,9 +5035,11 @@ static int lHyp_sock_select_read_objects ( sConcept *pConcept, sData *pSockets )
 
   sSecs1
     *pSecs1,
-    *pPort ;
+    *pPort,
+    *pListenPort ;
 
   sHsms
+    *pListenHsms,
     *pHsms ;
 
   sInstance
@@ -4728,7 +5161,35 @@ static int lHyp_sock_select_read_objects ( sConcept *pConcept, sData *pSockets )
         msgLen = 0 ;
         pAIassigned = gHyp_concept_getInstForFd ( pConcept, socket ) ;
 	id = pAIassigned == NULL ? NULL_DEVICEID : gHyp_instance_getDeviceId ( pAIassigned, socket ) ;
-	gHyp_instance_signalConnect ( pAI, newSocket, port, id ) ;
+	if ( pAIassigned ) gHyp_instance_signalConnect ( pAIassigned, newSocket, port, id ) ;
+ 
+	if ( id != NULL_DEVICEID ) {
+	
+	  /* Take any SSL structures as well */
+	  pListenHsms = (sHsms*) gHyp_concept_getSocketObject ( pConcept, 
+					(SOCKET) socket, 
+					DATA_OBJECT_NULL ) ;
+
+#ifdef AS_SSL
+	  gHyp_hsms_setSSL ( 
+	    pHsms,  gHyp_sock_copySSL ( gHyp_hsms_getSSL ( pListenHsms ))) ;
+#endif
+	  /* Take this id */
+	  gHyp_instance_updateFd ( pAIassigned, newSocket, id, NULL, FALSE ) ;
+
+	  /* Create a placeholder for the parent so that we can reassign the device id. */
+	  gHyp_instance_updateFd ( pAIassigned, socket, NULL_DEVICEID, NULL, FALSE ) ;
+
+	  /* Take and reassign the rest of the id's as well. */
+	  while ( 1 ) {
+	    id = gHyp_instance_getDeviceId ( pAIassigned, socket ) ;
+	    if ( id == NULL_DEVICEID ) break ;
+ 	    gHyp_instance_updateFd ( pAI, newSocket, id, NULL, FALSE ) ;
+	  }
+	}
+	else {
+	  gHyp_util_logWarning ( "No id is assigned to new port %d from parent port %d",newSocket, port ) ;
+	}
       }
       else if ( flags == (PROTOCOL_SECS1 | SOCKET_LISTEN) ) {
 
@@ -4755,7 +5216,38 @@ static int lHyp_sock_select_read_objects ( sConcept *pConcept, sData *pSockets )
         msgLen = 0 ;
         pAIassigned = gHyp_concept_getInstForFd ( pConcept, socket ) ;
 	id = pAIassigned == NULL ? NULL_DEVICEID : gHyp_instance_getDeviceId ( pAIassigned, socket ) ;
-	gHyp_instance_signalConnect ( pAI, newSocket, port, id ) ;
+	if ( pAIassigned ) gHyp_instance_signalConnect ( pAIassigned, newSocket, port, id ) ;
+
+	if ( id != NULL_DEVICEID ) {
+
+	  /* Take any SSL structures as well */
+	  pListenPort = (sSecs1*) gHyp_concept_getSocketObject ( 
+	      pConcept, 
+	      (SOCKET) socket, 
+	      DATA_OBJECT_NULL ) ;
+#ifdef AS_SSL
+	  gHyp_secs1_setSSL ( 
+	    pSecs1,  gHyp_sock_copySSL ( gHyp_secs1_getSSL ( pListenPort ))) ;
+#endif
+	  gHyp_secs1_setForwardPorts ( pSecs1, 
+	    gHyp_secs1_copyForwardPort ( pListenPort, id ) ) ; 
+
+	  /* Transfer the id. */
+	  gHyp_instance_updateFd ( pAIassigned, newSocket, id, NULL, FALSE ) ;
+
+	  /* Create a placeholder for the parent so that we can reassign the device id. */
+	  gHyp_instance_updateFd ( pAIassigned, socket, NULL_DEVICEID, NULL, FALSE ) ;
+
+	  /* Take and reassign the rest of the id's as well. */
+	  while ( 1 ) {
+	    id = gHyp_instance_getDeviceId ( pAIassigned, socket ) ;
+	    if ( id == NULL_DEVICEID ) break ;
+ 	    gHyp_instance_updateFd ( pAI, newSocket, id, NULL, FALSE ) ;
+	  } 
+	}	
+	else {
+	  gHyp_util_logWarning ( "No id is assigned to new port %d from parent port %d",newSocket, port ) ;
+	}
       }
       else if ( flags == (PROTOCOL_NONE | SOCKET_LISTEN) ) {
 
@@ -4782,7 +5274,32 @@ static int lHyp_sock_select_read_objects ( sConcept *pConcept, sData *pSockets )
         msgLen = 0 ;
         pAIassigned = gHyp_concept_getInstForFd ( pConcept, socket ) ;
 	id = pAIassigned == NULL ? NULL_DEVICEID : gHyp_instance_getDeviceId ( pAIassigned, socket ) ;
-	gHyp_instance_signalConnect ( pAI, newSocket, port, id ) ;
+	if ( pAIassigned ) gHyp_instance_signalConnect ( pAIassigned, newSocket, port, id ) ;
+
+	if ( id != NULL_DEVICEID ) {
+
+	  /* Take any SSL structures as well */
+	  pListenPort = (sSecs1*) gHyp_concept_getSocketObject ( 
+	      pConcept, 
+	      (SOCKET) socket, 
+	      DATA_OBJECT_NULL ) ;
+#ifdef AS_SSL
+	  gHyp_secs1_setSSL ( 
+	    pPort,  gHyp_sock_copySSL ( gHyp_secs1_getSSL ( pListenPort ))) ;
+#endif
+	  gHyp_secs1_setForwardPorts ( pPort, 
+	    gHyp_secs1_copyForwardPort ( pListenPort, id ) ) ; 
+
+	  /* Transfer the id. */
+	  gHyp_instance_updateFd ( pAIassigned, newSocket, id, NULL, FALSE ) ;
+
+	  /* Create a placeholder for the parent so that we can reassign the device id. */
+	  gHyp_instance_updateFd ( pAIassigned, socket, NULL_DEVICEID, NULL, FALSE ) ;
+	}	
+	else {
+	  gHyp_util_logWarning ( "No id is assigned to new port %d from parent port %d",newSocket, port ) ;
+	}
+      
       }
       else if ( flags == (PROTOCOL_HTTP | SOCKET_LISTEN) ) {
 
@@ -4809,7 +5326,32 @@ static int lHyp_sock_select_read_objects ( sConcept *pConcept, sData *pSockets )
         msgLen = 0 ;
         pAIassigned = gHyp_concept_getInstForFd ( pConcept, socket ) ;
 	id = pAIassigned == NULL ? NULL_DEVICEID : gHyp_instance_getDeviceId ( pAIassigned, socket ) ;
-	gHyp_instance_signalConnect ( pAI, newSocket, port, id ) ;
+	if ( pAIassigned ) gHyp_instance_signalConnect ( pAIassigned, newSocket, port, id ) ;
+
+	if ( id != NULL_DEVICEID ) {
+
+	  /* Take any SSL structures as well */
+	  pListenPort = (sSecs1*) gHyp_concept_getSocketObject ( 
+	      pConcept, 
+	      (SOCKET) socket, 
+	      DATA_OBJECT_NULL ) ;
+#ifdef AS_SSL
+	  gHyp_secs1_setSSL ( 
+	    pPort,  gHyp_sock_copySSL ( gHyp_secs1_getSSL ( pListenPort ))) ;
+#endif
+	  gHyp_secs1_setForwardPorts ( pPort, 
+	    gHyp_secs1_copyForwardPort ( pListenPort, id ) ) ; 
+
+	  /* Transfer the id. */
+	  gHyp_instance_updateFd ( pAIassigned, newSocket, id, NULL, FALSE ) ;
+
+	  /* Create a placeholder for the parent so that we can reassign the device id. */
+	  gHyp_instance_updateFd ( pAIassigned, socket, NULL_DEVICEID, NULL, FALSE ) ;
+	}
+	else {
+	  gHyp_util_logWarning ( "No id is assigned to new port %d from parent port %d",newSocket, port ) ;
+	}
+	
       }
       else if ( flags & PROTOCOL_NONE ) {
           msgLen = gHyp_secs1_rawIncoming ( (sSecs1*) pObject, pConcept, pAI, DATA_OBJECT_PORT ) ;
@@ -4828,7 +5370,7 @@ static int lHyp_sock_select_read_objects ( sConcept *pConcept, sData *pSockets )
 
 #ifdef AS_WINDOWS  
     /* Reset event only if structure is still valid. */
-    if ( gHyp_concept_getSocketObjectType ( pConcept, socket ) !=
+    if ( gHyp_concept_getSockObjType ( pConcept, socket ) !=
 	 DATA_OBJECT_NULL )
       ResetEvent ( pOverlapped->hEvent ) ;
 #endif
@@ -4916,6 +5458,8 @@ static int lHyp_sock_select_read_hosts ( sConcept *pConcept, sData *pClients, sD
     socket ;
 
   int
+    ret,
+    offset=0,
     nBytes ;
 
   sChannel
@@ -4932,7 +5476,7 @@ static int lHyp_sock_select_read_hosts ( sConcept *pConcept, sData *pClients, sD
 #ifdef AS_WINDOWS
 
   int
-    i ;
+    i;
 
 #else
 
@@ -4971,7 +5515,8 @@ static int lHyp_sock_select_read_hosts ( sConcept *pConcept, sData *pClients, sD
     {
       /* Determine buffer position in which to read message. */
       pBuf = gHyp_channel_buffer ( pChannel ) ;
-      pMsgOff = pBuf + strlen ( pBuf ) ;
+      offset = gHyp_channel_offset ( pChannel )  ;
+      pMsgOff = pBuf + offset ;
       pOverlapped = gHyp_channel_overlapped ( pChannel ) ;
       pSSL = gHyp_channel_getSSL ( pChannel ) ;
       nBytes = gHyp_sock_read ( socket, 
@@ -5007,14 +5552,16 @@ static int lHyp_sock_select_read_hosts ( sConcept *pConcept, sData *pClients, sD
 
           /* Process/route the message */
           gHyp_util_logInfo ( "==Net Read==\n" ) ;
-          return gHyp_router_process ( pConcept,
-				       pClients,
-				       pHosts,
-				       pBuf, 
-				       pMsgOff, 
-				       nBytes, 
-				       gHyp_channel_maxMsgSize (pChannel),
-				       gHyp_channel_path (pChannel)) ;
+          ret = gHyp_router_process ( pConcept,
+				      pClients,
+				      pHosts,
+				      pBuf, 
+				      pMsgOff, 
+				      nBytes,
+				      &offset,
+				      gHyp_channel_path ( pChannel ) ) ;
+	  gHyp_channel_setOffset ( pChannel, offset ) ;
+	  return ret ;
 	}
       }
       else {
@@ -5031,6 +5578,10 @@ static int lHyp_sock_select_read_hosts ( sConcept *pConcept, sData *pClients, sD
                               gHyp_channel_path ( pChannel ),
                               gHyp_channel_target ( pChannel ) ) ;
         }
+
+	/* Remove any alias references from the cache */
+	gHyp_tcp_removeAliases ( gHyp_channel_target ( pChannel ) ) ;
+
         if ( pNext == pData ) pNext = NULL ;
         gHyp_data_detach ( pData ) ;
         gHyp_data_delete ( pData ) ;
@@ -5080,7 +5631,7 @@ static int lHyp_sock_select_read_listenTCP ( sConcept *pConcept,
     addr[HOST_SIZE+1],
     host[HOST_SIZE+1] ; 
 
-  int 
+  SOCKET 
     socket ;
 
 #ifdef AS_SSL
@@ -5141,7 +5692,7 @@ static int lHyp_sock_select_FDSET_inbox ( sConcept *pConcept, HANDLE inbox )
 #ifdef AS_WINDOWS
   /* Windows overlapped I/O requires that specify the buffer at the FDSET step so we
    * must determine where the buffer read should start */
-  offset = strlen ( gzInboxBuf ) ;
+  offset = giInboxOffset ;
   gpzInboxOffset = gzInboxBuf + offset ;
 #endif
 
@@ -5155,7 +5706,7 @@ static int lHyp_sock_select_FDSET_inbox ( sConcept *pConcept, HANDLE inbox )
   }
 #endif
 
-  if ( offset > 0 ) gHyp_util_debug("Buffer before read = '%s'",gzInboxBuf ) ;
+  /*if ( offset > 0 ) gHyp_util_logWarning("Buffer %d before read = '%s'",offset,gzInboxBuf ) ;*/
 
   giInboxNbytes = 0 ;
   if ( lHyp_sock_read ( (SOCKET) inbox, 
@@ -5239,12 +5790,12 @@ static int lHyp_sock_select_read_inbox ( sConcept *pConcept,
 #endif
 
     /* For UNIX and VMS, the buffer offset is needed at this time */
-    offset = strlen ( gzInboxBuf ) ;
+    offset = giInboxOffset ;
     gpzInboxOffset = gzInboxBuf + offset ;
     
 #endif
 
-    if ( offset > 0 ) gHyp_util_debug("Buffer before read = '%s'",gzInboxBuf ) ;
+    /*if ( offset > 0 ) gHyp_util_logWarning ("Buffer before read = '%s'",gzInboxBuf ) ;*/
     nBytes = gHyp_sock_read ( (SOCKET) inbox, 
                               gpzInboxOffset,
                               MAX_MESSAGE_SIZE,
@@ -5267,7 +5818,7 @@ static int lHyp_sock_select_read_inbox ( sConcept *pConcept,
                                    gzInboxBuf,
                                    gpzInboxOffset,
                                    nBytes,
-                                   giInboxMaxMsgSize,
+				   &giInboxOffset,
 				   "" ) ;
     }
     else if ( nBytes < 0 ) {
@@ -5504,7 +6055,10 @@ int gHyp_sock_select ( sConcept* pConcept,
       /* Timeout occurred */
       /*gHyp_util_debug("Timeout!!!");*/
       if ( signalInstance ) gHyp_concept_setAlarms ( pConcept ) ;
-      return COND_SILENT ;
+#ifdef AS_VMS
+      if ( !guSIGMBX ) 
+#endif
+	return COND_SILENT ;
     }
     else 
       /*gHyp_util_debug("%d found.",giNfound) ;*/

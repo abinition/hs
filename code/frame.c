@@ -10,6 +10,25 @@
 /* Modifications: 
  *
  * $Log: frame.c,v $
+ * Revision 1.13  2006/01/23 04:53:28  bergsma
+ * Comment change
+ *
+ * Revision 1.12  2006/01/16 18:56:35  bergsma
+ * HS 3.6.6
+ * 1. Save query timeout events.  Don't let queries repeat indefinitely.
+ * 2. Rework DEBUG_DIAGNOSTIC debugging.  Less overhead.
+ *
+ * Revision 1.11  2005/12/08 03:05:14  bergsma
+ * Debug statement change
+ *
+ * Revision 1.10  2005/01/31 05:54:25  bergsma
+ * Bug when returning from SLEEP state,  pAI must equal pAImain in order to
+ * "returnToStdIn".
+ *
+ * Revision 1.9  2005/01/25 05:46:22  bergsma
+ * Fix problem where wakeup from SLEEP not always detected, if colliding with
+ * HEARTBEAT.
+ *
  * Revision 1.8  2004/06/13 14:05:07  bergsma
  * Cosmetic log statements.
  *
@@ -566,6 +585,7 @@ sData *gHyp_frame_findVariable ( sInstance* pAI, sFrame *pFrame, char *pStr  )
   if ( !pVariable ) i++ ;
 
   if ( !pVariable ) {
+    /* If still not found, see if exists in the parent concept's space */
     pConceptAI = gHyp_concept_getConceptInstance (gHyp_instance_getConcept(pAI)) ;
     if ( pConceptAI !=NULL && pAI != pConceptAI )
       pVariable = gHyp_frame_findRootVariable ( gHyp_instance_frame(pConceptAI),
@@ -1876,21 +1896,11 @@ static void lHyp_frame_return ( sFrame *pFrame,
 
   if ( wasCompletedStmtHandler ) {
 
-    if ( guDebugFlags & DEBUG_DIAGNOSTICS )
-      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
-			   "diag : Returning from handler, %s",
-			   gHyp_data_print ( pSTATUS ) ) ;
     status = gHyp_data_getBool ( pSTATUS, 0, TRUE ) ;
   }
   else if ( wasCompletedMessageCall ) {
 
     /* A incoming message.  Check for replies */ 
-    if ( guDebugFlags & DEBUG_DIAGNOSTICS )
-      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
-			   "diag : Returning from message call %p %s",
-			   pMethodData,
-			   gHyp_data_print ( pMethodData ) ) ;
-
     /* Execute all pending conditions */
     do {
       gHyp_instance_setState ( pAI, STATE_EXECUTE ) ;
@@ -1907,9 +1917,9 @@ static void lHyp_frame_return ( sFrame *pFrame,
   if ( pFrame->depth == 0 ) {
 
     /* Return from incoming message or handler that was called from an idle state */
-    if ( guDebugFlags & DEBUG_DIAGNOSTICS )
-      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
-			   "diag : IDLE (longjmp to %d from frame %d)",
+    if ( guDebugFlags & DEBUG_FRAME )
+      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
+			   "frame: IDLE (longjmp to %d from frame %d)",
 			   giJmpLevel, pFrame->depth );
     
     if ( !status ) 
@@ -1927,9 +1937,9 @@ static void lHyp_frame_return ( sFrame *pFrame,
      * were executing tokens (gHyp_parse_expression).
      * In this cases, we want to continue to EXECUTE.
      .*/
-    if ( guDebugFlags & DEBUG_DIAGNOSTICS )
-      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
-			   "diag : EXECUTE (longjmp to %d from frame %d)",
+    if ( guDebugFlags & DEBUG_FRAME )
+      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
+			   "frame: EXECUTE (longjmp to %d from frame %d)",
 			   giJmpLevel, pFrame->depth );
     gHyp_instance_setState ( pAI, STATE_EXECUTE ) ;
     if ( !status ) cond = COND_FATAL ;
@@ -1945,16 +1955,16 @@ static void lHyp_frame_return ( sFrame *pFrame,
 	if ( pAI == pAImain &&
 	  gHyp_concept_returnToStdIn(gHyp_instance_getConcept(pAI)) ) {
 	  gHyp_instance_setState ( pAI, STATE_PARSE ) ;
-	  if ( guDebugFlags & DEBUG_DIAGNOSTICS )
-	    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
-			       "diag : PARSE (longjmp to %d from frame %d)",
+	  if ( guDebugFlags & DEBUG_FRAME )
+	    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
+			       "frame: PARSE (longjmp to %d from frame %d)",
 			       giJmpLevel, pFrame->depth );
 	}
 	else {
 	  gHyp_instance_setState ( pAI, STATE_IDLE ) ;
-	  if ( guDebugFlags & DEBUG_DIAGNOSTICS )
-	    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
-			       "diag : IDLE (longjmp to %d from frame %d)",
+	  if ( guDebugFlags & DEBUG_FRAME )
+	    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
+			       "frame: IDLE (longjmp to %d from frame %d)",
 			       giJmpLevel, pFrame->depth );
 	}
       }
@@ -1963,27 +1973,38 @@ static void lHyp_frame_return ( sFrame *pFrame,
 	gHyp_concept_setReturnToStdIn ( gHyp_instance_getConcept(pAI),TRUE ) ;
 	gHyp_instance_setState ( pAI, STATE_PARSE ) ;
 	gHyp_instance_pushSTATUS ( pAI, pLevel->pStack ) ;
-	if ( guDebugFlags & DEBUG_DIAGNOSTICS )
-	  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
-			       "diag : PARSE (longjmp to %d from frame %d)",
+	if ( guDebugFlags & DEBUG_FRAME )
+	  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
+			       "frame: PARSE (longjmp to %d from frame %d)",
 			       giJmpLevel, pFrame->depth );
       }
     }
     else if ( pLevel->state == STATE_SLEEP ) {
       if ( status ) {
-	if ( pAI != pAImain && 
+	if ( pAI == pAImain && 
 	  gHyp_concept_returnToStdIn(gHyp_instance_getConcept(pAI) ) ) {
+	  /*gHyp_util_debug("WAKEUP3");*/
 	  gHyp_instance_setState ( pAI, STATE_PARSE ) ;
-	  if ( guDebugFlags & DEBUG_DIAGNOSTICS )
-	    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
-			       "diag : PARSE (longjmp to %d from frame %d)",
+	  if ( guDebugFlags & DEBUG_FRAME )
+	    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
+			       "frame: PARSE (longjmp to %d from frame %d)",
+			       giJmpLevel, pFrame->depth );
+	}
+	else if ( gHyp_instance_getWakeTime ( pAI ) == 0 ) {
+	  /*gHyp_util_debug("WAKEUP2");*/
+	  gHyp_instance_setState ( pAI, STATE_PARSE ) ;
+	  if ( guDebugFlags & DEBUG_FRAME )
+	    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
+			       "frame: PARSE (longjmp to %d from frame %d)",
 			       giJmpLevel, pFrame->depth );
 	}
 	else {
+	  /* Continue sleeping */
+	  /*gHyp_util_debug("CONTINUE SLEEPING");*/
 	  gHyp_instance_setState ( pAI, STATE_SLEEP ) ;
-	  if ( guDebugFlags & DEBUG_DIAGNOSTICS )
-	    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
-			       "diag : SLEEP (longjmp to %d from frame %d)",
+	  if ( guDebugFlags & DEBUG_FRAME )
+	    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
+			       "frame: SLEEP (longjmp to %d from frame %d)",
 			       giJmpLevel, pFrame->depth );
 
 	}
@@ -1993,9 +2014,9 @@ static void lHyp_frame_return ( sFrame *pFrame,
 	gHyp_concept_setReturnToStdIn ( gHyp_instance_getConcept(pAI),TRUE ) ;
 	gHyp_instance_setState ( pAI, STATE_PARSE ) ;
 	gHyp_instance_pushSTATUS ( pAI, pLevel->pStack ) ;
-	if ( guDebugFlags & DEBUG_DIAGNOSTICS )
-	  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
-			       "diag : PARSE (longjmp to %d from frame %d)",
+	if ( guDebugFlags & DEBUG_FRAME )
+	  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
+			       "frame: PARSE (longjmp to %d from frame %d)",
 			       giJmpLevel, pFrame->depth );
       }
     }
@@ -2008,29 +2029,29 @@ static void lHyp_frame_return ( sFrame *pFrame,
 	  gHyp_instance_setTimeOut ( pAI ) ;	
 
 	gHyp_instance_setState ( pAI, STATE_QUERY ) ;
-	if ( guDebugFlags & DEBUG_DIAGNOSTICS )
-	  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
-			       "diag : QUERY (longjmp to %d from frame %d)",
+	if ( guDebugFlags & DEBUG_FRAME )
+	  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
+			       "frame: QUERY (longjmp to %d from frame %d)",
 			       giJmpLevel, pFrame->depth );
       }
       else {
 	gHyp_util_logInfo ( "...aborting query: %s", gHyp_data_print(pSTATUS) ) ;
 	/* Cancel timeout */
-	gHyp_instance_cancelTimeOut ( pAI ) ;
 	gHyp_instance_decIncomingDepth ( pAI ) ;
+	gHyp_instance_cancelTimeOut ( pAI ) ;
 	gHyp_instance_setState ( pAI, STATE_PARSE ) ;
 	gHyp_instance_pushSTATUS ( pAI, pLevel->pStack ) ;
-	if ( guDebugFlags & DEBUG_DIAGNOSTICS )
-	  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
-			       "diag : PARSE (longjmp to %d from frame %d)",
+	if ( guDebugFlags & DEBUG_FRAME )
+	  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
+			       "frame: PARSE (longjmp to %d from frame %d)",
 			       giJmpLevel, pFrame->depth );
       }
     }
     else {
       gHyp_instance_setState ( pAI, STATE_PARSE ) ;
-      if ( guDebugFlags & DEBUG_DIAGNOSTICS )
-	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
-			     "diag : PARSE (longjmp to %d from frame %d)",
+      if ( guDebugFlags & DEBUG_FRAME )
+	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
+			     "frame: PARSE (longjmp to %d from frame %d)",
 			     giJmpLevel, pFrame->depth );
     }
   }
@@ -2148,9 +2169,9 @@ static void lHyp_frame_dereference ( sFrame *pFrame,
   gHyp_hyp_setHypCount ( pLevel->pHyp, completedStmtIndex ) ;
 
   /* Return back to the point where the dereference was first called */
-  if ( guDebugFlags & DEBUG_DIAGNOSTICS )
-    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
-			 "diag : DEREFERENCE (longjmp to %d from frame %d)",
+  if ( guDebugFlags & DEBUG_FRAME )
+    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
+			 "frame: DEREFERENCE (longjmp to %d from frame %d)",
 			 giJmpLevel, pFrame->depth );
   gHyp_instance_setState ( pAI, STATE_DEREFERENCE ) ;
   longjmp ( gsJmpStack[giJmpLevel], COND_SILENT ) ;

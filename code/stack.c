@@ -10,6 +10,10 @@
  * Modifications:
  *
  *   $Log: stack.c,v $
+ *   Revision 1.6  2005/04/22 19:26:38  bergsma
+ *   Uncommented section in gHyp_stack_popRdata that checks for empty
+ *   references.  Added routine gHyp_stack_popRdata_nocheck to not check.
+ *
  *   Revision 1.5  2004/10/16 05:07:29  bergsma
  *   Detect sub-variables that exceed TOKEN_SIZE
  *
@@ -207,8 +211,44 @@ sData * gHyp_stack_popRdata ( sStack * pStack, sInstance * pAI )
        pAI, STATUS_UNDEFINED, "'%s' is an undefined variable",
        gHyp_data_getLabel ( pData ) ) ;
 
+  /* Programmer's note:
+   *
+   * If the following statement causes problems, then use
+   * gHyp_stack_popRdata_nocheck instead.
+   * When is a emtpy REFERENCE ok when calling this routine? 
+   */
+  if ( (tokenType == TOKEN_REFERENCE && !gHyp_data_getReference(pData)) )
+    gHyp_instance_warning ( 
+       pAI, STATUS_UNDEFINED, "'%s' is an undefined reference",
+       gHyp_data_getLabel ( pData ) ) ;
+
+  return pData ;
+}
+
+sData * gHyp_stack_popRdata_nocheck ( sStack * pStack, sInstance * pAI )
+{
+  /* 
+   * Same as gHyp_stack_popRdata, but checks for undefined sub-variables in structures.
+   */
+  sData
+    *pData = gHyp_stack_pop ( pStack ) ;
+
+  sBYTE
+    tokenType ;
+
+  if ( pData == NULL ) {
+    gHyp_util_logError ( "Stack was empty when rValue was expected" ) ;
+    longjmp ( gsJmpStack[0], COND_FATAL ) ;
+  }
+  
+  tokenType = gHyp_data_tokenType ( pData ) ;
+  if ( tokenType == TOKEN_UNIDENTIFIED )
+    gHyp_instance_error ( 
+       pAI, STATUS_UNDEFINED, "'%s' is an undefined variable",
+       gHyp_data_getLabel ( pData ) ) ;
+
   /*
-   * Don't uncomment this as tempting as it may be.
+   * This is what we DON'T WANT TO CHECK FOR.
    *
   if ( (tokenType == TOKEN_REFERENCE && !gHyp_data_getReference(pData)) )
     gHyp_instance_error ( 
@@ -228,6 +268,17 @@ sData * gHyp_stack_popRdata2 ( sStack * pStack, sInstance * pAI )
    */
   sData
     *pData = gHyp_stack_popRdata ( pStack, pAI ) ;
+  pStack->data[pStack->depth] = NULL ;
+  return pData ;
+}
+
+sData * gHyp_stack_popRdata2_nocheck ( sStack * pStack, sInstance * pAI )
+{
+  /* Identical to gHyp_stack_popRdata2 except it does not do the
+   * check for UNIDENTIFIED variables.
+   */
+  sData
+    *pData = gHyp_stack_popRdata_nocheck ( pStack, pAI ) ;
   pStack->data[pStack->depth] = NULL ;
   return pData ;
 }

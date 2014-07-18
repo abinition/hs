@@ -3,6 +3,19 @@
  * Modifications:
  *
  * $Log: function.h,v $
+ * Revision 1.9  2005/09/06 08:52:05  bergsma
+ * Updated vt2html() function.,
+ * Added pack() function
+ *
+ * Revision 1.8  2005/07/23 22:32:19  bergsma
+ * Added  vt2html
+ *
+ * Revision 1.7  2005/05/10 17:38:45  bergsma
+ * Names are urlEncode and urlDecode
+ *
+ * Revision 1.6  2005/05/10 17:32:38  bergsma
+ * Added URLencode and URLdecode functions
+ *
  * Revision 1.5  2004/04/29 08:30:45  bergsma
  * New functions encode/decode.
  *
@@ -36,6 +49,7 @@ extern void    	gHyp_function_sid ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_function_self ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_function_sender ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_function_strlen ( sInstance*, sCode*, sLOGICAL ) ;
+extern void    	gHyp_function_pack ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_function_strloc ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_function_strext ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_function_strtok ( sInstance*, sCode*, sLOGICAL ) ;
@@ -46,3 +60,6 @@ extern void    	gHyp_function_trim ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_function_undef ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_function_encode( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_function_decode ( sInstance*, sCode*, sLOGICAL ) ;
+extern void    	gHyp_function_urlEncode( sInstance*, sCode*, sLOGICAL ) ;
+extern void    	gHyp_function_urlDecode ( sInstance*, sCode*, sLOGICAL ) ;
+extern void    	gHyp_function_vt2html ( sInstance*, sCode*, sLOGICAL ) ;

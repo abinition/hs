@@ -10,6 +10,38 @@
 /* Modifications:
  * 
  * $Log: port.c,v $
+ * Revision 1.23  2006/04/04 14:58:02  bergsma
+ * STATUS was not STATUS_PORT, but STATUS_HTTP.  Fixed now.
+ *
+ * Revision 1.22  2006/01/23 05:12:02  bergsma
+ * Added port_binary() function.
+ *
+ * Revision 1.21  2006/01/20 04:13:17  bergsma
+ * Typedef conversion of id to (sWORD)
+ *
+ * Revision 1.20  2006/01/19 20:49:49  bergsma
+ * int id, not sWORD id
+ *
+ * Revision 1.19  2006/01/19 20:33:33  bergsma
+ * no message
+ *
+ * Revision 1.18  2006/01/19 19:42:10  bergsma
+ * Let port_assign and http_assign override previous assignments.
+ *
+ * Revision 1.17  2006/01/16 18:56:36  bergsma
+ * HS 3.6.6
+ * 1. Save query timeout events.  Don't let queries repeat indefinitely.
+ * 2. Rework DEBUG_DIAGNOSTIC debugging.  Less overhead.
+ *
+ * Revision 1.16  2005/11/28 05:10:47  bergsma
+ * Comment change
+ *
+ * Revision 1.15  2005/11/23 15:56:26  bergsma
+ * %u#ports instead of #d#ports
+ *
+ * Revision 1.14  2005/01/10 20:09:15  bergsma
+ * Enable signal event jmpOverride during tcp connection request
+ *
  * Revision 1.13  2004/10/16 04:48:21  bergsma
  * Allow port function to be used on objects intially create for http.
  *
@@ -585,23 +617,135 @@ void gHyp_port_assign ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     }
     else {
         /* Check to see if the port is already assigned */
-        pAIassigned = gHyp_concept_getInstForFd ( pConcept, portFd ) ;
-        if ( pAIassigned && pAI != pAIassigned ) {
-          gHyp_instance_warning ( pAI,
-			      STATUS_PORT, 
-			      "Port %d is already assigned to another device %d by instance %s",
+        pAIassigned = gHyp_concept_getInstForDeviceId ( pConcept, (sWORD) id ) ;
+
+        if ( pAIassigned )
+          gHyp_util_logWarning ( "Port %d was already assigned to device %d by instance %s",
 			      portFd,
 			      gHyp_instance_getDeviceId ( pAIassigned, portFd ),
 			      gHyp_instance_getTargetId ( pAIassigned ) ) ;
-	}
-        else {
-          gHyp_instance_updateFd ( pAI, (SOCKET) portFd, (sWORD) id, NULL, FALSE ) ;
-	  /* Make sure protocol is NONE */
-	  flags = gHyp_secs1_flags ( pPort ) ;
-	  flags = (flags & MASK_SOCKET) | PROTOCOL_NONE ;
-	  gHyp_secs1_setFlags ( pPort, flags ) ;
-	}  
+        
+        gHyp_instance_updateFd ( pAI, (SOCKET) portFd, (sWORD) id, NULL, FALSE ) ;
+	/* Make sure protocol is NONE */
+	flags = gHyp_secs1_flags ( pPort ) ;
+	flags = (flags & MASK_SOCKET) | PROTOCOL_NONE ;
+	gHyp_secs1_setFlags ( pPort, flags ) ;
+  
       }
+    gHyp_instance_pushSTATUS ( pAI, pStack ) ;
+  }
+}
+
+void gHyp_port_binary ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: port_binary ( )
+   *	Returns 1
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+  
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+    
+  else {
+ 
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+    
+    sData
+      *pData ;
+
+    sLOGICAL
+      status=FALSE,
+      isBinary = FALSE ;
+
+    SOCKET
+      portFd ;
+
+    sSecs1
+      *pPort ;
+
+    int
+      id ;
+
+    int
+      argCount = gHyp_parse_argCount ( pParse ) ;
+
+    sInstance
+      *pAIassigned ;
+    
+    /* Assume success */	
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 2 )
+      gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+      "Invalid args. Usage: port_binary ( id, boolean )");
+    
+    /* Get the boolean value */
+    pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
+    isBinary = gHyp_data_getBool ( pData, gHyp_data_getSubScript ( pData ), TRUE );
+
+    /* Get the device id */
+    pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
+    id = gHyp_data_getInt ( pData, gHyp_data_getSubScript ( pData ), TRUE ) ;
+
+    /* Check id */
+    if ( id < 0 || id > 65535 )
+      gHyp_instance_error ( pAI,STATUS_BOUNDS, "Device ID out of range" ) ;
+
+    /* Get the port structure */
+    pAIassigned = gHyp_concept_getInstForDeviceId ( gHyp_instance_getConcept ( pAI ), (sWORD) id ) ;
+
+    if ( !pAIassigned ) {
+      gHyp_instance_warning ( pAI,STATUS_PORT, 
+			    "Device id %d is not assigned",
+			    id ) ;
+      status = FALSE ;
+    }
+
+    if ( status ) {
+
+      portFd = gHyp_instance_getDeviceFd ( pAIassigned, (sWORD) id ) ;
+      if ( portFd == INVALID_SOCKET ) {
+	gHyp_instance_warning ( pAI,STATUS_PORT, 
+			    "Socket %d does not exist.",
+			    portFd ) ;
+	status = FALSE ;
+      }
+    }
+
+    if ( status ) {
+      pPort = (sSecs1*) gHyp_concept_getSocketObject ( gHyp_instance_getConcept(pAI), 
+							(SOCKET) portFd, 
+							DATA_OBJECT_NULL ) ;
+      if ( !pPort ) {
+	gHyp_instance_warning ( pAI,STATUS_PORT, 
+	  		    "Socket %d does not exist.",
+			    portFd ) ;
+	status = FALSE ;
+      }
+    }
+
+    if ( status ) {
+      gHyp_secs1_setBinary ( pPort, isBinary ) ;
+    }
+
     gHyp_instance_pushSTATUS ( pAI, pStack ) ;
   }
 }
@@ -843,7 +987,7 @@ static void lHyp_port_QE (	sInstance 	*pAI,
     gHyp_instance_getConcept ( pAI ), (sWORD) id ) ;
 
   if ( !pAIassigned ) {
-    gHyp_instance_warning ( pAI,STATUS_HTTP, 
+    gHyp_instance_warning ( pAI,STATUS_PORT, 
 			    "Device id %d is not assigned",
 			    id ) ;
     status = FALSE ;
@@ -854,7 +998,7 @@ static void lHyp_port_QE (	sInstance 	*pAI,
     fd = gHyp_instance_getDeviceFd ( pAIassigned, (sWORD) id ) ;
 
     if ( fd == INVALID_SOCKET ) {
-      gHyp_instance_warning ( pAI,STATUS_HTTP, 
+      gHyp_instance_warning ( pAI,STATUS_PORT, 
 			    "Socket %d does not exist.",
 			    fd ) ;
       status = FALSE ;
@@ -876,7 +1020,7 @@ static void lHyp_port_QE (	sInstance 	*pAI,
   if ( status ) {
     if ( (gHyp_secs1_flags(pPort) & SOCKET_LISTEN) ) {
       gHyp_instance_warning ( pAI,STATUS_PORT, 
-			    "Device %d has not been connected.",
+			    "Device %d is no longer connected.",
 			    id ) ;
       status = FALSE ;
     }
@@ -899,11 +1043,12 @@ static void lHyp_port_QE (	sInstance 	*pAI,
     gHyp_instance_incIncomingDepth ( pAI ) ;
     gHyp_instance_setTimeOut ( pAI ) ;
     eventTime = gHyp_instance_getTimeOutTime ( pAI ) ;
-    sprintf ( sender, "%d#port%s", id, gzRoot ) ;  
+    sprintf ( sender, "%u#port%s", id, gzRoot ) ;  
     gHyp_instance_setExpectedReply ( pAI, 
 				     sender, 
 				     "DATA", 
-				     "00000001" ) ;
+				     "00000001",
+				     eventTime ) ;
 
     gHyp_instance_setState ( pAI, STATE_QUERY ) ;
     gHyp_frame_setState ( pFrame, STATE_QUERY ) ;

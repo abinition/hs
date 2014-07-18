@@ -10,6 +10,31 @@
  * Modifications:
  *
  *	$Log: tcp.c,v $
+ *	Revision 1.21  2006/08/08 20:50:59  bergsma
+ *	In createNetwork, prevent closing of valid socket on another IP channel.
+ *	
+ *	Revision 1.20  2006/05/07 18:20:47  bergsma
+ *	More hangups with getHostByName, getAddrByName.
+ *	Best policy, that when its an IP address, don't resolve any further.
+ *	
+ *	Revision 1.19  2006/04/04 14:59:53  bergsma
+ *	When the incoming connection is a valid IP address, do not use
+ *	gethostbyaddr - EVER!  It will block.
+ *	
+ *	Revision 1.18  2005/02/25 04:00:51  bergsma
+ *	HS 3.4.5
+ *	Make mailslot read/writes non-blocking.
+ *	
+ *	Revision 1.17  2005/02/15 07:03:53  bergsma
+ *	Fix logic problems in gHyp_tcp_make, do not gethostbyname unless the address is not
+ *	in ip format, do not gethostbyname unless needed.
+ *	
+ *	Revision 1.16  2005/01/25 05:52:02  bergsma
+ *	Indent change.
+ *	
+ *	Revision 1.15  2005/01/10 20:14:59  bergsma
+ *	Allow CTRL/C to interrupt connection request.
+ *	
  *	Revision 1.14  2005/01/02 01:40:46  bergsma
  *	GetHostByAddr is not  necessary when we are requesting an connection,
  *	to an IP address, just get the ip address from inet_addr
@@ -140,7 +165,7 @@ static char* lHyp_tcp_herror ()
   return error[herr] ;
 }
 
-static sLOGICAL lHyp_tcp_setup ( SOCKET s )
+sLOGICAL gHyp_tcp_setup ( SOCKET s )
 {
   /* Description:
    *
@@ -467,7 +492,7 @@ sLOGICAL gHyp_tcp_resolveHost ( char* pHost, char *pAddr )
 				AF_INET ) ;
 
         if ( !hp )
-  	  gHyp_util_logWarning(	"(%s) for host '%s'",
+  	  gHyp_util_logWarning(	"(%s) for address '%s'",
       				lHyp_tcp_herror(), 
 				pHost ) ;
 	else {
@@ -617,29 +642,31 @@ SOCKET gHyp_tcp_request ( char* pHost, int port )
   gHyp_signal_establish ( SIGALRM, lHyp_tcp_alarmHandler ) ;
   gHyp_signal_unblock ( SIGALRM ) ;
   alarm ( CONNECT_TIMEOUT ) ;
-  giSocketToCancel = giSocket ;
+  gsSocketToCancel = giSocket ;
   if ( (jmpVal = setjmp ( gsJmpOverride )) ) return INVALID_SOCKET ;
 #endif
 
   /* Connect to the INET host */
-  gHyp_util_debug("Connecting");
+  /*gHyp_util_debug("Connecting");*/
   if ( connect ( giSocket, (sSockGENERIC*)&sock, sockLen ) == INVALID_SOCKET ) {
     gHyp_util_sysError ( "Failed to connect to internet host '%s'", pHost ) ;
     gHyp_sock_close ( giSocket, SOCKET_TCP, pHost, "" ) ;
     giSocket = INVALID_SOCKET ;
+    gsSocketToCancel = INVALID_SOCKET ;
   }	
   
 #ifdef SIGALRM
   /* Cancel alarms */
   gHyp_signal_block ( SIGALRM ) ;
   alarm ( 0 ) ;
+  gsSocketToCancel = INVALID_SOCKET ;
 #endif
   
   /* Log success */
   if ( giSocket != INVALID_SOCKET ) {
 
     /* Setup the socket */
-    if ( !lHyp_tcp_setup ( giSocket ) ) {
+    if ( !gHyp_tcp_setup ( giSocket ) ) {
       gHyp_util_logError (
        "Failed to initialize internet socket for host '%s'", pHost ) ;
       gHyp_sock_close ( giSocket, SOCKET_TCP, pHost, "" ) ;
@@ -733,7 +760,7 @@ SOCKET gHyp_tcp_make ( char *pService, char *pLocalAddr, sLOGICAL bindAll )
   */
 
   unsigned long
-      i ;
+      i=0 ;
   
   sSockINET
     sock ;
@@ -777,19 +804,22 @@ SOCKET gHyp_tcp_make ( char *pService, char *pLocalAddr, sLOGICAL bindAll )
   isLocalAddr = FALSE ;
   inAddrForm = FALSE ;
 
-  /*inAddrForm = ( (inet_aton ( pHost, &inp ) ) != 0 ) ;*/ 
-  inAddrForm = ( (i = inet_addr ( pLocalAddr ) ) != INADDR_NONE ); 
+  if ( pLocalAddr ) {
 
-  if ( !inAddrForm ) {
+    /*inAddrForm = ( (inet_aton ( pHost, &inp ) ) != 0 ) ;*/ 
+    inAddrForm = ( (i = inet_addr ( pLocalAddr ) ) != INADDR_NONE ); 
 
-    gHyp_util_logInfo("GetHostByName: %s",pLocalAddr) ;
-    hp = gethostbyname ( pLocalAddr ) ;
-    if ( !hp )
-      gHyp_util_logWarning(	"(%s) for local host '%s'",
+   if ( !inAddrForm ) {
+
+      gHyp_util_logInfo("GetHostByName: %s",pLocalAddr) ;
+      hp = gethostbyname ( pLocalAddr ) ;
+      if ( !hp )
+	gHyp_util_logWarning(	"(%s) for local host '%s'",
       				lHyp_tcp_herror(), 
 				pLocalAddr ) ;
-    else
-      h = *hp ;
+      else
+	h = *hp ;
+    }
   }
 
   /* Initialize the socket structure */
@@ -823,7 +853,7 @@ SOCKET gHyp_tcp_make ( char *pService, char *pLocalAddr, sLOGICAL bindAll )
   /* Set some socket options. The REUSE ADDRESS feature allows the
    * autorouter to start back up right away after a crash, without waiting
    * for the inetd daemon to time-out and release the internet port #6001.
-   * The socket option FIOCLEX (see lHyp_tcp_setup) is also important,
+   * The socket option FIOCLEX (see gHyp_tcp_setup) is also important,
    * as it prevents fork'd/exec'd hyperscript processes from locking up the
    * internet port and preventing its reuse.
    */
@@ -839,7 +869,7 @@ SOCKET gHyp_tcp_make ( char *pService, char *pLocalAddr, sLOGICAL bindAll )
   }
 
   /* Setup the socket for connection requests */
-  if ( !lHyp_tcp_setup ( s ) ) {
+  if ( !gHyp_tcp_setup ( s ) ) {
     gHyp_util_logError (
   	"Failed to initialize internet socket" ) ;
     gHyp_sock_close ( s, SOCKET_TCP, gzLocalHost, pLocalAddr ) ;
@@ -890,9 +920,6 @@ SOCKET gHyp_tcp_checkInbound ( SOCKET s,
    *	TCP/IP listen port.  
    */
 
-  struct hostent
-    h,*hp ;
-
   sSockINET
     sock ;
 
@@ -931,61 +958,19 @@ SOCKET gHyp_tcp_checkInbound ( SOCKET s,
     /* Capture address. */
     strcpy ( pAddr, inet_ntoa (sock.sin_addr) ) ;
 
-    if ( strncmp ( pAddr, "127.", 4 ) == 0 ) {
+    /* Is it in IP format? */
 
-      /* Make IP address point to IP address */
-      strcpy ( pHost, pAddr ) ; 
-      gHyp_util_lowerCase ( pHost, strlen ( pHost ) ) ;
+    /* Make IP address point to IP address */
+    strcpy ( pHost, pAddr ) ; 
+    gHyp_util_lowerCase ( pHost, strlen ( pHost ) ) ;
 
-      /* Create an alias to itself. */
-      gHyp_tcp_createAlias ( pHost, pAddr ) ;
+    /* Create an alias to itself. */
+    gHyp_tcp_createAlias ( pHost, pAddr ) ;
 
-      /* Pretend the address was resolved */
-      strcpy ( resolvedAddr, pAddr ) ;
-    }
-    else /* Do a DNS lookup */ 
-    if ( 
-      !(hp = gethostbyaddr(	(char*)&sock.sin_addr,
-				sizeof (sock.sin_addr),
-				AF_INET) ) ) {
-      /* No DNS name - no problem. */
-      gHyp_util_logWarning(	"(%s) for address '%s'" ,
-				lHyp_tcp_herror(),
-				pAddr ) ;
-      /* Make IP address point to IP address */
-      strcpy ( pHost, pAddr ) ; 
-      gHyp_util_lowerCase ( pHost, strlen ( pHost ) ) ;
+    /* Pretend the address was resolved */
+    strcpy ( resolvedAddr, pAddr ) ;
 
-      /* Create an alias to itself. */
-      gHyp_tcp_createAlias ( pHost, pAddr ) ;
-
-      /* Pretend the address was resolved */
-      strcpy ( resolvedAddr, pAddr ) ; 
-    }
-    else {
-
-      /* DNS lookup good. Capture host and address names */
-      h = *hp ;
-      strcpy ( pHost, h.h_name ) ;
-      gHyp_util_lowerCase ( pHost, strlen ( pHost ) ) ;
-      strcpy ( resolvedAddr, inet_ntoa ( *(struct in_addr*) h.h_addr ) ) ;
-
-      /* Create or update the alias entry for the host name and its resolved address . */
-      gHyp_tcp_createAlias ( pHost, resolvedAddr ) ;
-
-      if ( strcmp ( pAddr, resolvedAddr ) != 0 ) {
-	/* Resolved address and incoming address are not the same. 
-	 * Create a reverse lookup for the incoming address 
-	 */
-	gHyp_tcp_createAlias ( pAddr, resolvedAddr ) ;
-      }
-
-      /* Create an entry that points to itself */
-      gHyp_tcp_createAlias ( resolvedAddr, resolvedAddr ) ;
-
-    }
-
-    if ( !lHyp_tcp_setup ( ns ) ) {
+    if ( !gHyp_tcp_setup ( ns ) ) {
       gHyp_util_sysError ( "Failed to setup socket for host '%s'", pHost ) ;
       gHyp_sock_close ( ns, SOCKET_TCP, pHost, resolvedAddr ) ;
       return INVALID_SOCKET ;

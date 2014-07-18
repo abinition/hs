@@ -10,6 +10,27 @@
 /* Modifications: 
  *
  * $Log: cgi.c,v $
+ * Revision 1.21  2006/08/17 05:03:30  bergsma
+ * Detect non-XML (HTML) and assume childless tags won't have /> endings
+ *
+ * Revision 1.20  2006/07/17 16:58:15  bergsma
+ * Fix missing xmlargs.
+ * Handle application/hyperscript
+ * Fix problem when XML content starts with slash.
+ * Fix problem where \n was not being recognized in script and style areas.
+ *
+ * Revision 1.19  2006/01/17 15:58:42  bergsma
+ * no message
+ *
+ * Revision 1.18  2005/12/10 00:30:30  bergsma
+ * HS 3.6.5
+ *
+ * Revision 1.17  2005/02/15 07:00:26  bergsma
+ * pExpectedEndTag was not properly initialized
+ *
+ * Revision 1.16  2005/01/10 20:02:20  bergsma
+ * Handle case when parentTag is when checking for correct end tag.
+ *
  * Revision 1.15  2004/10/16 04:31:26  bergsma
  * 1. Moved lHyp_cgi_readStream to gHyp_util_readStream, now shared by
  * function map().
@@ -192,7 +213,9 @@ char *gHyp_cgi_parseXML ( char *pStream,
 			  sFrame *pFrame,
 			  sData *pTV,
 			  FILE *pp,
-			  sInstance *pAI ) 
+			  sInstance *pAI,
+			  sBYTE requestedType,
+			  sLOGICAL isPureXML ) 
 {
   sData
     *pData,
@@ -201,6 +224,12 @@ char *gHyp_cgi_parseXML ( char *pStream,
     *pStrData,
     *pAttrData,
     *pArgs ;
+
+  /*
+  sData
+    *pLvalue,
+    *pResult;
+  */
 
   char
     c,
@@ -212,11 +241,14 @@ char *gHyp_cgi_parseXML ( char *pStream,
     *pStr2,
     *pStr3,
     *pSearch,
-    attr[VALUE_SIZE+1],
+    attr[TOKEN_SIZE+1],
     tag[TOKEN_SIZE+1],
     tag2[TOKEN_SIZE+1],
     tag_lc[TOKEN_SIZE+1],
     tag2_lc[TOKEN_SIZE+3] ;
+
+  sBYTE
+    reqType = TYPE_LIST ;
 
   int
     dataType,
@@ -240,6 +272,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
     inDefinition,
     allowAttributes,
     isEndTag,
+    isChildLess,
     terminated ;
 
   static char *childLess = 
@@ -248,7 +281,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
   static char *preContent =
     "/tt/b/i/em/strong/code/samp/kbd/var/cite/" ;
 
- #define SEG_SIZE 10 
+ #define SEG_SIZE 20
 
   /* Get more data if necessary */
   pStream = gHyp_util_readStream (	pStream, pAnchor, ppEndOfStream,
@@ -260,6 +293,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
   /* Look for start tag, comment, or definition */
   pTag = NULL ;
   isEndTag = FALSE ;
+  isChildLess = FALSE ;
   tagged = FALSE ;
   while ( !pTag ) {
 
@@ -279,9 +313,10 @@ char *gHyp_cgi_parseXML ( char *pStream,
        * encountered any root tags yet (or we are between root tags)
        */
       if ( pParentTag ) {
-
+        
 	while ( pStream < pTag ) {
 
+	  /* Back up to start of tag */
 	  if ( tagged ) { pStream-- ; if ( isEndTag ) pStream-- ; tagged = FALSE ; }
 
 	  if ( !isSCR && !isPRE && !isTXT ) {
@@ -294,7 +329,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
 
 	  /* Find the end of each line or take the entire section up to the '<' */
 	  strLen = strcspn ( pStream, "\n\r" ) ;
-	  if ( strLen == 0 ) strLen = pTag - pStream ;
+	  /*if ( strLen == 0 ) strLen = pTag - pStream ;*/
 	  if ( strLen > (pTag-pStream) ) strLen = pTag - pStream ;
 
 	  if ( strLen == 0 ) {
@@ -305,6 +340,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
 	      gHyp_data_setStr ( pStrData, " " ) ;
 	      gHyp_data_append ( pParentTag, pStrData ) ;
 	    }
+	    while ( *pStream == '\n' || *pStream == '\r' ) pStream++ ; 
 	  }
 	  else {
 	    strLen3 = strLen ;
@@ -338,6 +374,13 @@ char *gHyp_cgi_parseXML ( char *pStream,
 	      pStr3 += truncStrLen ;
 	    }
 	    pStream += strLen ;
+
+	    /* Get more data if necessary *
+	    pStream = gHyp_util_readStream (  pStream, pAnchor, ppEndOfStream,
+					    &streamLen, pStreamData, 
+					    ppValue, pContext, ss, isVector, 
+					    pp ) ;
+	    */
 	    while ( *pStream == '\n' || *pStream == '\r' ) pStream++ ; 
 	  }
 	}
@@ -470,7 +513,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
 
 	      /* Find the end of each line or take the entire section. */
 	      strLen = strcspn ( pStr, "\n\r" ) ;
-	      if ( strLen == 0 ) strLen = pStream - pStr ;
+	      /*if ( strLen == 0 ) strLen = pStream - pStr ;*/
 	      if ( strLen > (pStream-pStr) ) strLen = pStream - pStr ;
 	 
 	      strLen3 = strLen ;
@@ -495,7 +538,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
 		pStr3 += truncStrLen ;
 	      }
 	      pStr += strLen ;
-	      if ( *pStr == '\n' || *pStr == '\r' ) pStr++ ; 
+	      while ( *pStr == '\n' || *pStr == '\r' ) pStr++ ; 
 	    }
 	  }
 
@@ -532,6 +575,11 @@ char *gHyp_cgi_parseXML ( char *pStream,
   strcpy ( tag_lc, tag ) ;
   gHyp_util_lowerCase ( tag_lc, tagLen ) ;
 
+  /* If this is <html>, then we can relax the rules about childless tags */
+  if ( pParentTag == NULL && strcmp ( tag_lc, "html" ) == 0 ) {
+     /*gHyp_util_debug("Not PURE XML");*/
+     isPureXML = FALSE ;
+  }
    /* Check if more of the stream is needed */
   pStream = gHyp_util_readStream (	pStream, pAnchor, ppEndOfStream,
 					&streamLen, pStreamData, 
@@ -547,8 +595,10 @@ char *gHyp_cgi_parseXML ( char *pStream,
      * 2. It will not match and we will need to deal with that condition.
      */
 
-    if ( pParentTag == NULL ) 
+    if ( pParentTag == NULL ) {
       strcpy ( tag2_lc, tag_lc ) ;
+      pExpectedEndTag = tag2_lc ;
+    }
     else {
       
       pExpectedEndTag = gHyp_data_getLabel ( pParentTag ) ;
@@ -569,6 +619,40 @@ char *gHyp_cgi_parseXML ( char *pStream,
       }
 
       pStream++ ;
+
+      /*************
+
+      if ( requestedType != TYPE_LIST ) {
+
+        *gHyp_util_debug("Requested type of %s (%d) is %d",*
+  	  gHyp_data_getLabel ( pParentTag ),
+	  gHyp_data_getCount ( pParentTag ),
+	  requestedType ) ;
+
+	if ( gHyp_data_getCount ( pParentTag ) == 2 ) {
+
+
+	  pLvalue = gHyp_data_new ( NULL ) ;
+	  gHyp_data_setReference (  pLvalue, 
+				    gHyp_data_getLabel ( pParentTag ),
+	  			    pParentTag ) ;
+
+	  gHyp_fileio_getTokens ( vlaue, pSrc ) ;
+	  gHyp_data_getStr ( pParentTag, 
+	    
+	    gHyp_data_getValue ( pParentTag, 1, FALSE ) ) ;
+
+	  pResult = gHyp_type_assign (  pAI,
+				      gHyp_instance_frame ( pAI ),
+				      pLvalue,
+				      pParentTag,
+				      requestedType,
+				      FALSE,  
+				      FALSE  ) ; 
+	gHyp_data_delete ( pResult ) ;
+	gHyp_data_delete ( pLvalue ) ;
+      }
+      **************************/
 
       *pIsEndTag = TRUE ;
       return pStream ;
@@ -813,7 +897,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
 	      if ( dataType == TYPE_ATTR ) continue ;
 		
 	      gHyp_data_detach ( pChildTag ) ;
-	      /*	
+	      
 	      gHyp_util_logWarning ( 
 		     "Appending element <%s> from <%s> to <%s> [%.*s]...[%.*s]",
 		      gHyp_data_getLabel(pChildTag),
@@ -821,7 +905,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
 		      gHyp_data_getLabel(pGrandParentTag),
 		      SEG_SIZE,MAX(pAnchor,pStream-SEG_SIZE),
 		      SEG_SIZE,pStream) ;
-	      */
+	      
 	      gHyp_data_append ( pGrandParentTag, pChildTag ) ;
 
 	      /* Start over from the beginning */
@@ -857,13 +941,13 @@ char *gHyp_cgi_parseXML ( char *pStream,
     else {
       pChildTag = gHyp_frame_createVariable ( pFrame, tag ) ;
       gHyp_data_deleteValues ( pChildTag ) ;
-      /* Create or retrieve the "xmlargs" variable, adding the new tag name. */
-      pArgs = gHyp_frame_createVariable ( pFrame, "xmlargs" ) ;
-      if ( pArgs ) {
-	pData = gHyp_data_new ( NULL ) ;
-        gHyp_data_setReference ( pData, tag, NULL ) ;
-        gHyp_data_append ( pArgs, pData ) ;
-     }
+    }
+    /* Create or retrieve the "xmlargs" variable, adding the new tag name. */
+    pArgs = gHyp_frame_createVariable ( pFrame, "xmlargs" ) ;
+    if ( pArgs ) {
+      pData = gHyp_data_new ( NULL ) ;
+      gHyp_data_setReference ( pData, tag, NULL ) ;
+      gHyp_data_append ( pArgs, pData ) ;
     }
   }
   else {
@@ -882,6 +966,10 @@ char *gHyp_cgi_parseXML ( char *pStream,
    /* Attributes are allowed until the end of the tag */
   allowAttributes = TRUE ;
 
+  sprintf ( tag2_lc, "/%s/", tag ) ;
+  gHyp_util_lowerCase ( tag2_lc, strlen ( tag2_lc ) ) ;
+  isChildLess = ( strstr ( childLess, tag2_lc ) != NULL ) ;
+
   /* Advance past tag name */
   pStream += tagLen ;
   while ( *pStream ) {
@@ -896,7 +984,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
     else
       span = 0 ;
      
-    if ( *pStream == '/'  ) {
+    if ( (*pStream == '/' && *(pStream+1) == '>') ) {
 
       /* A tag with no data, ending with />, with zero or more attributes */
       pStream++ ;
@@ -910,6 +998,10 @@ char *gHyp_cgi_parseXML ( char *pStream,
 
       allowAttributes = FALSE ;
 
+      /* For HTML specific childless tags, we can assume they have no children.
+       * In pure XML, this would be a mistake
+       */
+      if ( isChildLess && !isPureXML ) return pStream ;
     }
     else {
 
@@ -963,6 +1055,12 @@ char *gHyp_cgi_parseXML ( char *pStream,
 	  /* Get the attribute value */
 	  pStream++ ;
 
+	  /* Get more data if necessary */
+	  pStream = gHyp_util_readStream (  pStream, pAnchor, ppEndOfStream,
+					    &streamLen, pStreamData, 
+					    ppValue, pContext, ss, isVector, 
+					    pp ) ;
+
 	  /* Span whitespace after "=" */
 	  span = strspn ( pStream, " \t\n\r" ) ;
           pStream += span ;
@@ -995,7 +1093,13 @@ char *gHyp_cgi_parseXML ( char *pStream,
 	    terminated = FALSE ;
 	    pSearch = pStream ;
 	    while ( !terminated ) {
-	      
+
+	      /* Get more data if necessary */
+	      pStream = gHyp_util_readStream (  pStream, pAnchor, ppEndOfStream,
+					    &streamLen, pStreamData, 
+					    ppValue, pContext, ss, isVector, 
+					    pp ) ;
+		    
 	      pStr = strchr ( pSearch, quote ) ;
 	      
 	      /* If no ending quote, quit, returning pointer to start */
@@ -1023,16 +1127,17 @@ char *gHyp_cgi_parseXML ( char *pStream,
 
 		strLen = pStr - pStream ;
 	      }
+
 	    }
 	  }
 	  
 	  /*gHyp_util_debug("Got value %.*s",strLen, pStream );*/
 
-	  /* Create the attribute space */
-	  gHyp_data_newVector ( pAttrData, TYPE_ATTR, strLen, TRUE ) ; 
+	  /* Extract string - maximum of MAX_INPUT_LENGTH characters. */
+	  truncStrLen = MIN ( MAX_INPUT_LENGTH, strLen ) ;
 
-	  /* Extract string - maximum of VALUE_SIZE characters. */
-	  truncStrLen = MIN ( VALUE_SIZE, strLen ) ;
+	  /* Create the attribute space */
+	  gHyp_data_newVector ( pAttrData, TYPE_ATTR, truncStrLen, TRUE ) ; 
 
 	  if ( truncStrLen > 0 ) {
 
@@ -1041,6 +1146,12 @@ char *gHyp_cgi_parseXML ( char *pStream,
 	  
 	    strncpy ( pStr2, pStream, truncStrLen ) ;
 	    pStr2[truncStrLen] = '\0' ;
+
+	    /* Check for type attribute. */
+	    gHyp_util_lowerCase ( attr, strlen ( attr ) ) ;
+	    if ( strcmp ( attr, "type" ) == 0 ) {
+	      reqType = gHyp_fileio_dataType ( pStr2 )  ;
+	    }
 	  
 	    for ( i=0; i<truncStrLen; i++ ) {
 	      c = *(pStr2+i) ;
@@ -1075,7 +1186,6 @@ char *gHyp_cgi_parseXML ( char *pStream,
 
 	/* Call this function recursively 
 	 *
-	 * If the 
 	 */
 	isEndTag = FALSE ;
 	pStream = gHyp_cgi_parseXML ( pStream,
@@ -1095,7 +1205,9 @@ char *gHyp_cgi_parseXML ( char *pStream,
 				      pFrame,
 				      pTV,
 				      pp,
-				      pAI ) ;
+				      pAI,
+				      reqType,
+				      isPureXML ) ;
 
 	if ( !pStream ) return NULL ;
 	if ( isEndTag ) return pStream ;
@@ -1117,6 +1229,7 @@ void gHyp_cgi_xmlData ( sData *pData, sInstance *pAI, sFrame *pFrame, sData *pTV
     *pEndOfStream ;
 
   sLOGICAL
+    isPureXML = TRUE,
     isEndTag,
     isVector ;
 
@@ -1152,7 +1265,9 @@ void gHyp_cgi_xmlData ( sData *pData, sInstance *pAI, sFrame *pFrame, sData *pTV
 				  pFrame,
 				  pTV,
 				  NULL,
-				  pAI ) ;
+				  pAI,
+				  TYPE_LIST,
+				  isPureXML ) ;
     if ( !pStream ) break ;
     if ( !*pStream ) break ;
     pAnchor=pStream ; 
@@ -1222,11 +1337,12 @@ static int lHyp_cgi_init( sInstance *pAI, sFrame *pFrame )
     i;
  
   char
-    contentType[VALUE_SIZE+1] ;
+    contentType[VALUE_SIZE+1];
 
   sBYTE
     isCGI=FALSE,
-    isXML=FALSE ;
+    isXML=FALSE,
+    isHYP=FALSE ;
 
   sData
      *pParentTag ;
@@ -1249,22 +1365,23 @@ static int lHyp_cgi_init( sInstance *pAI, sFrame *pFrame )
        in the appropriate manner: */
     
     if ( strcmp ( getenv("REQUEST_METHOD"),"POST") == 0 ) {
+
       /* Post method (data is sent to us via "stdin"): */
       
       giCgiRequestMethod = CGIREQ_POST;
 
-      
       strncpy ( contentType, getenv( "CONTENT_TYPE" ), VALUE_SIZE ) ;
       contentType[VALUE_SIZE] = '\0' ;
       gHyp_util_trim ( contentType ) ;
       
-      isCGI = (strstr(contentType,"application/x-www-form-urlencoded")!=NULL) ;
+      isHYP = ( strstr(contentType,"application/hyperscript")!=NULL) ;
+      isCGI = ( strstr(contentType,"application/x-www-form-urlencoded")!=NULL) ;
       isXML = ( strstr ( contentType, "text/xml" ) != NULL ||
 		strstr ( contentType, "text/html" ) ||
 		strstr ( contentType, "application/soap" ) != NULL ) ;
 
 
-      if ( !isCGI && !isXML ) {
+      if ( !isCGI && !isXML && !isHYP ) {
 	/* Is the content type incorrect (or not set at all?) */	  
 	giCgiErrno = CGIERR_INCORRECT_TYPE;
 	return(giCgiErrno);
@@ -1280,6 +1397,20 @@ static int lHyp_cgi_init( sInstance *pAI, sFrame *pFrame )
 	  return(giCgiErrno);
 	}
 	
+	if ( isHYP ) {
+
+	  /*
+	  pBuf = buf ;
+	  while ( pBuf ) {
+	    pBuf = fgets ( buf, MAX_INPUT_LENGTH, stdin ); 
+	    if ( feof ( stdin ) ) break ;
+	    gHyp_util_output2 ( pBuf ) ;
+	  }
+	  */
+	  return(CGIERR_NONE);
+	}
+
+
 	/* Create space for it: */	  
 	gzCgiQuery = (char*) AllocMemory(cl + 1);
 	

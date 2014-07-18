@@ -35,6 +35,13 @@
 ! Modifications:
 !
 !    $Log: batch.for,v $
+!    Revision 1.8  2005/01/12 23:13:50  bergsma
+!    Redundant definition of "accept' variable.
+!
+!    Revision 1.7  2005/01/10 18:54:45  bergsma
+!    Removed redundant variable definitions causing warnings for new FORTRAN
+!    compiler.
+!
 !    Revision 1.6  2003/06/05 21:43:32  bergsma
 !    In the batch function, fix the problem whereby the OPTION_AUTO process
 !    logical gets set to NO and then it is never deleted, so that the next
@@ -1417,7 +1424,6 @@
 
 	real*4 		earlyWarnStart,lateWarnEnd 
 
-        logical*4                       accept
              ! List of Equipment Constraint Field
         character*(TYP__COMMENTSZ)      rejectReason
             ! Required for Advanced Equipment Checking

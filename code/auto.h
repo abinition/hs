@@ -3,6 +3,18 @@
  * Modifications:
  *
  * $Log: auto.h,v $
+ * Revision 1.18  2005/10/15 21:36:00  bergsma
+ * Mods for PPC
+ *
+ * Revision 1.17  2005/02/15 06:59:11  bergsma
+ * No newline at end of file
+ *
+ * Revision 1.16  2005/01/25 05:42:06  bergsma
+ * Add MAPI (NSAS Nokia support methods for Outlook forwarding)
+ *
+ * Revision 1.15  2005/01/10 18:02:00  bergsma
+ * Add gsJmpOverride when CTRL./C is pressed during socket connect blocking
+ *
  * Revision 1.14  2004/11/19 03:43:25  bergsma
  * Add another gpsTempData2 variable to catch leaks.
  *
@@ -45,9 +57,12 @@
  *
  */
 
-#if defined ( WIN32 ) || defined ( __WIN32 )
+#if defined ( WIN32 ) || defined ( __WIN32 ) || defined ( _WIN32_WCE )
 #define AS_WINDOWS 1
 #include <windows.h>
+#ifdef _WIN32_WCE
+#define AS_PPC 1
+#endif
 #elif defined ( __VMS )
 #define AS_VMS 1
 #else
@@ -64,11 +79,11 @@
 #include <stddef.h>     /* standard types */
 #include <stdlib.h>	/* standard library functions */
 #include <time.h> 	/* for localtime function */
+#include <errno.h>	/* errno */
+#include <signal.h>	/* signal processing functions and structures */
+#include <assert.h>     /* assert function */
 #include <ctype.h>	/* is* macros and functions */
 #include <string.h>	/* string functions */
-#include <errno.h>	/* errno */
-#include <assert.h>     /* assert function */
-#include <signal.h>	/* signal processing functions and structures */
 #include <setjmp.h>	/* setjmp and longjmp functions */
 
 #ifdef AS_MEMTRACK
@@ -233,11 +248,22 @@ extern unsigned		guSIGMBX ;     	/* Set when SIGMBX */
 #include "port.h"
 #include "http.h"
 #include "sort.h"
+
+#ifdef AS_SSL
 #include "ssl.h"
+#endif
+
 #include "stack.h"
 #include "stmt.h"
 #include "system.h"
+
 #ifdef AS_SQL
 #include "sql.h"
 #endif
+
+#ifdef AS_MAPI
+#include "mapi.h"
+#endif
+
 #include "type.h"
+

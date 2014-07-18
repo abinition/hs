@@ -2,6 +2,9 @@
  * Modifications:
  *
  * $Log: http.h,v $
+ * Revision 1.4  2005/03/16 23:53:21  bergsma
+ * V 3.5.1 - fixes for use with DECC compiler.
+ *
  * Revision 1.3  2004/10/16 04:45:41  bergsma
  * Added http_binary() function.
  *
@@ -23,11 +26,11 @@ extern char*	gHyp_http_getArg2 ( sHTTP* ) ;
 extern char*	gHyp_http_getArg3 ( sHTTP* ) ;
 extern sData*	gHyp_http_getAttributeData( sHTTP* ) ;
 extern sData*   gHyp_http_getContentData ( sHTTP* ) ;
-extern int	gHyp_http_getActualContentLength( sHTTP* ) ;
+extern int	gHyp_http_getActualContentLen( sHTTP* ) ;
 extern void	gHyp_http_updateContent ( sHTTP* pHTTP, int contentlength, int actualContentLength ) ;
 extern int	gHyp_http_getContentLength( sHTTP* pHTTP ) ;
-extern sLOGICAL	gHyp_http_isChunkedTransferEncoded( sHTTP* pHTTP ) ;
-extern void	gHyp_http_setChunkedTransferEncoded( sHTTP* pHTTP ) ;
+extern sLOGICAL	gHyp_http_isChunkedTransferEnc( sHTTP* pHTTP ) ;
+extern void	gHyp_http_setChunkedTransferEnc( sHTTP* pHTTP ) ;
 extern sLOGICAL	gHyp_http_isXMLEncoded( sHTTP* pHTTP ) ;
 extern void	gHyp_http_setXMLEncoded( sHTTP* pHTTP ) ;
 extern sLOGICAL	gHyp_http_isURLEncoded( sHTTP* pHTTP ) ;

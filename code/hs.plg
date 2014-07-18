@@ -3,156 +3,76 @@
 <pre>
 <h1>Build Log</h1>
 <h3>
---------------------Configuration: hs - Win32 Debug--------------------
+--------------------Configuration: hs - Win32 Release--------------------
 </h3>
 <h3>Command Lines</h3>
-Creating temporary file "C:\DOCUME~1\MICHAE~1\LOCALS~1\Temp\RSP17B.tmp" with contents
+Creating temporary file "C:\DOCUME~1\bergsma\LOCALS~1\Temp\RSP25C.tmp" with contents
 [
-/nologo /MD /W3 /Gm /GX /ZI /Od /I "c:\mysql\include\\" /I "C:\openssl\openssl-0.9.7c\include" /I "c:\j2sdk1.4.2_01\include" /I "c:\j2sdk1.4.2_01\include\win32" /D "WIN32" /D "_DEBUG" /D "_USRDLL" /D "_MBCS" /D "AS_SQL" /D "AS_MYSQL" /D "AS_MEMTRACK" /D "AS_SSL" /Fp"Debug/hs.pch" /YX /Fo"Debug/" /Fd"Debug/" /FD /GZ /c 
-"C:\AbInition\hs_20041220\code\aimsg.c"
-"C:\AbInition\hs_20041220\code\branch.c"
-"C:\AbInition\hs_20041220\code\cgi.c"
-"C:\AbInition\hs_20041220\code\channel.c"
-"C:\AbInition\hs_20041220\code\concept.c"
-"C:\AbInition\hs_20041220\code\data.c"
-"C:\AbInition\hs_20041220\code\dateparse.c"
-"C:\AbInition\hs_20041220\code\env.c"
-"C:\AbInition\hs_20041220\code\fileio.c"
-"C:\AbInition\hs_20041220\code\frame.c"
-"C:\AbInition\hs_20041220\code\function.c"
-"C:\AbInition\hs_20041220\code\hash.c"
-"C:\AbInition\hs_20041220\code\hs.c"
-"C:\AbInition\hs_20041220\code\hsms.c"
-"C:\AbInition\hs_20041220\code\http.c"
-"C:\AbInition\hs_20041220\code\hyp.c"
-"C:\AbInition\hs_20041220\code\instance.c"
-"C:\AbInition\hs_20041220\code\label.c"
-"C:\AbInition\hs_20041220\code\load.c"
-"C:\AbInition\hs_20041220\code\memtrack.c"
-"C:\AbInition\hs_20041220\code\method.c"
-"C:\AbInition\hs_20041220\code\operand.c"
-"C:\AbInition\hs_20041220\code\operator.c"
-"C:\AbInition\hs_20041220\code\parse.c"
-"C:\AbInition\hs_20041220\code\port.c"
-"C:\AbInition\hs_20041220\code\promis.c"
-"C:\AbInition\hs_20041220\code\route.c"
-"C:\AbInition\hs_20041220\code\router.c"
-"C:\AbInition\hs_20041220\code\secs.c"
-"C:\AbInition\hs_20041220\code\secs1.c"
-"C:\AbInition\hs_20041220\code\secs2.c"
-"C:\AbInition\hs_20041220\code\signal.c"
-"C:\AbInition\hs_20041220\code\sock.c"
-"C:\AbInition\hs_20041220\code\sort.c"
-"C:\AbInition\hs_20041220\code\sql.c"
-"C:\AbInition\hs_20041220\code\ssl.c"
-"C:\AbInition\hs_20041220\code\stack.c"
-"C:\AbInition\hs_20041220\code\stmt.c"
-"C:\AbInition\hs_20041220\code\system.c"
-"C:\AbInition\hs_20041220\code\tcp.c"
-"C:\AbInition\hs_20041220\code\type.c"
-"C:\AbInition\hs_20041220\code\util.c"
+/nologo /MD /W3 /GX /O2 /I "C:\Program Files\MySQL\MySQL Server 4.1\include\\" /I "c:\openssl\openssl-0.9.8\inc32\\" /I "C:\Program Files\Java\jdk1.5.0_03\include" /I "C:\Program Files\Java\jdk1.5.0_03\include\win32" /I "C:\oraclexe\app\oracle\product\10.2.0\server\OCI\include" /I "C:\Program Files\PostgreSQL\8.1\\include" /I "C:\Program Files\Microsoft SQL Server\80\Tools\DevTools\include" /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /D "AS_SQL" /D "AS_ORACLE" /Fp"Release/hs.pch" /YX /Fo"Release/" /Fd"Release/" /FD /c 
+"C:\AbInition\hs\code\cgi.c"
+"C:\AbInition\hs\code\secs1.c"
+"C:\AbInition\hs\code\util.c"
 ]
-Creating command line "cl.exe @C:\DOCUME~1\MICHAE~1\LOCALS~1\Temp\RSP17B.tmp" 
-Creating temporary file "C:\DOCUME~1\MICHAE~1\LOCALS~1\Temp\RSP17C.tmp" with contents
+Creating command line "cl.exe @C:\DOCUME~1\bergsma\LOCALS~1\Temp\RSP25C.tmp" 
+Creating temporary file "C:\DOCUME~1\bergsma\LOCALS~1\Temp\RSP25D.tmp" with contents
 [
-kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib ws2_32.lib libmysql.lib ntwdblib.lib EXCHINST.LIB ssleay32.lib libeay32.lib /nologo /subsystem:console /incremental:yes /pdb:"Debug/hs.pdb" /debug /machine:I386 /out:"Debug/hs.exe" /libpath:"C:\openssl\openssl-0.9.7c\lib" /libpath:"c:\mysql\lib\opt" 
-.\Debug\aimsg.obj
-.\Debug\branch.obj
-.\Debug\cgi.obj
-.\Debug\channel.obj
-.\Debug\concept.obj
-.\Debug\data.obj
-.\Debug\dateparse.obj
-.\Debug\env.obj
-.\Debug\fileio.obj
-.\Debug\frame.obj
-.\Debug\function.obj
-.\Debug\hash.obj
-.\Debug\hs.obj
-.\Debug\hsms.obj
-.\Debug\http.obj
-.\Debug\hyp.obj
-.\Debug\instance.obj
-.\Debug\label.obj
-.\Debug\load.obj
-.\Debug\memtrack.obj
-.\Debug\method.obj
-.\Debug\operand.obj
-.\Debug\operator.obj
-.\Debug\parse.obj
-.\Debug\port.obj
-.\Debug\promis.obj
-.\Debug\route.obj
-.\Debug\router.obj
-.\Debug\secs.obj
-.\Debug\secs1.obj
-.\Debug\secs2.obj
-.\Debug\signal.obj
-.\Debug\sock.obj
-.\Debug\sort.obj
-.\Debug\sql.obj
-.\Debug\ssl.obj
-.\Debug\stack.obj
-.\Debug\stmt.obj
-.\Debug\system.obj
-.\Debug\tcp.obj
-.\Debug\type.obj
-.\Debug\util.obj
+kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib ws2_32.lib libmysql.lib ntwdblib.lib ssleay32.lib libeay32.lib oci.lib libpq.lib /nologo /subsystem:console /incremental:no /pdb:"Release/hs.pdb" /machine:I386 /out:"Release/hs.exe" /libpath:"c:\openssl\openssl-0.9.8\out32" /libpath:"C:\Program Files\MySQL\MySQL Server 4.1\lib\opt" /libpath:"C:\oraclexe\app\oracle\product\10.2.0\server\OCI\lib\msvc" /libpath:"C:\Program Files\PostgreSQL\8.1\\lib\ms" /libpath:"C:\Program Files\Microsoft SQL Server\80\Tools\DevTools\lib" 
+.\Release\aimsg.obj
+.\Release\branch.obj
+.\Release\cgi.obj
+.\Release\channel.obj
+.\Release\concept.obj
+.\Release\data.obj
+.\Release\dateparse.obj
+.\Release\env.obj
+.\Release\fileio.obj
+.\Release\frame.obj
+.\Release\function.obj
+.\Release\hash.obj
+.\Release\hs.obj
+.\Release\hsms.obj
+.\Release\http.obj
+.\Release\hyp.obj
+.\Release\instance.obj
+.\Release\label.obj
+.\Release\load.obj
+.\Release\mapi.obj
+.\Release\memtrack.obj
+.\Release\method.obj
+.\Release\operand.obj
+.\Release\operator.obj
+.\Release\parse.obj
+.\Release\port.obj
+.\Release\promis.obj
+.\Release\route.obj
+.\Release\router.obj
+.\Release\secs.obj
+.\Release\secs1.obj
+.\Release\secs2.obj
+.\Release\signal.obj
+.\Release\sock.obj
+.\Release\sort.obj
+.\Release\sql.obj
+.\Release\ssl.obj
+.\Release\stack.obj
+.\Release\stmt.obj
+.\Release\system.obj
+.\Release\tcp.obj
+.\Release\type.obj
+.\Release\util.obj
 ]
-Creating command line "link.exe @C:\DOCUME~1\MICHAE~1\LOCALS~1\Temp\RSP17C.tmp"
+Creating command line "link.exe @C:\DOCUME~1\bergsma\LOCALS~1\Temp\RSP25D.tmp"
 <h3>Output Window</h3>
 Compiling...
-aimsg.c
-branch.c
 cgi.c
-channel.c
-concept.c
-C:\AbInition\hs_20041220\code\concept.c(203) : warning C4273: 'unlink' : inconsistent dll linkage.  dllexport assumed.
-data.c
-dateparse.c
-C:\AbInition\hs_20041220\code\dateparse.c(42) : warning C4273: 'qsort' : inconsistent dll linkage.  dllexport assumed.
-env.c
-fileio.c
-c:\abinition\hs_20041220\code\fileio.c(142) : warning C4273: 'unlink' : inconsistent dll linkage.  dllexport assumed.
-frame.c
-function.c
-hash.c
-hs.c
-hsms.c
-http.c
-hyp.c
-instance.c
-label.c
-load.c
-memtrack.c
-method.c
-operand.c
-operator.c
-parse.c
-port.c
-promis.c
-route.c
-router.c
-secs.c
 secs1.c
-secs2.c
-signal.c
-sock.c
-sort.c
-sql.c
-ssl.c
-stack.c
-stmt.c
-system.c
-tcp.c
-type.c
 util.c
 Linking...
 
 
 
 <h3>Results</h3>
-hs.exe - 0 error(s), 3 warning(s)
+hs.exe - 0 error(s), 0 warning(s)
 </pre>
 </body>
 </html>

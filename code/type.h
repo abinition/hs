@@ -2,6 +2,9 @@
  * Modifications:
  *
  * $Log: type.h,v $
+ * Revision 1.5  2005/03/09 04:20:28  bergsma
+ * Added scopeof function
+ *
  * Revision 1.4  2004/07/06 00:28:14  bergsma
  * Added 'valueof()' function.
  *
@@ -43,3 +46,4 @@ extern void		gHyp_type_unicode ( sInstance*, sCode*, sLOGICAL ) ;
 extern void		gHyp_type_attr ( sInstance*, sCode*, sLOGICAL ) ;
 extern void		gHyp_type_typeof ( sInstance*, sCode*, sLOGICAL ) ;
 extern void		gHyp_type_valueof ( sInstance*, sCode*, sLOGICAL ) ;
+extern void		gHyp_type_scopeof ( sInstance*, sCode*, sLOGICAL ) ;

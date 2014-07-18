@@ -10,6 +10,54 @@
  * Modifications:
  *
  *   $Log: load.c,v $
+ *   Revision 1.32  2006/05/07 18:32:48  bergsma
+ *   From strcpy to memcpy
+ *
+ *   Revision 1.31  2006/01/23 05:12:02  bergsma
+ *   Added port_binary() function.
+ *
+ *   Revision 1.30  2005/12/27 02:53:24  bergsma
+ *   Removed functions ssl_certfile and ssl_keyfile
+ *
+ *   Revision 1.29  2005/12/17 20:41:14  bergsma
+ *   no message
+ *
+ *   Revision 1.28  2005/10/25 16:39:37  bergsma
+ *   Added usleep() function
+ *
+ *   Revision 1.27  2005/10/15 21:42:09  bergsma
+ *   Added renameto functionality.
+ *
+ *   Revision 1.26  2005/09/06 10:18:08  bergsma
+ *   Fixed pack() function
+ *
+ *   Revision 1.25  2005/07/23 22:31:53  bergsma
+ *   Added insertafter and Insertbefore and vt2html
+ *
+ *   Revision 1.24  2005/05/10 17:42:54  bergsma
+ *   urlencode and urldecode
+ *
+ *   Revision 1.23  2005/05/10 17:39:38  bergsma
+ *   Added env, URLencode, URLdecode
+ *
+ *   Revision 1.22  2005/05/10 17:33:19  bergsma
+ *   Added functions env(), URLencode(), URLdecode()
+ *
+ *   Revision 1.21  2005/04/13 13:45:54  bergsma
+ *   HS 3.5.6
+ *   Added sql_toexternal.
+ *   Fixed handling of strings ending with bs (odd/even number of backslashes)
+ *   Better handling of exception condition.
+ *
+ *   Revision 1.20  2005/03/09 04:15:41  bergsma
+ *   Added appendval, insertval, and scopeof
+ *
+ *   Revision 1.19  2005/01/25 05:45:19  bergsma
+ *   Added mapi_register and mapi_getPort
+ *
+ *   Revision 1.18  2005/01/18 20:42:41  jbergsma
+ *   Enable the jeval (JavaScript call) method for the WebPickle ATL project
+ *
  *   Revision 1.17  2004/10/16 04:46:20  bergsma
  *   Better truncation warning message/
  *
@@ -180,6 +228,7 @@ void gHyp_load_new ()
   lHyp_load_newKey ( "instance",  gHyp_route_instance, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "instances",  gHyp_route_instances, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "moveto",  gHyp_route_moveto, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "renameto",  gHyp_route_renameto, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
 
   /* Handler support functions */
   lHyp_load_newKey ( "on_message" ,  gHyp_branch_on_message, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ; 
@@ -197,6 +246,7 @@ void gHyp_load_new ()
 
   /* System functions */
   lHyp_load_newKey ( "sleep" ,  gHyp_system_sleep, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "usleep" ,  gHyp_system_usleep, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "exec" ,  gHyp_system_exec, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "system" ,  gHyp_system_system, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "parse" ,  gHyp_system_parse, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
@@ -225,7 +275,7 @@ void gHyp_load_new ()
   /*lHyp_load_newKey ( "plogin" ,  gHyp_promis_plogin, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;*/
 #endif
 
-#ifdef AS_JNI
+#if defined( AS_JNI ) || defined( AS_ATL )
   lHyp_load_newKey ( "jeval" ,  gHyp_hs_jeval, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
 #endif
 
@@ -236,12 +286,17 @@ void gHyp_load_new ()
   lHyp_load_newKey ( "tointernal" ,  gHyp_function_tointernal, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "encode" ,  gHyp_function_encode, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "decode" ,  gHyp_function_decode, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "urlencode" ,  gHyp_function_urlEncode, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "urldecode" ,  gHyp_function_urlDecode, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "vt2html" ,  gHyp_function_vt2html, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+ /* lHyp_load_newKey ( "parseurl" ,  gHyp_function_parseurl, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;*/
 
   /* String functions, some like 'C' */
   lHyp_load_newKey ( "strlen" ,  gHyp_function_strlen, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "strloc" ,  gHyp_function_strloc, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "strext" ,  gHyp_function_strext, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "strtok" ,  gHyp_function_strtok, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "pack",	 gHyp_function_pack, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "trim" ,  gHyp_function_trim, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "strip" ,  gHyp_function_strip, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
 
@@ -281,6 +336,7 @@ void gHyp_load_new ()
   lHyp_load_newKey ( "sql_open",  gHyp_sql_open, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "sql_query", gHyp_sql_query, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "sql_close", gHyp_sql_close, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "sql_toexternal", gHyp_sql_toexternal, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
 #else
   lHyp_load_newKey ( "sql_open",    gHyp_sql_connect, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "sql_query",   gHyp_sql_query, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
@@ -313,6 +369,7 @@ void gHyp_load_new ()
   lHyp_load_newKey ( "port_disable" ,  gHyp_port_disable, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "port_close" ,  gHyp_port_close, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "port_handle" ,  gHyp_port_handle, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "port_binary" ,  gHyp_port_binary, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
 
   /* Tunneling functions */
   lHyp_load_newKey ( "tunnel", gHyp_route_tunnel, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
@@ -336,8 +393,6 @@ void gHyp_load_new ()
   /* SSL functions */
   lHyp_load_newKey ( "ssl_new", gHyp_ssl_new, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "ssl_ciphers",  gHyp_ssl_ciphers, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
-  lHyp_load_newKey ( "ssl_keyFile",  gHyp_ssl_keyFile, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
-  lHyp_load_newKey ( "ssl_certFile",  gHyp_ssl_certFile, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "ssl_CApath",  gHyp_ssl_CApath, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "ssl_CAfile",  gHyp_ssl_CAfile, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "ssl_auth",  gHyp_ssl_auth, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
@@ -346,8 +401,13 @@ void gHyp_load_new ()
   lHyp_load_newKey ( "ssl_delete", gHyp_ssl_delete, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "ssl_getSession", gHyp_ssl_getSession, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "ssl_setSession", gHyp_ssl_setSession, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "ssl_enableSessions", gHyp_ssl_enableSessions, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
 #endif
 
+#ifdef AS_MAPI
+  lHyp_load_newKey ( "mapi_register", gHyp_mapi_register, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "mapi_getPort", gHyp_mapi_getPort, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+#endif
   /* Environment */
   lHyp_load_newKey ( "undef" ,  gHyp_env_undef, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "exists" ,  gHyp_env_exists, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
@@ -360,9 +420,13 @@ void gHyp_load_new ()
   lHyp_load_newKey ( "prev" ,  gHyp_env_prev, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "insert" ,  gHyp_env_insert, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "append" ,  gHyp_env_append, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "insertbefore" ,  gHyp_env_insertbefore, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "insertafter" ,  gHyp_env_insertafter, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "remove" ,  gHyp_env_remove, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "chop" ,  gHyp_env_chop, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "detach" ,  gHyp_env_detach, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "insertval" ,  gHyp_env_insertval, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "appendval" ,  gHyp_env_appendval, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "map" ,  gHyp_env_map, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "unmap" ,  gHyp_env_unmap, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "merge" ,  gHyp_env_merge, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
@@ -374,8 +438,10 @@ void gHyp_load_new ()
   lHyp_load_newKey ( "quiet" ,  gHyp_env_quiet, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "verify" ,  gHyp_env_verify, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "version" ,  gHyp_env_version, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "env" ,    gHyp_env_env, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "typeof" ,  gHyp_type_typeof, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "valueof",  gHyp_type_valueof, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "scopeof",  gHyp_type_scopeof, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "localhost" ,  gHyp_env_localhost, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "localaddr" ,  gHyp_env_localaddr, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
 }
@@ -481,12 +547,14 @@ char *gHyp_load_fromStream (	sInstance *pAI,
   char		
     *pToken,
     *pStr,
+    *pBS,
     *pSearch,
     ch,
     tokenType,
     precedence ;
 
   int
+    bs,
     tokenLen,
     scanLen,
     stringLen ;
@@ -516,7 +584,7 @@ char *gHyp_load_fromStream (	sInstance *pAI,
       if ( !gInComment ) {
 	pToken = (char*) AllocMemory ( scanLen+1 ) ;
 	assert ( pToken ) ;
-        strncpy ( pToken, pStream, scanLen ) ;
+        memcpy ( pToken, pStream, scanLen ) ;
         pToken[scanLen] = '\0' ;
 	/*gHyp_util_debug("TOKEN is %s",pToken);*/
         pf = gHyp_load_fun ( pToken, &tokenType, &precedence ) ;
@@ -558,15 +626,22 @@ char *gHyp_load_fromStream (	sInstance *pAI,
 	/* If no ending quote, quit, returning pointer to start */
 	if ( pStr == NULL ) return pStream ;
 	
-	/* If the ending quote is preceeded by a single backslash, then its not
+	/* If the ending quote is preceeded by a odd number of backslashes, then its not
 	 * the ending quote.
 	 */
-	if ( *(pStr-1) == '\\' && *(pStr-2) != '\\' ) {
-	  /* Not a correct terminator,  keep searching. */
-	  pSearch = pStr+1 ;
+	if ( *(pStr-1) == '\\' ) {
+	  bs = 1 ;
+	  pBS = pStr-2 ;
+	  while ( *pBS-- == '\\' ) bs++ ;
+	  if ( bs%2 == 0 )
+	    terminated = TRUE ;
+	  else
+	    /* Not a correct terminator,  keep searching. */
+	    pSearch = pStr+1 ;
 	}
 	else
 	  terminated = TRUE ;
+
       }
       
       /* Replace ending quote with terminating character */

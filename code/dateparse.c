@@ -11,6 +11,12 @@
  * Modifications:
  *
  *	$Log: dateparse.c,v $
+ *	Revision 1.6  2006/08/22 18:45:19  bergsma
+ *	Resolve Win32 problem with qsort
+ *	
+ *	Revision 1.5  2005/04/13 13:40:18  bergsma
+ *	Added YYYY-MM-DD HH:MM:SS format
+ *	
  *	Revision 1.4  2004/10/16 04:34:24  bergsma
  *	Removed external variable 'daylight'.  Not used.
  *	
@@ -38,8 +44,10 @@
 extern "C" void qsort(void *base, size_t nmemb, size_t size, 
 		      int (*compar)(const void *, const void *)) ;
 #else
+#ifndef AS_WINDOWS
 extern void qsort(void *base, size_t nmemb, size_t size, 
 		  int (*compar)(const void *, const void *)) ;
+#endif
 #endif
 /* date_parse - parse string dates into internal form
 **
@@ -453,6 +461,29 @@ time_t gHyp_dateparse_parse( char* str )
       tm.tm_sec = tm_sec;
     }
 
+  else if ( sscanf( cp, "%4d-%2ld-%2d %2d:%2d:%2d %[^: 	\n]",
+	       &tm_year, &tm_mon, &tm_mday, &tm_hour, &tm_min, &tm_sec, str_gmtoff ) == 6 )
+    {
+      /*DP( "YYYY-MM-DD HH:MM:SS zone" );*/
+      tm.tm_mday = tm_mday;
+      tm.tm_mon = tm_mon - 1;
+      tm.tm_year = tm_year;
+      tm.tm_hour = tm_hour ;
+      tm.tm_min = tm_min;
+      tm.tm_sec = tm_sec;
+      got_zone = 1;
+    }
+  else if ( sscanf( cp, "%4d-%2ld-%2d %2d:%2d:%2d",
+	       &tm_year, &tm_mon, &tm_mday, &tm_hour, &tm_min, &tm_sec ) == 6 )
+    {
+      /*DP( "YYYY-MM-DD HH:MM:SS" );*/
+      tm.tm_mday = tm_mday;
+      tm.tm_mon = tm_mon - 1;
+      tm.tm_year = tm_year;
+      tm.tm_hour = tm_hour ;
+      tm.tm_min = tm_min;
+      tm.tm_sec = tm_sec;
+    }
   /* DD/mth/YY:HH:MM:SS zone */
   else if ( sscanf( cp, "%d/%[a-zA-Z]/%d:%d:%d:%d %[^: 	\n]",
 	       &tm_mday, str_mon, &tm_year, &tm_hour, &tm_min, &tm_sec,

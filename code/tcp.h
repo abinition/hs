@@ -2,6 +2,10 @@
  * Modifications:
  *
  * $Log: tcp.h,v $
+ * Revision 1.6  2005/02/25 04:00:51  bergsma
+ * HS 3.4.5
+ * Make mailslot read/writes non-blocking.
+ *
  * Revision 1.5  2004/07/01 02:18:28  bergsma
  * Functions without stdout to use with JNI interface
  *
@@ -29,3 +33,4 @@ extern void		gHyp_tcp_deleteAlias ( sAlias* ) ;
 extern sAlias*		gHyp_tcp_createAlias ( char *pHost, char *pAddr ) ;
 extern void		gHyp_tcp_removeAliases ( char* ) ;
 extern void		gHyp_tcp_gethostname ( char *, int  ) ;
+extern sLOGICAL		lHyp_tcp_setup ( SOCKET s ) ;

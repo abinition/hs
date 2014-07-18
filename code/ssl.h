@@ -2,6 +2,9 @@
  * Modifications:
  *
  * $Log: ssl.h,v $
+ * Revision 1.4  2005/12/17 20:38:34  bergsma
+ * Added ssl_enableSessions
+ *
  * Revision 1.3  2004/09/18 21:51:49  bergsma
  * SSL buffer size can be 16K
  * SSL timeout increased from 1 to 1.5 seconds
@@ -26,3 +29,4 @@ extern void gHyp_ssl_assign ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) ;
 extern void gHyp_ssl_delete ( sInstance *, sCode *, sLOGICAL  ) ;
 extern void gHyp_ssl_setSession ( sInstance *, sCode *, sLOGICAL  ) ;
 extern void gHyp_ssl_getSession ( sInstance *, sCode *, sLOGICAL  ) ;
+extern void gHyp_ssl_enableSessions ( sInstance *, sCode *, sLOGICAL  ) ;

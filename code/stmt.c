@@ -10,6 +10,21 @@
  * Modifications:
  *
  *	$Log: stmt.c,v $
+ *	Revision 1.14  2006/08/22 20:18:07  bergsma
+ *	When doing tag subscripting, any kind of "variable" is ok.
+ *	
+ *	Revision 1.13  2006/07/20 17:47:09  bergsma
+ *	Bad {n} referencing in structure.
+ *	
+ *	Revision 1.12  2006/06/17 02:59:10  bergsma
+ *	Fix problem with curly brace functionality, when doing direct assignment,.
+ *	
+ *	Revision 1.11  2005/08/21 17:58:35  bergsma
+ *	no message
+ *	
+ *	Revision 1.10  2005/01/10 20:15:45  bergsma
+ *	Unwanted code section in stmt_eList
+ *	
  *	Revision 1.9  2004/11/19 03:51:26  bergsma
  *	Implement list indexing using {}
  *	
@@ -468,7 +483,7 @@ void gHyp_stmt_bList ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 	pArg = NULL ;
 	ss = gHyp_data_getSubScript ( pArgs ) ; context = -1 ;
 	pMethodArgs = gHyp_data_new ( "args" ) ;
-	
+
 	/* Get next defined method argument */
 	n=0;
 	while ((pArg = gHyp_data_nextValue ( pArgs, 
@@ -518,7 +533,8 @@ void gHyp_stmt_bList ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 	/* Put the method variable on the stack for use by a typecast */
 	gHyp_stack_push ( pStack, pMethodVariable ) ;
       }
-	
+
+
       if ( guDebugFlags & DEBUG_FRAME )
 	gHyp_util_logDebug (	FRAME_DEPTH_NULL, DEBUG_FRAME,
 				"methd: '%s'",
@@ -579,6 +595,7 @@ void gHyp_stmt_bList ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     char
       *pAttr,
       *pLabel,
+      newLabel[MAX_OUTPUT_LENGTH+1],
       value[VALUE_SIZE+1],
       value2[VALUE_SIZE+1] ;
 
@@ -657,22 +674,14 @@ void gHyp_stmt_bList ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     if ( pValue &&
 	 gHyp_data_tokenType (pValue) == TOKEN_REFERENCE &&
 	 gHyp_data_getTokenType (pValue) == TOKEN_VARIABLE &&
-         gHyp_data_getDataType (pValue) == TYPE_LIST &&
+         /*(gHyp_data_getDataType (pValue) == TYPE_LIST ||
+          gHyp_data_getDataType (pValue) == TYPE_STRING) &&
+	 */
 	 gHyp_parse_isListCall ( pParse ) ) {
 
       pValue2 = gHyp_data_getValue ( pList, gHyp_data_getSubScript ( pList ), TRUE ) ;
 
-      /* Not sure what this is here for, must have been a cut/paste error
-      if ( gHyp_data_getObjectType ( pValue ) == DATA_OBJECT_METHOD ) {
-
-	* Object pointed to has an enclosed method - execute it *
-	pValue2 = gHyp_data_new ( "_parms_" ) ;
-	gHyp_data_append ( pValue2, pList ) ;
-	pList = pValue2 ;
-	gHyp_instance_setMethodCall ( pAI ) ;
-
-      } 
-      else */if ( pValue2 && gHyp_data_getParent ( pValue2 ) != pValue ) {
+      if ( pValue2 && gHyp_data_getParent ( pValue2 ) != pValue ) {
 
         if ( gHyp_data_getDataType (pValue2) == TYPE_ATTR  &&
 	     gHyp_data_getTokenType(pValue2) == TOKEN_VARIABLE ) {
@@ -702,7 +711,10 @@ void gHyp_stmt_bList ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 		if ( strcmp ( value, value2 ) == 0 ) {
 	       
 		  /* Found it */
-    		  gHyp_data_setReference ( pValue, gHyp_data_getLabel ( pValue ), pNext ) ;
+
+		  sprintf ( newLabel, "%s{attr '%s'=\"%s\"}",  gHyp_data_getLabel ( pValue ), pAttr, value ) ;
+    		  gHyp_data_setReference ( pValue, newLabel, pNext ) ;
+		  /*gHyp_util_debug("Setting special reference to %s",gHyp_data_getLabel(pValue));*/
 	          pushList = FALSE ;
 		  break ;
 		}
@@ -726,13 +738,15 @@ void gHyp_stmt_bList ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 	    if ( strcmp ( gHyp_data_getLabel ( pNext ), pLabel ) == 0 ) {
 	      if ( i == os ) {
 		/* Found it */
-    		gHyp_data_setReference ( pValue, gHyp_data_getLabel ( pValue ), pNext ) ;
+		sprintf ( newLabel, "%s{%d}",  gHyp_data_getLabel ( pValue ), os ) ;
+    		gHyp_data_setReference ( pValue, newLabel, pNext ) ;
+		/*gHyp_util_debug("Setting special reference to %s",gHyp_data_getLabel(pValue));*/
 		pushList = FALSE ;
 		break ;
 	      }
+	      i++ ;
 	    }
 	    pNext = gHyp_data_getNext ( pNext ) ;
-	    i++ ;
 	  }
 	  while ( pNext != pValue2 ) ;
 	}

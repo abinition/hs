@@ -2,6 +2,12 @@
  * Modifications:
  *
  * $Log: cgi.h,v $
+ * Revision 1.11  2006/08/17 05:03:30  bergsma
+ * Detect non-XML (HTML) and assume childless tags won't have /> endings
+ *
+ * Revision 1.10  2005/12/10 00:30:30  bergsma
+ * HS 3.6.5
+ *
  * Revision 1.9  2004/02/29 14:04:46  bergsma
  * Major rewrite of xml parse routines.
  *
@@ -53,4 +59,6 @@ extern char     *gHyp_cgi_parseXML (  char *pStream,
 				      sFrame *pFrame,
 				      sData *pTV,
 				      FILE *pp,
-				      sInstance *pAI ) ; 
+				      sInstance *pAI,
+				      sBYTE requestedType,
+				      sLOGICAL isPureXML ) ; 

@@ -3,6 +3,9 @@
 # Modifications:
 #
 #	$Log: makefile,v $
+#	Revision 1.8  2006/02/16 16:55:51  myockey
+#	Changes to HP-UX compile options
+#	
 #	Revision 1.7  2004/06/13 14:15:22  bergsma
 #	Comments about AS_SSL, AS_JNI, AS_DLL
 #	
@@ -66,10 +69,14 @@ PROC_FLAGS = sqlcheck=full define=AS_UNIX define=AS_HS
 #LIBS = -L$(ORACLE_HOME)/lib -lclntsh 
 
 # HP-UX
-#CC = c89
-#CFLAGS = -Ac -g -w -I.
-#CDEFS = -DAS_HPUX 
-#LIBS = 
+###CC = c89
+###LIBS = 
+###CFLAGS = -Ac -g -w -I.
+#CC = gcc
+#CFLAGS = -g -O -Wall -I. -I/usr/include -I/usr/local/include
+#CDEFS = -DAS_HPUX
+#LIBS = -L/usr/lib -lm
+
 
 # DEC UNIX
 #CC = gcc

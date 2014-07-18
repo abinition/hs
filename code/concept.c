@@ -9,6 +9,57 @@
 /* Modifications: 
  *
  * $Log: concept.c,v $
+ * Revision 1.38  2006/08/22 18:44:37  bergsma
+ * Resolve Win32 problem with unlink
+ *
+ * Revision 1.37  2006/08/22 13:28:13  bergsma
+ * Comment out 'unlink' to gzPIDfileSpec
+ *
+ * Revision 1.36  2006/08/09 00:51:22  bergsma
+ * Undo last change to createNetwork
+ *
+ * Revision 1.35  2006/08/08 20:50:59  bergsma
+ * In createNetwork, prevent closing of valid socket on another IP channel.
+ *
+ * Revision 1.34  2006/01/20 04:09:34  bergsma
+ * Reassign fixes
+ *
+ * Revision 1.33  2006/01/20 02:55:09  bergsma
+ * Fix to reassign port
+ *
+ * Revision 1.32  2006/01/19 20:37:40  bergsma
+ * Added gHyp_concept_getInstForPlaceHolderFd
+ *
+ * Revision 1.31  2006/01/16 18:56:35  bergsma
+ * HS 3.6.6
+ * 1. Save query timeout events.  Don't let queries repeat indefinitely.
+ * 2. Rework DEBUG_DIAGNOSTIC debugging.  Less overhead.
+ *
+ * Revision 1.30  2005/11/23 16:52:32  bergsma
+ * Added swapDevices in renameTo function
+ *
+ * Revision 1.29  2005/10/20 00:31:43  bergsma
+ * Reconnect logic.  Debug statements only.
+ *
+ * Revision 1.28  2005/10/15 21:42:09  bergsma
+ * Added renameto functionality.
+ *
+ * Revision 1.27  2005/08/21 17:58:35  bergsma
+ * no message
+ *
+ * Revision 1.26  2005/03/30 16:45:09  bergsma
+ * HS 3.5.4.   In VMS, do not set the process name if the name is already set to the
+ * correct HS concept name. NB:  In VMS 7.3-2 process names are case sensitive.
+ *
+ * Revision 1.25  2005/03/16 23:53:21  bergsma
+ * V 3.5.1 - fixes for use with DECC compiler.
+ *
+ * Revision 1.24  2005/01/31 06:03:12  bergsma
+ * Test eventTime <= gsCurTime  is better than eventTime == gsCurTime
+ *
+ * Revision 1.23  2005/01/10 20:03:05  bergsma
+ * Initialize giJmpOverride value
+ *
  * Revision 1.22  2004/11/19 03:45:58  bergsma
  * New gpsTempData2 variable to catch memoiry leaks.
  *
@@ -202,7 +253,9 @@ extern int lib$set_logical ( sDescr*, sDescr*, sDescr*, int, int );
 #if defined (AS_VMS) && defined ( __cplusplus )
 extern "C" int unlink ( const char * ) ;
 #else
+#ifndef AS_WINDOWS
 extern int unlink ( const char * ) ;
+#endif
 #endif
 
 #ifndef AS_WINDOWS
@@ -279,15 +332,26 @@ static sLOGICAL lHyp_concept_initEnvironment ( char *concept )
 
 #ifdef AS_VMS
   int           status ;
+  char		processName[TARGET_SIZE+1] ;
   makeDSCz      ( concept_d, concept ) ;
   makeDSCz      ( tempMailbox_d, "LNM$TEMPORARY_MAILBOX" ) ;
   makeDSCz      ( system_d,      "LNM$SYSTEM" ) ;
   makeDSCz      ( processDir_d,  "LNM$PROCESS_DIRECTORY" ) ;
 
-  /* Set the process name */
-  status = sys$setprn ( &concept_d ) ;
-  if ( !gHyp_util_check ( status, 1 ) ) 
-    return gHyp_util_logError ( "Failed to set process name" );
+  /* First, get the process name, and only if it is
+   * different, do we set it.
+   */
+  gHyp_util_getprocessname ( processName ) ;
+  gHyp_util_lowerCase ( processName, strlen ( processName ) ) ;
+  
+  /* We assume concept_d is in lower case. :-) */
+  if ( strcmp ( processName, concept ) != 0 ) {
+
+    /* Not the same, set the process name */
+    status = sys$setprn ( &concept_d ) ;
+    if ( !gHyp_util_check ( status, 1 ) ) 
+      return gHyp_util_logError ( "Failed to set process name" );
+  }
 
   if ( (guRunFlags & RUN_ROOT) ) {
     /* Define all mailboxes to be created SYSTEM wide and TEMPORARY */
@@ -653,7 +717,7 @@ sLOGICAL gHyp_concept_init ( sConcept *pConcept,
 				NULL,  /* Ok if first argument is false */
 				instance,
 				gzRoot,
-				FALSE ) ;
+				FALSE, FALSE, TRUE ) ;
 
   /* Create the parent instance which will be included in the ring of instances.
    * The root.
@@ -663,7 +727,7 @@ sLOGICAL gHyp_concept_init ( sConcept *pConcept,
 				    NULL,  /* Ok if first argument is false */
 				    concept,
 				    gzParent,
-				    FALSE ) ;
+				    FALSE, FALSE, TRUE ) ;
 
   /******************
   pFrame = gHyp_instance_frame ( pAI ) ;
@@ -918,14 +982,14 @@ sLOGICAL gHyp_concept_setParent ( sConcept *pConcept, char *parent, char *root )
   gHyp_util_upperCase ( gzConceptPath, strlen ( gzConceptPath ) ) ;
 #endif
 
-  
-   /*gHyp_util_debug ( "FIFO INBOX is %s", gzInboxPath ) ;*/
-   /*gHyp_util_debug ( "CONCEPT PATH is %s", gzConceptPath ) ;*/
-   /*gHyp_util_debug ( "FIFO OUTBOX is %s", gzOutboxPath ) ; */
-   /*gHyp_util_debug ( "gzParent is %s", gzParent ) ;*/
-   /*gHyp_util_debug ( "gzConcept is %s", gzConcept ) ;*/
-   /*gHyp_util_debug ( "gzROOT is %s",gzRoot);*/
-  
+   /*
+   gHyp_util_debug ( "FIFO INBOX is %s", gzInboxPath ) ;
+   gHyp_util_debug ( "CONCEPT PATH is %s", gzConceptPath ) ;
+   gHyp_util_debug ( "FIFO OUTBOX is %s", gzOutboxPath ) ; 
+   gHyp_util_debug ( "gzParent is %s", gzParent ) ;
+   gHyp_util_debug ( "gzConcept is %s", gzConcept ) ;
+   gHyp_util_debug ( "gzROOT is %s",gzRoot);
+   */
 
   return TRUE ;
 }
@@ -934,7 +998,9 @@ sInstance* gHyp_concept_instantiate ( sConcept *pConcept,
                                       sInstance *pAImain,
                                       char *newInstance,
 				      char *root,
-                                      sLOGICAL swap )
+                                      sLOGICAL swapFrames,
+				      sLOGICAL swapData,
+				      sLOGICAL reset)
 {
   sInstance
     *pAI ;
@@ -967,10 +1033,25 @@ sInstance* gHyp_concept_instantiate ( sConcept *pConcept,
                         (void (*)(void*)) gHyp_instance_delete ) ;
   gHyp_data_insert ( pConcept->exec.pInstances, pData ) ;
 
-  if ( swap )
-    /* Now swap the frames, but not the root area. */
+  if ( swapFrames )
+    /* Swap the frames
+     * Done for "instantiate()", because we want to have the
+     * running frame, which always is the concept instance.
+     */
     gHyp_instance_swapFrames ( pAI, pAImain ) ;
-  else 
+  
+  if ( swapData )
+    /* Swap the data. 
+     * Done for "instantiate()", because our new instance must
+     * swap back the concept instance data area.
+     * Also done for "renameto()", becuase our renamed new
+     * concept instance.wants the data area of the old instance.
+     */
+    gHyp_instance_swapData ( pAI, pAImain ) ;
+  
+
+  if ( reset )
+    /* Reset the new instance */
     gHyp_instance_reset ( pAI, STATE_IDLE, TRUE ) ;
 
   return pAI ;
@@ -1045,7 +1126,7 @@ void gHyp_concept_quit ( sConcept *pConcept )
   gHyp_util_logInfo ( "Terminating HyperScript" );
   gHyp_concept_disconnect ( pConcept ) ;
   gHyp_concept_delete ( pConcept ) ;
-  unlink ( gzPIDfileSpec ) ;
+  /*unlink ( gzPIDfileSpec ) ;*/
 
 #ifdef AS_MEMTRACK
   TrackMemory(MEMTRK_REPORT,
@@ -1124,22 +1205,26 @@ int gHyp_concept_setAlarms ( sConcept *pConcept )
          !gHyp_instance_isEND ( pAI ) ) {
      if ( guDebugFlags & DEBUG_DIAGNOSTICS )
         gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
-                             "There is code for %s to execute",
+                             "Program code for %s to execute",
                              gHyp_instance_getTargetId(pAI) ); 
       timeout = 0 ;
     }
                       
+    /*gHyp_util_debug ( "NEXT EVENT for %s",gHyp_instance_getTargetId(pAI) ); */
     eventTime = gHyp_instance_nextEvent(pAI) ;
 
-    if ( eventTime == gsCurTime ) gHyp_instance_signalAlarm ( pAI ) ;
+    /*if ( eventTime == gsCurTime ) gHyp_instance_signalAlarm ( pAI ) ;*/
+    if ( eventTime <= gsCurTime ) gHyp_instance_signalAlarm ( pAI ) ;
 
     if ( timeout != 0 ) timeout = MIN ( timeout, eventTime-gsCurTime ) ;
     
     if ( gHyp_instance_isSignal ( pAI ) ) {
+      /*
       if ( guDebugFlags & DEBUG_DIAGNOSTICS )
         gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
-                             "There is a signal for %s",
+                             "Signal for %s",
                              gHyp_instance_getTargetId(pAI) ) ; 
+      */
       timeout = 0 ;
     }
 
@@ -1147,10 +1232,12 @@ int gHyp_concept_setAlarms ( sConcept *pConcept )
          gHyp_instance_getState ( pAImain ) != STATE_QUERY &&
          gHyp_instance_getState ( pAImain ) != STATE_SLEEP &&
          gHyp_concept_returnToStdIn ( pConcept ) ) {
+      /*
       if ( guDebugFlags & DEBUG_DIAGNOSTICS )
         gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
-                             "There is stdin for %s, so timeout is set to 0",
+                             "stdin for %s, timeout set to 0",
                              gHyp_instance_getTargetId(pAI) ) ;
+      */
       timeout = 0 ; 
     }
     
@@ -1229,6 +1316,12 @@ sLOGICAL gHyp_concept_openWriter ( sConcept *pConcept )
 sLOGICAL gHyp_concept_openReader ( sConcept *pConcept )
 {
 
+  sLOGICAL
+    tryAgain = ! (pConcept->link.hasRegistered)  ;
+
+  char
+    target[OBJECT_SIZE+1] ;
+
 #ifdef AS_VMS
   /* We must CONNECT to the parent, it opens our inbox. */
   if ( !gHyp_concept_connect ( pConcept ) ) return FALSE ;
@@ -1237,40 +1330,56 @@ sLOGICAL gHyp_concept_openReader ( sConcept *pConcept )
   /* Open the read socket if not already open */
   if ( pConcept->link.inbox == INVALID_HANDLE_VALUE ) {
 
-    pConcept->link.inbox = gHyp_sock_fifo ( gzInboxPath, 
+    while ( 1 ) {
+
+      pConcept->link.inbox = gHyp_sock_fifo ( gzInboxPath, 
                                             TRUE,  /* Create */
                                             TRUE, /*  Read-only! */
                                             FALSE, /* Not write-only */
 					    TRUE ) ;/* Fail if already exists */
 
-    if ( pConcept->link.inbox != INVALID_HANDLE_VALUE ) {
-      gHyp_util_logInfo ( "Connected to input message channel '%s' (%d)", 
-                          gzInboxPath,
-                          pConcept->link.inbox ) ;
+      if ( pConcept->link.inbox != INVALID_HANDLE_VALUE ) {
+        gHyp_util_logInfo ( "Connected to input message channel '%s' (%d)", 
+                            gzInboxPath,
+                            pConcept->link.inbox ) ;
 
-      /* Request the loopback interface */
-      giInboxLoopback = INVALID_HANDLE_VALUE ;
+        /* Request the loopback interface */
+        giInboxLoopback = INVALID_HANDLE_VALUE ;
         
-      giInboxLoopback = gHyp_sock_fifo ( gzInboxPath, 
+        giInboxLoopback = gHyp_sock_fifo ( gzInboxPath, 
 					   FALSE, /* Do not create */
 					   FALSE,  /* Not read */
 					   TRUE,  /* Write-only */
 					   FALSE ) ;/* N/A */
-      if ( giInboxLoopback == INVALID_HANDLE_VALUE )
-        return gHyp_util_logError ( "Failed to create loopback fifo handle '%s'", 
+        if ( giInboxLoopback == INVALID_HANDLE_VALUE )
+          return gHyp_util_logError ( "Failed to create loopback fifo handle '%s'", 
                                       gzInboxPath ) ;
         
         
-      gHyp_util_logInfo ( "Created loopback fifo handle (%d) at '%s'", 
+        gHyp_util_logInfo ( "Created loopback fifo handle (%d) at '%s'", 
                             giInboxLoopback, gzInboxPath ) ;
-      /* Set the loopback to the inbox channel. If a TCP listen socket is
-       * available, then giLoopback will be set to it instead.
-       */
-      if ( giLoopback == INVALID_SOCKET ) {
-	giLoopback = (SOCKET) giInboxLoopback ;
-	giLoopbackType = SOCKET_FIFO ;
+        /* Set the loopback to the inbox channel. If a TCP listen socket is
+         * available, then giLoopback will be set to it instead.
+         */
+        if ( giLoopback == INVALID_SOCKET ) {
+	  giLoopback = (SOCKET) giInboxLoopback ;
+	  giLoopbackType = SOCKET_FIFO ;
+	}
+
+	break ;
       }
-    }
+      else {
+	if ( tryAgain ) {
+	  sprintf ( target, "%s_%s/%s", gzConcept, gHyp_util_random8(), gzConcept ) ;
+	  gHyp_util_logWarning ("Attempting to reconnect as %s", target ) ;
+	  if ( !gHyp_concept_renameto ( pConcept, target ) ) return FALSE ;
+	  tryAgain = FALSE ;
+	}
+	else
+	  return FALSE ;
+      }
+    } /* End while */
+
   }
   return (sLOGICAL) (pConcept->link.inbox != INVALID_HANDLE_VALUE ) ;
 }
@@ -1327,9 +1436,12 @@ sLOGICAL gHyp_concept_connect ( sConcept *pConcept )
   if ( pConcept->link.hasRegistered ) return TRUE ;
 
 #ifndef AS_VMS
+
   /* Try and open the inbox. */
   if ( !gHyp_concept_openReader ( pConcept ) ) return FALSE ;
+
 #endif
+
 
   /* If we are the root, then we have no outbox */
   if ( (guRunFlags & RUN_ROOT) ) return TRUE ;
@@ -1477,6 +1589,9 @@ int gHyp_concept_readSelect ( sConcept *pConcept )
 
 sLOGICAL gHyp_concept_moveto ( sConcept *pConcept , char *target )
 {
+
+  /* CONCEPT NAME STAYS THE SAME, JUST THE LOCATION (PARENT) CHANGES  */
+
   sLOGICAL 
     f ;
 
@@ -1522,6 +1637,58 @@ sLOGICAL gHyp_concept_moveto ( sConcept *pConcept , char *target )
     gHyp_instance_setTargetPath ( pAI, targetPath ) ;
 
   }
+  return TRUE ;
+}
+
+
+sLOGICAL gHyp_concept_renameto ( sConcept *pConcept, char *target )
+{
+
+  /* CONCEPT NAME AND LOCATION CHANGES */
+
+  sInstance
+    *pAImain ,
+    *pAInew ;
+
+  char
+    oldInstance[INSTANCE_SIZE+1],
+      instance[INSTANCE_SIZE+1],
+      concept[OBJECT_SIZE+1],
+      parent[OBJECT_SIZE+1],
+      root[OBJECT_SIZE+1],
+      host[HOST_SIZE+1] ;
+  
+  /* Not ok to move if we hav already aconnected */
+  if ( pConcept->link.hasRegistered )  return FALSE ;
+
+  pAImain = gHyp_concept_getConceptInstance ( pConcept ) ;
+  strcpy ( oldInstance, gzConcept ) ;
+
+  gHyp_util_breakTarget ( target, instance, concept, parent, root, host ) ;
+
+  strcpy ( gzInstance, instance ) ;
+  strcpy ( gzConcept, concept ) ;
+
+  if ( !gHyp_concept_setParent ( pConcept, parent, root ) ) return FALSE ;
+
+  pAInew = gHyp_concept_instantiate ( pConcept, 
+				      pAImain,
+				      instance,
+				      root,
+				      FALSE, TRUE, TRUE ) ;
+
+  /*gHyp_util_debug("t=%s,c=%s,path=%s,p=%s, r=%s",
+		    gHyp_instance_getTargetId ( pAInew ),
+		    gzConcept,
+		    gHyp_instance_getTargetPath ( pAInew ),
+		    gzParent,
+		    gzRoot ) ;
+  */
+		    
+  gHyp_instance_swapDevices ( pAInew, pAImain ) ;
+
+  /* Now delete the old instance */
+  gHyp_data_deleteChildByName ( pConcept->exec.pInstances, oldInstance ) ;
   return TRUE ;
 }
 
@@ -1667,6 +1834,8 @@ char * gHyp_concept_createToken ( sConcept *pConcept, char *token )
 
 sInstance *gHyp_concept_getInstForDeviceId ( sConcept *pConcept, sWORD id )
 {
+  /* Since id is unique, only one instance should have it */
+
   sLOGICAL 
     f ;
 
@@ -1690,6 +1859,7 @@ sInstance *gHyp_concept_getInstForDeviceId ( sConcept *pConcept, sWORD id )
 
 sInstance *gHyp_concept_getInstForFd ( sConcept *pConcept, SOCKET fd )
 {
+
   sLOGICAL 
     f ;
 
@@ -1706,13 +1876,41 @@ sInstance *gHyp_concept_getInstForFd ( sConcept *pConcept, SOCKET fd )
     
     pAI = (sInstance*) gHyp_data_getObject ( pData ) ;
 
+    /* The function will only return true if the id is NOT NULL_DEVICEID */ 
     if ( gHyp_instance_hasDeviceId ( pAI, fd ) ) return pAI ;
   }
   return NULL ;
 
 }
 
-sBYTE gHyp_concept_getSocketObjectType ( sConcept *pConcept, SOCKET socket )
+sInstance *gHyp_concept_getInstForPlaceHolderFd ( sConcept *pConcept, SOCKET fd )
+{
+
+  sLOGICAL 
+    f ;
+
+  sData
+    *pFirst,
+    *pData ;
+
+  sInstance
+    *pAI ;
+
+  for ( f=TRUE, pData = pFirst = gHyp_data_getFirst ( pConcept->exec.pInstances ) ;
+        (f && pData) || pData != pFirst;
+        f=FALSE, pData = gHyp_data_getNext ( pData ) ) {
+    
+    pAI = (sInstance*) gHyp_data_getObject ( pData ) ;
+
+    /* The function will only return true if the id is NULL_DEVICEID */ 
+    if ( gHyp_instance_hasNullDeviceId ( pAI, fd ) ) return pAI ;
+  }
+  return NULL ;
+
+}
+
+
+sBYTE gHyp_concept_getSockObjType ( sConcept *pConcept, SOCKET socket )
 {
   sData
     *pData ;
@@ -1840,6 +2038,9 @@ void gHyp_concept_deleteSocketObject ( sConcept *pConcept, SOCKET socket )
     *pSecs1,
     *pPort ;
 
+  sSecs2
+    *pSecs2 ;
+
   SOCKET
     parentSocket ;
 
@@ -1852,6 +2053,7 @@ void gHyp_concept_deleteSocketObject ( sConcept *pConcept, SOCKET socket )
   /* Get the instance for the socket */
   pInstance = gHyp_concept_getInstForFd ( pConcept, socket ) ;
   if ( pInstance ) {
+
     id = gHyp_instance_getDeviceId ( pInstance, socket ) ;
     gHyp_instance_deleteFd ( pInstance, socket ) ;
   }
@@ -1866,83 +2068,51 @@ void gHyp_concept_deleteSocketObject ( sConcept *pConcept, SOCKET socket )
     case DATA_OBJECT_HSMS :
       pHsms = (sHsms*) gHyp_data_getObject ( pData ) ;
       parentSocket = gHyp_hsms_parentSocket ( pHsms ) ;
-      if ( parentSocket != INVALID_SOCKET ) 
-        gHyp_concept_reassignSecs ( pConcept, 
-                                    id,
-                                    parentSocket ) ;
-      break ;
+      if ( parentSocket != INVALID_SOCKET && pInstance != NULL ) { 
+	gHyp_util_logInfo("Reassigning device %d to port %d",id, parentSocket ) ;
+	gHyp_instance_updateFd ( pInstance, 
+				 parentSocket, 
+				 id,
+				 NULL,
+			         FALSE ) ;
+      }
+    break ;
     case DATA_OBJECT_SECS1 :
       pSecs1 = (sSecs1*) gHyp_data_getObject ( pData ) ;
       parentSocket = gHyp_secs1_parentSocket ( pSecs1 ) ;
-      if ( parentSocket != INVALID_SOCKET ) 
-        gHyp_concept_reassignSecs ( pConcept, 
-                                    id,
-                                    parentSocket ) ;
+      if ( parentSocket != INVALID_SOCKET && pInstance != NULL ) {
+	gHyp_util_logInfo("Reassigning device %d to port %d",id, parentSocket ) ;
+	pSecs2 = gHyp_secs2_new () ;
+	gHyp_instance_updateFd (  pInstance,
+				  parentSocket, 
+				  id,
+				  pSecs2, 
+				  FALSE ) ;
+      }
       break ;
     case DATA_OBJECT_PORT :
     case DATA_OBJECT_HTTP :
       pPort = (sSecs1*) gHyp_data_getObject ( pData ) ;
       parentSocket = gHyp_secs1_parentSocket ( pPort ) ;
-      /*gHyp_util_debug("Looking to reassign id %d to socket %d",id,parentSocket);*/
-      if ( parentSocket != INVALID_SOCKET ) {
-        gHyp_concept_reassignPort ( pConcept, 
-                                    id,
-                                    parentSocket ) ;
-      }
-      /*else gHyp_util_debug("No parent socket to reassign");*/
+      if ( parentSocket != INVALID_SOCKET && pInstance != NULL ) {
+        gHyp_util_logInfo("Reassigning device %d to port %d",id, parentSocket ) ;
+	gHyp_instance_updateFd (  pInstance, 
+				    parentSocket, 
+				    id,
+				    NULL,
+				    FALSE ) ;
 
+      }
 
       break ;
     }
     gHyp_data_detach ( pData ) ;
     gHyp_data_delete ( pData ) ;
+   
   }
   return ;
 }
     
-void gHyp_concept_reassignSecs ( sConcept *pConcept, sWORD id, SOCKET parentFd ) 
-{
-  sSecs2
-    *pSecs2 ;
-
-  sInstance
-    *pParentAI ;
-
-  if ( id != NULL_DEVICEID && parentFd != INVALID_SOCKET ) {
-
-     pParentAI = gHyp_concept_getInstForFd ( pConcept, parentFd ) ;
-     if ( pParentAI ) {
-       gHyp_util_logInfo("Reassigning device %d to port %d",id, parentFd ) ;
-       pSecs2 = gHyp_secs2_new () ;
-       gHyp_instance_updateFd ( pParentAI,
-                                parentFd, 
-                                id,
-                                pSecs2, 
-                                FALSE ) ;
-     }
-  }
-}
-
-void gHyp_concept_reassignPort ( sConcept *pConcept, sWORD id, SOCKET parentFd ) 
-{
- sInstance
-    *pParentAI ;
-
-  if ( id != NULL_DEVICEID && parentFd != INVALID_SOCKET ) {
-
-    pParentAI = gHyp_concept_getInstForFd ( pConcept, parentFd ) ;
-    if ( pParentAI ) {
-      gHyp_util_logInfo("Reassigning device %d to port %d",id, parentFd ) ;
-      gHyp_instance_updateFd ( pParentAI, 
-				parentFd, 
-                               id,
-			       NULL,
-			       FALSE ) ;
-
-    }
-  }
-}
-
 sChannel * gHyp_concept_findClient ( sConcept *pConcept,  char *object )
 {
   sData

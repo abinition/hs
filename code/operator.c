@@ -10,6 +10,29 @@
  * Modifications:
  *
  *   $Log: operator.c,v $
+ *   Revision 1.18  2006/07/17 16:44:53  bergsma
+ *   Slightly different error statement.
+ *
+ *   Revision 1.17  2006/01/16 18:56:36  bergsma
+ *   HS 3.6.6
+ *   1. Save query timeout events.  Don't let queries repeat indefinitely.
+ *   2. Rework DEBUG_DIAGNOSTIC debugging.  Less overhead.
+ *
+ *   Revision 1.16  2006/01/14 20:41:24  bergsma
+ *   no message
+ *
+ *   Revision 1.15  2005/04/22 19:25:25  bergsma
+ *   Variables used in loop need to be initialized!
+ *
+ *   Revision 1.14  2005/02/15 06:59:56  bergsma
+ *   Fix PLUS operator, should change negative value into a positive value.
+ *
+ *   Revision 1.13  2005/01/25 05:50:48  bergsma
+ *   Comment change
+ *
+ *   Revision 1.12  2005/01/10 21:00:52  bergsma
+ *   IsEmpty1 and isEmpty2 are initialized once only!
+ *
  *   Revision 1.11  2004/12/05 02:53:52  bergsma
  *   Protect binary operations from empty undefined variables.  Also missing
  *   was initialization of len2.
@@ -130,6 +153,25 @@ static sData *lHyp_operator_binaryOp (	sInstance	*pAI,
     sign1,
     sign2 ;
 
+  /* Initialize before each loop */
+  tokenType1 = TOKEN_LITERAL ;
+  dataType1 = TYPE_STRING ;
+  int1 = 0 ;
+  ulong1 = 0 ;
+  double1 = 0 ;
+  bool1 = 0 ;
+  value1[0] = '\0' ;
+  len1 = 0 ;
+  context1 = -1 ;
+  tokenType2 = TOKEN_LITERAL ;
+  dataType2 = TYPE_STRING ;
+  int2 = 0 ;
+  ulong2 = 0 ;
+  double2 = 0 ;
+  bool2 = 0 ;
+  value2[0] = '\0' ;
+  len2 = 0 ;
+  context2 = -1 ;
 
   /* Initialize result */
   pResult = gHyp_data_new ( "_op2_" ) ;
@@ -161,7 +203,6 @@ static sData *lHyp_operator_binaryOp (	sInstance	*pAI,
 	gHyp_instance_error ( pAI, STATUS_BOUNDS, 
 	    "Subscript '%d' is out of bounds in first argument",ss1) ;
       }
-      isEmpty1 = ( pNextValue1 == NULL ) ;
     }
     
     if ( pNextValue2 ) {
@@ -177,7 +218,6 @@ static sData *lHyp_operator_binaryOp (	sInstance	*pAI,
 	gHyp_instance_error ( pAI, STATUS_BOUNDS, 
 	       "Subscript '%d' is out of bounds in second argument",ss2);
       }
-      isEmpty2 = ( pNextValue2 == NULL ) ;
     }
 
     /* If both lists are exhausted of values, and we have at least one result,
@@ -235,7 +275,7 @@ static sData *lHyp_operator_binaryOp (	sInstance	*pAI,
 	ulong1 = 0 ;
 	double1 = 0 ;
 	bool1 = 0 ;
-	strcpy ( value1, "" ) ;
+	value1[0] = '\0' ;
 	len1 = 0 ;
 	context1 = -1 ;
 	tokenType2 = TOKEN_LITERAL ;
@@ -244,7 +284,7 @@ static sData *lHyp_operator_binaryOp (	sInstance	*pAI,
 	ulong2 = 0 ;
 	double2 = 0 ;
 	bool2 = 0 ;
-	strcpy ( value2, "" ) ;
+	value2[0] = '\0' ;
 	len2 = 0 ;
 	context2 = -1 ;
       }
@@ -256,7 +296,7 @@ static sData *lHyp_operator_binaryOp (	sInstance	*pAI,
 	  ulong1 = 0 ;
 	  double1 = 0 ;
 	  bool1 = 0 ;
-	  strcpy ( value1, "" ) ;
+	  value1[0] = '\0' ;
 	  len1 = 0 ;
 	  context1 = context2 ;
 	}
@@ -267,7 +307,7 @@ static sData *lHyp_operator_binaryOp (	sInstance	*pAI,
 	  ulong2 = 0 ;
 	  double2 = 0 ;
 	  bool2 = 0 ;
-	  strcpy ( value2, "" ) ;
+	  value2[0] = '\0' ;
 	  len2 = 0 ;
 	  context2 = context1 ;
 	}
@@ -794,12 +834,17 @@ static sData *lHyp_operator_unaryOp (	sInstance	*pAI,
     case TOKEN_POS:	
 
       pTmp = gHyp_data_new ( NULL ) ;
-      if ( dataType == TYPE_DOUBLE )
+      if ( dataType == TYPE_FLOAT || dataType == TYPE_DOUBLE ) {
+	if ( doubleVal < 0 ) doubleVal = 0-doubleVal ;
 	gHyp_data_setDouble ( pTmp, doubleVal ) ;
-      else if ( isSigned )
+      }
+      else if ( isSigned ) {
+	if ( intVal < 0 ) intVal = 0-intVal ;
 	gHyp_data_setInt ( pTmp, intVal ) ;
-      else
+      }
+      else {
         gHyp_data_setInt ( pTmp, ulongVal ) ;
+      }
       gHyp_data_append ( pResult, pTmp ) ;	
       break ;
       
@@ -1144,7 +1189,7 @@ void gHyp_operator_dereference ( sInstance *pAI,sCode *pCode,sLOGICAL isPARSE )
  				             pValue, 
 					     &context,
 					     ss ) ) ) {
-      n = gHyp_data_getStr ( pValue, 
+      n = gHyp_data_getStr ( pValue,
 	 		     value, 
 			     MAX_INPUT_LENGTH, 
 			     context, 
@@ -1171,7 +1216,7 @@ void gHyp_operator_dereference ( sInstance *pAI,sCode *pCode,sLOGICAL isPARSE )
 	gHyp_hyp_setHypCount ( pHyp, hypIndex ) ;
 	gHyp_instance_error ( pAI,
 			      STATUS_UNDEFINED,
-			      "Failed to load HyperScript segment '%s'",
+			      "Failed to load HyperScript segment *(%s)",
 			      pStr ) ;
       }
 
@@ -1189,7 +1234,7 @@ void gHyp_operator_dereference ( sInstance *pAI,sCode *pCode,sLOGICAL isPARSE )
 			      STATUS_UNDEFINED,
 			      "Failed to load HyperScript segment ';}'" ) ;
       }
-      /*gHyp_util_debug("Setting deref");*/
+      /*gHyp_util_debug("Deref from operator");*/
       gHyp_instance_setDerefHandler ( pAI, 
 				      hypIndex, 
 				      pHyp ) ;
@@ -1341,6 +1386,8 @@ void gHyp_operator_dot ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       ssSubVariable,
       ssVariable ;
 
+    /* Check to see if this is a function being called in an object sense, ie: a.toupper */
+
     /* Check to see if this is a method call as well */
     pData = gHyp_stack_peek ( pStack ) ;
     if ( strcmp ( gHyp_data_getLabel ( pData ), "_parms_" ) == 0 ) {
@@ -1420,8 +1467,8 @@ void gHyp_operator_dot ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 	       gHyp_util_isIdentifier ( pSubVariableStr ) ) ) {
 
 	  /* Two identifiers id1.id2 makes a good variable */	  
-	  if ( guDebugFlags & DEBUG_DIAGNOSTICS )
-	    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS, 
+	  if ( guDebugFlags & DEBUG_HEAP )
+	    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_HEAP, 
 				 "Creating '%s'.'%s'", 
 				 pVariableStr, pSubVariableStr ) ;
 	  

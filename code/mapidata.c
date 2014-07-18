@@ -1,3 +1,13 @@
+/*
+ * Modifications:
+ *
+ * $Log: mapidata.c,v $
+ * Revision 1.1  2005/01/25 05:43:42  bergsma
+ * Add MAPI (NSAS Nokia support methods for Outlook forwarding)
+ *
+ *
+ */
+
 #define EPM_REQUEST_LEN 156    // Taken from Ethereal traces
 
 unsigned char pOutlookDIRData[EPM_REQUEST_LEN] = {

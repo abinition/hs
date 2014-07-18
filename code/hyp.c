@@ -10,6 +10,14 @@
 /* Modifications:
  *
  * $Log: hyp.c,v $
+ * Revision 1.8  2006/01/16 18:56:36  bergsma
+ * HS 3.6.6
+ * 1. Save query timeout events.  Don't let queries repeat indefinitely.
+ * 2. Rework DEBUG_DIAGNOSTIC debugging.  Less overhead.
+ *
+ * Revision 1.7  2005/08/21 17:58:35  bergsma
+ * no message
+ *
  * Revision 1.6  2002/11/29 19:59:01  bergsma
  * Removed ^M
  *
@@ -263,6 +271,33 @@ void gHyp_hyp_describe ( sHyp *pHyp )
   }
 }
     	
+char* gHyp_hyp_describe2 ( sHyp *pHyp, int hypIndex, char *buf, int buflen )
+{
+  unsigned 
+    i ;
+
+  sCode
+    *pCode ;
+
+  char
+    *pBuf = buf,
+    *pEndBuf = buf + buflen ;
+
+  /*gHyp_util_debug("DESCRIBE %s",pHyp->method);*/
+  for ( i=hypIndex; i<pHyp->count; i++ ) {
+    
+    pCode = (sCode*) (pHyp->pCode + i) ;
+    if ( pBuf + strlen ( pCode->token ) >= pEndBuf ) break ;
+    
+    pBuf += sprintf ( pBuf, "%s ", pCode->token ) ;
+
+  }
+
+  *pBuf = '\0' ;
+  return buf ;
+}
+    	
+
 void gHyp_hyp_setHypCount ( sHyp * pHyp, int hypCount )
 {
   /* Description:
@@ -750,7 +785,50 @@ void gHyp_hyp_transfer ( sInstance *pAI,
   void
     (*pf)(sInstance*,sCode*,sLOGICAL) ;
 
-  for ( j=0,i=methodStartIndex-1 ; i<methodEndIndex; i++ ) {
+  pCode = gHyp_hyp_code ( pSrcHyp, methodStartIndex-1 ) ;
+  pf = pCode->function ;
+  lineNo = pCode->line ; 
+  tokenType = pCode->tokenType ;
+  precedence = pCode->precedence ;
+  token = pCode->token ;
+
+  assert ( strcmp(token,"{") == 0 ) ;
+
+  gHyp_hyp_load ( pAI,
+		    pConcept,
+		    pDstHyp,
+		    token, 
+		    tokenType, 
+		    precedence,
+		    lineNo,
+		    pf ) ;
+    
+  /* Load a "<M> ;" after the method definition.  This prevents the
+   * case when a dereference is done on an argument, but the dereference
+   * cannot occur until after the first statement ends after calling the method.
+   * The problem occurs when the argument varaible is used as the first statement,
+   * if we don't put this semicolon at this point, it'll fail.
+   */
+  gHyp_hyp_load ( pAI,
+		   pConcept,
+		   pDstHyp, 
+		   gHyp_data_getLabel ( pMethodData ),
+		   TOKEN_UNIDENTIFIED, 
+		   PRECEDENCE_OPERAND,
+		   0,
+		   gHyp_operand_token ) ;
+
+  gHyp_hyp_load ( pAI,
+		   pConcept,
+		   pDstHyp, 
+		   ";",
+		   TOKEN_EOS, 
+		   PRECEDENCE_EOS,
+		   0,
+		   gHyp_stmt_eos ) ;
+ 
+
+  for ( i=methodStartIndex ; i<methodEndIndex; i++ ) {
 
     /* Extract the code components from the source Hyp */
     pCode = gHyp_hyp_code ( pSrcHyp, i ) ;

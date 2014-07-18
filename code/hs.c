@@ -11,6 +11,63 @@
  * Modifications:
  *
  * $Log: hs.c,v $
+ * Revision 1.34  2006/08/22 13:28:36  bergsma
+ * Missing \n in help text
+ *
+ * Revision 1.33  2006/01/05 17:37:48  bergsma
+ * *** empty log message ***
+ *
+ * Revision 1.32  2005/12/10 00:30:30  bergsma
+ * HS 3.6.5
+ *
+ * Revision 1.31  2005/11/23 16:58:22  bergsma
+ * Refresh gpAImain.
+ *
+ * Revision 1.30  2005/10/25 16:41:33  bergsma
+ * Comment out problematic ReleaseStringUTFChars
+ *
+ * Revision 1.29  2005/10/20 00:34:03  bergsma
+ * problems with freeing memory allocated by NewString
+ *
+ * Revision 1.28  2005/10/15 21:42:44  bergsma
+ * Memory leak with JAVA interface
+ *
+ * Revision 1.27  2005/08/03 14:00:20  bergsma
+ * no message
+ *
+ * Revision 1.26  2005/07/23 22:34:04  bergsma
+ * Added gHyp_hs_shutdown
+ *
+ * Revision 1.25  2005/06/20 01:00:23  bergsma
+ * Dashboard 2005
+ *
+ * Revision 1.24  2005/06/18 22:25:43  bergsma
+ * Dashboard 2005
+ *
+ * Revision 1.23  2005/04/22 19:27:34  bergsma
+ * Compile errors unless return statement is in exceptionHandler function.
+ *
+ * Revision 1.22  2005/04/13 13:45:54  bergsma
+ * HS 3.5.6
+ * Added sql_toexternal.
+ * Fixed handling of strings ending with bs (odd/even number of backslashes)
+ * Better handling of exception condition.
+ *
+ * Revision 1.21  2005/04/03 17:36:19  bergsma
+ * HS 3.54  (FIX OF FLOATING POINT OVERFLOW IN TLOGFEED).
+ * 1. Don't delete LISting files.
+ * 2. PackStart in aeqssp_autofil not being cleared - was causing an
+ * unpack operation when not required.
+ *
+ * Revision 1.20  2005/03/30 04:05:30  bergsma
+ * Add signal handler
+ *
+ * Revision 1.19  2005/01/25 05:55:29  bergsma
+ * Separate SIGINT from SIGTERM.
+ *
+ * Revision 1.18  2005/01/18 20:42:17  jbergsma
+ * Enable the jeval (JavaScript call) method for the WebPickle ATL project
+ *
  * Revision 1.17  2004/12/17 17:39:41  jbergsma
  * Fixes and ifdefs for AS_ATL (WebPickle) to compile correctly with cpp in the hsx project
  *
@@ -93,6 +150,8 @@
 
 /********************** INTERNAL OBJECT STRUCTURES ***************************/
 
+static sInstance *gpAI = NULL ;	/* HyperScript instance */
+static sInstance *gpAImain = NULL ;	/* Main HyperScript instance */
 
 /********************** FUNCTION DECLARATIONS ********************************/
 #ifdef AS_PROMIS
@@ -111,23 +170,25 @@ extern void cfc_initimage() ;
 #endif
 #endif
 
+#ifdef AS_ATL
+#include "interface.h"
+#endif /* AS_ATL */
+
 #ifdef AS_JNI
 #include <jni.h>
-#include "Abinition.h"
+#include "HyperScript2.h"
 
-static JNIEnv *gpEnv ;
-static jclass gpClass ;
-static jobject gpObject ;
-static jmethodID gpMID_jeval ;
-static jmethodID gpMID_output ;
+static JNIEnv *gpEnv = NULL ;
+static jclass gpClass = NULL;
+static jobject gpObject = NULL ;
+static jmethodID gpMID_jeval = NULL ;
+static jmethodID gpMID_output = NULL ;
+static jmethodID gpMID_shutdown = NULL ;
 
 static SOCKET gsSocket = INVALID_SOCKET ;
 static char gzBuffer[MAX_MESSAGE_SIZE];
-static sInstance *gpAI = NULL ;	/* HyperScript instance */
-static sInstance *gpAImain = NULL ;	/* Main HyperScript instance */
 
-
-JNIEXPORT jboolean JNICALL Java_Abinition_initJNI
+JNIEXPORT jboolean JNICALL Java_HyperScript2_initJNI
   (JNIEnv * env, jobject obj)
 {
   jclass cls1 = (*env)->GetObjectClass(env, obj);
@@ -148,30 +209,64 @@ JNIEXPORT jboolean JNICALL Java_Abinition_initJNI
 					"output", 
 					"(Ljava/lang/String;)V" );
 
+  gpMID_shutdown = (*gpEnv)->GetMethodID(gpEnv, 
+					gpClass, 
+					"shutdown", 
+					"(Ljava/lang/String;)V" );
+
+
   return TRUE ;
 }
 
+static char eval[MAX_OUTPUT_LENGTH+1];
 static void lHyp_hs_jeval ( char *token )
 {
   jstring jtoken ;  
+  strcpy ( eval, token ) ;
   if ( gpEnv == NULL ) return ;
-  jtoken = (*gpEnv)->NewStringUTF(gpEnv, token );
+  jtoken = (*gpEnv)->NewStringUTF(gpEnv, eval );
   (*gpEnv)->CallVoidMethod( gpEnv, gpObject, gpMID_jeval, jtoken );
-  /*(*gpEnv) ->ReleaseStringUTFChars(gpEnv, jtoken, token ) ;*/
+  (*gpEnv) ->ReleaseStringUTFChars(gpEnv, jtoken, eval ) ;
 }
 
 
+static char output[MAX_OUTPUT_LENGTH+1];
+static void lHyp_hs_output ( char *token )
+{
+  jstring joutput ;
+  strcpy ( output, token ) ;
+  if ( gpEnv == NULL ) return ;
+  joutput = (*gpEnv)->NewStringUTF(gpEnv, output );
+  (*gpEnv)->CallVoidMethod( gpEnv, gpObject, gpMID_output, joutput );
+
+  /* The following call has been problematic, causing fatal
+   * dumps of the HS.DLL.  Commenting it is not right, but
+   * does seem to prevent crashes.  
+   * 
+   */
+  (*gpEnv) ->ReleaseStringUTFChars(gpEnv, joutput, output ) ;
+}
+
 void gHyp_hs_output ( char *token )
+{
+  lHyp_hs_output ( token ) ;
+}
+
+static void lHyp_hs_shutdown ( char *token )
 {
   jstring jtoken ;
   if ( gpEnv == NULL ) return ;
   jtoken = (*gpEnv)->NewStringUTF(gpEnv, token );
-  (*gpEnv)->CallVoidMethod( gpEnv, gpObject, gpMID_output, jtoken );
-  /*(*gpEnv) ->ReleaseStringUTFChars(gpEnv, jtoken, token ) ;*/
-
+  (*gpEnv)->CallVoidMethod( gpEnv, gpObject, gpMID_shutdown, jtoken );
+  (*gpEnv) ->ReleaseStringUTFChars(gpEnv, jtoken, token ) ;
 }
 
-JNIEXPORT jboolean JNICALL Java_Abinition_connectLoopback
+void gHyp_hs_shutdown ( char *token )
+{
+  lHyp_hs_shutdown ( token ) ;
+}
+
+JNIEXPORT jboolean JNICALL Java_HyperScript2_connectLoopback
   (JNIEnv * env, jobject obj, jstring jAddr, jint jPort)
 {
   const char *pAddr ;
@@ -188,13 +283,13 @@ JNIEXPORT jboolean JNICALL Java_Abinition_connectLoopback
     return TRUE ;
 }
 
-JNIEXPORT void JNICALL Java_Abinition_closeLoopback (JNIEnv *env, jobject obj)
+JNIEXPORT void JNICALL Java_HyperScript2_closeLoopback (JNIEnv *env, jobject obj)
 {
   if ( gsSocket != INVALID_SOCKET ) gHyp_sock_closeJNI ( gsSocket ) ;
   gsSocket = INVALID_SOCKET ;
 }
 
-JNIEXPORT jint JNICALL Java_Abinition_readLoopback
+JNIEXPORT jint JNICALL Java_HyperScript2_readLoopback
   (JNIEnv * env, jobject obj, jbyteArray jBuffer, jint jMaxBytes )
 {
   int 
@@ -224,7 +319,7 @@ JNIEXPORT jint JNICALL Java_Abinition_readLoopback
   return nBytes ;
 }
 
-JNIEXPORT jboolean JNICALL Java_Abinition_writeLoopback
+JNIEXPORT jint JNICALL Java_HyperScript2_writeLoopback
   (JNIEnv * env, jobject obj, jstring jCmd )
 {
   const char *pCmd ;
@@ -237,14 +332,11 @@ JNIEXPORT jboolean JNICALL Java_Abinition_writeLoopback
 
   (*env) ->ReleaseStringUTFChars( env, jCmd, pCmd ) ;
 
-  if ( nBytes <= 0 ) 
-    return FALSE ;
-  else
-    return TRUE ;
+  return nBytes ; 
 
 }
 
-JNIEXPORT jstring JNICALL Java_Abinition_hs(JNIEnv *env, jobject obj, jstring token )
+JNIEXPORT jstring JNICALL Java_HyperScript2_hs(JNIEnv *env, jobject obj, jstring token )
 {
 
   static char		stream[MAX_INPUT_LENGTH+1] ;
@@ -375,10 +467,11 @@ JNIEXPORT jstring JNICALL Java_Abinition_hs(JNIEnv *env, jobject obj, jstring to
   if ( pAIdata ) {
 
     gpAI = (sInstance*) gHyp_data_getObject ( pAIdata ) ;
+    gpAImain = gHyp_concept_getConceptInstance ( gpsConcept ) ;
 
     while ( (stat=gHyp_instance_run(gpAI)) > COND_FATAL ) {
 
-      if ( guSIGINT || guSIGTERM ) { stat = COND_FATAL ; break ; }
+      if ( guSIGTERM ) { stat = COND_FATAL ; break ; }
         
       if ( stat == COND_ERROR ) {
 
@@ -391,6 +484,14 @@ JNIEXPORT jstring JNICALL Java_Abinition_hs(JNIEnv *env, jobject obj, jstring to
         gHyp_data_detach ( pAIdata ) ;
         gHyp_data_delete ( pAIdata ) ;
 
+        pAIdata = gHyp_concept_nextInstanceData ( gpsConcept ) ;
+        if ( pAIdata ) {
+           gpAI = (sInstance*) gHyp_data_getObject ( pAIdata ) ;    
+	}
+	else {
+	  stat = COND_FATAL ;
+	  break ;
+	}
       }
       else {
 
@@ -433,10 +534,15 @@ JNIEXPORT jstring JNICALL Java_Abinition_hs(JNIEnv *env, jobject obj, jstring to
     gsSocket = INVALID_SOCKET ;
     (*env)->DeleteGlobalRef( env, gpClass );
     return (*env)->NewStringUTF ( env, "%DEATH" );
+    gpEnv = NULL ;
   } 
   
   return (*env)->NewStringUTF ( env, "$ACK" );
 }
+
+#endif /* AS_JNI */
+
+#if defined( AS_JNI ) || defined( AS_ATL )
 
 void gHyp_hs_jeval ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
 {
@@ -527,14 +633,18 @@ void gHyp_hs_jeval ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       gHyp_instance_error ( pAI, STATUS_BOUNDS, 
 			    "Subscript '%d' is out of bounds in jeval()",ss) ;
     *pCmd = '\0' ;	
-   
+
+#ifdef AS_JNI
     lHyp_hs_jeval ( command ) ;
+#else /* AS_ATL */
+	gHyp_client_jeval ( command ) ;
+#endif
 
     gHyp_instance_pushSTATUS ( pAI, pStack ) ;
   }
 }
 
-#endif
+#endif /* defined( AS_JNI ) || defined( AS_ATL ) */
 
 #if defined ( AS_DLL ) && !defined ( AS_ATL )
 
@@ -547,6 +657,7 @@ BOOL APIENTRY DllMain(HINSTANCE hModule,
 {
 
     switch (ul_reason_for_call) {
+
 	case DLL_PROCESS_ATTACH :
 	  /*printf( "DllMain: DLL_PROCESS_ATTACH for hModule = 0x%x\n", hModule);*/
 	    ghInstance = hModule;
@@ -554,8 +665,10 @@ BOOL APIENTRY DllMain(HINSTANCE hModule,
 
 	case DLL_PROCESS_DETACH :
 	{
+	  /*gHyp_hs_shutdown("DLL DETACH EVENT") ;*/
+
 	  /*printf( "DllMain: DLL_PROCESS_DETACH\n");*/
-	    break;
+	  break;
 	}
 
 	//case DLL_THREAD_ATTACH :
@@ -570,9 +683,38 @@ BOOL APIENTRY DllMain(HINSTANCE hModule,
 /********************** FUNCTION DEFINITIONS ********************************/
 
 #ifdef AS_VMS                                                        
-static int lHyp_hs_exceptionHandler ( int signo )
+static unsigned int lHyp_hs_exceptionHandler ( void *sigarr, void *mecharr )
 {
   /* Called when VMS exception occurs, re-signals to 'C' handlers */
+  gHyp_util_log ( "Exception condition occurred - exiting" ) ;
+
+  if ( gpsConcept ) {
+    /* If the method was invoked from a query, then send all replies */
+    if ( gpAImain ) {
+      while ( gHyp_instance_replyMessage ( 
+	      gpAImain,
+	      gHyp_frame_getMethodData(gHyp_instance_frame(gpAImain) ) ) ) ;
+    }
+    guRunFlags &= ~RUN_QUIET ;
+
+#ifdef AS_PROMIS
+  aeqSsp_automan_closeFiles ( ) ;
+  gHyp_promis_cleanFields ( -1 ) ;
+#endif
+
+    gHyp_concept_quit ( gpsConcept ) ;
+    gpsConcept = NULL ;
+
+    if ( gsSocketToCancel != INVALID_SOCKET ) 
+      gHyp_sock_cancelIO(gsSocketToCancel) ;
+
+  }    
+
+  /* We never want to resignal - all exceptions are fatal */
+
+  /* Exit with giCondition instead */
+  exit(giCondition);
+
   return SS$_RESIGNAL ;
 }
 #endif
@@ -607,21 +749,14 @@ int main ( int argc, char * argv[] )
     "       -l log                 (output to 'log' instead of stdout)\n",
     "       -n service             (tcp/ip listen service name)\n",
     "       -q                     (quiet mode)\n",
-    "       -r                     (ROOT mode)",
+    "       -r                     (ROOT mode)\n",
     "       -s stream              (input from 'stream' instead of stdin)\n",
     "       -t [instance#]object   (set target name of program)\n",
     "       -v                     (echo input stream)\n",
     "       -x                     (double expression size)\n",
-    "       -y                     (Debug cgi scripts)",
+    "       -y                     (Debug cgi scripts)\n",
     "       [arg1 [arg2 [arg3 [...]]]]\n"
   };
- 
-  sInstance
-    *pAImain,
-    *pAI = NULL ;
-
-  sConcept
-    *pConcept = NULL ;
 
   sFrame
     *pFrame ;
@@ -678,7 +813,7 @@ int main ( int argc, char * argv[] )
   cfc_initimage() ;
 #endif
 
-#if defined(AS_VMS) && defined(AS_VAXC)
+#ifdef AS_VMS
   /* VMS says this handler prevents bad behavior from longjmp */
   VAXC$ESTABLISH ( &lHyp_hs_exceptionHandler ) ;
 #endif
@@ -845,7 +980,7 @@ int main ( int argc, char * argv[] )
   /* Set default program source if not already set */
   if ( program[0] ) {
     if ( (gsPP = fopen ( program, "r" )) == NULL ) {
-      gHyp_util_sysError ( "Failed to open '%s'", program ) ;
+      gHyp_util_sysError ( "Failed to open program '%s'", program ) ;
       exit(2) ;
     }
   } 
@@ -894,8 +1029,8 @@ int main ( int argc, char * argv[] )
   guRunFlags = runFlags ;
 
   /* Create and initialize a concept with the new instance */
-  pConcept = gHyp_concept_new () ;
-  if ( !gHyp_concept_init ( pConcept, 
+  gpsConcept = gHyp_concept_new () ;
+  if ( !gHyp_concept_init ( gpsConcept, 
                             target,
                             service,
                             debugMask,
@@ -907,16 +1042,16 @@ int main ( int argc, char * argv[] )
   gHyp_promis_initFields() ;
 #endif
 
-  pAI = pAImain = gHyp_concept_getConceptInstance ( pConcept ) ;
+  gpAI = gpAImain = gHyp_concept_getConceptInstance ( gpsConcept ) ;
 
-  pFrame = gHyp_instance_frame ( pAI ) ;
-  if ( cgiParse ) gHyp_cgi_parse ( pAI, pFrame ) ;
+  pFrame = gHyp_instance_frame ( gpAI ) ;
+  if ( cgiParse ) gHyp_cgi_parse ( gpAI, pFrame ) ;
 
   /* When using HyperScript put() function, print out timestamps */
   /*if ( !interactive ) guTimeStamp = TRUE ;*/
 
   /* Disable execution if just compiling */
-  if ( compileOnly ) gHyp_instance_reset ( pAI, STATE_PARSE, FALSE ) ;
+  if ( compileOnly ) gHyp_instance_reset ( gpAI, STATE_PARSE, FALSE ) ;
 
   if ( gsPP == stdin && !quiet ) 
     gHyp_util_logInfo ( "Ready to load program" ) ;
@@ -928,15 +1063,16 @@ int main ( int argc, char * argv[] )
   while ( 1 ) {
 
     /* Execute HyperScript. */
-    if ( guSIGINT || guSIGTERM ) break ;
+    if ( guSIGTERM ) break ;
 
-    pAIdata = gHyp_concept_nextInstanceData ( pConcept ) ;
+    pAIdata = gHyp_concept_nextInstanceData ( gpsConcept ) ;
     if ( !pAIdata ) break ;
 
-    pAI = (sInstance*) gHyp_data_getObject ( pAIdata ) ;
-    condition = gHyp_instance_run ( pAI ) ;
+    gpAI = (sInstance*) gHyp_data_getObject ( pAIdata ) ;
+    gpAImain = gHyp_concept_getConceptInstance ( gpsConcept ) ;
+    condition = gHyp_instance_run ( gpAI ) ;
 
-    if ( guSIGINT || guSIGTERM ) break ;
+    if ( guSIGTERM ) break ;
         
     if ( condition == COND_FATAL ) {
 
@@ -949,10 +1085,10 @@ int main ( int argc, char * argv[] )
       /* The instance has an error */
 
       /* Run time-errors are recoverable in "interactive" mode */
-      if ( interactive && gsPP == stdin && pAI == pAImain ) {
+      if ( interactive && gsPP == stdin && gpAI == gpAImain ) {
 
         /* Recover by backing up to the previous good statement */
-        pFrame = gHyp_instance_frame ( pAI ) ;
+        pFrame = gHyp_instance_frame ( gpAI ) ;
         stmtIndex = gHyp_frame_getStatementIndex ( pFrame ) ;
         gHyp_util_logInfo ( "Ignoring last statement.  Please continue." ) ;
         gHyp_hyp_traceReset (gHyp_data_getLabel(gHyp_frame_getMethodVariable(pFrame))) ;
@@ -961,14 +1097,14 @@ int main ( int argc, char * argv[] )
         pHyp = gHyp_frame_getHyp ( pFrame ) ;
         gHyp_hyp_setHypCount ( pHyp, stmtIndex ) ; 
         gHyp_frame_setHypIndex ( pFrame, stmtIndex ) ;
-        gHyp_instance_clearError ( pAI ) ;
-        gHyp_instance_reset ( pAI, STATE_PARSE, TRUE ) ;
-        gHyp_concept_setReturnToStdIn ( pConcept, TRUE ) ;
+        gHyp_instance_clearError ( gpAI ) ;
+        gHyp_instance_reset ( gpAI, STATE_PARSE, TRUE ) ;
+        gHyp_concept_setReturnToStdIn ( gpsConcept, TRUE ) ;
       }
       else {
 
         /* Un-caught errors in the main instance begets them all */
-        if ( pAI == pAImain ) break ;
+        if ( gpAI == gpAImain ) break ;
 
         /* Otherwise a instance can die and not affect the other instances */
         gHyp_data_detach ( pAIdata ) ;
@@ -979,13 +1115,13 @@ int main ( int argc, char * argv[] )
 
       /* COND_NORMAL or COND_SILENT */
       
-      if ( pAI == pAImain &&
-           gHyp_concept_returnToStdIn ( pConcept ) &&
-           (gHyp_instance_getState ( pAImain ) != STATE_QUERY &&
-            gHyp_instance_getState ( pAImain ) != STATE_SLEEP) ) {
+      if ( gpAI == gpAImain &&
+           gHyp_concept_returnToStdIn ( gpsConcept ) &&
+           (gHyp_instance_getState ( gpAImain ) != STATE_QUERY &&
+            gHyp_instance_getState ( gpAImain ) != STATE_SLEEP) ) {
                 
         /* See if more input can be loaded into the program */
-        pFrame = gHyp_instance_frame ( pAImain ) ;
+        pFrame = gHyp_instance_frame ( gpAImain ) ;
         pHyp = gHyp_frame_getHyp ( pFrame ) ;
         
         if ( streaming ) {
@@ -993,21 +1129,21 @@ int main ( int argc, char * argv[] )
           if ( !stream[0] ) break ;
 
           /* Input came from -s "stmt" */         
-          pStream = gHyp_load_fromStream ( pAImain, pHyp, stream, giProgramCount++ ) ;
+          pStream = gHyp_load_fromStream ( gpAImain, pHyp, stream, giProgramCount++ ) ;
           if ( pStream == NULL || *pStream ) {
             gHyp_util_logError ( "Failed to load HyperScript stream" ) ;
             break ;
           }
           
           /* Got to parse it and then we can not return for more stdin. */
-          gHyp_instance_setState ( pAImain, STATE_PARSE ) ;
+          gHyp_instance_setState ( gpAImain, STATE_PARSE ) ;
 
           stream[0] = '\0' ;
         }
-        else if ( !endOfFile && gHyp_hyp_source ( pAImain, pHyp, gsPP, TRUE ) > 0 ) {
+        else if ( !endOfFile && gHyp_hyp_source ( gpAImain, pHyp, gsPP, TRUE ) > 0 ) {
           
           /* More tokens loaded - set PARSE state and call gHyp_instance_run */
-          gHyp_instance_setState ( pAImain, STATE_PARSE ) ;
+          gHyp_instance_setState ( gpAImain, STATE_PARSE ) ;
 
 #ifdef AS_PROMIS
 	  aeqSsp_automan_disableCallback () ; ;
@@ -1017,7 +1153,7 @@ int main ( int argc, char * argv[] )
         else {
           
           /* End-of-file or ^D (^Z) typed. */
-          gHyp_concept_setReturnToStdIn ( pConcept, FALSE ) ;
+          gHyp_concept_setReturnToStdIn ( gpsConcept, FALSE ) ;
           
           if ( !quiet ) {
             gHyp_util_output ( "End-of-file: HyperScript program completed loading\n") ;
@@ -1038,7 +1174,7 @@ int main ( int argc, char * argv[] )
           /* If one or more "-e method" arguments are specified, then idle */
           for ( i=0; i<m; i++ ) {
             
-            pMethodVariable = gHyp_frame_findMethodVariable ( pFrame, method[i], pAImain ) ;
+            pMethodVariable = gHyp_frame_findMethodVariable ( pFrame, method[i], gpAImain ) ;
             if ( pMethodVariable ) {
               gHyp_method_enable ( (sMethod*) gHyp_data_getObject ( pMethodVariable ) ) ;
               methodsEnabled = TRUE ;
@@ -1050,7 +1186,7 @@ int main ( int argc, char * argv[] )
         
           /* Set IDLE state, waiting for first message on fifo/mailbox device. */
 	  /*gHyp_util_debug("Reverting to IDLE");*/
-          gHyp_instance_reset ( pAImain, STATE_IDLE, TRUE ) ;
+          gHyp_instance_reset ( gpAImain, STATE_IDLE, TRUE ) ;
         }
       }
       else {
@@ -1065,7 +1201,7 @@ int main ( int argc, char * argv[] )
 #endif
 
   /*gHyp_util_debug("Quiting");*/
-  gHyp_concept_quit ( pConcept ) ;  
+  gHyp_concept_quit ( gpsConcept ) ;  
 
 #ifdef PROFILE
     exit(2) ;

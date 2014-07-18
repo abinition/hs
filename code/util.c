@@ -10,6 +10,55 @@
  * Modifications:
  *
  *	$Log: util.c,v $
+ *	Revision 1.42  2006/07/20 17:46:27  bergsma
+ *	Added &laquo; and &raquo;
+ *	
+ *	Revision 1.41  2006/07/17 16:41:59  bergsma
+ *	Bug fixed, when decoding BASE 64, last char is not output when input
+ *	ends with 2 pad characters
+ *	
+ *	Revision 1.40  2005/12/10 00:30:30  bergsma
+ *	HS 3.6.5
+ *	
+ *	Revision 1.39  2005/12/08 03:06:15  bergsma
+ *	for sql_toexternal, other than PGSQL, replace \nnn with \\ where nnn > 127
+ *	
+ *	Revision 1.38  2005/09/12 00:49:25  bergsma
+ *	Support log() function for DLL
+ *	
+ *	Revision 1.37  2005/09/08 08:55:54  bergsma
+ *	Postgres DEC MCS to Unicode Handling
+ *	
+ *	Revision 1.36  2005/09/06 12:59:29  bergsma
+ *	Postgres UNICODE support
+ *	
+ *	Revision 1.35  2005/09/06 08:31:01  bergsma
+ *	PostgreSQL escape sequence handling
+ *	
+ *	Revision 1.32  2005/06/12 16:46:22  bergsma
+ *	HS 3.6.1
+ *	
+ *	Revision 1.31  2005/05/10 17:38:45  bergsma
+ *	Names are urlEncode and urlDecode
+ *	
+ *	Revision 1.30  2005/05/10 17:32:38  bergsma
+ *	Added URLencode and URLdecode functions
+ *	
+ *	Revision 1.29  2005/04/13 13:45:55  bergsma
+ *	HS 3.5.6
+ *	Added sql_toexternal.
+ *	Fixed handling of strings ending with bs (odd/even number of backslashes)
+ *	Better handling of exception condition.
+ *	
+ *	Revision 1.28  2005/03/30 04:05:59  bergsma
+ *	Backslash should be externalized in unparsestring
+ *	
+ *	Revision 1.27  2005/02/15 06:58:15  bergsma
+ *	No newline at end of file
+ *	
+ *	Revision 1.26  2005/01/10 18:02:34  bergsma
+ *	Comment change only.
+ *	
  *	Revision 1.25  2004/12/17 17:41:17  jbergsma
  *	Output to the ListBox window in the ATL (WebPickle) version
  *	
@@ -423,12 +472,20 @@ static void lHyp_util_out ( char *pStr )
     }
 #elif defined ( AS_JNI )
 
-    gHyp_hs_output ( pStr ) ;
+    if ( gzLogName[0] ) {
+      fputs ( pStr, gsLog ) ;
+      fflush ( gsLog ) ; 
+    }
+    else
+      gHyp_hs_output ( pStr ) ;
 
 #elif defined ( AS_ATL )
-
-	gHyp_hs_output_listbox ( pStr );
-
+    if ( gzLogName[0] ) {
+      fputs ( pStr, gsLog ) ;
+      fflush ( gsLog ) ; 
+    }
+    else
+      gHyp_hs_output_listbox ( pStr );
 #else
 
     fputs ( pStr, gsLog ) ;
@@ -1602,9 +1659,30 @@ int gHyp_util_parseXML ( char *pStr )
         *pAnchor++ = ' ' ;
         pStr += 5 ;
       }
+      
+      else if ( strncmp ( pStr, "&laquo;", 7 ) == 0 ) {
+        *pAnchor++ = '\213' ;
+        pStr += 6 ;
+      }
+      else if ( strncmp ( pStr, "&raquo;", 7 ) == 0 ) {
+        *pAnchor++ = '\233' ;
+        pStr += 6 ;
+      }
+      else if ( strncmp ( pStr, "&copy;", 6 ) == 0 ) {
+        *pAnchor++ = '\251' ;
+        pStr += 5 ;
+      }
+      
+      else if ( strncmp ( pStr, "&#x", 3 ) == 0 ) {
+         i = sscanf ( pStr+2, "%x%n", (unsigned int*) &u, &n ) ;
+	 if ( i == 1 && n > 0 && n < 5 && *(pStr+2+n) == ';' ) {
+            *pAnchor++ = (char) u ;
+            pStr += (n+2) ;
+	 }
+      }
       else if ( strncmp ( pStr, "&#", 2 ) == 0 ) {
          i = sscanf ( pStr+2, "%u%n", (unsigned int*) &u, &n ) ;
-	 if ( i == 1 && n > 0 && n < 5 && *(pStr+2+n) == ';' ) {
+	 if ( i == 1 && n > 0 && n < 6 && *(pStr+2+n) == ';' ) {
             *pAnchor++ = (char) u ;
             pStr += (n+2) ;
 	 }
@@ -1666,8 +1744,12 @@ int gHyp_util_parseString ( char *pStr )
     len,
     n ;
 
+  union {
+  	unsigned int u ;
+	unsigned char uc ;
+  } s ;
+
   char
-    uc,
     hexString[5],
     octalString[4] ;
 
@@ -1759,8 +1841,8 @@ int gHyp_util_parseString ( char *pStr )
           hexString[0] = *pStr2++ ;
           hexString[1] = *pStr2 ;
           hexString[2] = '\0' ;
-          n = sscanf ( hexString, "%x", (unsigned int*) &uc ) ;
-          *pAnchor++ = uc ;
+          n = sscanf ( hexString, "%x", (unsigned int*) &s.u ) ;
+          *pAnchor++ = s.uc ;
           pStr = pStr2 ;
         }
         else
@@ -1802,8 +1884,8 @@ int gHyp_util_parseString ( char *pStr )
           pStr2++ ;
           octalString[2] = *pStr2 ;
           octalString[3] = '\0' ;
-          n = sscanf ( octalString, "%o", (unsigned int*) &uc ) ;
-          *pAnchor++ = uc ;
+          n = sscanf ( octalString, "%o", (unsigned int*) &s.u ) ;
+          *pAnchor++ = s.uc ;
           pStr = pStr2 ;
         }
         else
@@ -1828,6 +1910,7 @@ int gHyp_util_unparseString ( char *pDstStr,
                               int maxlen,
 			      sLOGICAL isForMSG,
 			      sLOGICAL isForXML,
+			      sLOGICAL isForSQL,
 			      char *specialChars )
 {
 
@@ -1904,12 +1987,16 @@ int gHyp_util_unparseString ( char *pDstStr,
         c = *pSrcStr ;
         if ( (!isprint ( c ) && !isspace ( c )) || c <= 0 ) {
 	  if ( pDst+6 > pEndDst ) break ;
+          uc = c ;
+	  pDst += sprintf ( pDst, "&#x%02x;", uc ) ;
+	  /*
           if ( c > 0 )
             pDst += sprintf ( pDst, "&#%04d;", c ) ;
           else {
             uc = c ;
 	    pDst += sprintf ( pDst, "&#%05hu;", uc ) ;
 	  }
+	  */
 	}
         else {
           *pDst++ = *pSrcStr ;
@@ -1927,102 +2014,146 @@ int gHyp_util_unparseString ( char *pDstStr,
       
     case '\a' :
       /* Bell */
+      if ( pDst+2 > pEndDst ) break ;
       *pDst++ = '\\' ;
-      if ( pDst+1 > pEndDst ) break ;
       *pDst++ = 'a' ;
       break ;
  
     case '\b' :
       /* Backspace */
+      if ( pDst+2 > pEndDst ) break ;
       *pDst++ = '\\' ;
-      if ( pDst+1 > pEndDst ) break ;
       *pDst++ = 'b' ;
       break ;
  
     case '\f' :
       /* Formfeed */
+      if ( pDst+2 > pEndDst ) break ;
       *pDst++ = '\\' ;
-      if ( pDst+1 > pEndDst ) break ;
       *pDst++ = 'f' ;
       break ;
  
     case '\n' :
       /* Newline */
+      if ( pDst+2 > pEndDst ) break ;
       *pDst++ = '\\' ;
-      if ( pDst+1 > pEndDst ) break ;
       *pDst++ = 'n' ;
       break ;
 
     case '\r' :
       /* Carriage Return */
+      if ( pDst+2 > pEndDst ) break ;
       *pDst++ = '\\' ;
-      if ( pDst+1 > pEndDst ) break ;
       *pDst++ = 'r' ;
       break ;
       
     /*
     case '\t' :
       * Tab *
+      if ( pDst+2 > pEndDst ) break ;
       *pDst++ = '\\' ;
-      if ( pDst+1 > pEndDst ) break ;
       *pDst++ = 't' ;
       break ;  
     */
 
     case '\v' :
       /* Vertical tab */
+      if ( pDst+2 > pEndDst ) break ;
       *pDst++ = '\\' ;
-      if ( pDst+1 > pEndDst ) break ;
       *pDst++ = 'v' ;
       break ;
 
     case '"' :
       /* Double quote */
+      if ( pDst+2 > pEndDst ) break ;
       *pDst++ = '\\' ;
-      if ( pDst+1 > pEndDst ) break ;
       *pDst++ = '"' ;
       break ;
            
     case '|' :
       if ( isForMSG ) {
         /* Pipe */
+        if ( pDst+4 > pEndDst ) break ;
 	*pDst++ = '\\' ;
         pDst += sprintf ( pDst, "%03o", 124 ) ;
-        if ( pDst+1 > pEndDst ) break ;
       }
-      else
+      else {
+         if ( pDst+1 > pEndDst ) break ;
         *pDst++ = *pSrcStr ;	
+      }
       break ;
 
-    /*
-     * Don't do backslash!!!  Use specialChars if needed
-     *
     case '\\' :
-      * Backslash *
+      /* Backslash */
+      if ( pDst+2 > pEndDst ) break ;
       *pDst++ = '\\' ;
-      pDst += sprintf ( pDst, "%03o", 92 ) ;
-      if ( pDst+1 > pEndDst ) break ;	
+      *pDst++ = '\\' ;
       break ;
-    */
+
+    /* Single quote must come before "default" */
+    case '\'' :
+
+      /* Single quote */
+
+      if ( isForSQL ) {
+
+#ifdef AS_SQL
+        if ( pDst+2 > pEndDst ) break ;
+#ifdef AS_SQLSERVER
+	*pDst++ = '\'' ;
+#else
+	*pDst++ = '\\' ;
+#endif
+	*pDst++ = '\'' ;
+	break ;          
+#endif
+      }
 
     default :
       c = *pSrcStr ;
 
       /* Check for specialChars */
       if ( c != '\0' && strchr ( specialChars, c ) != NULL ) {
+        if ( pDst+2 > pEndDst ) break ;
         *pDst++ = '\\' ;
-        if ( pDst+1 > pEndDst ) break ;
         *pDst++ = c ;
       } 
       else if ( (!isprint ( c ) && !isspace ( c )) || c <= 0 ) {
-        *pDst++ = '\\' ;
+
         if ( pDst+1 > pEndDst ) break ;
-        if ( c > 0 )
-          pDst += sprintf ( pDst, "%03o", c ) ;
-        else {
+        *pDst++ = '\\' ;
+
+        if ( isForSQL && c < 0 ) {
+
+#ifdef AS_SQL
+
+#ifdef AS_PGSQL
+
+          /* DEC MCS to Unicode */
           uc = c ;
+          if ( uc >= 128 )
+            uc &= ~64 ;
+          else
+            uc = 191 ;
+          if ( pDst+7 > pEndDst ) break ;
+
+          pDst += sprintf ( pDst, "%03o", 195 ) ;
+          *pDst++ = '\\' ;
           pDst += sprintf ( pDst, "%03o", uc ) ;
-        }         
+#else
+          *pDst++ = '\\' ;
+#endif
+
+#endif
+	}
+	else {
+
+	  /* Not for SQL or ordinary control chars */
+	  if ( pDst+3 > pEndDst ) break ;
+	  uc = c ;
+	  pDst += sprintf ( pDst, "%03o", uc ) ;
+
+	}
       }
       else
         *pDst++ = *pSrcStr ;
@@ -2304,6 +2435,99 @@ sLOGICAL gHyp_util_breakTarget ( char *target,
 }
 
 
+int gHyp_util_urlEncode( char *in, int size_in, char *out )  
+{
+
+  char  
+    *ptr,
+    c;
+
+  ptr = out ;
+  *ptr = '\0' ;
+
+  while ( size_in-- ) {
+
+    c = *in++ ;
+
+    switch ( c ) {
+
+    case '%' :
+      *ptr++ = '%' ;
+      *ptr++ = '2' ;
+      *ptr++ = '5' ;
+      break ;
+    case ' ' :
+      *ptr++ = '%' ;
+      *ptr++ = '2' ;
+      *ptr++ = '0' ;
+      break ;
+    case '~' :
+      *ptr++ = '%' ;
+      *ptr++ = '7' ;
+      *ptr++ = 'E' ;
+      break ;
+    case '/' :
+      *ptr++ = '%' ;
+      *ptr++ = '2' ;
+      *ptr++ = 'F' ;
+      break ;
+    case '=' :
+      *ptr++ = '%' ;
+      *ptr++ = '3' ;
+      *ptr++ = 'D' ;
+      break ;
+    case '&' :
+      *ptr++ = '%' ;
+      *ptr++ = '2' ;
+      *ptr++ = '6' ;
+      break ;
+    case '+' :
+      *ptr++ = '%' ;
+      *ptr++ = '2' ;
+      *ptr++ = 'B' ;
+      break ;
+    default :
+      if ( isprint ( c ) )
+         *ptr++ = c ;
+      else {
+	 *ptr++ = '%' ;
+         sprintf ( ptr, "%02lx", (unsigned long) c ) ;	 
+         ptr += 2 ;
+      }
+       break ;
+    }
+  }
+  *ptr = 0;
+  return (ptr-out) ;
+  
+}
+
+#define SPC_BASE16_TO_10(x) (((x) >= '0' && (x) <= '9') ? ((x) - '0') : \
+                             (toupper((x)) - 'A' + 10))
+
+
+int gHyp_util_urlDecode( char *in, int size_in, char *out )  
+{
+   
+  char  
+    *ptr;
+
+  const char 
+    *c;
+   
+  ptr = out ;
+
+  for (c = in;  *c;  c++) {
+    if (*c != '%' || !isxdigit(c[1]) || !isxdigit(c[2])) *ptr++ = *c;
+    else {
+      *ptr++ = (SPC_BASE16_TO_10(c[1]) * 16) + (SPC_BASE16_TO_10(c[2]));
+      c += 2;
+    }
+  }
+  *ptr = 0;
+  return (ptr-out) ;
+}
+
 int gHyp_util_base64Encode( char *in, int size_in, char *out) {
 
   sBYTE
@@ -2432,11 +2656,15 @@ int gHyp_util_base64Decode( char *in, int size_in, char *out )
       /* Get next character from base 64 array */
       while ( (ch = lHyp_util_getBase64Char(in[i_in++])) == -1 ) ;
 
-      /* Exit if end of string or error or PAD character */
-      if( ch == -3 || ch == -4 || ch == -2 ) break;
+      /* Exit if end of string or error */
+      if( ch == -3 || ch == -4 ) break;
 
       /* Decode a single character */
       out[i_out++] = obuf[0] ;
+
+      /* Exit if PAD character */
+      if( ch == -2 ) break;
+
 
       break;
     }
@@ -2606,6 +2834,13 @@ char *gHyp_util_readStream (  char *pStream,
 
 void gHyp_util_breakStream ( char *buffer, int bufLen, sData *pParent, sLOGICAL isLineBased )
 {
+  /* Basically, we divide a large buffer up into segments, we don't want any
+   * segment to exceed INTERNAL_VALUE_SIZE, so that's where we snip it.
+   * But, if isLineBase is true, we try to snip at the linefeed character.
+   * However, if the line we are snipping is longer than INTERNAL_VALUE_SIZE,
+   * then providing it would externalize to a string that is less that VALUE_SIZE,
+   * we take the longer length.  
+   */
   char 
     *pBuf ;
 
@@ -2661,3 +2896,4 @@ void gHyp_util_breakStream ( char *buffer, int bufLen, sData *pParent, sLOGICAL 
     pBuf += width ;
   }
 }
+

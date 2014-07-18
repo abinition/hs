@@ -3,6 +3,18 @@
  * Modifications:
  *
  * $Log: util.h,v $
+ * Revision 1.12  2005/05/10 17:38:45  bergsma
+ * Names are urlEncode and urlDecode
+ *
+ * Revision 1.11  2005/05/10 17:32:38  bergsma
+ * Added URLencode and URLdecode functions
+ *
+ * Revision 1.10  2005/04/13 13:45:55  bergsma
+ * HS 3.5.6
+ * Added sql_toexternal.
+ * Fixed handling of strings ending with bs (odd/even number of backslashes)
+ * Better handling of exception condition.
+ *
  * Revision 1.9  2004/10/27 18:24:06  bergsma
  * HS 3.3.2
  * 1. Fix bug with SQL read when str size is > 512 bytes, use _data_ blobs
@@ -64,7 +76,7 @@ extern void 		gHyp_util_getprocessname ( char * ) ;
 extern void 		gHyp_util_setprocessname ( char * ) ;
 extern int		gHyp_util_parseXML ( char* ) ;
 extern int		gHyp_util_parseString ( char* ) ;
-extern int		gHyp_util_unparseString ( char*, char*, int, int, sLOGICAL, sLOGICAL, char* ) ;
+extern int		gHyp_util_unparseString ( char*, char*, int, int, sLOGICAL, sLOGICAL, sLOGICAL,char* ) ;
 extern void 		gHyp_util_strip ( char *, int ) ;
 extern void 		gHyp_util_trim ( char * ) ;
 extern void 		gHyp_util_trimWhiteSpace ( char * ) ;
@@ -73,6 +85,8 @@ extern sLOGICAL		gHyp_util_isLittleEndian() ;
 extern sLOGICAL		gHyp_util_breakTarget ( char *, char *, char*, char*, char*, char* ) ;
 extern int gHyp_util_base64Decode( char *in, int size_in, char *out )  ;
 extern int gHyp_util_base64Encode( char *in, int size_in, char *out )  ;
+extern int gHyp_util_urlDecode( char *in, int size_in, char *out )  ;
+extern int gHyp_util_urlEncode( char *in, int size_in, char *out )  ;
 extern char *gHyp_util_readStream (  char *pStream,
 				    char *pAnchor,
 				    char **ppEndOfStream,

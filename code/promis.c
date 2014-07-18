@@ -11,6 +11,34 @@
  * Modifications:
  *
  *	$Log: promis.c,v $
+ *	Revision 1.26  2006/04/04 14:59:03  bergsma
+ *	PROMIS prompts sometimes have nulls in them, they must be removed,
+ *	otherwise the prompt becomes truncated.
+ *	
+ *	Revision 1.25  2005/04/13 13:45:54  bergsma
+ *	HS 3.5.6
+ *	Added sql_toexternal.
+ *	Fixed handling of strings ending with bs (odd/even number of backslashes)
+ *	Better handling of exception condition.
+ *	
+ *	Revision 1.24  2005/04/03 17:36:19  bergsma
+ *	HS 3.54  (FIX OF FLOATING POINT OVERFLOW IN TLOGFEED).
+ *	1. Don't delete LISting files.
+ *	2. PackStart in aeqssp_autofil not being cleared - was causing an
+ *	unpack operation when not required.
+ *	
+ *	Revision 1.23  2005/03/29 16:50:46  bergsma
+ *	V 3.5.2
+ *	Fix traceback in PROMIS exithandler when HS duplicate process name.
+ *	Functions chop() and remove() were reversed.
+ *	
+ *	Revision 1.22  2005/02/25 04:00:51  bergsma
+ *	HS 3.4.5
+ *	Make mailslot read/writes non-blocking.
+ *	
+ *	Revision 1.21  2005/01/25 05:55:12  bergsma
+ *	Separate SIGINT from SIGTERM.
+ *	
  *	Revision 1.20  2004/12/10 22:35:47  bergsma
  *	After changing memcpy to memmove, the section of code that dealt
  *	with unterminated PROMIS token strings stopped working.  The logic
@@ -116,6 +144,7 @@ static sLOGICAL         giIsCallbackEnabled = FALSE ;
 #define MAX_PROMIS_ENTRIES (MAX_PROMIS_FILES+MAX_PROMIS_TABLES)
 #define MAX_PROMIS_FIELDS 500
 #define PROMIS_DATE_OFFSET  946684800
+#define MAX_PROMIS_KEY_SIZE 92
 static sField    (*gpsFieldCache[MAX_PROMIS_ENTRIES])[MAX_PROMIS_FIELDS] ;
 static int 	 giNumFields[MAX_PROMIS_ENTRIES] ;
 static long	 gzTableNames[MAX_PROMIS_TABLES] ;
@@ -426,10 +455,11 @@ void gHyp_promis_exitHandler ( int status )
   if ( gpsConcept ) {
     /* If the method was invoked from a query, then send all replies */
     lHyp_promis_logclose() ;
-    while ( gHyp_instance_replyMessage ( 
-            gpAImain,
-	    gHyp_frame_getMethodData(gHyp_instance_frame(gpAImain) ) ) ) ;
-
+    if ( gpAImain ) {
+      while ( gHyp_instance_replyMessage ( 
+	      gpAImain,
+	      gHyp_frame_getMethodData(gHyp_instance_frame(gpAImain) ) ) ) ;
+    }
     guRunFlags &= ~RUN_QUIET ;
     /*gHyp_util_log("PROMIS image is exiting - HyperScript must terminate");*/
     aeqSsp_autoMan_closeFiles ( ) ;
@@ -968,7 +998,7 @@ static int lHyp_promis_tresData ( sInstance *pAI,
      if ( pTEST_DII ) {
        pTEST_DII_PROMPT = gHyp_data_getChildByName ( pTEST_DII, "prompt" ) ;
        n = gHyp_data_getStr (pTEST_DII_PROMPT,value,VALUE_SIZE,-1,TRUE);
-       gHyp_util_unparseString(token,value,n,TOKEN_SIZE,FALSE,FALSE,"'");
+       gHyp_util_unparseString(token,value,n,TOKEN_SIZE,FALSE,FALSE,FALSE,"'");
      }
      else
        sprintf ( token, "item_%d", i ) ;
@@ -1497,7 +1527,7 @@ static sLOGICAL lHyp_promis_addTLOG (	long fileId,
 
   /* Get the beginning of the record */
   fieldOffset += 4 ;  /* Skip past filename */
-  if ( recid[0] != 'P' ) fieldOffset += 92 ; /* Skip past maxkeysize */
+  if ( recid[0] != 'P' ) fieldOffset += MAX_PROMIS_KEY_SIZE ; /* Skip past maxkeysize */
 
   /* Unpack the intername record */
   length = length - fieldOffset + 1; 
@@ -1579,7 +1609,7 @@ sLOGICAL gHyp_promis_hs (	sDescr*		token_d,
     result[VALUE_SIZE+1] ;
 
   int
-    i,
+    i,j,
     stat,
     resultLen = *pResultLen ;
 
@@ -1679,7 +1709,7 @@ sLOGICAL gHyp_promis_hs (	sDescr*		token_d,
         pEndStream = stream + MAX_INPUT_LENGTH ;
 
 #ifdef AS_VMS
-        /* Because there's not main(), this is required */
+        /* Because there's no main(), this is required */
         VAXC$CRTL_INIT () ;
 	/* VMS says this handler prevents bad behavior from longjmp */
 	VAXC$ESTABLISH ( &lHyp_promis_exceptionHandler ) ;
@@ -1794,11 +1824,19 @@ sLOGICAL gHyp_promis_hs (	sDescr*		token_d,
   /* Check for pexec() result */
   if ( resultLen != 0 ) {
 
-    strncpy ( result, result_d->dsc_a_pointer, resultLen ) ;
-    result[resultLen] = '\0' ;
+    memcpy ( result, result_d->dsc_a_pointer, resultLen ) ;
+    /* Fix for nulls in string */
+    for ( i=0, j=0; i<resultLen; i++ ) {
+      if ( result[i] != '\0' ) {
+	if ( i > j ) result[j] = result[i] ;
+	j++ ;
+      }
+    }
+    resultLen = j ;
+    result[resultLen] = '\0' ;\
     pStack = gHyp_frame_stack ( gHyp_instance_frame ( gpAI ) ) ;
     pData = gHyp_stack_pop ( pStack ) ;
-    gHyp_data_setStr ( pData, result ) ;
+    gHyp_data_setStr_n ( pData, result, resultLen ) ;
     gHyp_stack_push ( pStack, pData ) ;
 
   }
@@ -1814,7 +1852,7 @@ sLOGICAL gHyp_promis_hs (	sDescr*		token_d,
 
     while ( (stat=gHyp_instance_run(gpAI)) > COND_FATAL ) {
 
-      if ( guSIGINT || guSIGTERM ) { stat = COND_FATAL ; break ; }
+      if ( guSIGTERM ) { stat = COND_FATAL ; break ; }
         
       if ( stat == COND_ERROR ) {
 

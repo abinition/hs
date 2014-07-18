@@ -3,6 +3,9 @@
  * Modifications:
  *
  * $Log: router.h,v $
+ * Revision 1.3  2005/01/31 06:06:01  bergsma
+ * Arguments to gHyp_router_process changed.
+ *
  * Revision 1.2  2002/11/14 01:40:45  bergsma
  * Removed ^M occurances and added Modification section.
  *
@@ -18,5 +21,5 @@ extern int gHyp_router_process ( sConcept*,
 				 char *, 
 				 char*,  
 				 int, 
-				 int,
+				 int*,
 				 char* ) ;

@@ -2,6 +2,11 @@
 /* Modifications:
  *
  * $Log: hyp.h,v $
+ * Revision 1.3  2006/01/16 18:56:36  bergsma
+ * HS 3.6.6
+ * 1. Save query timeout events.  Don't let queries repeat indefinitely.
+ * 2. Rework DEBUG_DIAGNOSTIC debugging.  Less overhead.
+ *
  * Revision 1.2  2002/10/23 00:18:16  bergsma
  * New argument to gHyp_hyp_traceReset
  *
@@ -12,6 +17,7 @@ extern void 	gHyp_hyp_delete ( sHyp * ) ;
 extern void    	gHyp_hyp_traceReport ( int ) ;
 extern void    	gHyp_hyp_traceReset ( char * ) ;
 extern void gHyp_hyp_describe ( sHyp *pHyp ) ;
+extern char* gHyp_hyp_describe2 ( sHyp *pHyp, int hypIndex, char *pBuf, int buflen ) ;
 extern void    	gHyp_hyp_setHypCount ( sHyp *, int ) ;
 extern int     	gHyp_hyp_getHypCount ( sHyp * ) ;
 extern int gHyp_hyp_getHighWaterCount ( sHyp *pHyp ) ;

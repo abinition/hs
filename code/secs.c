@@ -11,6 +11,25 @@
  * Modifications:
  *
  * $Log: secs.c,v $
+ * Revision 1.17  2006/01/19 20:33:33  bergsma
+ * no message
+ *
+ * Revision 1.16  2006/01/17 16:17:30  bergsma
+ * When SECS message is interrupted (in SECS I), and if the SECS message
+ * send is aborted, then we must decIncomingDepth along with cancelling the
+ * timeout.
+ *
+ * Revision 1.15  2006/01/16 18:56:36  bergsma
+ * HS 3.6.6
+ * 1. Save query timeout events.  Don't let queries repeat indefinitely.
+ * 2. Rework DEBUG_DIAGNOSTIC debugging.  Less overhead.
+ *
+ * Revision 1.14  2005/11/29 23:57:30  bergsma
+ * Commenr change
+ *
+ * Revision 1.13  2005/01/10 20:09:59  bergsma
+ * Enable signal event jmpOverride during tcp connection request
+ *
  * Revision 1.12  2004/10/16 05:01:51  bergsma
  * Allow secs1 socket to take over from http or port sockets.
  *
@@ -1011,15 +1030,11 @@ void gHyp_secs_assign ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     /* Check to see if the device is already assigned */
     
     pAIassigned = gHyp_concept_getInstForDeviceId ( pConcept, id ) ;
-    if ( pAIassigned && pAI != pAIassigned ) {
-      status = FALSE ;
-      gHyp_instance_warning ( pAI,
-			      STATUS_SECS, 
-			      "Device Id %d is already assigned to port %d by instance %s",
+    if ( pAIassigned )
+      gHyp_util_logWarning ( "Device Id %d was already assigned to port %d by instance %s",
 			      id, 
 			      gHyp_instance_getDeviceFd ( pAIassigned, id ),
 			      gHyp_instance_getTargetId( pAIassigned ) ) ;
-    }
     
     if ( status ) {
  
@@ -1375,7 +1390,7 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
     if ( pHsms && (gHyp_hsms_flags(pHsms) & SOCKET_LISTEN)) {
       status = FALSE ;
       gHyp_instance_warning ( pAI,STATUS_SECS, 
-			    "HSMS connection (through port %d) exists for device %d. ",
+			    "No HSMS connection (through port %d) exists for device %d. ",
 			    fd, id ) ;
     }
 
@@ -1487,6 +1502,11 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
 	    gHyp_util_logWarning ( "...aborting SECS message send of S%dF%d",
 				   stream, function ) ;
 	    /* Cancel timeout */
+
+	    /* The following statement was added, 1/18/05
+	     * The decIncomingDepth should be called before a cancelTimeout.
+	     */
+  	    gHyp_instance_decIncomingDepth ( pAI ) ;
 	    gHyp_instance_cancelTimeOut ( pAI ) ;
 	    status = FALSE ;
 	    break ;
@@ -1535,7 +1555,8 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
       gHyp_instance_setExpectedReply ( pAI, 
 				       sender, 
 				       method, 
-				       transactionId ) ;
+				       transactionId,
+				       eventTime ) ;
       gHyp_instance_setSecsReplyIn ( pAI, 
 				     id, 
 				     stream, 

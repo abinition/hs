@@ -10,6 +10,12 @@
  * Modifications:
  *
  * $Log: channel.c,v $
+ * Revision 1.6  2006/08/08 20:48:27  bergsma
+ * Added setTarget, setPath, setSocket
+ *
+ * Revision 1.5  2005/01/31 06:05:38  bergsma
+ * Added gHyp_channel_offset  and gHyp_channel_setOffset
+ *
  * Revision 1.4  2004/06/13 14:05:07  bergsma
  * Cosmetic log statements.
  *
@@ -43,7 +49,7 @@ struct channel_t
   OVERLAPPED	overlapped ;
   sSSL*		pSSL ;
   char		buf[MAX_BUFFER_SIZE];	/* Read buffer */
-
+  int		offset ;		/* Offset in buffer to start read */
   int		maxMsgSize ;		/* Calculated maximum message size */
   int		nBytes ;		/* Number of bytes read */
   time_t	createTime ;		/* When channel was created */
@@ -72,6 +78,7 @@ sChannel *gHyp_channel_new ( char *name,
   strcpy ( pChannel->path, path ) ;
   pChannel->flags = flags ;
   pChannel->buf[0] = '\0' ;
+  pChannel->offset = 0 ;
   pChannel->maxMsgSize = MIN_MESSAGE_SIZE ;
   pChannel->fd = fd ;
   memset ( &pChannel->overlapped, 0, sizeof (OVERLAPPED) ) ;
@@ -117,9 +124,19 @@ char* gHyp_channel_target ( sChannel *pChannel )
   return pChannel->target ;
 }
 
+void gHyp_channel_setTarget ( sChannel *pChannel, char *target )
+{
+  strcpy ( pChannel->target, target ) ;
+}
+
 char* gHyp_channel_path ( sChannel *pChannel )
 {
   return pChannel->path ;
+}
+
+void gHyp_channel_setPath ( sChannel *pChannel, char *path )
+{
+  strcpy ( pChannel->path, path ) ;
 }
 
 short gHyp_channel_flags ( sChannel *pChannel )
@@ -130,6 +147,11 @@ short gHyp_channel_flags ( sChannel *pChannel )
 SOCKET gHyp_channel_socket ( sChannel *pChannel )
 {
   return pChannel->fd ;
+}
+
+void gHyp_channel_setSocket ( sChannel *pChannel, SOCKET s )
+{
+  pChannel->fd = s ;
 }
 
 OVERLAPPED* gHyp_channel_overlapped ( sChannel *pChannel )
@@ -160,6 +182,16 @@ extern int *gHyp_channel_pNbytes ( sChannel *pChannel )
 void gHyp_channel_resetBuffer ( sChannel *pChannel )
 {
   pChannel->buf[0] = '\0' ;
+}
+
+int gHyp_channel_offset ( sChannel *pChannel )
+{
+  return pChannel->offset ;
+}
+
+void gHyp_channel_setOffset ( sChannel *pChannel, int offset )
+{
+  pChannel->offset = offset ;
 }
 
 int gHyp_channel_maxMsgSize ( sChannel *pChannel )

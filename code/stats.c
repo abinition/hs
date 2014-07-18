@@ -3,6 +3,14 @@
  * Modifications:
  *
  *   $Log: stats.c,v $
+ *   Revision 1.4  2006/01/16 18:56:36  bergsma
+ *   HS 3.6.6
+ *   1. Save query timeout events.  Don't let queries repeat indefinitely.
+ *   2. Rework DEBUG_DIAGNOSTIC debugging.  Less overhead.
+ *
+ *   Revision 1.3  2005/03/16 23:58:44  bergsma
+ *   gzLocalHost and gzLocalAddr are  not static
+ *
  *   Revision 1.2  2004/12/17 17:39:41  jbergsma
  *   Fixes and ifdefs for AS_ATL (WebPickle) to compile correctly with cpp in the hsx project
  *
@@ -46,8 +54,8 @@ unsigned short		guRunFlags ;	/* General flags */
 
 /* INTERNAL (STATIC) GLOBALS */
 
-static char		gzLocalHost[MAX_PATH_SIZE+1];	/* Local host name */
-static char		gzLocalAddr[MAX_PATH_SIZE+1];	/* Local host name */
+char		gzLocalHost[MAX_PATH_SIZE+1];	/* Local host name */
+char		gzLocalAddr[MAX_PATH_SIZE+1];	/* Local host name */
 
 #ifndef F_OK
 #define	F_OK		0	/* does file exist */
@@ -209,7 +217,7 @@ int main ( int argc, char * argv[] )
 			  , "shr=get,put"
 #endif
 			  ) ) == NULL ) {
-      gHyp_util_sysError ( "Failed to open '%s'", gzLogName ) ;
+      gHyp_util_sysError ( "Failed to open log '%s'", gzLogName ) ;
       exit(2) ;
     }
   }
@@ -217,7 +225,7 @@ int main ( int argc, char * argv[] )
   /* Set default program source if not already set */
   if ( tlog[0] ) {
     if ( (pp = fopen ( tlog, "r" )) == NULL ) {
-      gHyp_util_sysError ( "Failed to open '%s'", tlog ) ;
+      gHyp_util_sysError ( "Failed to open tlog '%s'", tlog ) ;
       exit(2) ;
     }
   }

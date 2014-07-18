@@ -11,6 +11,33 @@
  * Modifications:
  *
  *	$Log: system.c,v $
+ *	Revision 1.19  2006/08/17 05:03:30  bergsma
+ *	Detect non-XML (HTML) and assume childless tags won't have /> endings
+ *	
+ *	Revision 1.18  2006/01/16 18:56:36  bergsma
+ *	HS 3.6.6
+ *	1. Save query timeout events.  Don't let queries repeat indefinitely.
+ *	2. Rework DEBUG_DIAGNOSTIC debugging.  Less overhead.
+ *	
+ *	Revision 1.17  2005/12/10 00:30:30  bergsma
+ *	HS 3.6.5
+ *	
+ *	Revision 1.16  2005/10/25 16:39:37  bergsma
+ *	Added usleep() function
+ *	
+ *	Revision 1.15  2005/06/12 16:46:22  bergsma
+ *	HS 3.6.1
+ *	
+ *	Revision 1.14  2005/02/15 07:05:14  bergsma
+ *	No end of line at end of file.
+ *	
+ *	Revision 1.13  2005/01/31 05:59:10  bergsma
+ *	The sleep function was changed to be identical to the idle function, except
+ *	for the addition of a time limit.
+ *	
+ *	Revision 1.12  2005/01/25 05:52:36  bergsma
+ *	SLEEP uses new WakeTime instead of HEARTBEAT time.
+ *	
  *	Revision 1.11  2004/10/16 05:10:55  bergsma
  *	Remove warning in xml() function.
  *	
@@ -630,7 +657,6 @@ void gHyp_system_sleep ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
   /* Description:
    *
    *	PARSE or EXECUTE the built-in function: sleep ( seconds )
-   *	This function actually calls the UNIX sleep() function.
    *
    * Arguments:
    *
@@ -659,7 +685,10 @@ void gHyp_system_sleep ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     
     sData
       *pData;
-    
+
+    sConcept
+      *pConcept ;
+
     int
       seconds,
       argCount = gHyp_parse_argCount ( pParse ) ;
@@ -680,13 +709,88 @@ void gHyp_system_sleep ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       gHyp_instance_setState ( pAI, STATE_SLEEP ) ;
       gHyp_frame_setState ( pFrame, STATE_SLEEP ) ;
       gsCurTime = time(NULL);
-      gHyp_instance_setBeatTime ( pAI, gsCurTime+seconds ) ;
+      gHyp_instance_setWakeTime ( pAI, gsCurTime+seconds ) ;
       gHyp_frame_setHypIndex ( pFrame, gHyp_frame_getHypIndex(pFrame) - 1 ) ;
-      gHyp_instance_pushSTATUS ( pAI, pStack ) ;
+
+      /*gHyp_instance_pushSTATUS ( pAI, pStack ) ;*/
+      
+      gHyp_parse_restoreExprRank ( pParse ) ;
+
+      /* If we are the parent, we may turn-off "return to stdIn".*/
+      pConcept = gHyp_instance_getConcept(pAI) ;
+      if ( gHyp_concept_getConceptInstance ( pConcept ) == pAI ) 
+        gHyp_concept_setReturnToStdIn ( pConcept, FALSE ) ;
+
+      if ( guDebugFlags & DEBUG_FRAME )
+        gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME, 
+			     "frame: SLEEP(longjmp to 1 from frame %d)",
+			     gHyp_frame_depth(pFrame) ) ;
       longjmp ( gsJmpStack[giJmpLevel=1], COND_SILENT ) ;
+
     }
   }
 }
+
+void gHyp_system_usleep ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: usleep ( microseconds )
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+
+  else {
+
+    sStack 	
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+    
+    sData
+      *pData;
+
+    unsigned int
+      useconds ;
+
+    int
+      argCount = gHyp_parse_argCount ( pParse ) ;
+    
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 1 )  gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+	"Invalid arguments. Usage: usleep ( microseconds )" ) ;
+
+    pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
+    useconds = (unsigned int) gHyp_data_getInt ( pData, gHyp_data_getSubScript(pData), TRUE) ;
+
+    if ( useconds < 0 ) {
+      gHyp_instance_warning ( pAI,  STATUS_BOUNDS, "Invalid usleep seconds" ) ;
+    }
+    else {
+      gHyp_sock_usleep ( useconds ) ;
+    }
+
+    gHyp_instance_pushSTATUS ( pAI, pStack ) ;
+  }
+}
+
+
 
 void gHyp_system_time ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
 {
@@ -1017,6 +1121,7 @@ void gHyp_system_parse ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
 	  /*gHyp_util_debug("DEREF parse");*/
 	  /* Set a dereference handler */
+          /*gHyp_util_debug("Deref from parse");*/
 	  gHyp_instance_setDerefHandler ( pAI, 
 					  eosIndex, 
 					  pHyp ) ;
@@ -1079,6 +1184,7 @@ void gHyp_system_xparse ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       *pp = NULL ;
 
     sLOGICAL
+      isPureXML = TRUE,
       isEndTag ;
 
     int
@@ -1132,7 +1238,9 @@ void gHyp_system_xparse ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 				      pFrame,
 				      NULL, /* No pTV */
 				      pp,
-				      pAI ) ;
+				      pAI,
+				      TYPE_LIST,
+				      isPureXML ) ;
 	if ( pStream == NULL ) {
 	  /*
 	  gHyp_instance_warning ( pAI, STATUS_XML, 
@@ -1216,9 +1324,23 @@ void gHyp_system_getenv ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       value[n] = '\0' ;
     }
     else {
-      gHyp_instance_warning(pAI, STATUS_UNDEFINED, 
+
+      if (      strcmp ( token, "AUTOROUTER" ) == 0 )
+	strcpy ( value, gzAUTOROUTER ) ;
+      else if ( strcmp ( token, "AUTOFIFO"   ) == 0 )
+	strcpy ( value, gzAUTOFIFO ) ;
+      else if ( strcmp ( token, "AUTOBIN"    ) == 0 )
+	strcpy ( value, gzAUTOBIN ) ;
+      else if ( strcmp ( token, "AUTORUN"    ) == 0 )
+	strcpy ( value, gzAUTORUN ) ;
+      else if ( strcmp ( token, "AUTOLOG"    ) == 0 )
+	strcpy ( value, gzAUTOLOG ) ;
+      else {
+        gHyp_instance_warning(pAI, STATUS_UNDEFINED, 
 	    "No value for environment variable %s found",token);
-      strcpy ( value, "" ) ;
+        strcpy ( value, "" ) ;
+      }
+
     }
     pResult = gHyp_data_new ( NULL ) ;
     gHyp_data_setStr ( pResult, value ) ;

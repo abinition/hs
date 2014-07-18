@@ -10,6 +10,9 @@
 /* Modifications:
  * 
  * $Log: operand.c,v $
+ * Revision 1.8  2005/01/10 20:12:02  bergsma
+ * If invoking a method that does not exist, issue an error.
+ *
  * Revision 1.7  2004/11/19 03:50:04  bergsma
  * New gpsTempData2 variable for memory leak detection on failed method calls.
  *

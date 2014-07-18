@@ -2,11 +2,85 @@
 !
 !	Include file for AUTOSERVER.FOR, AUTOCLIENT.FOR, AUTOUTIL.FOR
 ! 
-	parameter	AUTOMAN_VERSION = 'AM V3.4-0'
+	parameter	AUTOMAN_VERSION = 'AM V3.7-0'
 !
 ! Modifications:
 !
 !	$Log: autodef.for,v $
+!	Revision 1.46  2006/06/17 02:59:44  bergsma
+!	Version 3.7.0
+!	
+!	Revision 1.45  2006/05/07 18:33:28  bergsma
+!	TCP getAddrByname fix.  HS 3.6.8
+!	
+!	Revision 1.44  2006/04/04 15:00:59  bergsma
+!	HS 3.6.7.
+!	
+!	Revision 1.43  2006/01/16 18:56:35  bergsma
+!	HS 3.6.6
+!	1. Save query timeout events.  Don't let queries repeat indefinitely.
+!	2. Rework DEBUG_DIAGNOSTIC debugging.  Less overhead.
+!	
+!	Revision 1.42  2005/12/17 20:38:44  bergsma
+!	Added ssl_enableSessions
+!	
+!	Revision 1.41  2005/09/25 20:09:00  bergsma
+!	Up to V3.6.3
+!	
+!	Revision 1.40  2005/06/12 16:46:21  bergsma
+!	HS 3.6.1
+!	
+!	Revision 1.39  2005/05/10 17:28:24  bergsma
+!	Increase # PROMIS file buffers from 20 to 32.
+!	HS. Revision 3.6.0
+!	
+!	Revision 1.38  2005/04/22 19:28:03  bergsma
+!	HS 3.5.7  Required to proper TLOGFEED operation.
+!	
+!	Revision 1.37  2005/04/13 13:45:53  bergsma
+!	HS 3.5.6
+!	Added sql_toexternal.
+!	Fixed handling of strings ending with bs (odd/even number of backslashes)
+!	Better handling of exception condition.
+!	
+!	Revision 1.36  2005/04/03 17:36:19  bergsma
+!	HS 3.54  (FIX OF FLOATING POINT OVERFLOW IN TLOGFEED).
+!	1. Don't delete LISting files.
+!	2. PackStart in aeqssp_autofil not being cleared - was causing an
+!	unpack operation when not required.
+!	
+!	Revision 1.35  2005/03/30 16:45:09  bergsma
+!	HS 3.5.4.   In VMS, do not set the process name if the name is already set to the
+!	correct HS concept name. NB:  In VMS 7.3-2 process names are case sensitive.
+!	
+!	Revision 1.34  2005/03/30 04:07:05  bergsma
+!	Backslash should be externalized in unparsestring.
+!	Added signal handler for standalone HS for VMS systems.
+!	
+!	Revision 1.33  2005/03/29 16:50:45  bergsma
+!	V 3.5.2
+!	Fix traceback in PROMIS exithandler when HS duplicate process name.
+!	Functions chop() and remove() were reversed.
+!	
+!	Revision 1.32  2005/03/09 03:38:53  bergsma
+!	V3.5.0  New functions appendval, insertval, scopeof.
+!	
+!	Revision 1.31  2005/02/25 04:00:51  bergsma
+!	HS 3.4.5
+!	Make mailslot read/writes non-blocking.
+!	
+!	Revision 1.30  2005/02/15 07:04:22  bergsma
+!	V3.4.4
+!	
+!	Revision 1.29  2005/01/31 05:54:47  bergsma
+!	V 3.4.3
+!	
+!	Revision 1.28  2005/01/25 05:58:00  bergsma
+!	V3.4.2
+!	
+!	Revision 1.27  2005/01/10 18:05:17  bergsma
+!	V 3.4.1
+!	
 !	Revision 1.26  2004/11/19 03:51:40  bergsma
 !	V 3.4.0
 !	
@@ -215,5 +289,5 @@
 	parameter	MAX_INIT_PARMS = 10
 
 	! Database
-	parameter	MAX_AUTO_FILES = 20
+	parameter	MAX_AUTO_FILES = 32
 

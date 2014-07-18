@@ -10,6 +10,50 @@
 /* Modifications:
  * 
  * $Log: http.c,v $
+ * Revision 1.17  2006/07/17 16:46:00  bergsma
+ * Put default in for Content-Type
+ *
+ * Revision 1.16  2006/01/23 04:53:12  bergsma
+ * Comment change
+ *
+ * Revision 1.15  2006/01/20 04:13:17  bergsma
+ * Typedef conversion of id to (sWORD)
+ *
+ * Revision 1.14  2006/01/19 20:49:49  bergsma
+ * int id, not sWORD id
+ *
+ * Revision 1.13  2006/01/19 20:33:33  bergsma
+ * no message
+ *
+ * Revision 1.12  2006/01/19 19:42:10  bergsma
+ * Let port_assign and http_assign override previous assignments.
+ *
+ * Revision 1.11  2006/01/16 18:56:36  bergsma
+ * HS 3.6.6
+ * 1. Save query timeout events.  Don't let queries repeat indefinitely.
+ * 2. Rework DEBUG_DIAGNOSTIC debugging.  Less overhead.
+ *
+ * Revision 1.10  2006/01/14 20:40:54  bergsma
+ * no message
+ *
+ * Revision 1.9  2006/01/10 19:35:24  bergsma
+ * Bad use of pValue in loop that depends on pValue, Changed to pValue2
+ *
+ * Revision 1.8  2005/11/28 05:09:14  bergsma
+ * Comment change
+ *
+ * Revision 1.7  2005/04/13 13:45:54  bergsma
+ * HS 3.5.6
+ * Added sql_toexternal.
+ * Fixed handling of strings ending with bs (odd/even number of backslashes)
+ * Better handling of exception condition.
+ *
+ * Revision 1.6  2005/03/16 23:53:21  bergsma
+ * V 3.5.1 - fixes for use with DECC compiler.
+ *
+ * Revision 1.5  2005/01/10 20:08:55  bergsma
+ * Enable signal event jmpOverride during tcp connection request
+ *
  * Revision 1.4  2004/10/16 04:45:41  bergsma
  * Added http_binary() function.
  *
@@ -132,7 +176,7 @@ sData* gHyp_http_getContentData ( sHTTP* pHTTP )
   return pHTTP->pContentData ;
 }
 
-int gHyp_http_getActualContentLength( sHTTP* pHTTP )
+int gHyp_http_getActualContentLen( sHTTP* pHTTP )
 {
   return pHTTP->actualContentLength ;
 }
@@ -165,12 +209,12 @@ sLOGICAL gHyp_http_isReply ( sHTTP *pHTTP )
   return ( strstr( pHTTP->arg1, "HTTP/1" ) == pHTTP->arg1 ) ;
 }
 
-void gHyp_http_setChunkedTransferEncoded( sHTTP* pHTTP )
+void gHyp_http_setChunkedTransferEnc( sHTTP* pHTTP )
 {
   pHTTP->isChunkTransferEncoded = TRUE ;
 }
 
-sLOGICAL gHyp_http_isChunkedTransferEncoded( sHTTP* pHTTP )
+sLOGICAL gHyp_http_isChunkedTransferEnc( sHTTP* pHTTP )
 {
   return pHTTP->isChunkTransferEncoded ;
 }
@@ -732,21 +776,17 @@ void gHyp_http_assign ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     }
     else {
       /* Check to see if the port is already assigned */
-      pAIassigned = gHyp_concept_getInstForFd ( pConcept, portFd ) ;
-      if ( pAIassigned && pAI != pAIassigned ) {
-        gHyp_instance_warning ( pAI,
-			      STATUS_HTTP, 
-			      "Http %d is already assigned to another device %d by instance %s",
+      pAIassigned = gHyp_concept_getInstForDeviceId ( pConcept, (sWORD) id ) ;
+      if ( pAIassigned )
+        gHyp_util_logWarning ( "Http %d was already assigned to device %d by instance %s",
 			      portFd,
 			      gHyp_instance_getDeviceId ( pAIassigned, portFd ),
 			      gHyp_instance_getTargetId ( pAIassigned ) ) ;
-      }
-      else {
-	gHyp_instance_updateFd ( pAI, (SOCKET) portFd, (sWORD) id, NULL, FALSE ) ;
-	flags = gHyp_secs1_flags ( pHttp ) ;
-	flags = (flags & MASK_SOCKET) | PROTOCOL_HTTP ;
-	gHyp_secs1_setFlags ( pHttp, flags ) ;
-      }
+      
+      gHyp_instance_updateFd ( pAI, (SOCKET) portFd, (sWORD) id, NULL, FALSE ) ;
+      flags = gHyp_secs1_flags ( pHttp ) ;
+      flags = (flags & MASK_SOCKET) | PROTOCOL_HTTP ;
+      gHyp_secs1_setFlags ( pHttp, flags ) ;
 
     }
     gHyp_instance_pushSTATUS ( pAI, pStack ) ;
@@ -868,7 +908,7 @@ void gHyp_http_binary ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       if ( !pHttp ) {
         gHyp_instance_warning ( pAI,
 			      STATUS_HTTP, 
-			      "No port '%d'. Use http_open to open port ", portFd ) ;
+			      "No http structure. Use http_open to open port " ) ;
 	status = FALSE ;
       }
     }
@@ -1075,6 +1115,7 @@ static void lHyp_http_QE (	sInstance 	*pAI,
     *pHttpList,
     *pData,
     *pValue,
+    *pValue2,
     *pAttrData,
     *pAttr,
     *pHttpData ;
@@ -1162,6 +1203,7 @@ static void lHyp_http_QE (	sInstance 	*pAI,
     code = gHyp_data_getInt ( pData, 
 			      gHyp_data_getSubScript ( pData ), 
 			      TRUE ) ;
+
   else {
     n = gHyp_data_getStr (  pData,
 			    arg2,
@@ -1214,7 +1256,7 @@ static void lHyp_http_QE (	sInstance 	*pAI,
   if ( status ) {
     if ( (gHyp_secs1_flags(pHttpPort) & SOCKET_LISTEN) ) {
       gHyp_instance_warning ( pAI,STATUS_HTTP, 
-			    "Device %d has not been connected.",
+			    "Device %d is no longer connected.",
 			    id ) ;
       status = FALSE ;
     }
@@ -1302,7 +1344,9 @@ static void lHyp_http_QE (	sInstance 	*pAI,
 					    n, 
 					    VALUE_SIZE, 
 					    FALSE, 
-					    FALSE ) ;
+					    FALSE,
+					    FALSE,
+					    "" ) ;
 	      */
 	      strncpy ( value2, value, n ) ;
 	      value2[n++] = '\0' ;
@@ -1313,9 +1357,9 @@ static void lHyp_http_QE (	sInstance 	*pAI,
 		line[lineLen++] = '\r' ;
 		line[lineLen++] = '\n' ;
 		line[lineLen] = '\0' ;
-		pValue = gHyp_data_new ( NULL ) ;
-		gHyp_data_setStr_n ( pValue, line, lineLen ) ;
-		gHyp_data_append ( pHttpList, pValue ) ;
+		pValue2 = gHyp_data_new ( NULL ) ;
+		gHyp_data_setStr_n ( pValue2, line, lineLen ) ;
+		gHyp_data_append ( pHttpList, pValue2 ) ;
 
 		line[0] = '\0' ;
 		lineLen = 0 ;
@@ -1402,6 +1446,13 @@ static void lHyp_http_QE (	sInstance 	*pAI,
       gHyp_data_insert ( pHttpList, pValue ) ;
     }
 
+    if ( !hasContentType) {
+      pValue = gHyp_data_new ( NULL ) ;
+      n = sprintf ( line, "Content-Type: text/plain/\r\n" ) ;
+      gHyp_data_setStr_n ( pValue, line, n ) ;
+      gHyp_data_insert ( pHttpList, pValue ) ;
+    }
+
     if ( !hasContentLength && contentLength > 0) {
       pValue = gHyp_data_new ( NULL ) ;
       n = sprintf ( line, "Content-Length: %d\r\n", contentLength ) ;
@@ -1409,20 +1460,14 @@ static void lHyp_http_QE (	sInstance 	*pAI,
       gHyp_data_append ( pHttpList, pValue ) ;
     }
 
-    if ( contentLength > 0 ) {
-      /* Add double line */
-      pValue = gHyp_data_new ( NULL ) ;
-      gHyp_data_setStr_n ( pValue, "\r\n", 2 ) ;
-      gHyp_data_append ( pHttpList, pValue ) ;
+    /* Add double line */
+    pValue = gHyp_data_new ( NULL ) ;
+    gHyp_data_setStr_n ( pValue, "\r\n", 2 ) ;
+    gHyp_data_append ( pHttpList, pValue ) ;
 
-      /* Add HTTP data */
+    if ( contentLength > 0 ) {
+      /* Append HTTP data */
       gHyp_data_moveValues ( pHttpList, pHttpData ) ;
-    }
-    else {
-      /* Add double line */
-      pValue = gHyp_data_new ( NULL ) ;
-      gHyp_data_setStr_n ( pValue, "\r\n", 2 ) ;
-      gHyp_data_append ( pHttpList, pValue ) ;
     }
 
     /* Add first line */
@@ -1457,7 +1502,8 @@ static void lHyp_http_QE (	sInstance 	*pAI,
     gHyp_instance_setExpectedReply ( pAI, 
 				     sender, 
 				     "DATA", 
-				     "00000001" ) ;
+				     "00000001",
+				     eventTime ) ;
 
     gHyp_instance_setState ( pAI, STATE_QUERY ) ;
     gHyp_frame_setState ( pFrame, STATE_QUERY ) ;

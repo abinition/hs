@@ -11,6 +11,27 @@
  * Modifications:
  *
  *	$Log: type.c,v $
+ *	Revision 1.15  2006/07/17 16:42:52  bergsma
+ *	The 'typeof' function must use an Lvalue, not Rdata.
+ *	
+ *	Revision 1.14  2006/01/16 18:56:36  bergsma
+ *	HS 3.6.6
+ *	1. Save query timeout events.  Don't let queries repeat indefinitely.
+ *	2. Rework DEBUG_DIAGNOSTIC debugging.  Less overhead.
+ *	
+ *	Revision 1.13  2005/04/22 19:26:56  bergsma
+ *	Comment
+ *	
+ *	Revision 1.12  2005/03/09 04:20:28  bergsma
+ *	Added scopeof function
+ *	
+ *	Revision 1.11  2005/01/10 21:01:20  bergsma
+ *	Fixed problem with converting bytes to strings.
+ *	
+ *	Revision 1.10  2005/01/10 18:04:26  bergsma
+ *	When converting from large byte array to string, create multiple strings
+ *	instead of just one, thereby allowing > VALUE_SIZE bytes.
+ *	
  *	Revision 1.9  2004/10/16 05:11:43  bergsma
  *	data_setStr and data_getStr function calls renamed
  *	
@@ -273,10 +294,12 @@ sData *gHyp_type_assign ( sInstance *pAI,
 	  }
 	
 	  value[i] = '\0' ;
-	  pValue2 = gHyp_data_new ( NULL ) ;
-	  gHyp_data_setStr_n ( pValue2, value, i ) ;
-	  gHyp_data_append ( pResult, pValue2 ) ;
-	} 
+	  if ( i > 0 ) {
+	    pValue2 = gHyp_data_new ( NULL ) ;
+	    gHyp_data_setStr_n ( pValue2, value, i ) ;
+	    gHyp_data_append ( pResult, pValue2 ) ;
+	  } 
+	}
 	while ( pValue != NULL ) ;
       }
       else {
@@ -602,13 +625,6 @@ sData *gHyp_type_assign ( sInstance *pAI,
 	  if ( dstDataType > TYPE_STRING )
 	    gHyp_data_newVector ( pSrcData, dstDataType, 1, TRUE ) ;
 	}
-
-	if ( guDebugFlags & DEBUG_DIAGNOSTICS )
-	  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS, 
-			       "diag : deref '%s' = %s'",
-			       value,
-			       gHyp_data_print ( pSrcData ) ) ;
-
 	if ( pResult ) gHyp_data_delete ( pResult ) ;
 	return pSrcData ;
       }
@@ -779,6 +795,7 @@ sData *gHyp_type_assign ( sInstance *pAI,
 	  if ( sss == -1 || isVectorSrc )
 	    srcDataType = gHyp_data_getDataType ( pSrcData ) ;
 	  else {
+
 	    if ( !(pValue = gHyp_data_getValue( pSrcData, sss, TRUE )) ) {
 	      if ( pSourceData ) gHyp_data_delete ( pSourceData ) ;
 	      strcpy ( variable, gHyp_data_getLabel(pSrcData) ) ;
@@ -800,43 +817,36 @@ sData *gHyp_type_assign ( sInstance *pAI,
 	      i = 0 ;
 	      value[0] = '\0' ;
 	      copySize = MIN ( copySize, VALUE_SIZE ) ;
-	      for ( i=0; i<copySize; i++ ) {
-
-		if ( i == 0 || pValue ) {
-
-		  pValue = gHyp_data_nextValue( pSrcData,
+	      while ( i < copySize &&
+		      (pValue = gHyp_data_nextValue( pSrcData,
 					      pValue,
 					      &context,
-					      sss ) ; 
+					      sss ) ) ) { 
 
-		  if ( context== -2 && sss != -1 ) {
-		    if ( pResult  ) gHyp_data_delete ( pResult  ) ;	      
-		    if ( pSourceData ) gHyp_data_delete ( pSourceData ) ;	 
-		    strcpy ( variable, gHyp_data_getLabel(pSrcData) ) ;
- 	  	    if ( freeSrcDataOnError && pSrcData ) gHyp_data_delete ( pSrcData ) ;
-		      gHyp_instance_error ( 
+		c = (char) gHyp_data_getRaw ( pValue,
+					context,
+					isVectorSrc ) ;
+		value[i++] = c ;
+	      }
+	      if ( context== -2 && sss != -1 ) {
+		if ( pResult  ) gHyp_data_delete ( pResult  ) ;	      
+		if ( pSourceData ) gHyp_data_delete ( pSourceData ) ;	 
+		strcpy ( variable, gHyp_data_getLabel(pSrcData) ) ;
+ 	  	if ( freeSrcDataOnError && pSrcData ) gHyp_data_delete ( pSrcData ) ;
+		gHyp_instance_error ( 
 		     pAI, STATUS_BOUNDS, 
 		      "Subscript '%d' is out of bounds in %s",
 		      sss,
 		      variable) ;
-		  }
-		}
-
-		if ( pValue )
-		  c = (char) gHyp_data_getRaw ( pValue,
-		  			  context,
-					isVectorSrc ) ;
-		else
-		  c = ' ' ;
-
-		value[i] = c ;
 	      }
 
 	      value[i] = '\0' ;
-	      pValue2 = gHyp_data_new ( NULL ) ;
-	      gHyp_data_setStr_n ( pValue2, value, i ) ;
-	      gHyp_data_append ( pVariable, pValue2 ) ;
-	    } 
+	      if ( i > 0 ) {
+	        pValue2 = gHyp_data_new ( NULL ) ;
+	        gHyp_data_setStr_n ( pValue2, value, i ) ;
+	        gHyp_data_append ( pVariable, pValue2 ) ;
+	      }
+	    }
 	    while ( pValue != NULL ) ;
 	  }
 	  else {
@@ -1391,6 +1401,12 @@ void gHyp_type_str ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     else {
 
       /* It is a typecast conversion. */
+
+      /* Why is this popRdata instead of popRvalue?
+       * All the other typecast conversions are this way, why not this one?
+       *
+       * SHOULD BE? -> pRdata = gHyp_stack_popRvalue ( pStack, pAI ) ;
+       */
       pRdata = gHyp_stack_popRdata ( pStack, pAI ) ;
       pResult = gHyp_type_assign ( pAI,
 				   pFrame,
@@ -2847,7 +2863,9 @@ void gHyp_type_typeof ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     if ( argCount != 1 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
 	"Invalid arguments. Usage: typeof ( variable )" ) ;
 
-    pData = gHyp_stack_popRdata ( pStack, pAI ) ;
+    /*pData = gHyp_stack_popRdata ( pStack, pAI ) ;*/
+    pData = gHyp_stack_popLvalue ( pStack, pAI ) ;
+ 
     dataType = gHyp_data_getDataType ( pData ) ;
 
     switch ( dataType ) {
@@ -2990,6 +3008,94 @@ void gHyp_type_valueof(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 			   TRUE ) ;
     pResult = gHyp_data_new ( "_valueof_" ) ;
     gHyp_data_setToken ( pResult, strVal ) ;
+    gHyp_stack_push ( pStack, pResult ) ;
+  }
+}
+
+void gHyp_type_scopeof(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: scopeof()
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+
+  else {
+
+    sStack 	
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+    
+    sData
+      *pVariable,
+      *pLocalVariable,
+      *pRootVariable,
+      *pData,
+      *pResult ;
+    
+    /* local / global */
+    char
+      *pVarStr,
+      scopeString[7] ;
+
+    sLOGICAL
+      isGlobalScope ;
+
+    int
+      argCount = gHyp_parse_argCount ( pParse ) ;
+
+    /* Assume success */	
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 1 ) gHyp_instance_error ( pAI,STATUS_ARGUMENT,
+	"Invalid arguments. Usage: scopeof ( variable )" ) ;
+
+    /* Pop the variable off of the stack */
+    pData = gHyp_stack_popLvalue ( pStack, pAI ) ;
+
+    if ( (pVariable = gHyp_data_getVariable ( pData ) ) && pVariable != pData ) { 
+
+      pVarStr = gHyp_data_getLabel ( pVariable ) ;
+
+      pRootVariable = gHyp_frame_findRootVariable ( pFrame, pVarStr ) ;
+      pLocalVariable = gHyp_frame_findLocalVariable ( pFrame, pVarStr ) ;
+      isGlobalScope = gHyp_frame_isGlobalScope ( pFrame ) ;
+
+      /*gHyp_util_debug( "G=%p L=%p GS=%u",pRootVariable,pLocalVariable,isGlobalScope);*/
+      if ( pLocalVariable != NULL ) {
+	/* Local variable is defined - must be local */
+	strcpy ( scopeString, "local" ) ;	
+      }
+      else {
+	strcpy ( scopeString, "global" ) ;
+      }
+    }
+    else {
+      gHyp_instance_error ( pAI, 
+			      STATUS_UNDEFINED,
+			      "Variable '%s' does not exist",
+			      gHyp_data_getLabel ( pData ) ) ; 
+    }
+    pResult = gHyp_data_new ( NULL ) ;
+    gHyp_data_setStr ( pResult, scopeString ) ;
     gHyp_stack_push ( pStack, pResult ) ;
   }
 }

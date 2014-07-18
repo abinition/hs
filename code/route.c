@@ -11,6 +11,20 @@
  * Modifications:
  *
  * $Log: route.c,v $
+ * Revision 1.14  2006/01/16 18:56:36  bergsma
+ * HS 3.6.6
+ * 1. Save query timeout events.  Don't let queries repeat indefinitely.
+ * 2. Rework DEBUG_DIAGNOSTIC debugging.  Less overhead.
+ *
+ * Revision 1.13  2005/10/15 21:42:09  bergsma
+ * Added renameto functionality.
+ *
+ * Revision 1.12  2005/03/16 23:53:21  bergsma
+ * V 3.5.1 - fixes for use with DECC compiler.
+ *
+ * Revision 1.11  2005/01/10 20:09:33  bergsma
+ * Enable signal event jmpOverride during tcp connection request
+ *
  * Revision 1.10  2004/10/16 05:00:17  bergsma
  * Fixed memory leak.
  *
@@ -492,7 +506,8 @@ static void lHyp_route_QE (	sInstance 	*pAI,
       gHyp_instance_setExpectedReply ( pAI, 
 				       targetPath, 
 				       method, 
-				       transactionID ) ;
+				       transactionID,
+				       eventTime ) ;
 
       gHyp_instance_setState ( pAI, STATE_QUERY ) ;
       gHyp_frame_setState ( pFrame, STATE_QUERY ) ;
@@ -818,6 +833,72 @@ void gHyp_route_moveto ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 			   TRUE ) ;
     gHyp_util_lowerCase ( target, n ) ;
     gHyp_concept_moveto ( gHyp_instance_getConcept(pAI), target ) ;
+
+    gHyp_instance_pushSTATUS ( pAI, pStack ) ;
+ 
+  }
+  return ;
+}
+
+
+
+void gHyp_route_renameto ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: renameto ( parent )
+   *	Sets the value of STATUS.
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+  
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+    
+  else {
+ 
+    sStack 	
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+
+    int
+      n,
+      argCount = gHyp_parse_argCount ( pParse ) ;
+    
+    sData
+      *pData ;
+
+    char   
+      target[OBJECT_SIZE+1];
+
+    /* Assume success */	
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 1  )
+     gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+	"Invalid arguments. Usage: renameto ( [parent] )" ) ;
+
+    pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
+    n = gHyp_data_getStr ( pData, 
+			   target, 
+			   OBJECT_SIZE,
+			   gHyp_data_getSubScript(pData),
+			   TRUE ) ;
+    gHyp_util_lowerCase ( target, n ) ;
+    gHyp_concept_renameto ( gHyp_instance_getConcept(pAI), target ) ;
 
     gHyp_instance_pushSTATUS ( pAI, pStack ) ;
  
@@ -1456,7 +1537,7 @@ void gHyp_route_forward ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     }
 
     if ( status ) {
-      objectType = gHyp_concept_getSocketObjectType ( pConcept, fd ) ;
+      objectType = gHyp_concept_getSockObjType ( pConcept, fd ) ;
       if ( objectType != DATA_OBJECT_PORT && objectType != DATA_OBJECT_HTTP ) {
 	gHyp_instance_warning ( pAI, STATUS_SOCKET, "Must be PORT or HTTP type for device id '%d'",id ) ;
 	status = FALSE ;
@@ -1615,7 +1696,7 @@ void gHyp_route_unforward ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     }
 
     if ( status ) {
-      objectType = gHyp_concept_getSocketObjectType ( pConcept, fd ) ;
+      objectType = gHyp_concept_getSockObjType ( pConcept, fd ) ;
       if ( objectType != DATA_OBJECT_PORT && objectType != DATA_OBJECT_HTTP ) {
 	gHyp_instance_warning ( pAI, STATUS_SOCKET, "Must be PORT or HTTP type for device id '%d'",id ) ;
 	status = FALSE ;

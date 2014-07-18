@@ -11,6 +11,35 @@
  * Modifications:
  *
  * $Log: data.c,v $
+ * Revision 1.27  2005/12/10 00:30:30  bergsma
+ * HS 3.6.5
+ *
+ * Revision 1.26  2005/09/02 04:35:53  bergsma
+ * no message
+ *
+ * Revision 1.25  2005/08/12 01:16:16  bergsma
+ * no message
+ *
+ * Revision 1.24  2005/07/23 22:31:14  bergsma
+ * Added insertafter and Insertbefore
+ *
+ * Revision 1.23  2005/04/22 19:24:47  bergsma
+ * When converting (scanf) integers greater than 0x7fffffff, convert to ulong
+ * otherwise convert to int.
+ *
+ * Revision 1.22  2005/04/13 13:45:53  bergsma
+ * HS 3.5.6
+ * Added sql_toexternal.
+ * Fixed handling of strings ending with bs (odd/even number of backslashes)
+ * Better handling of exception condition.
+ *
+ * Revision 1.21  2005/03/09 04:15:11  bergsma
+ * Added appendval and insertval.  Also, disallow append or insert of a variable
+ * unto itself.  Needed new gHyp_data_isSilbing function.
+ *
+ * Revision 1.20  2005/01/10 20:04:04  bergsma
+ * Temporary fix for movevalues, do not allow if arguments are not list variables.
+ *
  * Revision 1.19  2004/12/13 04:55:35  bergsma
  * In lHyp_data_getStr, be consistent about using pStr variable.
  *
@@ -719,9 +748,9 @@ void gHyp_data_append ( sData *pParent, sData *pData )
 
   if ( pMember ) {
 
-    pMember->pPrev->pNext = pData ;  /* Last element now points to pData */ 
     pData->pPrev = pMember->pPrev ;  /* Attach pData to last element */
     pData->pNext = pMember ;         /* Attach pData to first element */
+    pMember->pPrev->pNext = pData ;  /* Last element now points to pData */ 
     pMember->pPrev = pData ;         /* Make pData the last element */
 
   } 
@@ -781,9 +810,9 @@ void gHyp_data_insert ( sData *pParent, sData *pData )
   if ( pMember ) {
 
     /* Go to last element in list, and append pData to it */
-    pMember->pPrev->pNext = pData ;
     pData->pPrev = pMember->pPrev ;
     pData->pNext = pMember ;
+    pMember->pPrev->pNext = pData ;
     pMember->pPrev = pData ;
   } 
   else {
@@ -797,6 +826,137 @@ void gHyp_data_insert ( sData *pParent, sData *pData )
   
   /* Point back to parent */
   pData->pParent = pParent ; 
+
+  /* Add to hash table if defined */
+  if ( pParent->pHash )
+    gHyp_hash_update ( pParent->pHash,
+		       VARIABLE_HASH_TABLE_SIZE,
+		       pData->pStrVal,
+		       pData ) ;
+    
+  return ;
+}
+
+void gHyp_data_insertbefore ( sData *pSibling, sData *pData )
+{
+  /* Description:
+   *
+   *	Insert a value before a sibling.
+   *
+   * Arguments:
+   *
+   *	pParent					[R/W]
+   *	- pointer to variable
+   *
+   *	pData					[R]
+   *	- pointer to value 	
+   *
+   * Return value:
+   *
+   *	none
+   *
+   */
+
+  sData
+    *pParent ;
+
+  /* For references, recursively find the variable */
+  if ( pSibling->tokenType == TOKEN_REFERENCE && pSibling->p.rValue != NULL ) {
+    gHyp_data_insertbefore ( *pSibling->p.rValue, pData ) ;    
+    return ;
+  }
+
+  /* Get parent of ring */
+  pParent = pSibling->pParent ;
+
+  /* Stitch in pData */
+
+  pData->pParent = pParent ;
+
+  /* Example:
+
+    [pS1]next--><--prev[pS2]next--><--prev[pS3]
+
+    insert pD1 before pS2
+  
+    [pS1]next--><--prev[pD1]next--><--prev[S2]next--><--prev[S3]
+
+    BUT, REMEMBER, when there is only one sibling, S1==S2==S3
+
+    [pS1]next--><--prev[pS1]next--><--prev[pS1]
+
+    insert pD1 before pS2
+  
+    [pS1]next--><--prev[pD1]next--><--prev[S1]next--><--prev[pD1]
+
+    THEREFORE, to do it correctly.
+
+    pD1->prev = pS2->prev (but this is S2!!)
+    pD1->next = pS2 ;
+    pS2->prev->next = pD1
+    pS2->prev = pD1
+
+  */
+
+  pData->pPrev = pSibling->pPrev ;
+  pData->pNext = pSibling ;
+  pSibling->pPrev->pNext = pData ;
+  pSibling->pPrev = pData ;
+
+  if ( pParent->pData == pSibling ) pParent->pData = pData ;
+
+  /* Add to hash table if defined */
+  if ( pParent->pHash )
+    gHyp_hash_update ( pParent->pHash,
+		       VARIABLE_HASH_TABLE_SIZE,
+		       pData->pStrVal,
+		       pData ) ;
+    
+  return ;
+}
+
+
+void gHyp_data_insertafter ( sData *pSibling, sData *pData )
+{
+  /* Description:
+   *
+   *	Insert a value after a sibling.
+   *
+   * Arguments:
+   *
+   *	pParent					[R/W]
+   *	- pointer to variable
+   *
+   *	pData					[R]
+   *	- pointer to value 	
+   *
+   * Return value:
+   *
+   *	none
+   *
+   */
+
+  sData
+    *pParent ;
+
+  /* For references, recursively find the variable */
+  if ( pSibling->tokenType == TOKEN_REFERENCE && pSibling->p.rValue != NULL ) {
+    gHyp_data_insertafter ( *pSibling->p.rValue, pData ) ;    
+    return ;
+  }
+
+  /* Get parent of ring */
+  pParent = pSibling->pParent ;
+
+  /* Stitch in pData */
+
+  pData->pParent = pParent ;
+
+  pData->pPrev = pSibling        ;  /* Attach pData to last element */
+  pData->pNext = pSibling->pNext ;  /* Attach pData to first element */
+  pSibling->pNext->pPrev = pData ;  /* Last element now points to pData */ 
+  pSibling->pNext = pData ;         /* Make pData the last element */
+
 
   /* Add to hash table if defined */
   if ( pParent->pHash )
@@ -1220,6 +1380,36 @@ void gHyp_data_moveValues ( sData *pDst, sData *pSrc )
 }
 
 
+void gHyp_data_moveValuesR ( sData *pDst, sData *pSrc )
+{
+  sData
+    *pValue ;
+
+  int
+    ss,
+    context ;
+
+  if ( gHyp_data_getDataType ( pDst ) > TYPE_STRING ||
+       gHyp_data_getDataType ( pSrc ) > TYPE_STRING ) 
+    return ;
+
+
+  /* List to list */
+  pValue = NULL ;
+  ss = -1 ; context = -1 ;
+  while ( (pValue = gHyp_data_nextValue ( pSrc, 
+					  pValue, 
+					  &context,
+					  ss ) ) ) {
+    gHyp_data_detach ( pValue ) ;
+    gHyp_data_insert ( pDst, pValue ) ;
+    pValue = NULL ;
+    context = -1 ;
+  }
+  return ;
+}
+
+
 void gHyp_data_copyValues ( sData *pDst, sData *pSrc )
 {
   /* Description:
@@ -1462,6 +1652,22 @@ sData* gHyp_data_getParent ( sData *pData )
   return pData->pParent ;
 }
 
+sLOGICAL gHyp_data_isSibling ( sData *pData, sData *pChild ) 
+{
+  sData 
+    *pParent = NULL ;
+
+  while ( 1 ) {
+    /* Get parent of child */
+    if ( pChild == pData ) return TRUE ;
+
+    pParent = gHyp_data_getParent ( pChild ) ;
+    if ( pParent == pChild ) return FALSE ;
+    pChild = pParent ;
+  }
+
+}
+
 sData* gHyp_data_getFirst ( sData *pParent )
 {
   /* Description:
@@ -1501,12 +1707,15 @@ sData* gHyp_data_getLast ( sData *pParent )
    *	Pointer to last value.  If none exists, returns NULL
    *
    */
-  sData	*pData = pParent->pData ;
+
+  sData	*pData ;
 
   /* For references, recursively find the variable */
   if ( pParent->tokenType == TOKEN_REFERENCE && pParent->p.rValue != NULL )
     return gHyp_data_getLast ( *pParent->p.rValue ) ;
   
+  pData = pParent->pData ;
+
   if ( pData ) pData = pData->pPrev ;
 
   return pData ;
@@ -2156,6 +2365,7 @@ static int lHyp_data_getStr ( sData *pData,
 					 maxlen,
 					 isForMsg,
 					 isForXML,
+					 FALSE,
 					 "") ;
     }
     else {
@@ -2203,9 +2413,10 @@ static int lHyp_data_getStr ( sData *pData,
     
   case TYPE_UNICODE :
     if ( isForXML )
-      strLen = sprintf ( pStr, "&#%05hu;", *(pValue->p.uValue+ss) ) ;
+      /*strLen = sprintf ( pStr, "&#%05hu;", *(pValue->p.uValue+ss) ) ;*/
+      strLen = sprintf ( pStr, "&#x%04x;", *(pValue->p.uValue+ss) ) ;
     else
-      strLen = sprintf ( pStr, "0u%04hx", *(pValue->p.uValue+ss) ) ;
+      strLen = sprintf ( pStr, "0u%05hx", *(pValue->p.uValue+ss) ) ;
     break ;
     
   case TYPE_SHORT :
@@ -2532,7 +2743,7 @@ sData* gHyp_data_getAll ( sData 	*pData,
 			  sLOGICAL	recurse )
 {
   int 
-    strLen,
+    strLen=0,
     i=0,
     j ;
 
@@ -2888,6 +3099,57 @@ int gHyp_data_getCount ( sData *pParent )
   return i ;
 }
 
+
+int gHyp_data_check ( sData *pParent )
+{
+  sData 
+    *pThisData,
+    *pNextData ;
+  
+  int 
+    i = 0 ;
+
+  /* For references, recursively find the variable */
+  if ( pParent->tokenType == TOKEN_REFERENCE && pParent->p.rValue != NULL ) 
+    return gHyp_data_check ( *pParent->p.rValue ) ;    
+  
+  if ( pParent->tokenType == TOKEN_VARIABLE ) {
+
+    if ( pParent->dataType < TYPE_BYTE ) {
+
+      if ( pParent->pData ) {
+	
+	assert ( pParent->pData->pPrev->pParent == pParent ) ;
+
+	assert ( pParent->pData->pPrev->pNext == pParent->pData ) ;
+
+	for ( pThisData = pParent->pData ;
+	      pThisData ;
+	    pThisData = pNextData ) {
+	  
+	  pNextData = pThisData->pNext ;
+	  
+	  /* Increment count */
+	  i++ ;	
+
+	  
+	  /* To handle rings, we're done when we're back at the 1rst element */
+	  if ( pNextData == pParent->pData ) break ;
+	}
+      }
+      pParent->size = i ;
+    }
+    else
+      /* Vector */
+      i = pParent->size ;
+  }
+  else
+
+    i = 1 ;
+  
+  return i ;
+}
+
 sLOGICAL gHyp_data_isCountOne ( sData *pParent )
 {
   sData 
@@ -3187,7 +3449,7 @@ sLOGICAL gHyp_data_deleteChildByName ( sData *pParent, char *name )
   if ( pThisData ) {
 
     if ( pThisData->pPrev != pThisData ) 
-      /* Previous sData memb1er exists, join with next sData member */
+      /* Previous sData member exists, join with next sData member */
       pThisData->pPrev->pNext = pThisData->pNext ;
       
     if ( pThisData->pNext != pThisData ) {
@@ -3887,10 +4149,20 @@ void gHyp_data_setToken ( sData *pData, char *pStr )
 	  *(pData->p.iValue) = (int) ul ;
 	}
 	else {
-	  pData->dataType = TYPE_ULONG ;
-	  pData->p.ulValue = (unsigned long*) AllocMemory ( sizeof (unsigned long) ) ;
-	  assert ( pData->p.ulValue ) ;
-	  *(pData->p.ulValue) = ul ;
+
+	  if ( ul > 0x7fffffff ) {
+	  
+	    pData->dataType = TYPE_ULONG ;
+	    pData->p.ulValue = (unsigned long*) AllocMemory ( sizeof (unsigned long) ) ;
+	    assert ( pData->p.ulValue ) ;
+	    *(pData->p.ulValue) = ul ;
+	  }
+	  else {
+	    pData->dataType = TYPE_INTEGER ;
+	    pData->p.iValue = (int*) AllocMemory ( sizeof (int) ) ;
+	    assert ( pData->p.iValue ) ;
+	    *(pData->p.iValue) = (int) ul ;
+	  }
 	}
 	return ;	
       }

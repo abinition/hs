@@ -11,6 +11,100 @@
  * Modifications:
  *
  *   $Log: secs1.c,v $
+ *   Revision 1.43  2006/08/22 21:45:13  bergsma
+ *   Better PROTOCOL debug message for port traffic.
+ *
+ *   Revision 1.42  2006/08/22 18:47:13  bergsma
+ *   Changed info message to "setting parent socket to %d"
+ *
+ *   Revision 1.41  2006/01/23 05:12:02  bergsma
+ *   Added port_binary() function.
+ *
+ *   Revision 1.40  2006/01/19 20:30:44  bergsma
+ *   Debug statements
+ *
+ *   Revision 1.39  2006/01/17 19:02:32  bergsma
+ *   More debug statements.
+ *
+ *   Revision 1.38  2006/01/17 16:02:35  bergsma
+ *   More debug statements
+ *
+ *   Revision 1.37  2006/01/16 18:56:36  bergsma
+ *   HS 3.6.6
+ *   1. Save query timeout events.  Don't let queries repeat indefinitely.
+ *   2. Rework DEBUG_DIAGNOSTIC debugging.  Less overhead.
+ *
+ *   Revision 1.36  2006/01/14 20:42:23  bergsma
+ *   Imrproved HTTP data buffer knitting.  Only when line does not end with
+ *   \n or \n\r
+ *
+ *   Revision 1.35  2006/01/10 02:05:36  bergsma
+ *   Some additional protection against a bad HTTP header.
+ *
+ *   Revision 1.34  2006/01/06 23:40:39  bergsma
+ *   *** empty log message ***
+ *
+ *   Revision 1.33  2006/01/05 17:37:27  bergsma
+ *   *** empty log message ***
+ *
+ *   Revision 1.32  2005/12/23 15:22:00  bergsma
+ *   Change util_debug to util_logInfo for some SSL actions
+ *
+ *   Revision 1.31  2005/12/21 05:39:04  bergsma
+ *   Knitting bug when last line is only 1 character.
+ *
+ *   Revision 1.30  2005/12/10 00:30:30  bergsma
+ *   HS 3.6.5
+ *
+ *   Revision 1.29  2005/11/29 15:23:31  bergsma
+ *   Detect XML data in POST contents.
+ *
+ *   Revision 1.28  2005/11/28 05:10:19  bergsma
+ *   Better error messages and detection of null sockets and device ids
+ *
+ *   Revision 1.27  2005/11/23 16:57:45  bergsma
+ *   no message
+ *
+ *   Revision 1.26  2005/11/23 15:53:33  bergsma
+ *   In secs1_rawIncoming, pAIassigned was not being used for signal hangups or
+ *   for the incoming msg target.  The second was also not consistent for
+ *   #port and #http data streams.
+ *
+ *   Revision 1.25  2005/10/25 16:40:21  bergsma
+ *   Correct debug statement for forward-ports
+ *
+ *   Revision 1.24  2005/10/15 21:43:30  bergsma
+ *   Debug mode for port forwarding
+ *
+ *   Revision 1.23  2005/09/23 17:11:17  bergsma
+ *   no message
+ *
+ *   Revision 1.22  2005/09/08 12:54:54  bergsma
+ *   WHen port message comes in, use pAIassigned to find target
+ *
+ *   Revision 1.21  2005/08/17 01:48:18  bergsma
+ *   handle problem with toexternal ( string, "|" )
+ *
+ *   Revision 1.20  2005/08/03 14:00:20  bergsma
+ *   no message
+ *
+ *   Revision 1.19  2005/03/16 23:53:21  bergsma
+ *   V 3.5.1 - fixes for use with DECC compiler.
+ *
+ *   Revision 1.18  2005/02/15 07:08:47  bergsma
+ *   Add gHyp_secs1_setForwardPorts().
+ *   Make sure the port state is set to MESSAGE_EVENT after being temporarily
+ *   set to MESSAGE_REPLY.
+ *
+ *   Revision 1.17  2005/01/31 06:01:15  bergsma
+ *   Add variable _datalen_ to go along with _data_
+ *
+ *   Revision 1.16  2005/01/25 05:50:28  bergsma
+ *   Moved test for nBytes==0 to sock_read
+ *
+ *   Revision 1.15  2005/01/10 20:21:48  bergsma
+ *   Support port_event/port_query when data is a byte array.
+ *
  *   Revision 1.14  2005/01/02 01:47:20  bergsma
  *   Port messages must use TRANSACTION ID 00000001
  *
@@ -121,6 +215,8 @@ struct secs1_t
   sSSL*			pSSL ;
   sHTTP*		pHTTP ;
   sData*		forwardPorts ;
+  sLOGICAL isBinary ;
+
 
 #ifdef AS_UNIX
   struct termios	tio ;
@@ -133,16 +229,6 @@ struct secs1_t
 #ifndef AS_WINDOWS
 extern int recv(int s, void *buf, int len, unsigned int flags);
 extern int send(int  s,  const  void *msg, int len, unsigned int flags);
-#endif
-
-#if defined ( AS_VMS ) || defined ( AS_WINDOWS )
-void usleep ( unsigned long useconds )
-{
-  struct timeval timeout ;
-  timeout.tv_sec = useconds / 1000 ;
-  timeout.tv_usec = useconds % 1000 ;
-  select ( 0, NULL, NULL, NULL, &timeout ) ;
-}
 #endif
 
 sSecs1 *gHyp_secs1_new ( short flags,
@@ -167,7 +253,10 @@ sSecs1 *gHyp_secs1_new ( short flags,
 
   pSecs1->flags = flags ;
   pSecs1->fd = fd ;
-  /*gHyp_util_debug("Setting parent socket to %d for socket %d",parentSocket,fd ) ;*/
+  if ( flags & SOCKET_LISTEN ) {
+    gHyp_util_logInfo("Setting parent socket to %d",parentSocket ) ;
+    assert ( parentSocket != INVALID_SOCKET ) ;
+  }
   pSecs1->parentSocket = parentSocket ;
   pSecs1->parentAI = parentAI ;
 
@@ -187,6 +276,7 @@ sSecs1 *gHyp_secs1_new ( short flags,
     pSecs1->pHTTP = NULL ; 
 
   pSecs1->forwardPorts = NULL ;
+  pSecs1->isBinary = FALSE ;
 
   if ( flags & SOCKET_SERIAL ) {
 
@@ -620,8 +710,8 @@ static int lHyp_secs1_incoming ( sSecs1 *pSecs1,
       /* Keep listening for ENQ */
       if ( !gotENQ ) break ;
  
-      if ( guDebugFlags & DEBUG_SECS )
-	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SECS,
+      if ( guDebugFlags & DEBUG_PROTOCOL )
+	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 			     "<-ENQ" ) ; 
 
       /* Reply back with <EOT> */
@@ -639,25 +729,16 @@ static int lHyp_secs1_incoming ( sSecs1 *pSecs1,
   				&pSecs1->overlapped,
 				pSecs1->pSSL ) ;
 
-      if ( guDebugFlags & DEBUG_SECS )
-	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SECS,
+      if ( guDebugFlags & DEBUG_PROTOCOL )
+	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 			     "->EOT" ) ; 
 
-      if ( nBytes < 0 ) {
+      if ( nBytes <= 0 ) {
 	gHyp_util_sysError ( "Failed to write <EOT> to SECS device %s",
 			     pSecs1->device ) ;
 	gHyp_instance_signalHangup ( pAI, (int) pSecs1->fd, pSecs1->modifier, id ) ;
 	gHyp_concept_deleteSocketObject ( pConcept, (SOCKET) pSecs1->fd ) ;
 
-	return COND_SILENT ;
-      }
-      else if ( nBytes == 0 ) {
-
-	/* Should not happen. */
-	gHyp_util_logError ( "Zero bytes written to SECS device %s",
-			     pSecs1->device ) ;
-	gHyp_instance_signalHangup ( pAI, (int) pSecs1->fd, pSecs1->modifier, id ) ;
-	gHyp_concept_deleteSocketObject ( pConcept, (SOCKET) pSecs1->fd ) ;
 	return COND_SILENT ;
       }
 
@@ -728,8 +809,8 @@ static int lHyp_secs1_incoming ( sSecs1 *pSecs1,
 	    if ( pSecs1->inbuf[0] == SECS_CHAR_ENQ ) {
 	      
 	      /* Remove the ENQ, shift all bytes down */
-	      if ( guDebugFlags & DEBUG_SECS )
-		gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SECS,
+	      if ( guDebugFlags & DEBUG_PROTOCOL )
+		gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 				     "<-ENQ(2)", blkStr ) ;
 	      if ( nBytes > 1 )
 		for (i=0; i<nBytes; i++) pSecs1->inbuf[i] = pSecs1->inbuf[i+1];
@@ -745,8 +826,8 @@ static int lHyp_secs1_incoming ( sSecs1 *pSecs1,
 	    else if ( pSecs1->inbuf[0] == SECS_CHAR_EOT ) {
 	      
 	      /* Remove the EOT, shift all bytes down */
-	      if ( guDebugFlags & DEBUG_SECS )
-		gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SECS,
+	      if ( guDebugFlags & DEBUG_PROTOCOL )
+		gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 				     "<-EOT(2)", blkStr ) ;
 	      if ( nBytes > 1 )
 		for (i=0; i<nBytes; i++) pSecs1->inbuf[i] = pSecs1->inbuf[i+1];
@@ -773,8 +854,8 @@ static int lHyp_secs1_incoming ( sSecs1 *pSecs1,
 	}
 	if ( nBytes == 0 ) break ;
 
-	if ( guDebugFlags & DEBUG_SECS ) {
-	  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SECS,
+	if ( guDebugFlags & DEBUG_PROTOCOL ) {
+	  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 			       "<-%d received (%d/%d bytes)",
 			       nBytes,
 			       ix+nBytes,
@@ -784,7 +865,7 @@ static int lHyp_secs1_incoming ( sSecs1 *pSecs1,
 	    sprintf ( pStr, "%02x ", pSecs1->inbuf[i] ) ;
 	    pStr += 3 ;
 	  }
-	  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SECS,
+	  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 			       "<-BLK [%s]", blkStr ) ; 
 	}
 
@@ -859,8 +940,8 @@ static int lHyp_secs1_incoming ( sSecs1 *pSecs1,
 	  }
 	}
 	/*
-	if ( guDebugFlags & DEBUG_SECS )
- 	  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SECS,
+	if ( guDebugFlags & DEBUG_PROTOCOL )
+ 	  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 			       "<-0 bytes, waiting..." ) ;
 	*/
       }
@@ -927,26 +1008,18 @@ static int lHyp_secs1_incoming ( sSecs1 *pSecs1,
   				 &pSecs1->overlapped,
 				 pSecs1->pSSL) ;
 
-      if ( guDebugFlags & DEBUG_SECS )
-	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SECS,
+      if ( guDebugFlags & DEBUG_PROTOCOL )
+	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 			     "->NAK" ) ;
 
-      if ( nBytes < 0 ) {
+      if ( nBytes <= 0 ) {
 	gHyp_util_sysError ( "Failed to write <NAK> to SECS device %s",
 			     pSecs1->device ) ;
 	gHyp_instance_signalHangup ( pAI, (int) pSecs1->fd, pSecs1->modifier, id ) ;
 	gHyp_concept_deleteSocketObject ( pConcept, (SOCKET) pSecs1->fd ) ;
 	return COND_SILENT ;
       }
-      else if ( nBytes == 0 ) {
 
-	/* Should not happen */
-	gHyp_util_logError ( "Zero bytes written to SECS device %s",
-			     pSecs1->device ) ;
-	gHyp_instance_signalHangup ( pAI, (int) pSecs1->fd, pSecs1->modifier, id ) ;
-	gHyp_concept_deleteSocketObject ( pConcept, (SOCKET) pSecs1->fd ) ;
-	return COND_SILENT ;
-      }
       pSecs1->state = SECS_EXPECT_RECV_ENQ ;
       blockReceived = TRUE ;
       ix = 0 ;
@@ -963,21 +1036,12 @@ static int lHyp_secs1_incoming ( sSecs1 *pSecs1,
   				&pSecs1->overlapped,
 				pSecs1->pSSL ) ;
 
-      if ( guDebugFlags & DEBUG_SECS )
-	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SECS,
+      if ( guDebugFlags & DEBUG_PROTOCOL )
+	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 			     "->ACK" ) ;
 
-      if ( nBytes < 0 ) {
+      if ( nBytes <= 0 ) {
 	gHyp_util_sysError ( "Failed to write <ACK> to SECS device %s",
-			     pSecs1->device ) ;
-	gHyp_instance_signalHangup ( pAI, (int) pSecs1->fd, pSecs1->modifier, id ) ;
-	gHyp_concept_deleteSocketObject ( pConcept, (SOCKET) pSecs1->fd ) ;
-	return COND_SILENT ;
-      }
-      else if ( nBytes == 0 ) {
-
-	/* Should not happen */
-	gHyp_util_logError ( "Zero bytes written to SECS device %s",
 			     pSecs1->device ) ;
 	gHyp_instance_signalHangup ( pAI, (int) pSecs1->fd, pSecs1->modifier, id ) ;
 	gHyp_concept_deleteSocketObject ( pConcept, (SOCKET) pSecs1->fd ) ;
@@ -1381,8 +1445,8 @@ int gHyp_secs1_outgoing ( sSecs1 *pSecs1,
   pHeader->isPrimaryMsg = ( function % 2 ) ;
 
   /* Restore system bytes */
-  if ( guDebugFlags & DEBUG_SECS )
-    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SECS,
+  if ( guDebugFlags & DEBUG_PROTOCOL )
+    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 			 "Setting/Restoring TID=0x%02x, SID=0x%02x", 
 			 TID, SID ) ;
   pHeader->TID = TID ;
@@ -1421,9 +1485,9 @@ int gHyp_secs1_outgoing ( sSecs1 *pSecs1,
 
   retry = pSecs1->rty ;
  
-  if ( guDebugFlags & DEBUG_SECS )
+  if ( guDebugFlags & DEBUG_PROTOCOL )
     gHyp_util_logDebug ( 
-      FRAME_DEPTH_NULL, DEBUG_SECS,
+      FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
       "Sending S%dF%d (device %d) (TID=0x%02x) (SID=0x%02x)",
       stream,function,id,TID,SID ) ;
 
@@ -1443,25 +1507,15 @@ int gHyp_secs1_outgoing ( sSecs1 *pSecs1,
 			         (OVERLAPPED*) &pSecs1->overlapped,
 				 pSecs1->pSSL) ;
 
-      if ( guDebugFlags & DEBUG_SECS )
-	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SECS,
+      if ( guDebugFlags & DEBUG_PROTOCOL )
+	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 			     "->ENQ" ) ;
 
-      if ( nBytes < 0 ) {
+      if ( nBytes <= 0 ) {
 	gHyp_util_sysError ( "Failed to write <ENQ> to SECS device %s",
 			     pSecs1->device ) ;
 	gHyp_instance_signalHangup ( pAI, (int) pSecs1->fd, pSecs1->modifier, id ) ;
 	gHyp_concept_deleteSocketObject ( gHyp_instance_getConcept(pAI), 
-					  (SOCKET) pSecs1->fd ) ;
-	return COND_SILENT ;
-      }
-      else if ( nBytes == 0 ) {
-
-	/* Should not happen */
-	gHyp_util_logError ( "Zero bytes written to SECS device %s",
-			     pSecs1->device ) ;
-	gHyp_instance_signalHangup ( pAI, (int) pSecs1->fd, pSecs1->modifier, id ) ;
-	gHyp_concept_deleteSocketObject ( gHyp_instance_getConcept(pAI),
 					  (SOCKET) pSecs1->fd ) ;
 	return COND_SILENT ;
       }
@@ -1537,8 +1591,8 @@ int gHyp_secs1_outgoing ( sSecs1 *pSecs1,
 
 	  if ( pSecs1->inbuf[0] == SECS_CHAR_ENQ ) {
 	    
-	    if ( guDebugFlags & DEBUG_SECS )
-	      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SECS,
+	    if ( guDebugFlags & DEBUG_PROTOCOL )
+	      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 				   "<-ENQ" ) ;
 
 	    /* ENQ Contention.  Relinquish if device is not a slave, 
@@ -1547,8 +1601,8 @@ int gHyp_secs1_outgoing ( sSecs1 *pSecs1,
 	    if ( !gHyp_instance_isRbitSet ( pAI, (sWORD) id ) ) {
 	      
 	      /* We are the slave and we are getting an interrupt */
-	      if ( guDebugFlags & DEBUG_SECS )
-		gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SECS,
+	      if ( guDebugFlags & DEBUG_PROTOCOL )
+		gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 				   "ENQ contention. Relinquishing..." ) ;
 	      pSecs1->state = SECS_EXPECT_SEND_EOT ;
 	      cond = lHyp_secs1_incoming ( pSecs1, 
@@ -1574,8 +1628,8 @@ int gHyp_secs1_outgoing ( sSecs1 *pSecs1,
 	    }
 	  }
 	  else if ( pSecs1->inbuf[0] == SECS_CHAR_NAK ) {
-	    if ( guDebugFlags & DEBUG_SECS )
-	      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SECS,
+	    if ( guDebugFlags & DEBUG_PROTOCOL )
+	      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 				   "<-NAK", pSecs1->inbuf[0] ) ;
 	    /* If we are a slave, exit with an error. */
 	    if ( !gHyp_instance_isRbitSet ( pAI, (sWORD) id ) ) {
@@ -1586,7 +1640,7 @@ int gHyp_secs1_outgoing ( sSecs1 *pSecs1,
 	    break ;
 	  }
 	  else {
-	    if ( guDebugFlags & DEBUG_SECS )
+	    if ( guDebugFlags & DEBUG_PROTOCOL )
 	      gHyp_util_logError ( 
 		"Expecting <EOT>, got <0x%02x> from SECS device %s",
 		pSecs1->inbuf[0], pSecs1->device ) ;
@@ -1599,8 +1653,8 @@ int gHyp_secs1_outgoing ( sSecs1 *pSecs1,
       }
 
 
-      if ( guDebugFlags & DEBUG_SECS )
-	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SECS,
+      if ( guDebugFlags & DEBUG_PROTOCOL )
+	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 			     "<-EOT" ) ;
 
       /* Reply back with secs block. */
@@ -1648,30 +1702,21 @@ int gHyp_secs1_outgoing ( sSecs1 *pSecs1,
 				 (OVERLAPPED*) &pSecs1->overlapped,
 				 pSecs1->pSSL) ;
 
-      if ( guDebugFlags & DEBUG_SECS ) {
+      if ( guDebugFlags & DEBUG_PROTOCOL ) {
 	pStr = blkStr ;
 	for ( i=0; i<nBytes; i++ ) {
 	  sprintf ( pStr, "%02x ", pSecs1->outbuf[i] ) ;
 	  pStr += 3 ;
 	}
-	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SECS,
+	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 			     "->BLK [%s]", blkStr ) ; 
       }
 
-      if ( nBytes < 0 ) {
+      if ( nBytes <= 0 ) {
 	gHyp_util_sysError ( "Failed to write SECS I block to SECS device %s",
 			     pSecs1->device ) ;
 	gHyp_instance_signalHangup ( pAI, (int) pSecs1->fd, pSecs1->modifier, id ) ;
 	gHyp_concept_deleteSocketObject ( gHyp_instance_getConcept(pAI), 
-					  (SOCKET) pSecs1->fd ) ;
-	return COND_SILENT ;
-      }
-      else if ( nBytes == 0 ) {
-	/* Should not happen */
-	gHyp_util_logError ( "Zero bytes written to SECS device %s",
-			     pSecs1->device ) ;
-	gHyp_instance_signalHangup ( pAI, (int) pSecs1->fd, pSecs1->modifier, id ) ;
-	gHyp_concept_deleteSocketObject ( gHyp_instance_getConcept(pAI),
 					  (SOCKET) pSecs1->fd ) ;
 	return COND_SILENT ;
       }
@@ -1744,13 +1789,13 @@ int gHyp_secs1_outgoing ( sSecs1 *pSecs1,
 	if ( pSecs1->inbuf[0] != SECS_CHAR_ACK ) {
 	    
 	  if ( pSecs1->inbuf[0] == SECS_CHAR_NAK ) {
-	    if ( guDebugFlags & DEBUG_SECS )
-	      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SECS,
+	    if ( guDebugFlags & DEBUG_PROTOCOL )
+	      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 				   "<-NAK" ) ;
 	  } 
 	  else {
-	    if ( guDebugFlags & DEBUG_SECS )
-	      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SECS,
+	    if ( guDebugFlags & DEBUG_PROTOCOL )
+	      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 				   "<-%02x", pSecs1->inbuf[0] ) ;
 	  }
 
@@ -1764,13 +1809,14 @@ int gHyp_secs1_outgoing ( sSecs1 *pSecs1,
 	    gHyp_util_logError ( "Failed to send SECS message after %d tries",
 				 pSecs1->rty ) ;
 	    lastBlockSent = TRUE ;
+	    retry = pSecs1->rty ; 
 	    break ;
 	  }
 	}	  
       }
 
-      if ( guDebugFlags & DEBUG_SECS )
-	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SECS,
+      if ( guDebugFlags & DEBUG_PROTOCOL )
+	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 			     "<-ACK" ) ;
 
       if ( pHeader->isLastBlock ) {
@@ -1780,8 +1826,8 @@ int gHyp_secs1_outgoing ( sSecs1 *pSecs1,
 	     pSecs1->inbuf[1] == SECS_CHAR_ENQ ) {
 	  
 	  /* ENQ came back FAST from the sender */
-	  if ( guDebugFlags & DEBUG_SECS )
-	    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SECS,
+	  if ( guDebugFlags & DEBUG_PROTOCOL )
+	    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 				 "<-ENQ(*)" ) ;
 	  pSecs1->state = SECS_EXPECT_SEND_EOT2 ;
 	  cond = lHyp_secs1_incoming ( pSecs1, 
@@ -1821,11 +1867,11 @@ int gHyp_secs1_outgoing ( sSecs1 *pSecs1,
 				 (OVERLAPPED*) &pSecs1->overlapped,
 				 pSecs1->pSSL) ;
 
-      if ( guDebugFlags & DEBUG_SECS )
-	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SECS,
+      if ( guDebugFlags & DEBUG_PROTOCOL )
+	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 			     "->NAK" ) ;
       
-      if ( nBytes < 0 ) {
+      if ( nBytes <= 0 ) {
 	gHyp_util_sysError ( "Failed to write <NAK> to SECS device %s",
 			     pSecs1->device ) ;
 	gHyp_instance_signalHangup ( pAI, (int) pSecs1->fd, pSecs1->modifier, id ) ;
@@ -1833,17 +1879,7 @@ int gHyp_secs1_outgoing ( sSecs1 *pSecs1,
 					  (SOCKET) pSecs1->fd ) ;
 	return COND_SILENT ;
       }
-      else if ( nBytes == 0 ) {
-	
-	/* Should not happen */
-	gHyp_util_logError ( "Zero bytes written to SECS device %s",
-			     pSecs1->device ) ;
 
-	gHyp_instance_signalHangup ( pAI, (int) pSecs1->fd, pSecs1->modifier, id ) ;
-	gHyp_concept_deleteSocketObject ( gHyp_instance_getConcept(pAI), 
-					  (SOCKET) pSecs1->fd ) ;
-	return COND_SILENT ;
-      }
       pSecs1->state = SECS_EXPECT_RECV_EOT ;
       break ;
     default:
@@ -1878,12 +1914,13 @@ int gHyp_secs1_incoming ( sSecs1 *pSecs1,
 
     /* Get id that is assigned to the port */
     id = gHyp_instance_getDeviceId ( pAIassigned, (SOCKET) pSecs1->fd ) ;
+
     /*gHyp_util_debug("found %d for port %d",id,pSecs1->fd);*/
 
   }
   else {
 
-    /*gHyp_util_debug( "No instance has assigned any id to the port.");*/
+    gHyp_util_logWarning ( "No instance has assigned any id to the port.");
 
     /* No instance has assigned any id to the port.
      * Check if this is a newly created channel.
@@ -1891,7 +1928,10 @@ int gHyp_secs1_incoming ( sSecs1 *pSecs1,
     if ( pSecs1->fd != pSecs1->parentSocket ) {
 
       /* This is a newly created channel */
-      /*gHyp_util_debug ( "Looking for instance assigned to listen port" );*/
+      if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
+	"Looking for instance assigned to listen port" );
+
       pAIassigned = gHyp_concept_getInstForFd ( pConcept, pSecs1->parentSocket ) ;
 
       if ( pAIassigned ) {
@@ -1908,14 +1948,16 @@ int gHyp_secs1_incoming ( sSecs1 *pSecs1,
 	  return COND_SILENT ;
 	}
 	
-	/*gHyp_util_debug ( "Taking device id %d from port %d to port %d",
+        if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+	  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
+	    "Taking device id %d from port %d to port %d",
 			    id, pSecs1->parentSocket, pSecs1->fd );
-	*/
 
 	/* Take any SSL structures as well */
 	pListenSecs1 = (sSecs1*) gHyp_concept_getSocketObject ( pConcept, 
 							  (SOCKET) pSecs1->parentSocket, 
-							  DATA_OBJECT_SECS1 ) ;
+							  DATA_OBJECT_NULL ) ;
+							  /*DATA_OBJECT_SECS1 ) ;*/
 #ifdef AS_SSL
 	if ( pListenSecs1->pSSL != NULL ) {
 	  pSecs1->pSSL = gHyp_sock_copySSL ( pListenSecs1->pSSL ) ;
@@ -2174,6 +2216,7 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
     *pMsg,
     *pContent,*pContent2,
     *pLine,
+    *pEndLine,
     *pArg1,*pArg2,*pArg3,
     prefix[3],
     target[TARGET_SIZE+1],
@@ -2224,16 +2267,24 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
     /* Get id that is assigned to the port */
     id = gHyp_instance_getDeviceId ( pAIassigned, (SOCKET) pPort->fd ) ;
 
-    /*gHyp_util_debug("found %d for port %d",id,pPort->fd);*/
-
+    if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
+	"Socket %d is assigned to id %d for target %s",
+	  pPort->fd, id, gHyp_instance_getTargetId ( pAIassigned ) ) ;
+    
   }
   else {
 
+    gHyp_util_logWarning ( "No instance has assigned any id to the port.");
+
     /* No instance has assigned any id to the port.*/
-    if ( pPort->fd != pPort->parentSocket ) {
+    if ( pPort->parentSocket != INVALID_SOCKET &&
+	 pPort->fd != pPort->parentSocket ) {
 
       /* This is a newly created channel */
-      /*gHyp_util_debug ( "Looking for device id assigned to listen port" );*/
+      gHyp_util_logInfo ( "New socket connection %d off of parent socket %d",
+	pPort->fd, pPort->parentSocket ) ;
+
       pAIassigned = gHyp_concept_getInstForFd ( pConcept, pPort->parentSocket ) ;
 
       if ( pAIassigned ) {
@@ -2244,20 +2295,19 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
           gHyp_util_logError ( "No device id has been assigned to listen port %d",
 			 pPort->parentSocket ) ;
 	  /* Close the port */
-	  gHyp_instance_signalHangup ( pAI, (int) pPort->fd, pPort->modifier, id ) ;
+	  gHyp_instance_signalHangup ( pAIassigned, (int) pPort->fd, pPort->modifier, id ) ;
 	  gHyp_concept_deleteSocketObject ( pConcept, (SOCKET) pPort->fd ) ;
 	  return COND_SILENT ;
 	}
 
-  	/*gHyp_util_debug ( "Taking device id %d from port %d to port %d",
-	 		    id, pPort->parentSocket, pPort->fd );
-	 
-	*/
+  	gHyp_util_logInfo ( "Reassigning device id %d to port %d from listen port %d",
+	 		    id, pPort->fd, pPort->parentSocket );
 
 	/* Take any SSL structures as well */
 	pListenPort = (sSecs1*) gHyp_concept_getSocketObject ( pConcept, 
 							      (SOCKET) pPort->parentSocket, 
-							      objectType ) ;
+							      DATA_OBJECT_NULL ) ;
+							      /*objectType ) ;*/
 #ifdef AS_SSL
 	if ( pListenPort->pSSL != NULL ) {
 	  pPort->pSSL = gHyp_sock_copySSL ( pListenPort->pSSL ) ;
@@ -2287,6 +2337,7 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
 	} 
 	********/
       }
+
     }
   }
 
@@ -2314,22 +2365,27 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
     gHyp_util_logError ( "Failed to read data from device %s",
 			 pPort->device ) ;
     /* Close the port */
-    gHyp_instance_signalHangup ( pAI, (int) pPort->fd, pPort->modifier, id ) ;
+    if ( pAIassigned ) gHyp_instance_signalHangup ( pAIassigned, (int) pPort->fd, pPort->modifier, id ) ;
     gHyp_concept_deleteSocketObject ( pConcept, (SOCKET) pPort->fd ) ;
     return COND_SILENT ;
   }
   else if ( nBytes == 0 ) {
     
-    gHyp_util_logWarning ( "Failed to receive data from device %d (%s)",
-			   id, pPort->device ) ;
+    if ( id != NULL_DEVICEID )
+      gHyp_util_logWarning ( "Failed to receive data from socket %u, device %d (%s)",
+			   pPort->fd, id, pPort->device ) ;
+
+    else
+      gHyp_util_logWarning ( "Failed to receive data from socket %u",
+			   pPort->fd ) ;
 
     if ( (pPort->flags & SOCKET_TCP) ) {
       /* Zero bytes from TCP/IP sockets is always fatal */
-      gHyp_instance_signalHangup ( pAI, (int) pPort->fd, pPort->modifier, id ) ;
+      if ( pAIassigned ) gHyp_instance_signalHangup ( pAIassigned, (int) pPort->fd, pPort->modifier, id ) ;
       gHyp_concept_deleteSocketObject ( pConcept, (SOCKET) pPort->fd ) ;
     }
     else
-      gHyp_instance_signalPipe ( pAI, (int) pPort->fd, pPort->modifier, id ) ;
+      gHyp_instance_signalPipe ( pAIassigned, (int) pPort->fd, pPort->modifier, id ) ;
 
     return COND_SILENT ;
   }
@@ -2354,15 +2410,13 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
     pBuf = buffer ;
     pEndBuf = pBuf + nBytes ;
     
-    /*
-    if ( nBytes == 16414 ) {
-      gHyp_util_debug("%d bytes",nBytes);
-    }
-    gHyp_util_debug("---------------------------------------------");
-    gHyp_util_debug("%s",pBuf);
-    gHyp_util_debug("---------------------------------------------");
-    */
+    if ( guDebugFlags & DEBUG_PROTOCOL ) {
+      n = gHyp_util_unparseString ( value, buffer, nBytes, 64, FALSE, FALSE, FALSE,"" ) ;
+      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
+		"Id %u, socket %d, %u bytes [%s]",id,pPort->fd,nBytes,value) ;
     
+    }
+
     /******************************************************************
      * PORT-FORWARD IF REQUESTED
      ******************************************************************/
@@ -2383,7 +2437,7 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
 	  fd = gHyp_instance_getDeviceFd ( pAIassigned, forwardId ) ;
 	  if ( fd != INVALID_SOCKET ) {
 
-	    objectType = gHyp_concept_getSocketObjectType ( pConcept, fd ) ;
+	    objectType = gHyp_concept_getSockObjType ( pConcept, fd ) ;
 	    if ( objectType == DATA_OBJECT_PORT || objectType == DATA_OBJECT_HTTP ) {
 
 	      pForwardPort = (sSecs1*) gHyp_concept_getSocketObject (
@@ -2392,8 +2446,22 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
 			      objectType  ) ;
 	      if ( !(gHyp_secs1_flags(pForwardPort) & SOCKET_LISTEN) ) {
 
-		/*gHyp_util_debug("%d->%d",id,forwardId);*/
+		
+		if ( guDebugFlags & DEBUG_PROTOCOL ) {
 
+		  n = gHyp_util_unparseString ( value, buffer, nBytes, 64, FALSE, FALSE, FALSE,"" ) ;
+
+#ifdef AS_WINDOWS
+		  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
+					"%d -> %d (%u) %u bytes [%s]",id,forwardId,GetTickCount(),nBytes,value);
+#else
+		  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
+					"%d -> %d (%u) %u bytes [%s]",id,forwardId,gsCurTime,nBytes,value) ;
+
+#endif	        
+
+  
+		}
  		n = gHyp_sock_write ( (SOCKET) fd, 
 				      buffer, 
 				      nBytes,
@@ -2401,15 +2469,9 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
 				      (OVERLAPPED*) &pForwardPort->overlapped, 
 				      pForwardPort->pSSL ) ;
 
-		if ( n < 0 ) {
+		if ( n <= 0 ) {
 		  gHyp_util_sysError ( "Failed to forward data to device %d",forwardId ) ;
 		  gHyp_instance_signalHangup ( pAIassigned, (int) fd, pForwardPort->modifier, forwardId ) ;
-		  gHyp_concept_deleteSocketObject ( pConcept, (SOCKET) fd ) ;
-		}
-		else if ( nBytes == 0 ) {
-	          gHyp_util_logError ( "Zero bytes written to device %d",
-			 forwardId  ) ;
-		  gHyp_instance_signalHangup ( pAI, (int) fd, pForwardPort->modifier, forwardId ) ;
 		  gHyp_concept_deleteSocketObject ( pConcept, (SOCKET) fd ) ;
 		}		
 		else { 
@@ -2439,9 +2501,9 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
       httpState = gHyp_http_getState ( pHTTP ) ;
       pAttributeData = gHyp_http_getAttributeData( pHTTP ) ;
       pContentData = gHyp_http_getContentData ( pHTTP ) ;
-      actualContentLength = gHyp_http_getActualContentLength( pHTTP ) ;
+      actualContentLength = gHyp_http_getActualContentLen( pHTTP ) ;
       contentLength = gHyp_http_getContentLength( pHTTP ) ;
-      isChunkedTransferEncoded = gHyp_http_isChunkedTransferEncoded(pHTTP);
+      isChunkedTransferEncoded = gHyp_http_isChunkedTransferEnc(pHTTP);
       isXMLEncoded = gHyp_http_isXMLEncoded(pHTTP);
       isURLEncoded = gHyp_http_isURLEncoded(pHTTP);
       isPlainText = gHyp_http_isPlainText(pHTTP);
@@ -2482,7 +2544,9 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
 		gHyp_util_trim ( pChar ) ;
 		n = sscanf ( pChar, "%d", &contentLength )  ;
 		if ( n != 1 || contentLength < 0 ) contentLength = 0 ;
-		/*gHyp_util_debug("Content Length = %d",contentLength,actualContentLength);*/
+	        if ( guDebugFlags & DEBUG_PROTOCOL )
+		  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
+		    "Content Length = %d",contentLength,actualContentLength);
 		gHyp_http_updateContent ( pHTTP,  contentLength, actualContentLength ) ;
 	      }
 	    }
@@ -2506,7 +2570,7 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
 		gHyp_util_trim ( pChar ) ;
 		if ( strcmp ( pChar, "chunked" ) == 0 ) {
 		  isChunkedTransferEncoded = TRUE ;
-		  gHyp_http_setChunkedTransferEncoded ( pHTTP ) ;
+		  gHyp_http_setChunkedTransferEnc ( pHTTP ) ;
 		}
 	      }
 	    }
@@ -2575,12 +2639,13 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
 	  pLine = pBuf ;
 
 	  /* Terminate the end of the line */
-	  *(pLine+lineLen) = '\0' ;
+	  pEndLine = pLine + lineLen ;
+	  *pEndLine = '\0' ;
 
 	  /* The first component ends with whitespace */
 	  width = strcspn ( pLine, " \t" ) ;
 	  if ( width == 0 ) { 
-    	    gHyp_util_logError("Invalid HTTP header '%s'",pLine ) ;
+    	    gHyp_util_logError("Invalid HTTP component 1 in header: '%s'",pLine ) ;
 	    return COND_SILENT ;
 	  }
 	  /* Terminate first component */
@@ -2590,11 +2655,15 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
 	  /* Advance to start of component 2 */
 	  pLine += (width+1) ;
 	  pLine += strspn ( pLine, " \t" ) ;	  
+	  if ( pLine > pEndLine ) { 
+    	    gHyp_util_logError("Invalid HTTP header: '%s'",pBuf ) ;
+	    return COND_SILENT ;
+	  }
 
 	  /* The second component ends with whitespace */
 	  width = strcspn ( pLine, " \t" ) ;
 	  if ( width == 0 ) { 
-    	    gHyp_util_logError("Invalid HTTP header '%s'",pLine ) ;
+    	    gHyp_util_logError("Invalid HTTP component 2 in header: '%s'",pLine ) ;
 	    return COND_SILENT ;
 	  }
 	  /* Terminate second component */
@@ -2605,10 +2674,15 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
 	  pLine += (width+1) ;
 	  pLine += strspn ( pLine, " \t" ) ;	  
 
+	  if ( pLine > pEndLine ) { 
+    	    gHyp_util_logError("Invalid HTTP header: '%s'",pBuf ) ;
+	    return COND_SILENT ;
+	  }
+
 	  /* The third component ends with the line */
 	  width = strlen ( pLine ) ;
 	  if ( width == 0 ) { 
-    	    gHyp_util_logError("Invalid HTTP header '%s'",pLine ) ;
+    	    gHyp_util_logError("Invalid HTTP component 3 in header: '%s'",pLine ) ;
 	    return COND_SILENT ;
 	  } 
 	  pArg3 = pLine ;
@@ -2634,7 +2708,9 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
 	 */
 	pContent = buffer ;
 	actualContentLength += nBytes ;
-	/*gHyp_util_debug("Actual/content now is %d/%d",actualContentLength,contentLength);*/
+	if ( guDebugFlags & DEBUG_PROTOCOL )
+	  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
+	    "Actual/content now is %d/%d",actualContentLength,contentLength);
   	gHyp_http_updateContent ( pHTTP,  contentLength, actualContentLength ) ;
         pBuf = pContent ;
       }
@@ -2649,8 +2725,8 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
       pContentData = gHyp_data_new ( "_data_" ) ;
       actualContentLength = nBytes ;
       contentLength = actualContentLength ;
+      isLineBased = ! gHyp_secs1_isBinary ( pPort ) ;
     }
-
 
     /******************************************************************
      * EXTRACT THE DATA INTO THE pContentData sData object.
@@ -2686,6 +2762,7 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
 	      pChar = strchr ( value, ';' ) ;
 	      if ( pChar ) *pChar = '\0' ;
 	      gHyp_util_trim ( value ) ;
+
 	      /*gHyp_util_debug("Chunked value = %s",value);*/
 	      n = sscanf ( value, "%x", &contentLength )  ;
 	      if ( n != 1 ) {
@@ -2775,7 +2852,6 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
            *************************************************************************/
 
 	  isLineBased =  ( (!isBinary && isPlainText ) || isXMLEncoded ) ;
-	  /*isLineBased =  ( isPlainText || isXMLEncoded ) ;*/
 
 	  /* Find out if we even need to knit */
 	  pLast = NULL ;
@@ -2786,14 +2862,15 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
 	    if ( pLast ) {
 	      lineLen = gHyp_data_getStr ( pLast, value, VALUE_SIZE, 0, TRUE ) ;
 	      value[lineLen] = '\0' ;
-	      /* So lone as the line does not end with \n\r, we can knit it to the
+	      /* So long as the line does not end with \n or \n\r, we can knit it to the
 	       * start of the next line
+	       * We use the variables pLast,value and lineLen again below..
 	       */
-	      if ( lineLen > 1 ) {
-		if ( value[lineLen-1] != '\n' && value[lineLen-1] != '\r' ) {
-		  doKnitting = TRUE ;
-		}
-	      }
+	      doKnitting = TRUE ;
+	      if ( value[lineLen-1] == '\n' ) 
+		doKnitting = FALSE ;
+	      else if ( lineLen > 1 && value[lineLen-2] == '\n' && value[lineLen-1] == '\r' ) 
+	        doKnitting = FALSE ;
 	    }
 	  }
 	}
@@ -2804,7 +2881,7 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
 	while ( n > 0 ) {
 
 	  /* We use INTERVAL_VALUE size to cover the case where each byte
-	   * happens to require a 4 character \nnnn to represent it.
+	   * happens to require a 4 character \nnn to represent it.
 	   * To display exterally, the would require INTERNAL_VALUE_SIZE*4 bytes,
 	   * which is VALUE_SIZE bytes, the HyperScript internal maximum segment
 	   * size of a 'str'.
@@ -2818,19 +2895,26 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
 	    /* Get the length of the next line */
 	    width2 = strcspn ( pBuf, "\r\n" ) ;
 
-	    /* Add the lf and cr */
+	    /* Add the lf and/or the cr back into the total width of the line */
 	    width2 += strspn ( pBuf+width2, "\r\n" ) ;
 	    
 	    if ( width2 > 0 ) {
 	  
+	      /* There is a line. */
 	      if ( width2 < width ) {
 
-		/* Shorter is ok */
+		/* Shorter is always ok */
 		width = width2 ;
 	      }
 	      else if ( width2 > width ) { 
 
-		/* We'd like to store longer, but will it fit? */
+		/* We'd like to store longer, but will it fit? 
+		 *
+		 * A non-printing character must be able to be represented 
+		 * in an externl \nnn format and also fit into VALUE_SIZE.  
+		 * If all the characters were non-printing, we'd have 4x
+		 * the required space.
+		 */
 
 		width3 = width2 ;
 		for ( i=0;i<width2;i++ ) if ( !isprint(pBuf[i]) ) width3+=3;
@@ -2838,15 +2922,27 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
 		  /* Yes, it will fit - adjust size */
 		  width = width2 ;
 
+		/* If not, we have no recourse but to take INTERNAL_VALUE_SIZE
+		 * of the line.
+		 */
+
 	      }
 	    }
 	  }
 
 	  if ( f && doKnitting &&  (width + lineLen <= VALUE_SIZE) ) {
+
+	    /* f = first line of next segment.
+	     * doKnitting = last line of previous segment DID NOT end in \n\r
+	     * width+linelen = how big the knitted line will be.
+	     */
 	
+	    /* Knit to last value */
 	    memcpy ( value+lineLen, pBuf, width ) ;
-	    lineLen+=width ;
+	    lineLen += width ;
 	    /*gHyp_util_debug ( "Knitted line '%.*s'",lineLen, value ) ;*/
+
+	    /* Replace pLast value with new one */
 	    gHyp_data_setStr_n ( pLast, value, lineLen ) ;
 	    doKnitting = FALSE ;
 
@@ -2856,11 +2952,12 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
 	    pValue = gHyp_data_new ( NULL ) ;
 	    gHyp_data_setStr_n ( pValue, (char*) pBuf, width ) ;
 	    gHyp_data_append ( pContentData, pValue ) ;
-	    /*if ( isLineBased ) gHyp_util_debug("ADDed: %.*s",width,pBuf) ;*/
+	    /*if ( isLineBased ) gHyp_util_debug("Added: %.*s",width,pBuf) ;*/
 	  }
 	  f = FALSE ;
 	  n -= width ;
 	  pBuf += width ;
+	  pContent=pBuf;
 
 	} /* end while ( n > 0 ) */
 
@@ -2912,6 +3009,7 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
 	     * the end of the buffer, then expect more data.
 	     */
 	    if ( contentLength == actualContentLength ) isEndOfBuffer = TRUE ;
+
 	  }
 	} 
       } /* end if ( n > 0 ) */
@@ -2927,7 +3025,9 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
 
     if ( objectType == DATA_OBJECT_HTTP ) {
 
-      /*gHyp_util_debug("Buffer done: content/actual = %d/%d",contentLength,actualContentLength) ;*/
+      if ( guDebugFlags & DEBUG_PROTOCOL )
+        gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
+	  "HTTP buffer received: content/actual = %d/%d",contentLength,actualContentLength) ;
 
       if ( !isEndOfMessage ) {
 
@@ -3062,9 +3162,27 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
   	gHyp_data_append ( pTV, pData ) ;
       }
 
+
+      /* Check that the content is XML or URLencoded */
+      if ( contentLength > 0 && isPOSTdata ) {
+
+	/* Look to see if the data starts with a <?xml" */
+	pData = gHyp_data_getValue ( pContentData, 0, TRUE ) ;
+	n = gHyp_data_getStr (	pData, 
+				value, 
+				VALUE_SIZE, 
+				0, 
+				TRUE ) ;
+	gHyp_util_lowerCase ( value, n ) ;
+	if ( strstr ( value, "<?xml" ) != NULL) {
+	  isXMLEncoded = TRUE ;
+	  gHyp_http_setXMLEncoded ( pHTTP ) ;
+	}
+      }
+
       /* Parse the content */
       if ( isXMLEncoded ) {
-	gHyp_cgi_xmlData ( pContentData, pAI, gHyp_instance_frame(pAI), pTV ) ;
+	gHyp_cgi_xmlData ( pContentData, pAIassigned, gHyp_instance_frame(pAI), pTV ) ;
       }
       else if ( contentLength > 0 && isPOSTdata ) {
 	
@@ -3168,11 +3286,20 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
       /* Reset the http data area */
       gHyp_http_reset ( pHTTP ) ;
 
+      /* Reset state */
+      pPort->state = MESSAGE_EVENT ;
+
+
     }
     else {
       /* Raw port data. Every message is a complete message. */
       pTV = gHyp_data_new ( "_data_" ) ;
       gHyp_data_append ( pTV, pContentData ) ;
+      /* Add a variable _data_len_ */
+      pData = gHyp_data_new ( "_datalen_" ) ;
+      gHyp_data_newVector ( pData, TYPE_INTEGER, 1, TRUE ) ;
+      gHyp_data_setVectorRaw ( pData, &contentLength, 0 ) ;
+      gHyp_data_append ( pTV, pData ) ;
       isMessageComplete = TRUE ;
       isReply = ( pPort->state == MESSAGE_QUERY ) ;
       /* Reset state */
@@ -3206,10 +3333,12 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
 
 	strcpy ( mode, "reply" ) ;
 	if ( objectType == DATA_OBJECT_PORT )
-	  sprintf ( sender, "%u#port", id ) ;
+	  sprintf ( sender, "%u#port%s", id, gzRoot ) ;
 	else
-	  sprintf ( sender, "%u#http", id ) ;
-	strcpy ( target, gHyp_instance_getTargetId ( pAI ) ) ;
+	  sprintf ( sender, "%u#http%s", id, gzRoot ) ;
+	strcpy ( target, gHyp_instance_getTargetPath ( pAIassigned ) ) ;
+
+	/*gHyp_util_debug("The target is %s",targetId);*/
 
 	/* Set the method of the message */
 	strcpy ( method, "DATA" ) ;
@@ -3223,19 +3352,20 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
 	}
 	else {
  	  strcpy ( mode, "event" ) ;
-          sprintf ( sender, "%u#port", id ) ;
+          sprintf ( sender, "%u#port%s", id, gzRoot ) ;
 	}
 
-	strcpy ( target, gHyp_instance_getTargetPath ( pAI ) ) ;
+	/*gHyp_util_debug("TP is %s",gHyp_instance_getTargetPath ( pAIassigned ) ) ;*/
+	strcpy ( target, gHyp_instance_getTargetPath ( pAIassigned ) ) ;
 
 	/* What method does this function invoke? */
-	pVariable = gHyp_instance_portMethod ( pAI, id ) ;
+	pVariable = gHyp_instance_portMethod ( pAIassigned, id ) ;
 	if ( !pVariable ) {
 	  gHyp_util_logError (
 	   "No method enabled for incoming message from device %d", id ) ;
 	  gHyp_data_delete ( pTV ) ;
 
-          gHyp_instance_signalHangup ( pAI, (int) pPort->fd, pPort->modifier, id ) ;
+          gHyp_instance_signalHangup ( pAIassigned, (int) pPort->fd, pPort->modifier, id ) ;
 	  gHyp_concept_deleteSocketObject ( pConcept, (SOCKET) pPort->fd ) ;
 	  return COND_SILENT ;
 	}
@@ -3245,10 +3375,12 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
 
       }
     
-      /*gHyp_util_debug("Received %d/%s = %s",id,mode,gHyp_data_print(pTV));*/
-      strcpy ( tid, "00000001" ) ;/*gHyp_util_random8() ;*/
+      /*gHyp_util_debug("Received id=%d mode=%s, target=%s, tid = %s",id,mode,target,gHyp_instance_getTargetId ( pAIassigned ) );*/
+
+      strcpy ( tid, "00000001" ) ;
+      /*strcpy ( tid, gHyp_util_random8() ) ;*/
       pMsg = gHyp_aimsg_initUnparsePartial ( 
-		gHyp_instance_incomingMsg ( pAI ),
+		gHyp_instance_incomingMsg ( pAIassigned ),
 		target,
 		mode,
 		method,
@@ -3286,13 +3418,13 @@ int gHyp_secs1_rawOutgoing ( sSecs1 *pPort, sInstance *pAI, sData *pData, int id
     count,
     ss,
     cmdLen,
-    remainder,
     context,
     valueLen,
+    totalBytes=0,
     nBytes=0 ;
 
   char
-    command[PORT_READ_SIZE+1],
+    command[PORT_WRITE_SIZE+1],
     *pCmd,
     *pEndCmd,
     *pStr,
@@ -3300,7 +3432,7 @@ int gHyp_secs1_rawOutgoing ( sSecs1 *pPort, sInstance *pAI, sData *pData, int id
 
   /* Construct the message to be sent to the port. */
   pCmd = command ;
-  pEndCmd = pCmd + PORT_READ_SIZE ;    
+  pEndCmd = pCmd + PORT_WRITE_SIZE ;    
   pResult = NULL ;
 
   dataType = gHyp_data_getDataType ( pData ) ;
@@ -3315,7 +3447,7 @@ int gHyp_secs1_rawOutgoing ( sSecs1 *pPort, sInstance *pAI, sData *pData, int id
 
     if ( isVector && dataType <= TYPE_ATTR ) {
       valueLen = gHyp_data_bufferLen( pResult, context ) ;
-      pStr = gHyp_data_buffer ( pResult, context ) ;
+      pStr = (char*) gHyp_data_buffer ( pResult, context ) ;
       context+=valueLen ;
     }
     else {
@@ -3334,8 +3466,9 @@ int gHyp_secs1_rawOutgoing ( sSecs1 *pPort, sInstance *pAI, sData *pData, int id
       cmdLen = pCmd - command ;
       assert ( cmdLen > 0 ) ; 
 
-      /*gHyp_util_debug("Writing port %d, %d bytes",pPort->fd, cmdLen);*/
-      /*gHyp_util_debug("+ %d bytes",cmdLen);*/
+      if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+        gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
+	  "Writing %d bytes to port %d",cmdLen, pPort->fd );
 
       nBytes = gHyp_sock_write ( (SOCKET) pPort->fd, 
 			         command, 
@@ -3344,56 +3477,19 @@ int gHyp_secs1_rawOutgoing ( sSecs1 *pPort, sInstance *pAI, sData *pData, int id
 			         (OVERLAPPED*) &pPort->overlapped,
 			         pPort->pSSL ) ;
 
-      if ( nBytes < 0 ) {
+      if ( nBytes <= 0 ) {
         gHyp_util_sysError ( "Failed to write data to device %s",
 			 pPort->device ) ;
         gHyp_instance_signalHangup ( pAI, (int) pPort->fd, pPort->modifier, id ) ;
         gHyp_concept_deleteSocketObject ( gHyp_instance_getConcept(pAI), (SOCKET) pPort->fd ) ;
         return COND_SILENT ;
       }
-      else {
-
-	/* Some or all bytes were written */
-
-	pCmd = command ;
-	pEndCmd = pCmd + PORT_READ_SIZE ;
-
-	if ( nBytes < cmdLen ) {
-
-	  if ( nBytes > 0 ) {
-
-	    /* Not all was written, shift remainder to start of buffer */
-	    remainder = cmdLen - nBytes ;
-	    memmove ( pCmd, pCmd+nBytes, remainder ) ;
-	    pCmd+=remainder ;
-	    *pCmd = '\0' ;
-	  }
-
-	  gHyp_util_logInfo("Network pipe full, sleeping for 100 usec");
-
-	  count = 0 ;
-	  usleep ( 100 );
-    	  if ( (pCmd + valueLen) > pEndCmd ) {
-            gHyp_util_logError ( "Failed to write to device %s",
-    			 pPort->device ) ;
-	    gHyp_instance_signalHangup ( pAI, (int) pPort->fd, pPort->modifier, id ) ;
-	    gHyp_concept_deleteSocketObject ( gHyp_instance_getConcept(pAI), (SOCKET) pPort->fd ) ;
-	    return COND_SILENT ;
-	  }
-	}
-	else
-	  /* Successful write.  Keep track of how many writes we do in a row */
-	  count++ ;
-
-	if ( count > 10 ) { 
-	  /* Too many writes (arbitrary 10) needs a pause */
-	  gHyp_util_logInfo(("Network pipe full, sleeping for 100 usec"));
-	  count = 0 ;
-	  usleep ( 100 );
-	}
-      }
+      totalBytes += nBytes ;
+      /* Reset buffer */
+      pCmd = command ;
+      pEndCmd = pCmd + PORT_WRITE_SIZE ;
     }
-    
+    /* Add next contents */
     memcpy ( pCmd, pStr, valueLen ) ;
     pCmd += valueLen ;
 
@@ -3405,8 +3501,10 @@ int gHyp_secs1_rawOutgoing ( sSecs1 *pPort, sInstance *pAI, sData *pData, int id
   cmdLen = pCmd - command ;
 
   if ( cmdLen > 0 ) {
-    /*gHyp_util_debug("Writing port %d, %d bytes",pPort->fd, cmdLen);*/
-    /*gHyp_util_debug("%s",command);*/
+
+    if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
+	  "Writing %d bytes to port %d", cmdLen, pPort->fd );
 
     nBytes = gHyp_sock_write ( (SOCKET) pPort->fd, 
 			     command, 
@@ -3415,26 +3513,22 @@ int gHyp_secs1_rawOutgoing ( sSecs1 *pPort, sInstance *pAI, sData *pData, int id
 			     (OVERLAPPED*) &pPort->overlapped,
 			     pPort->pSSL ) ;
 
-    if ( nBytes < 0 ) {
+    if ( nBytes <= 0 ) {
       gHyp_util_sysError ( "Failed to write data to device %s",
 			 pPort->device ) ;
       gHyp_instance_signalHangup ( pAI, (int) pPort->fd, pPort->modifier, id ) ;
       gHyp_concept_deleteSocketObject ( gHyp_instance_getConcept(pAI), (SOCKET) pPort->fd ) ;
       return COND_SILENT ;
     }
-    else if ( nBytes == 0 ) {
-    
-      /* Should not happen */
-      gHyp_util_logError ( "Zero bytes written to device %s",
-			 pPort->device ) ;
-      gHyp_instance_signalHangup ( pAI, (int) pPort->fd, pPort->modifier, id ) ;
-      gHyp_concept_deleteSocketObject ( gHyp_instance_getConcept(pAI), (SOCKET) pPort->fd ) ;
-      return COND_SILENT ;
-    }
-  }
-  return nBytes ;
-}
+    totalBytes += nBytes ;
 
+  }
+  if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
+	  "Wrote total of %d bytes to port %d",totalBytes, pPort->fd );
+
+  return totalBytes ;
+}
 
 SOCKET gHyp_secs1_parentSocket ( sSecs1 *pSecs1 )
 {
@@ -3500,6 +3594,22 @@ sData *gHyp_secs1_getForwardPorts ( sSecs1 *pSecs1 )
 {
   return pSecs1->forwardPorts ;
 }
+
+void gHyp_secs1_setForwardPorts ( sSecs1 *pSecs1, sData* pfp ) 
+{
+  pSecs1->forwardPorts = pfp ;
+}
+
+void gHyp_secs1_setBinary( sSecs1* pSecs1, sLOGICAL isBinary )
+{
+  pSecs1->isBinary = isBinary ;
+}
+
+sLOGICAL gHyp_secs1_isBinary( sSecs1* pSecs1 )
+{
+  return pSecs1->isBinary ;
+}
+
 
 void gHyp_secs1_addForwardPort ( sSecs1 *pSecs1, int from_id, int to_id ) 
 {

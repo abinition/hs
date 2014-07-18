@@ -42,7 +42,7 @@ RSC=rc.exe
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /YX /FD /c
-# ADD CPP /nologo /MD /W3 /GX /I "c:\mysql\include\\" /I "c:\openssl\include\\" /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /D "AS_SSL" /D "AS_SQL" /D "AS_MYSQL" /FR /YX /FD /c
+# ADD CPP /nologo /MD /W3 /GX /O2 /I "$(MYSQL_HOME)\include\\" /I "$(OPENSSL_HOME)\inc32\\" /I "$(JAVA_HOME)\include" /I "$(JAVA_HOME)\include\win32" /I "$(ORA_HOME)\include" /I "$(PGSQL_HOME)\include" /I "$(SQLSERVER_HOME)\include" /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /D "AS_SQL" /D "AS_ORACLE" /YX /FD /c
 # ADD BASE RSC /l 0x409 /d "NDEBUG"
 # ADD RSC /l 0x409 /d "NDEBUG"
 BSC32=bscmake.exe
@@ -50,7 +50,8 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:console /machine:I386
-# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib ws2_32.lib libmysql.lib ntwdblib.lib ssleay32.lib libeay32.lib libmysql.lib /nologo /subsystem:console /map /machine:I386 /libpath:"$(OPENSSL_HOME)\lib" /libpath:"$(MYSQL_HOME)\lib\opt"
+# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib ws2_32.lib libmysql.lib ntwdblib.lib ssleay32.lib libeay32.lib oci.lib libpq.lib /nologo /subsystem:console /machine:I386 /libpath:"$(OPENSSL_HOME)\out32" /libpath:"$(MYSQL_HOME)\lib\opt" /libpath:"$(ORA_HOME)\lib\msvc" /libpath:"$(PGSQL_HOME)\lib\ms" /libpath:"$(SQLSERVER_HOME)\lib"
+# SUBTRACT LINK32 /pdb:none
 
 !ELSEIF  "$(CFG)" == "hs - Win32 Debug"
 
@@ -59,23 +60,22 @@ LINK32=link.exe
 # PROP BASE Output_Dir "Debug"
 # PROP BASE Intermediate_Dir "Debug"
 # PROP BASE Target_Dir ""
-# PROP Use_MFC 0
+# PROP Use_MFC 2
 # PROP Use_Debug_Libraries 1
 # PROP Output_Dir "Debug"
 # PROP Intermediate_Dir "Debug"
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_CONSOLE" /D "_MBCS" /YX /FD /GZ /c
-# ADD CPP /nologo /MD /W3 /Gm /GX /ZI /Od /I "$(MYSQL_HOME)\include\\" /I "$(OPENSSL_HOME)\include\\" /I "$(JAVA_HOME)\include" /I "$(JAVA_HOME)\include\win32" /I "C:\Program Files\Microsoft SDK\include" /D "WIN32" /D "_DEBUG" /D "_USRDLL" /D "_MBCS" /D "AS_SQL" /D "AS_MYSQL" /D "AS_MEMTRACK" /D "AS_SSL" /FR /YX /FD /GZ /c
+# ADD CPP /nologo /MDd /W3 /Gm /GX /ZI /Od /I "$(MYSQL_HOME)\include\\" /I "$(OPENSSL_HOME)\inc32\\" /I "$(JAVA_HOME)\include" /I "$(JAVA_HOME)\include\win32" /I "$(ORA_HOME)\include" /I "$(PGSQL_HOME)\include" /I "$(SQLSERVER_HOME)\include" /D "WIN32" /D "_DEBUG" /D "_CONSOLE" /D "_MBCS" /D "AS_SQL" /D "AS_ORACLE" /D "AS_SSL" /YX /FD /GZ /c
 # ADD BASE RSC /l 0x409 /d "_DEBUG"
-# ADD RSC /l 0x409 /d "_DEBUG"
+# ADD RSC /l 0x409 /d "_DEBUG" /d "_AFXDLL"
 BSC32=bscmake.exe
 # ADD BASE BSC32 /nologo
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:console /debug /machine:I386 /pdbtype:sept
-# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib ws2_32.lib libmysql.lib ntwdblib.lib EXCHINST.LIB ssleay32.lib libeay32.lib /nologo /subsystem:console /debug /machine:I386 /libpath:"$(OPENSSL_HOME)\lib" /libpath:"$(MYSQL_HOME)\lib\opt"
-# SUBTRACT LINK32 /pdb:none
+# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib ws2_32.lib libmysql.lib ntwdblib.lib ssleay32.lib libeay32.lib oci.lib libpq.lib /nologo /subsystem:console /profile /debug /machine:I386 /nodefaultlib:"MSVCRT" /libpath:"$(OPENSSL_HOME)\out32" /libpath:"$(MYSQL_HOME)\lib\opt" /libpath:"$(ORA_HOME)\lib\msvc" /libpath:"$(PGSQL_HOME)\lib\ms" /libpath:"$(SQLSERVER_HOME)\lib"
 
 !ENDIF 
 
@@ -164,7 +164,7 @@ SOURCE=.\load.c
 # End Source File
 # Begin Source File
 
-SOURCE=.\mapidata.c
+SOURCE=.\mapi.c
 # End Source File
 # Begin Source File
 
@@ -201,10 +201,6 @@ SOURCE=.\route.c
 # Begin Source File
 
 SOURCE=.\router.c
-# End Source File
-# Begin Source File
-
-SOURCE=.\rpc.c
 # End Source File
 # Begin Source File
 
@@ -349,6 +345,10 @@ SOURCE=.\label.h
 # Begin Source File
 
 SOURCE=.\load.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\mapi.h
 # End Source File
 # Begin Source File
 

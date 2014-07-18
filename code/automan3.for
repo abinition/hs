@@ -36,6 +36,10 @@
 ! Modifications:
 !
 !     $Log: automan3.for,v $
+!     Revision 1.3  2005/03/30 04:05:02  bergsma
+!     HS needs to externalize backslash, not ignore it.  Thus, AUTOMAN must be
+!     modified to interpret \\s, \\u, and \\g.
+!
 !     Revision 1.2  2003/01/16 14:31:47  bergsma
 !     Header display for batch lot was failing (subscript out of range) when
 !     the number of lots exceeded 10 or more, because MAX_BATCH_LOTS was increased
@@ -850,10 +854,26 @@
 
 	    if ( modifier .eq. '\' ) then
 
-	      ! '\\' converts to '\'
-	      line(j:j) = modifier
-	      j = j + 1
-	      k = k + 1
+		  ! Check for \\s and \\u and \\g
+		  if ( i + 1 .le. messageLen ) then
+			modifier = message(i+1:i+1)
+		  endif
+
+		  if ( modifier .eq. 's' .or. modifier .eq. 'u' .or. modifier .eq. 'g' ) then
+
+			! Ignore this \\ sequence.  They are not supported
+			! Hyperscript escape sequences and so turn up as 
+			! \\s \\u and \\g
+			! Subtracting from will advance to the next \
+			i = i - 1
+
+		  else
+
+			! '\\' converts to '\'
+			line(j:j) = '\'
+			j = j + 1
+			k = k + 1
+		  endif
 
 	    elseif ( modifier .eq. 'n' ) then
                

@@ -10,11 +10,115 @@
 #ifndef __HYPDEF_H_
 #define __HYPDEF_H_
 
-#define 	VERSION_HYPERSCRIPT	"3.4.0"
+#define 	VERSION_HYPERSCRIPT	"3.7.0"
 
 /* Modification history:
  *
  * $Log: hypdef.h,v $
+ * Revision 1.62  2006/08/17 05:04:06  bergsma
+ * Increase frame depth from 256 to 512
+ *
+ * Revision 1.61  2006/07/17 16:45:26  bergsma
+ * Double the frame depth from 128 to 256.
+ *
+ * Revision 1.60  2006/06/05 19:14:40  bergsma
+ * Double allowed size of SECS II messages.
+ *
+ * Revision 1.59  2006/05/07 18:33:28  bergsma
+ * TCP getAddrByname fix.  HS 3.6.8
+ *
+ * Revision 1.58  2006/04/04 15:00:44  bergsma
+ * HS 3.6.7.
+ *
+ * Revision 1.57  2006/03/07 06:16:24  bergsma
+ * Increase expression size from 128 to 256
+ *
+ * Revision 1.56  2006/01/17 15:59:26  bergsma
+ * PORT write size should be 4K, not 5K.  Same as PORT read size.
+ *
+ * Revision 1.55  2006/01/16 18:56:36  bergsma
+ * HS 3.6.6
+ * 1. Save query timeout events.  Don't let queries repeat indefinitely.
+ * 2. Rework DEBUG_DIAGNOSTIC debugging.  Less overhead.
+ *
+ * Revision 1.54  2005/12/17 20:40:09  bergsma
+ * HS 3.6.5
+ *
+ * Revision 1.53  2005/10/25 16:40:56  bergsma
+ * V3.6.4
+ *
+ * Revision 1.52  2005/09/25 20:10:40  bergsma
+ * Up to V3.6.3
+ * Add opcert code.
+ * Changes to function VT2HTML
+ * Bug in EAGAIN waiting for UNIX fifo's or network sockets
+ * AUTOROUTER loigical must be uppercase on VMS
+ *
+ * Revision 1.51  2005/09/13 03:45:11  bergsma
+ * Create _hangup_status_, _connect_status_, and _pipe_status_ variables.
+ * Use arrays to hold multiple HUP, CONNECT, and PIPE signals
+ *
+ * Revision 1.50  2005/09/08 12:44:53  bergsma
+ * Sq statement max size from 5120 to 10240
+ *
+ * Revision 1.48  2005/06/12 16:46:21  bergsma
+ * HS 3.6.1
+ *
+ * Revision 1.47  2005/05/10 17:43:14  bergsma
+ * HS 3.6.0
+ *
+ * Revision 1.46  2005/04/22 19:28:03  bergsma
+ * HS 3.5.7  Required to proper TLOGFEED operation.
+ *
+ * Revision 1.45  2005/04/13 13:45:54  bergsma
+ * HS 3.5.6
+ * Added sql_toexternal.
+ * Fixed handling of strings ending with bs (odd/even number of backslashes)
+ * Better handling of exception condition.
+ *
+ * Revision 1.44  2005/04/03 17:36:19  bergsma
+ * HS 3.54  (FIX OF FLOATING POINT OVERFLOW IN TLOGFEED).
+ * 1. Don't delete LISting files.
+ * 2. PackStart in aeqssp_autofil not being cleared - was causing an
+ * unpack operation when not required.
+ *
+ * Revision 1.43  2005/03/30 16:45:09  bergsma
+ * HS 3.5.4.   In VMS, do not set the process name if the name is already set to the
+ * correct HS concept name. NB:  In VMS 7.3-2 process names are case sensitive.
+ *
+ * Revision 1.42  2005/03/30 04:07:05  bergsma
+ * Backslash should be externalized in unparsestring.
+ * Added signal handler for standalone HS for VMS systems.
+ *
+ * Revision 1.41  2005/03/29 16:50:46  bergsma
+ * V 3.5.2
+ * Fix traceback in PROMIS exithandler when HS duplicate process name.
+ * Functions chop() and remove() were reversed.
+ *
+ * Revision 1.40  2005/03/14 16:56:25  bergsma
+ * Part of 3.5-0. PROMIS Result size is 256
+ *
+ * Revision 1.39  2005/03/09 03:46:44  bergsma
+ * V3.5.0  New functions appendval, insertval, scopeof.
+ *
+ * Revision 1.38  2005/02/25 04:00:51  bergsma
+ * HS 3.4.5
+ * Make mailslot read/writes non-blocking.
+ *
+ * Revision 1.37  2005/02/15 07:04:51  bergsma
+ * V3.4.4
+ * No end of line at end of file.
+ *
+ * Revision 1.36  2005/01/31 05:55:04  bergsma
+ * V 3.4.3
+ *
+ * Revision 1.35  2005/01/25 05:57:44  bergsma
+ * PORT_WRITE_SIZE > PORT_READ_SIZE, so that SSL buffers
+ * are complete when port-forwarding.
+ *
+ * Revision 1.34  2005/01/10 21:08:46  bergsma
+ * V 3.4.1
+ *
  * Revision 1.33  2004/12/26 17:21:24  jbergsma
  * Avoid multiple includes
  *
@@ -136,8 +240,8 @@
  *
  */
 
-#define		MAX_FRAME_DEPTH		128 	/* HyperScript call frame (512) */
-#define		MAX_STACK_DEPTH		64	/* HyperScript stack */
+#define		MAX_FRAME_DEPTH		512 	/* HyperScript call frame  */
+#define		MAX_STACK_DEPTH		256	/* HyperScript stack */
 #define		MAX_EXPRESSION		MAX_STACK_DEPTH * 2 /* Exp length */
 #define		MAX_JMP_LEVEL		63	/* 0-31 levels for setjmp */
 #define		DEFAULT_TIMEOUT		45	/* 45 seconds */
@@ -150,11 +254,11 @@
 #define		MAX_REWAIT		1000
 #define		RETRY_INTERVAL		2
 #define		FRAME_DEPTH_NULL	MAX_FRAME_DEPTH+1
-#define		MAX_PROMIS_RESULT_SIZE	120
+#define		MAX_SIGNALS		8
+#define		MAX_PROMIS_RESULT_SIZE	256
 #define		MAX_REPLY_DEPTH		32
 #define		MAX_QUEUE_DEPTH		32 
 #define		MAX_HASH_TABLE_SIZE	257
-#define		MAX_EVENTS		256
 #define		HEARTBEAT_INTERVAL	60 * 10   /* 10 minutes */
 #define		IDLE_INTERVAL		180	  /* 3 min */
 #define		CONNECT_TIMEOUT		5	  /* 5 seconds */
@@ -205,6 +309,7 @@
 #define 	VALUE_SIZE  		512
 #define		INTERNAL_VALUE_SIZE	VALUE_SIZE/4
 #define		PORT_READ_SIZE	  	MIN ( 4*1024, MAX_MESSAGE_SIZE )	
+#define		PORT_WRITE_SIZE	  	MIN ( 4*1024, MAX_MESSAGE_SIZE )	
 #define 	FIELD_SIZE  		20
 #define 	DEFAULT_DELIMITER 	'|'
 #define		OVERFLOW_READ_SIZE	16*1024	
@@ -270,6 +375,7 @@
 #define		EVENT_ALARM		2
 #define		EVENT_TIMEOUT		4
 #define		EVENT_DEATH		8
+#define		EVENT_WAKEUP		16
 
 /* Handler types */
 #define		HANDLER_MESSAGE		0     	/* When message arrives */
@@ -595,7 +701,7 @@
 #define		DEBUG_POSTFIX_EXEC	16
 #define		DEBUG_FRAME		32
 #define		DEBUG_STACK		64
-#define		DEBUG_SECS		128
+#define		DEBUG_PROTOCOL		128
 #define		DEBUG_STATE		256
 #define		DEBUG_HEAP		512
 #define		DEBUG_SQL		1024	
@@ -690,7 +796,9 @@
 #define		HSMS_STYPE_SEPARATEREQ	9
 #define		HSMS_STYPE_SEPARATERSP	10
 
-#define		MAX_DEVICES FD_SETSIZE
+#define		MAX_EVENTS FD_SETSIZE
+#define		MAX_DEVICES MAX_EVENTS*4
+
 #define		DEVICE_HASH_TABLE_SIZE	23
 
 #define		DEVICE_SECS		1 
@@ -702,7 +810,7 @@
 #define		MAX_SECS2_BLKSIZE	244
 #define		MAX_SECS1_BUFFER	257
 #define		DEFAULT_SECSII_CODE	256
-#define		MAX_SECSII_CODE		DEFAULT_SECSII_CODE << 8
+#define		MAX_SECSII_CODE		DEFAULT_SECSII_CODE << 9
 #define		SECS_INCOMING		0
 #define		SECS_OUTGOING		1
 #define		SECS_MINIMUM_HSMS_PORT	4000
@@ -892,7 +1000,7 @@
 
 /* SQL bounds */
 #define         MAX_SQL_ITEMS           128
-#define		MAX_SQL_STMT_LENGTH	MAX_INPUT_LENGTH
+#define		MAX_SQL_STMT_LENGTH	MAX_INPUT_LENGTH*2
 #define		MAX_SQL_USERNAME_LENGTH	64
 #define		MAX_SQL_PASSWORD_LENGTH	128
 #define		MAX_SQL_DATABASE_LENGTH	128
@@ -917,3 +1025,4 @@
 #endif
 
 #endif /* __HYPDEF_H_ */
+

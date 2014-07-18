@@ -5,6 +5,13 @@
 ! Modifications:
 !
 !    $Log: autotbl.for,v $
+!    Revision 1.3  2005/09/25 20:10:40  bergsma
+!    Up to V3.6.3
+!    Add opcert code.
+!    Changes to function VT2HTML
+!    Bug in EAGAIN waiting for UNIX fifo's or network sockets
+!    AUTOROUTER loigical must be uppercase on VMS
+!
 !    Revision 1.2  2003/01/16 14:32:07  bergsma
 !    V3.1.0
 !    Added Modification tags.
@@ -42,7 +49,8 @@
      &					aeqSsp_autoTbl_prompt,
      &					aeqSsp_autoTbl_debug,
      &					aeqSsp_autoTbl_halt,
-     &					aeqSsp_autoTbl_log
+     &					aeqSsp_autoTbl_log,
+     &                                  aeqSsp_autoTbl_opcert
 
 	character*4			aeqSsp_autoTbl_state
 	character*15			aeqSsp_autoTbl_autoType
@@ -81,6 +89,7 @@
      &					aeqSsp_autoTbl_debug,
      &					aeqSsp_autoTbl_halt,
      &					aeqSsp_autoTbl_log,
+     &                                  aeqSsp_autoTbl_opcert,
      &					aeqSsp_autoTbl_AST_timer,
      &					aeqSsp_autoTbl_connectTries,
      &					aeqSsp_autoTbl_waferIndex,

@@ -26,8 +26,15 @@
 ! Modifications:
 !
 ! $Log: automan4.for,v $
-! Revision 1.14  2004/11/19 03:44:05  bergsma
-! Avoid subscript [:0] errors in keys.
+! Revision 1.19  2005/05/10 17:29:04  bergsma
+! Fix algorithm for finding free buffer space.
+!
+! Revision 1.18  2005/04/22 19:23:50  bergsma
+! When reading TLOG records, use only one slot in aeqssp_fildata, this prevents
+! an overflow in the array.
+!
+! Revision 1.17  2005/04/03 19:26:21  bergsma
+! HS 3.5.5 FIX ANSITIME HANDLING.  Use YYYY-MM-DD HH:MM:SS format.
 !
 ! Revision 1.13  2004/10/16 04:28:33  bergsma
 ! 1. For date keys, use dayTimToInternal instead of DateToInternal
@@ -1214,8 +1221,6 @@
 	  sl = aeqSsp_autoUtil_left_justify ( sourceStr )
 	endif
 
-	if ( s1 .eq. 0 ) goto 100 
-
 	if (	fieldInfo.Type .eq. FIL__DTINTEGER .and. 
      &	  	fieldInfo.Length .eq. 2 ) then
 
@@ -1490,7 +1495,8 @@
 	  select = 1
 	  do while ( .not. found .and. select .le. MAX_AUTO_FILES )
 
-	    if ( aeqSsp_autoFil_fileId(select) .eq. 0 ) then
+	    if ( aeqSsp_autoFil_fileId(select) .eq. 0 .or.
+     &		 aeqSsp_autoFil_isFromTLOG(select) ) then
 	      found = .true.
 	    else
 	      select = select + 1
@@ -1503,7 +1509,7 @@
 	if ( .not. found ) then
 
 	  statusText = 
-     &		'% Maximum 20 files are in use. Please close files not in use'
+     &		'% Maximum 32 files are in use. Please close files not in use'
 	  statusTextLen = gut_trimblks ( statusText )
 	  return
 
@@ -1517,8 +1523,10 @@
 
 	     aeqSsp_autoFil_fileId(select) = file.id
 	     aeqSsp_autoFil_isFresh(select) = .false.
+	     aeqSsp_autoFil_isFromTLOG(select) = .false.
 	     aeqSsp_autoFil_isOpen(select) = .false.
 	     aeqSsp_autoFil_packStart(select) = 0
+	     aeqSsp_autoFil_packSize(select) = 0
 	     statusText = '% Failed to open TLOG'
 	     statusTextLen = gut_trimblks ( statusText )
 	     aeqSsp_autoMan_openFile = .false.
@@ -1538,8 +1546,10 @@
 
 	aeqSsp_autoFil_fileId(select) = file.id
 	aeqSsp_autoFil_isFresh(select) = .false.
+	aeqSsp_autoFil_isFromTLOG(select) = .false.
 	aeqSsp_autoFil_isOpen(select) = .true.
 	aeqSsp_autoFil_packStart(select) = 0
+	aeqSsp_autoFil_packSize(select) = 0
 	aeqSsp_autoMan_openFile = .true.
 	
 	return
@@ -1636,13 +1646,13 @@
 	  
         endif
 
+
 	if ( .not. found ) then
 
-	  statusText = 
-     &		'% Maximum 20 files are in use. Please close files not in use'
+	  statusText = '% Cannot close file - file is not open'
 	  statusTextLen = gut_trimblks ( statusText )
-	  return
-
+	  return 
+	
 	endif
 
 	if ( file.Id .eq. FIL__TLOG ) then
@@ -1655,8 +1665,10 @@
 
 	aeqSsp_autoFil_fileId(select) = 0
 	aeqSsp_autoFil_isFresh(select) = .false.
+	aeqSsp_autoFil_isFromTLOG(select) = .false.
 	aeqSsp_autoFil_isOpen(select) = .false.
         aeqSsp_autoFil_packStart(select) = 0 
+	aeqSsp_autoFil_packSize(select) = 0
 
 	aeqSsp_autoMan_closeFile = .true.
 	return
@@ -1773,7 +1785,8 @@
 	    select = 1
 	    do while ( .not. found .and. select .le. MAX_AUTO_FILES )
 
-	      if ( aeqSsp_autoFil_fileId(select) .eq. 0 ) then
+	      if ( aeqSsp_autoFil_fileId(select) .eq. 0 .or. 
+     &		   aeqSsp_autoFil_isFromTLOG(select) ) then
 		found = .true.
 	      else
 	        select = select + 1
@@ -1785,7 +1798,7 @@
 
 	  if ( .not. found ) then
 	     
-	     statusText = '% Maximum 20 files are in use. Please close files not in use'
+	     statusText = '% Maximum 32 files are in use. Please close files not in use'
 	     statusTextLen = gut_trimblks ( statusText )
 
 	  else
@@ -1812,8 +1825,10 @@
 		     
 		     aeqSsp_autoFil_fileId(select) = filename.id
 		     aeqSsp_autoFil_isFresh(select) = .false.
+		     aeqSsp_autoFil_isFromTLOG(select) = .false.
 		     aeqSsp_autoFil_isOpen(select) = .false.
 		     aeqSsp_autoFil_packStart(select) = 0
+		     aeqSsp_autoFil_packSize(select) = 0
 		     statusText = '% Failed to open TLOG'
 		     statusTextLen = gut_trimblks ( statusText )
 		     aeqSsp_autoMan_getrec = .false.
@@ -1835,8 +1850,10 @@
 	    
 	    aeqSsp_autoFil_fileId(select) = filename.id
 	    aeqSsp_autoFil_isFresh(select) = .false.
+	    aeqSsp_autoFil_isFromTLOG(select) = .false.
 	    aeqSsp_autoFil_isOpen(select) = .true.
 	    aeqSsp_autoFil_packStart(select) = 0
+	    aeqSsp_autoFil_packSize(select) = 0
 
 	    if ( isTLOG ) then
 
@@ -1875,16 +1892,23 @@
 	    
 	    if ( status .eq. FIL__RNF ) then
 	       
-	       ! Unsuccessful read. Deallocate buffer.
-	       statusText = '% Record not found'
-	       statusTextLen = gut_trimblks ( statusText )
-	       aeqSsp_autoFil_isFresh(select) = .false.
+	      ! Unsuccessful read. Deallocate buffer.
+	      statusText = '% Record not found'
+	      statusTextLen = gut_trimblks ( statusText )
+	      aeqSsp_autoFil_isFresh(select) = .false.
+	      aeqSsp_autoFil_packStart (select) = 0
+	      aeqSsp_autoFil_packSize(select) = 0
+	      aeqSsp_autoFil_isFromTLOG(select) = .false.
 	       
 	    else
 	       
 	      ! Successful read.
-	       aeqSsp_autoFil_isFresh(select) = .true.
-	       aeqSsp_automan_getrec = .true.
+	      aeqSsp_autoFil_isFresh(select) = .true.
+	      aeqSsp_autoFil_packStart(select) = 0
+	      aeqSsp_autoFil_packSize(select) = 0
+	      aeqSsp_autoFil_isFromTLOG(select) = .false.
+	      
+	      aeqSsp_automan_getrec = .true.
 	       
 	    endif
 	    
@@ -2024,6 +2048,9 @@
 
 	      ! Unsuccessful read. Deallocate buffer.
 	      aeqSsp_autoFil_isFresh (select) = .false.
+	      aeqSsp_autoFil_isFromTLOG (select) = .false.
+	      aeqSsp_autoFil_packStart (select) = 0
+	      aeqSsp_autoFil_packSize(select) = 0
 	      statusText = '% Next record not found'
 	      statusTextLen = gut_trimblks ( statusText )
 
@@ -2031,6 +2058,10 @@
 
 	      ! Successful read.
 	      aeqSsp_autoFil_isFresh (select) = .true.
+	      aeqSsp_autoFil_packStart (select) = 0
+	      aeqSsp_autoFil_packSize(select) = 0
+	      aeqSsp_autoFil_isFromTLOG(select) = .false.
+
 	      aeqSsp_automan_getnext = .true.
 
 	    endif
@@ -2288,10 +2319,13 @@
 
 		aeqSsp_autoFil_fileId(newselect) = file.Id
 		aeqSsp_autoFil_isOpen(newselect) = .true.
+		aeqSsp_autoFil_isFromTLOG(newselect) = .true.
 
 		aeqSsp_autoFil_packStart(select) = 0 
+		aeqSsp_autoFil_packSize(select) = 0
 		aeqSsp_autoFil_isOpen(select) = .false.
 		aeqSsp_autoFil_isFresh(select) = .false.
+		aeqSsp_autoFil_isFromTLOG(select) = .false.
 		aeqSsp_autoFil_fileId(select) = 0
 
 		select = newSelect
@@ -2305,6 +2339,7 @@
 	      aeqSsp_autoMan_getDbRecord = .true. 
 	      aeqSsp_autoFil_isFresh(select) = .false.
 	      aeqSsp_autoFil_packStart(select) = 0
+	      aeqSsp_autoFil_packSize(select) = 0
             endif
 
 	  endif
@@ -2420,8 +2455,10 @@
 	do i=1,MAX_AUTO_FILES 
 	  aeqSsp_autoFil_fileId(i) = 0
 	  aeqSsp_autoFil_isFresh (i) = .false.
+	  aeqSsp_autoFil_isFromTLOG (i) = .false.
 	  aeqSsp_autoFil_isOpen(i) = .false.
           aeqSsp_autoFil_packStart(i) = 0
+	  aeqSsp_autoFil_packSize(i) = 0
 	enddo	  
 
 	return
@@ -2496,8 +2533,10 @@
      &	      call fil_close ( fileId )
 	    aeqSsp_autoFil_fileId(i) = 0
 	    aeqSsp_autoFil_isFresh (i) = .false.
+	    aeqSsp_autoFil_isFromTLOG (i) = .false.
 	    aeqSsp_autoFil_isOpen(i) = .false.
             aeqSsp_autoFil_packStart(i) = 0
+	    aeqSsp_autoFil_packSize(i) = 0
           endif
 	enddo	  
 
@@ -2651,6 +2690,9 @@
 
 ! Code:
 	
+	! THIS ROUTINE IS ONLY CALLED WHEN
+	! THE PROMIS RECORD COMES FROM TLOG
+
 	aeqssp_automan_unpack = .true.
 
 	call Fil_Tbl_PackStart( recId, packstart )
@@ -2674,7 +2716,8 @@
           do while (	.not. found .and.
      &			 select .le. MAX_AUTO_FILES )
 
-            if ( aeqSsp_autoFil_fileId(select) .eq. 0 ) then
+            if ( aeqSsp_autoFil_fileId(select) .eq. 0 .or.
+     &		 aeqSsp_autoFil_isFromTLOG(select) .eq. .true. ) then
               found = .true.
             else
               select = select + 1
@@ -2687,6 +2730,7 @@
 	file.id = recId
  	if ( .not. found ) then
 	  aeqssp_automan_unpack = .false.
+	  call tut_output('Maximum 32 files are in use!')
 	  return
 	endif
 
@@ -2707,6 +2751,7 @@
 	! Update 
 	aeqSsp_autoFil_fileId(select) = recid
 	aeqSsp_autoFil_isFresh(select) = .true.
+	aeqSsp_autoFil_isFromTLOG(select) = .true.
 	aeqSsp_autoFil_isOpen(select) = .false.
 
 	return

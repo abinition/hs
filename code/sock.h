@@ -3,6 +3,30 @@
  * Modifications:
  *
  * $Log: sock.h,v $
+ * Revision 1.14  2006/08/09 00:51:22  bergsma
+ * Undo last change to createNetwork
+ *
+ * Revision 1.13  2006/08/08 20:50:59  bergsma
+ * In createNetwork, prevent closing of valid socket on another IP channel.
+ *
+ * Revision 1.12  2005/12/27 02:53:25  bergsma
+ * Removed functions ssl_certfile and ssl_keyfile
+ *
+ * Revision 1.11  2005/12/17 20:42:11  bergsma
+ * no message
+ *
+ * Revision 1.10  2005/11/29 23:57:04  bergsma
+ * Argument missing in gHyp_sock_usleep
+ *
+ * Revision 1.9  2005/11/06 16:45:06  bergsma
+ * Added setKetFile and getKeyFile
+ *
+ * Revision 1.8  2005/10/25 16:39:49  bergsma
+ * Added usleep() function
+ *
+ * Revision 1.7  2005/07/23 22:33:06  bergsma
+ * ssl fixes
+ *
  * Revision 1.6  2004/10/16 05:06:06  bergsma
  * Added getSessionand setSession functions
  *
@@ -24,6 +48,7 @@
  *
  */
 extern sLOGICAL	gHyp_sock_init () ;
+extern void	gHyp_sock_usleep ( unsigned int ) ;
 extern void gHyp_sock_cancelIO ( SOCKET ) ;
 extern HANDLE	gHyp_sock_fifo ( char*, sLOGICAL, sLOGICAL, sLOGICAL, sLOGICAL ) ;
 extern sLOGICAL	gHyp_sock_mkdir ( char* ) ;
@@ -31,16 +56,15 @@ extern sLOGICAL	gHyp_sock_mkdir ( char* ) ;
 extern void *gHyp_sock_ctxInit(char*,char*,char*);
 extern int gHyp_sock_password_cb(char *buf, int num, int rwflag, void *userdata ) ;
 extern sLOGICAL gHyp_sock_ctxCiphers ( void * ctx, char *ciphers ) ;
-extern sLOGICAL gHyp_sock_ctxKey ( void * ctx, char *key, char *pass ) ;
-extern sLOGICAL gHyp_sock_ctxCert ( void * ctx, char *cert ) ;
 extern sLOGICAL gHyp_sock_ctxCApath ( void * ctx, char *CApath ) ;
 extern sLOGICAL gHyp_sock_ctxCAfile ( void * ctx, char *CAfile ) ;
 extern sLOGICAL gHyp_sock_ctxAuth ( void *ctx ) ;
 extern sLOGICAL gHyp_sock_ctxAuthClient ( void *ctx ) ;
 extern void   gHyp_sock_destroyCTX ( void *ctx ) ;
 extern void   gHyp_sock_deleteSSL ( sSSL *pSSL ) ;
-extern void gHyp_sock_setSession ( sSSL *pSSL, void *session  ) ;
-extern void *gHyp_sock_getSession ( sSSL *pSSL ) ;
+extern void gHyp_sock_setSession ( void *ctx, void *session  ) ;
+extern void *gHyp_sock_getSession ( void *ctx ) ;
+extern void gHyp_sock_enableSessions ( void *ctx ) ;
 extern sSSL* gHyp_sock_copySSL ( sSSL *pSSL ) ;
 extern sSSL* gHyp_sock_createSSL ( void *ctx, sLOGICAL isClient ) ;
 #endif
@@ -66,7 +90,7 @@ extern void		gHyp_sock_shutdown ( SOCKET ,
 					     sData *,
 					     sConcept *) ;
 extern sData*		gHyp_sock_createClient ( sData*, char*, char*, sLOGICAL ) ;
-extern sData*		gHyp_sock_createNetwork ( sData*, char*, char*, int ) ; 
+extern sData*		gHyp_sock_createNetwork ( sData*, char*, char*, SOCKET ) ; 
 extern sData*		gHyp_sock_findClient ( sData*, char *, char* ) ;
 extern sData*	        gHyp_sock_findParent ( char *object, char *targetId ) ;
 extern sData*	 	gHyp_sock_findNetwork ( sData *, char * ) ;

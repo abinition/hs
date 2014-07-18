@@ -10,6 +10,27 @@
 /* Modifications:
  *
  * $Log: ssl.c,v $
+ * Revision 1.10  2005/12/27 02:53:25  bergsma
+ * Removed functions ssl_certfile and ssl_keyfile
+ *
+ * Revision 1.9  2005/12/17 20:38:33  bergsma
+ * Added ssl_enableSessions
+ *
+ * Revision 1.8  2005/12/10 00:30:30  bergsmas
+ * HS 3.6.5
+ *
+ * Revision 1.7  2005/07/23 22:33:06  bergsma
+ * ssl fixes
+ *
+ * Revision 1.6  2005/05/10 17:40:25  bergsma
+ * Fix getSession and setSession argument casting
+ *
+ * Revision 1.5  2005/03/21 18:07:32  bergsma
+ * misspelled gHyp_concept_getSockObjType
+ *
+ * Revision 1.4  2005/03/16 23:53:22  bergsma
+ * V 3.5.1 - fixes for use with DECC compiler.
+ *
  * Revision 1.3  2004/09/18 21:51:49  bergsma
  * SSL buffer size can be 16K
  * SSL timeout increased from 1 to 1.5 seconds
@@ -282,170 +303,6 @@ void gHyp_ssl_ciphers ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
     if ( !gHyp_sock_ctxCiphers ( ctx, ciphers ) )
       gHyp_instance_error ( pAI, STATUS_SSL, "Failed to set ciphers");
-
-    gHyp_instance_pushSTATUS ( pAI, pStack ) ;
-  }
-}
-
-void gHyp_ssl_keyFile ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
-{
-  /* Description:
-   *
-   *    PARSE or EXECUTE the built-in function: ssl_keyFile ( )
-   *    Returns 1
-   *
-   * Arguments:
-   *
-   *    pAI                                                     [R]
-   *    - pointer to instance object
-   *
-   *    pCode                                                   [R]
-   *    - pointer to code object
-   *
-   * Return value:
-   *
-   *    none
-   *
-   */
-  sFrame        *pFrame = gHyp_instance_frame ( pAI ) ;
-  sParse        *pParse = gHyp_frame_parse ( pFrame ) ;
-
-  if ( isPARSE )
-
-    gHyp_parse_operand ( pParse, pCode, pAI ) ;
-
-  else {
-
-    sStack
-      *pStack = gHyp_frame_stack ( pFrame ) ;
-
-    sData
-      *pData ;
-
-    int
-      n,
-      argCount = gHyp_parse_argCount ( pParse ) ;
-
-    void
-      *ctx ;
-
-    char
-      password[VALUE_SIZE+1],
-      keyFile[VALUE_SIZE+1] ;
-
-    /* Assume success */
-    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
-
-    if ( argCount != 2 && argCount !=3 )
-      gHyp_instance_error ( pAI, STATUS_ARGUMENT,
-      "Invalid args. Usage: ssl_keyFile ( ssl_context_handle, keyFile [,password] )");
-
-    if ( argCount == 3 ) {
-
-      /* Get the password */
-      pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
-      n = gHyp_data_getStr ( pData,
-                           password,
-                           VALUE_SIZE,
-                           gHyp_data_getSubScript ( pData ),
-                           TRUE ) ;
-
-
-    }
-    else
-      password[0] = '\0' ;
-
-    /* Get the keyFile */
-    pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
-    n = gHyp_data_getStr ( pData,
-                           keyFile,
-                           VALUE_SIZE,
-                           gHyp_data_getSubScript ( pData ),
-                           TRUE ) ;
-
-    /* Get the SSL object */
-    pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
-    ctx = gHyp_data_getHandle ( pData, gHyp_data_getSubScript ( pData ), TRUE );
-
-    if ( ctx == NULL )
-      gHyp_instance_error ( pAI, STATUS_SSL, "No SSL context");
-
-    if ( !gHyp_sock_ctxKey ( ctx, keyFile, password ) )
-      gHyp_instance_error ( pAI, STATUS_SSL, "Failed to set keyFile");
-
-    gHyp_instance_pushSTATUS ( pAI, pStack ) ;
-  }
-}
-
-void gHyp_ssl_certFile ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
-{
-  /* Description:
-   *
-   *    PARSE or EXECUTE the built-in function: ssl_certFile ( )
-   *    Returns 1
-   *
-   * Arguments:
-   *
-   *    pAI                                                     [R]
-   *    - pointer to instance object
-   *
-   *    pCode                                                   [R]
-   *    - pointer to code object
-   *
-   * Return value:
-   *
-   *    none
-   *
-   */
-  sFrame        *pFrame = gHyp_instance_frame ( pAI ) ;
-  sParse        *pParse = gHyp_frame_parse ( pFrame ) ;
-
-  if ( isPARSE )
-
-    gHyp_parse_operand ( pParse, pCode, pAI ) ;
-
-  else {
-
-    sStack
-      *pStack = gHyp_frame_stack ( pFrame ) ;
-
-    sData
-      *pData ;
-
-    int
-      n,
-      argCount = gHyp_parse_argCount ( pParse ) ;
-
-    void
-      *ctx ;
-
-    char
-      certFile[VALUE_SIZE+1] ;
-
-    /* Assume success */
-    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
-
-    if ( argCount != 2 )
-      gHyp_instance_error ( pAI, STATUS_ARGUMENT,
-      "Invalid args. Usage: ssl_certFile ( ssl_context_handle, certFile )");
-
-    /* Get the certFile */
-    pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
-    n = gHyp_data_getStr ( pData,
-                           certFile,
-                           VALUE_SIZE,
-                           gHyp_data_getSubScript ( pData ),
-                           TRUE ) ;
-
-    /* Get the SSL object */
-    pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
-    ctx = gHyp_data_getHandle ( pData, gHyp_data_getSubScript ( pData ), TRUE );
-
-    if ( ctx == NULL )
-      gHyp_instance_error ( pAI, STATUS_SSL, "No SSL context");
-
-    if ( !gHyp_sock_ctxCert ( ctx, certFile ) )
-      gHyp_instance_error ( pAI, STATUS_SSL, "Failed to set certFile");
 
     gHyp_instance_pushSTATUS ( pAI, pStack ) ;
   }
@@ -814,7 +671,7 @@ void gHyp_ssl_assign ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
     /* Get the socket handle */
     fd = (SOCKET) gHyp_data_getHandle ( pData, gHyp_data_getSubScript ( pData ), TRUE );
-    objectType = gHyp_concept_getSocketObjectType ( pConcept, (SOCKET) fd ) ;
+    objectType = gHyp_concept_getSockObjType ( pConcept, (SOCKET) fd ) ;
 
     if ( objectType == DATA_OBJECT_NULL ) objectType = DATA_OBJECT_CHANNEL ;
 
@@ -984,7 +841,7 @@ void gHyp_ssl_getSession ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       argCount = gHyp_parse_argCount ( pParse ) ;
 
     void
-      *pSSL,
+      *ctx,
       *session ;
 
     /* Assume success */
@@ -992,14 +849,14 @@ void gHyp_ssl_getSession ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
     if ( argCount != 1 )
       gHyp_instance_error ( pAI, STATUS_ARGUMENT,
-        "Invalid args. Usage: ssl_getSession ( hSSL )");
+        "Invalid args. Usage: ssl_getSession ( ssl_context_handle )");
 
-    /* Get the socket handle */
+    /* Get the SSL context object */
     pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
-    pSSL = gHyp_data_getHandle ( pData, gHyp_data_getSubScript ( pData ), TRUE );
+    ctx = gHyp_data_getHandle ( pData, gHyp_data_getSubScript ( pData ), TRUE );
 
     /* Get the SSL session id */
-    session = gHyp_sock_getSession( pSSL );
+    session = gHyp_sock_getSession( ctx );
 
     if ( !session )
       gHyp_instance_warning ( pAI, STATUS_SSL, "Failed to get SSL session object");
@@ -1050,7 +907,7 @@ void gHyp_ssl_setSession ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       argCount = gHyp_parse_argCount ( pParse ) ;
 
     void
-      *pSSL,
+      *ctx,
       *session ;
 
     /* Assume success */
@@ -1058,7 +915,7 @@ void gHyp_ssl_setSession ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
     if ( argCount != 2 )
       gHyp_instance_error ( pAI, STATUS_ARGUMENT,
-        "Invalid args. Usage: ssl_setSession ( hSSL, session )");
+        "Invalid args. Usage: ssl_setSession ( ssl_context_handle, session )");
 
     /* Get the SESSION object */
     pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
@@ -1066,10 +923,69 @@ void gHyp_ssl_setSession ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
     /* Get the SSL object */
     pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
-    pSSL =  gHyp_data_getHandle ( pData, gHyp_data_getSubScript ( pData ), TRUE );
+    ctx =  gHyp_data_getHandle ( pData, gHyp_data_getSubScript ( pData ), TRUE );
     
     /* Set the session id */
-    gHyp_sock_setSession( pSSL, session );
+    gHyp_sock_setSession( ctx, session );
+
+    gHyp_instance_pushSTATUS ( pAI, pStack ) ;
+  }
+}
+
+void gHyp_ssl_enableSessions ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
+{
+  /* Description:
+   *
+   *    PARSE or EXECUTE the built-in function: ssl_enableSessions ( )
+   *    Returns 1
+   *
+   * Arguments:
+   *
+   *    pAI                                                     [R]
+   *    - pointer to instance object
+   *
+   *    pCode                                                   [R]
+   *    - pointer to code object
+   *
+   * Return value:
+   *
+   *    none
+   *
+   */
+  sFrame        *pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse        *pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+
+  else {
+
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+
+    sData
+      *pData ;
+
+    int
+      argCount = gHyp_parse_argCount ( pParse ) ;
+
+    void
+      *ctx;
+
+    /* Assume success */
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 1 )
+      gHyp_instance_error ( pAI, STATUS_ARGUMENT,
+        "Invalid args. Usage: ssl_enableSessions ( ssl_context_handle )");
+
+    /* Get the SSL object */
+    pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
+    ctx =  gHyp_data_getHandle ( pData, gHyp_data_getSubScript ( pData ), TRUE );
+    
+    /* Set the session id */
+    gHyp_sock_enableSessions( ctx ) ;
 
     gHyp_instance_pushSTATUS ( pAI, pStack ) ;
   }

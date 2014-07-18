@@ -3,6 +3,9 @@
  * Modifications:
  *
  * $Log: fileio.h,v $
+ * Revision 1.8  2005/12/10 00:30:30  bergsma
+ * HS 3.6.5
+ *
  * Revision 1.7  2004/04/29 08:32:40  bergsma
  * Added functions frwite,fread,load_binary
  *
@@ -22,6 +25,7 @@
  * Added gHyp_fileio_describeData
  *
  */
+extern sBYTE	gHyp_fileio_dataType ( char *dt ) ;
 extern void	gHyp_fileio_describe ( sInstance*, sCode*, sLOGICAL ) ;
 extern void	gHyp_fileio_sdescribe ( sInstance*, sCode*, sLOGICAL ) ;
 extern void	gHyp_fileio_fdescribe ( sInstance*, sCode*, sLOGICAL ) ;
@@ -35,6 +39,7 @@ extern void    	gHyp_fileio_fputs ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_fileio_fwrite ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_fileio_fread ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_fileio_fput ( sInstance*, sCode*, sLOGICAL ) ;
+extern void	gHyp_fileio_getTokens ( char *pBuf, sData *pResult ) ;
 extern void    	gHyp_fileio_fgets ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_fileio_fget ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_fileio_get ( sInstance*, sCode*, sLOGICAL ) ;

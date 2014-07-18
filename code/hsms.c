@@ -11,6 +11,27 @@
  * Modifications:
  *
  * $Log: hsms.c,v $
+ * Revision 1.15  2006/01/19 20:37:15  bergsma
+ * no message
+ *
+ * Revision 1.14  2006/01/16 18:56:36  bergsma
+ * HS 3.6.6
+ * 1. Save query timeout events.  Don't let queries repeat indefinitely.
+ * 2. Rework DEBUG_DIAGNOSTIC debugging.  Less overhead.
+ *
+ * Revision 1.13  2005/11/28 05:08:48  bergsma
+ * Detect when pParentAI is null
+ *
+ * Revision 1.12  2005/02/15 07:09:53  bergsma
+ * Relax restrictions, object can be DATA_OBJECT_NULL.
+ *
+ * Revision 1.11  2005/01/31 06:01:39  bergsma
+ * Comment change.
+ *
+ * Revision 1.10  2005/01/25 05:49:59  bergsma
+ * 1. Use SLEEP signal rather than HEARTBEAT signal for HSMS pause.
+ * 2. Moved test for nBytes==0 to sock_read
+ *
  * Revision 1.9  2004/10/16 04:43:49  bergsma
  * Use memmove rather than strncpy for shifting next message.
  *
@@ -266,13 +287,13 @@ int gHyp_hsms_nextMessage ( sHsms *pHsms, sConcept *pConcept, sInstance *pAI )
       pHsms->pNextMsg = NULL ;
     }
     
-    if ( guDebugFlags & DEBUG_SECS ) {
+    if ( guDebugFlags & DEBUG_PROTOCOL ) {
       pStr = blkStr ;
       for ( i=0; i<msglen+4; i++ ) {
 	sprintf ( pStr, "%02x ", *(pMsgStart+i) ) ;
 	pStr += 3 ;
       }
-      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SECS,
+      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 			   "<- [%s]", blkStr ) ; 
     }
 
@@ -367,8 +388,8 @@ int gHyp_hsms_nextMessage ( sHsms *pHsms, sConcept *pConcept, sInstance *pAI )
       
     case HSMS_STYPE_SELECTREQ :
       
-      if ( guDebugFlags & DEBUG_SECS )
-	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SECS,
+      if ( guDebugFlags & DEBUG_PROTOCOL )
+	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 			     "Received SELECT.REQ" ) ;
 
       if ( pHsms->state != HSMS_EXPECT_RECV_SELECTREQ )
@@ -392,8 +413,8 @@ int gHyp_hsms_nextMessage ( sHsms *pHsms, sConcept *pConcept, sInstance *pAI )
       
     case HSMS_STYPE_SELECTRSP :
 
-      if ( guDebugFlags & DEBUG_SECS )
-	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SECS,
+      if ( guDebugFlags & DEBUG_PROTOCOL )
+	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 			     "Received SELECT.RSP");
 
       if ( pHsms->state != HSMS_EXPECT_RECV_SELECTRSP )
@@ -431,8 +452,8 @@ int gHyp_hsms_nextMessage ( sHsms *pHsms, sConcept *pConcept, sInstance *pAI )
       
     case HSMS_STYPE_DESELECTREQ :      
       
-      if ( guDebugFlags & DEBUG_SECS )
-	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SECS,
+      if ( guDebugFlags & DEBUG_PROTOCOL )
+	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 			     "Received DESELECT.REQ" ) ;
 
       if ( pHsms->state != HSMS_EXPECT_SEND_DATA &&
@@ -456,8 +477,8 @@ int gHyp_hsms_nextMessage ( sHsms *pHsms, sConcept *pConcept, sInstance *pAI )
 
     case HSMS_STYPE_DESELECTRSP :
 
-      if ( guDebugFlags & DEBUG_SECS )
-	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SECS,
+      if ( guDebugFlags & DEBUG_PROTOCOL )
+	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 			     "Received DESELECT.RSP");
 
       if ( pHsms->state != HSMS_EXPECT_RECV_DESELECTRSP )
@@ -467,8 +488,8 @@ int gHyp_hsms_nextMessage ( sHsms *pHsms, sConcept *pConcept, sInstance *pAI )
       
     case HSMS_STYPE_LINKTESTREQ :
 
-      if ( guDebugFlags & DEBUG_SECS )
-	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SECS,
+      if ( guDebugFlags & DEBUG_PROTOCOL )
+	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 			     "Received LINKTEST.REQ" ) ;
 
       pHsms->prevState = pHsms->state ;
@@ -486,8 +507,8 @@ int gHyp_hsms_nextMessage ( sHsms *pHsms, sConcept *pConcept, sInstance *pAI )
     
     case HSMS_STYPE_LINKTESTRSP :
 
-      if ( guDebugFlags & DEBUG_SECS )
-	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SECS,
+      if ( guDebugFlags & DEBUG_PROTOCOL )
+	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 			     "Received LINKTEST.RSP");
 
       if ( pHsms->state != HSMS_EXPECT_RECV_LINKTESTRSP )
@@ -497,8 +518,8 @@ int gHyp_hsms_nextMessage ( sHsms *pHsms, sConcept *pConcept, sInstance *pAI )
       
     case HSMS_STYPE_REJECTREQ :
 
-      if ( guDebugFlags & DEBUG_SECS )
-	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SECS,
+      if ( guDebugFlags & DEBUG_PROTOCOL )
+	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 			     "Received REJECT.REQ" ) ;
 
       pHsms->prevState = pHsms->state ;
@@ -515,8 +536,8 @@ int gHyp_hsms_nextMessage ( sHsms *pHsms, sConcept *pConcept, sInstance *pAI )
 
     case HSMS_STYPE_REJECTRSP :
 
-       if ( guDebugFlags & DEBUG_SECS )
-	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SECS,
+       if ( guDebugFlags & DEBUG_PROTOCOL )
+	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 			     "Received REJECT.RSP");
 
       if ( pHsms->state != HSMS_EXPECT_RECV_REJECTRSP )
@@ -527,8 +548,8 @@ int gHyp_hsms_nextMessage ( sHsms *pHsms, sConcept *pConcept, sInstance *pAI )
       
     case HSMS_STYPE_SEPARATEREQ :
 
-      if ( guDebugFlags & DEBUG_SECS )
-	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SECS,
+      if ( guDebugFlags & DEBUG_PROTOCOL )
+	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 			     "Received SEPARATE.REQ" ) ;
       pHsms->prevState = pHsms->state ;
       pHsms->state = HSMS_EXPECT_SEND_SEPARATERSP ;
@@ -545,8 +566,8 @@ int gHyp_hsms_nextMessage ( sHsms *pHsms, sConcept *pConcept, sInstance *pAI )
 
     case HSMS_STYPE_SEPARATERSP :
 
-      if ( guDebugFlags & DEBUG_SECS )
-	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SECS,
+      if ( guDebugFlags & DEBUG_PROTOCOL )
+	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 			     "Received SEPARATE.RSP");
 
       if ( pHsms->state != HSMS_EXPECT_RECV_SEPARATERSP )
@@ -592,12 +613,16 @@ int gHyp_hsms_incoming ( sHsms *pHsms,
 
     /* Get id that is assigned to the port */
     id = gHyp_instance_getDeviceId ( pAIassigned, (SOCKET) pHsms->socket ) ;
-    /*gHyp_util_debug("found %d for port %d",id,pHsms->socket);*/
 
+    if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
+	"Socket %d is assigned to id %d for target %s",
+	  pHsms->socket, id, gHyp_instance_getTargetId ( pAIassigned ) ) ;
+    
   }
   else {
 
-    /*gHyp_util_debug( "No instance has assigned any id to the port.");*/
+    gHyp_util_logWarning( "No instance has assigned any id to the port.");
 
     /* No instance has assigned any id to the port.
      * Check if this is a newly created channel.
@@ -605,7 +630,11 @@ int gHyp_hsms_incoming ( sHsms *pHsms,
     if ( pHsms->socket != pHsms->parentSocket ) {
 
       /* This is a newly created channel */
-      /*gHyp_util_debug ( "Looking for instance assigned to listen port" );*/
+
+      /* This is a newly created channel */
+      gHyp_util_logInfo ( "New socket connection %d off of parent socket %d",
+	pHsms->socket, pHsms->parentSocket ) ;
+      
       pAIassigned = gHyp_concept_getInstForFd ( pConcept, pHsms->parentSocket ) ;
 
       if ( pAIassigned ) {
@@ -626,14 +655,14 @@ int gHyp_hsms_incoming ( sHsms *pHsms,
 	  return COND_SILENT ;
 	}
 	
-	/*gHyp_util_debug ( "Taking device id %d from port %d to port %d",
-			    id, pHsms->parentSocket, pHsms->socket );
-	*/ 
+  	gHyp_util_logInfo ( "Reassigning device id %d to port %d from listen port %d",
+	 		    id, pHsms->socket, pHsms->parentSocket );
 
 	/* Take any SSL structures as well */
 	pListenHsms = (sHsms*) gHyp_concept_getSocketObject ( pConcept, 
 							  (SOCKET) pHsms->parentSocket, 
-							  DATA_OBJECT_HSMS ) ;
+							  DATA_OBJECT_NULL ) ;
+							  /*DATA_OBJECT_HSMS ) ;*/
 
 #ifdef AS_SSL
 	if ( pListenHsms->pSSL != NULL ) {
@@ -672,15 +701,16 @@ int gHyp_hsms_incoming ( sHsms *pHsms,
   			    &pHsms->overlapped,
 			    pHsms->pSSL ) ;
   
-      /* Restore the previous longjmp return point. */
-      giJmpEnabled = jmpEnabled ;
+  /* Restore the previous longjmp return point. */
+  giJmpEnabled = jmpEnabled ;
 
   if ( nBytes < 0 ) {
-    gHyp_instance_signalHangup ( 
-      pParentAI, 
-      (int) pHsms->socket, 
-      pHsms->port,
-      id ) ;
+    if ( pParentAI ) 
+      gHyp_instance_signalHangup ( 
+        pParentAI, 
+        (int) pHsms->socket, 
+	pHsms->port,
+        id ) ;
     gHyp_concept_deleteSocketObject ( pConcept, pHsms->socket ) ;
     return COND_SILENT ;
   }
@@ -690,17 +720,25 @@ int gHyp_hsms_incoming ( sHsms *pHsms,
     gHyp_util_logError ( "Zero bytes read from SECS node %s, port %d",
 			 pHsms->node, pHsms->socket ) ;
 
-    gHyp_instance_signalHangup ( 
-      pParentAI, 
-      (int) pHsms->socket, 
-      pHsms->port,
-      id ) ;
+    if ( pParentAI ) 
+      gHyp_instance_signalHangup ( 
+	pParentAI, 
+        (int) pHsms->socket, 
+        pHsms->port,
+        id ) ;
     gHyp_concept_deleteSocketObject ( pConcept, pHsms->socket ) ;
 
 
     return COND_SILENT ;
   }
   else {
+
+    if ( !pParentAI ) {
+      gHyp_util_logError ( "No id is assigned to socket %d for device id %u",
+			   pHsms->socket,
+			   id);
+      return COND_SILENT ;
+    }
 
     /* Received some bytes */
     pHsms->pEndOfBuf = pMsg + nBytes ;
@@ -746,8 +784,8 @@ int gHyp_hsms_outgoing ( sHsms *pHsms,
     /* We must have received the LINKTEST.REQ from the active node.
      * Now we must send back the LINKTEST.RSP within the T6 timeout period.
      */
-     if ( guDebugFlags & DEBUG_SECS )
-       gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SECS,
+     if ( guDebugFlags & DEBUG_PROTOCOL )
+       gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 			    "Sending LINKTEST.RSP to host '%s', socket %d",
 			    pHsms->node, pHsms->socket ) ;
 
@@ -771,8 +809,8 @@ int gHyp_hsms_outgoing ( sHsms *pHsms,
     /* We must have received the DESELECT.REQ from the active node.
      * Now we must send back the DESELECT.RSP within the T6 timeout period.
      */
-     if ( guDebugFlags & DEBUG_SECS )
-       gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SECS,
+     if ( guDebugFlags & DEBUG_PROTOCOL )
+       gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 			    "Sending DESELECT.RSP to host '%s', socket %d",
 			    pHsms->node, pHsms->socket ) ;
 
@@ -798,8 +836,8 @@ int gHyp_hsms_outgoing ( sHsms *pHsms,
     /* We must have received the REJECT.REQ from the active node.
      * Now we must send back the REJECT.RSP within the T6 timeout period.
      */
-     if ( guDebugFlags & DEBUG_SECS )
-       gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SECS,
+     if ( guDebugFlags & DEBUG_PROTOCOL )
+       gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 			    "Sending REJECT.RSP to host '%s', socket %d",
 			    pHsms->node, pHsms->socket ) ;
      
@@ -825,8 +863,8 @@ int gHyp_hsms_outgoing ( sHsms *pHsms,
     /* We must have received the SEPARATE.REQ from the active node.
      * Now we must send back the SEPARATE.RSP within the T6 timeout period.
      */
-     if ( guDebugFlags & DEBUG_SECS )
-       gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SECS,
+     if ( guDebugFlags & DEBUG_PROTOCOL )
+       gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 			    "Sending SEPARATE.RSP to host '%s', socket %d",
 			    pHsms->node, pHsms->socket ) ;
 
@@ -875,8 +913,8 @@ int gHyp_hsms_outgoing ( sHsms *pHsms,
     /* We must have received the SELECT.REQ from the active node.
      * Now we must send back the SELECT.RSP within the T6 timeout period.
      */
-    if ( guDebugFlags & DEBUG_SECS )
-      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SECS,
+    if ( guDebugFlags & DEBUG_PROTOCOL )
+      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 			   "Sending SELECT.RSP to host '%s', socket %d",
 			   pHsms->node, pHsms->socket ) ;
 
@@ -892,8 +930,8 @@ int gHyp_hsms_outgoing ( sHsms *pHsms,
     /* Set next state */
     pHsms->prevState = HSMS_EXPECT_SEND_SELECTRSP ;
     pHsms->state = HSMS_EXPECT_RECV_DATA ;
-    if ( guDebugFlags & DEBUG_SECS )
-      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SECS,
+    if ( guDebugFlags & DEBUG_PROTOCOL )
+      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 			   "Now expecting RECV DATA" ) ;
     msglen = 10 ;
 
@@ -914,8 +952,8 @@ int gHyp_hsms_outgoing ( sHsms *pHsms,
     return COND_SILENT ;
 
   case	HSMS_EXPECT_SEND_SELECTREQ :
-    if ( guDebugFlags & DEBUG_SECS )
-      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SECS,
+    if ( guDebugFlags & DEBUG_PROTOCOL )
+      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 			   "Sending SELECT.REQ to host '%s', socket %d",
 			   pHsms->node, pHsms->socket ) ;
 
@@ -941,8 +979,8 @@ int gHyp_hsms_outgoing ( sHsms *pHsms,
     /* Set next state */
     pHsms->prevState = HSMS_EXPECT_SEND_SELECTREQ ;
     pHsms->state = HSMS_EXPECT_RECV_SELECTRSP ;
-    if ( guDebugFlags & DEBUG_SECS )
-      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SECS,
+    if ( guDebugFlags & DEBUG_PROTOCOL )
+      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 			   "Now expecting RECV SELECT.RSP" ) ;
     msglen = 10 ;
 
@@ -962,15 +1000,15 @@ int gHyp_hsms_outgoing ( sHsms *pHsms,
     /* This is ok.  Just change state to SEND_DATA */
     pHsms->prevState = HSMS_EXPECT_RECV_DATA ;
     pHsms->state = HSMS_EXPECT_SEND_DATA ;
-    if ( guDebugFlags & DEBUG_SECS )
-      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SECS,
+    if ( guDebugFlags & DEBUG_PROTOCOL )
+      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 			   "Now expecting SEND DATA" ) ;
     
   case	HSMS_EXPECT_SEND_DATA :
     
-    if ( guDebugFlags & DEBUG_SECS )
+    if ( guDebugFlags & DEBUG_PROTOCOL )
       gHyp_util_logDebug ( 
-        FRAME_DEPTH_NULL, DEBUG_SECS,
+        FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 	"Sending S%dF%d (device %d) (TID=0x%02x) (SID=0x%02x)",
 			   stream,function,deviceId,TID,SID ) ;
 
@@ -982,8 +1020,8 @@ int gHyp_hsms_outgoing ( sHsms *pHsms,
     pHeader->SType = HSMS_STYPE_DATAMSG ;
     pHeader->isReplyExpected = ( mode == MESSAGE_QUERY ) ;
     pHeader->isPrimaryMsg = ( function % 2 ) ;
-    if ( guDebugFlags & DEBUG_SECS )
-      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SECS,
+    if ( guDebugFlags & DEBUG_PROTOCOL )
+      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 			   "Restoring TID=0x%02x, SID=0x%02x", TID , SID ) ;
     pHeader->TID = TID ;
     pHeader->SID = SID ;
@@ -1026,13 +1064,13 @@ int gHyp_hsms_outgoing ( sHsms *pHsms,
   pHsms->outbuf[HSMS_HEADER_UPPERTID] = (pHeader->TID >> 8) ;
   pHsms->outbuf[HSMS_HEADER_LOWERTID] = (sBYTE) pHeader->TID ;
 
-  if ( guDebugFlags & DEBUG_SECS ) {
+  if ( guDebugFlags & DEBUG_PROTOCOL ) {
     pStr = blkStr ;
     for ( i=0; i<msglen+4; i++ ) {
       sprintf ( pStr, "%02x ", pHsms->outbuf[i] ) ;
       pStr += 3 ;
     }
-    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SECS,
+    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 			 "-> [%s]", blkStr ) ; 
   }
   /* Write it out */
@@ -1044,18 +1082,9 @@ int gHyp_hsms_outgoing ( sHsms *pHsms,
 			     &pHsms->overlapped,
 			     pHsms->pSSL ) ;
 
-  if ( nBytes < 0 ) {
+  if ( nBytes <= 0 ) {
     gHyp_util_sysError ( "Failed to send to HSMS node %s",
 			 pHsms->node ) ;
-    gHyp_instance_signalHangup ( 
-      pAI, (int) pHsms->socket, pHsms->port, deviceId ) ;
-    gHyp_concept_deleteSocketObject ( gHyp_instance_getConcept(pAI), pHsms->socket ) ;
-    return COND_SILENT ;
-  }
-  else if ( nBytes < msglen ) {
-    /* Not all bytes were written */
-    gHyp_util_logError ( "Wrote only %d of %d bytes to HSMS node %s",
-			nBytes, msglen, pHsms->node ) ;
     gHyp_instance_signalHangup ( 
       pAI, (int) pHsms->socket, pHsms->port, deviceId ) ;
     gHyp_concept_deleteSocketObject ( gHyp_instance_getConcept(pAI), pHsms->socket ) ;
@@ -1070,7 +1099,11 @@ int gHyp_hsms_outgoing ( sHsms *pHsms,
      * Wait T6 seconds for the SELECT.RSP.
      */ 
     gHyp_util_logInfo("Waiting for SELECT.RSP before sending message");
-    gHyp_instance_setBeatTime ( pAI, gsCurTime+(int)pHsms->t6) ;
+
+    /*gHyp_instance_setBeatTime ( pAI, gsCurTime+(int)pHsms->t6) ;*/
+
+    gHyp_instance_setWakeTime ( pAI, gsCurTime+(int)pHsms->t6) ;
+
     return gHyp_instance_read ( pAI ) ;
   }
   return COND_SILENT ;

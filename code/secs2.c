@@ -10,6 +10,11 @@
  * Modifications:
  *
  * $Log: secs2.c,v $
+ * Revision 1.11  2006/01/16 18:56:36  bergsma
+ * HS 3.6.6
+ * 1. Save query timeout events.  Don't let queries repeat indefinitely.
+ * 2. Rework DEBUG_DIAGNOSTIC debugging.  Less overhead.
+ *
  * Revision 1.10  2004/10/16 05:04:36  bergsma
  * Improve dubious handling of byte-order sensitive operations.
  *
@@ -660,9 +665,9 @@ int gHyp_secs2_parseSecs ( sSecs2 *pSecs2,
   deviceId = gHyp_secs2_deviceId ( pSecsHeader ) ;
   sprintf ( sender, "%u#secs", deviceId ) ;  
   
-  if ( guDebugFlags & DEBUG_SECS )
+  if ( guDebugFlags & DEBUG_PROTOCOL )
     gHyp_util_logDebug ( 
-      FRAME_DEPTH_NULL, DEBUG_SECS,
+      FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
       "Received S%dF%d (Device %d) (TID=0x%02x) (SID=0x%02x) ",
       stream,function,deviceId,TID,SID ) ;
 
@@ -674,8 +679,8 @@ int gHyp_secs2_parseSecs ( sSecs2 *pSecs2,
       /* A reply is expected */
       strcpy ( mode, pQuery ) ;
 
-      if ( guDebugFlags & DEBUG_SECS )
-	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SECS,
+      if ( guDebugFlags & DEBUG_PROTOCOL )
+	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 			     "Saving TID=0x%02x, SID=0x%02x",
 			     TID , SID ) ;
 

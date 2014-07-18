@@ -11,6 +11,27 @@
  * Modifications:
  *
  *	$Log: fileio.c,v $
+ *	Revision 1.27  2006/08/22 18:45:32  bergsma
+ *	Resolve Win32 problem with unlink
+ *	
+ *	Revision 1.26  2006/04/04 14:57:30  bergsma
+ *	When converting to XML, an empty attr should come up as "", not " "
+ *	
+ *	Revision 1.25  2006/02/09 05:09:02  bergsma
+ *	Buffer overflow when describing CHAR or ATTR arrays exceeding 5000 elements.
+ *	
+ *	Revision 1.24  2005/12/10 00:30:30  bergsma
+ *	HS 3.6.5
+ *	
+ *	Revision 1.23  2005/04/13 13:45:54  bergsma
+ *	HS 3.5.6
+ *	Added sql_toexternal.
+ *	Fixed handling of strings ending with bs (odd/even number of backslashes)
+ *	Better handling of exception condition.
+ *	
+ *	Revision 1.22  2005/01/25 05:44:47  bergsma
+ *	Don't trim newline from end of lines when using load() function
+ *	
  *	Revision 1.21  2004/11/02 22:57:58  bergsma
  *	When displaying &#nnnn; unicode characters, do no add trailing space.
  *	
@@ -109,7 +130,8 @@
 /**********************	INTERNAL GLOBAL VARIABLES ****************************/
 
 /********************** INTERNAL OBJECT STRUCTURES ************************/
-static char *gzaType[23] = { "null",	/* 0 */
+#define MAX_TYPES 23
+static char *gzaType[MAX_TYPES] = { "null",	/* 0 */
 			     "list",	/* 1 */
 			     "str",	/* 2 */
 			     "byte",	
@@ -139,10 +161,21 @@ static char *gzaType[23] = { "null",	/* 0 */
 #if defined (AS_VMS) && defined ( __cplusplus )
 extern "C" int unlink ( const char * ) ;
 #else
+#ifndef AS_WINDOWS
 extern int unlink ( const char * ) ;
+#endif
 #endif
 
 
+sBYTE gHyp_fileio_dataType ( char *dt ) {
+
+  int i ;
+
+  for ( i=0; i<MAX_TYPES; i++ ) {
+    if ( strcmp ( dt, gzaType[i] ) == 0 ) return i ;
+  }
+  return TYPE_LIST ;
+}
 
 static int lHyp_fileio_describe2 ( sData *pParent, 
 				   int parentContext,
@@ -273,7 +306,7 @@ static int lHyp_fileio_describe2 ( sData *pParent,
     			    suffixStr ) ;
       else {
 	strcpy ( value, gHyp_data_getLabel( pParent ) ) ;
-	n = gHyp_util_unparseString ( value2, value, strlen(value), VALUE_SIZE, TRUE, FALSE, "'" ) ;
+	n = gHyp_util_unparseString ( value2, value, strlen(value), VALUE_SIZE, TRUE, FALSE, FALSE,"'" ) ;
         newOffset = sprintf ( newOutput,
 			    "&'%s'%s",
 			    value2,
@@ -330,6 +363,12 @@ static int lHyp_fileio_describe2 ( sData *pParent,
   case TOKEN_UNIDENTIFIED : 
     
     if ( isXML )
+      /*
+      newOffset = sprintf ( newOutput,
+			    "<%s type=\"str\">%s", 
+			    gHyp_data_getLabel ( pParent ),
+			    suffixStr ) ;
+      */
       newOffset = sprintf ( newOutput,
 			    "<%s>%s", 
 			    gHyp_data_getLabel ( pParent ),
@@ -342,7 +381,7 @@ static int lHyp_fileio_describe2 ( sData *pParent,
 			    suffixStr ) ;
       else {
 	strcpy ( value, gHyp_data_getLabel( pParent ) ) ;
-	n = gHyp_util_unparseString ( value2, value, strlen(value), VALUE_SIZE, TRUE, FALSE, "'" ) ;
+	n = gHyp_util_unparseString ( value2, value, strlen(value), VALUE_SIZE, TRUE, FALSE, FALSE, "'" ) ;
         newOffset = sprintf ( newOutput,
 			    "&'%s'%s",
 			    value2,
@@ -372,7 +411,8 @@ static int lHyp_fileio_describe2 ( sData *pParent,
       if ( isXML ) {
 	if ( parentDataType == TYPE_UNICODE ) {
 	  newOffset = sprintf ( newOutput,
-			        "&#%05hu;", 
+			        /*"&#%05hu;",*/ 
+			        "&#x%04x;", 
 			        gHyp_data_getInt ( pParent, parentContext, TRUE ) ) ;
 	}
 	else {
@@ -490,6 +530,12 @@ static int lHyp_fileio_describe2 ( sData *pParent,
 	    }
 	  }
 
+	  /*
+	  newOffset = sprintf ( newOutput,
+				"<%s type=\"%s\"",
+				gHyp_data_getLabel ( pParent ),
+				gzaType[gHyp_data_getDataType( pParent )] ) ;
+	  */
 	  newOffset = sprintf ( newOutput,
 				"<%s",
 				gHyp_data_getLabel ( pParent ) ) ;
@@ -538,7 +584,7 @@ static int lHyp_fileio_describe2 ( sData *pParent,
 
 	if ( isMSG ) {
 	  strcpy ( value, gHyp_data_getLabel( pParent ) ) ;
-	  gHyp_util_unparseString ( value2, value, strlen(value), VALUE_SIZE, TRUE, FALSE, "'" ) ;
+	  gHyp_util_unparseString ( value2, value, strlen(value), VALUE_SIZE, TRUE, FALSE, FALSE,"'" ) ;
 	}
 	else
 	  strcpy ( value2, gHyp_data_getLabel( pParent ) ) ;
@@ -603,6 +649,7 @@ static int lHyp_fileio_describe2 ( sData *pParent,
 					VALUE_SIZE, 
 					isMSG, 
 					isXML,
+					FALSE,
 					"") ;
 	      pValue = value2 ;
 	    }
@@ -615,6 +662,30 @@ static int lHyp_fileio_describe2 ( sData *pParent,
 	    else
 	      tmpOutputLen = sprintf ( tmpOutput, "\"%s\",",  pValue ) ;
 
+	    if ( tmpOutputLen + newOffset >= MAX_OUTPUT_LENGTH ) {
+
+	      /* Output what is there and start a new line */
+	      if ( newOffset > indent ) {
+                pOut = (isPRE || isTXT) ? newOutput+MIN((unsigned int)indent+2,strspn (newOutput," \t\n")): newOutput ;
+	        outLen = strlen ( pOut ) ;
+	        if ( fp )
+		  fprintf ( fp, "%s\n", pOut ) ;
+	        else if ( pResult ) {
+		  pLine = gHyp_data_new ( NULL ) ;
+		  gHyp_data_setStr ( pLine, pOut ) ;
+		  gHyp_data_append ( pResult, pLine ) ;
+		}
+	        else 
+		  gHyp_util_log ( pOut ) ;
+		*pContentLength += outLen ;
+	        newOutput[0] = '\0' ;
+		newOffset = 0 ;
+	        if ( !isMSG && !pResult) strcat ( newOutput, prefixStr ) ;
+	        newOffset = strlen ( newOutput ) ;
+	      }
+
+	    }
+
 	    strcat ( newOutput, tmpOutput ) ;
 	    newOffset += tmpOutputLen ;
 	    tmpOutputLen = 0 ;
@@ -625,10 +696,10 @@ static int lHyp_fileio_describe2 ( sData *pParent,
 	}
 
 	if ( noValue && isXML ) {
-	  value[0] = ' '; i = 1 ;
+	  value[0] = '\0'; i = 0 ;
 	}
 
-	if ( i > 0 ) {
+	if ( i >= 0 ) {
 
 	  /* Add to output */
 	  value[i] = '\0' ;
@@ -640,6 +711,7 @@ static int lHyp_fileio_describe2 ( sData *pParent,
 				      VALUE_SIZE, 
 				      isMSG, 
 				      isXML,
+				      FALSE,
 				      "") ;
 	    pValue = value2 ;
 	  }
@@ -1504,7 +1576,7 @@ static void lHyp_fileio_put (	sInstance 	*pAI,
 }
 
 
-static void lHyp_fileio_get ( char *pBuf, sData *pResult )
+void gHyp_fileio_getTokens ( char *pBuf, sData *pResult )
 {
 
   sData
@@ -1898,7 +1970,7 @@ void gHyp_fileio_fget ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
     pResult = gHyp_data_new ( "_fget_" ) ;
     if ( pBuf ) {
-      lHyp_fileio_get ( pBuf, pResult ) ;
+      gHyp_fileio_getTokens ( pBuf, pResult ) ;
     }
     else
       gHyp_instance_setStatus ( pAI, STATUS_EOF ) ;
@@ -2174,7 +2246,7 @@ void gHyp_fileio_get ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
     pResult = gHyp_data_new ( "_get_" ) ;
     if ( pBuf ) {
-      lHyp_fileio_get ( pBuf, pResult ) ;
+      gHyp_fileio_getTokens ( pBuf, pResult ) ;
     }
     else
       gHyp_instance_setStatus ( pAI, STATUS_EOF ) ;
@@ -2851,7 +2923,7 @@ void gHyp_fileio_load( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 	  if ( buflen == 0 ) 
 	    gHyp_data_setNull ( pValue ) ;
 	  else {
-	    gHyp_util_trim ( pBuf ) ;
+	    /*gHyp_util_trim ( pBuf ) ;*/
 	    gHyp_data_setStr_n ( pValue, pBuf, strlen(pBuf) ) ;
 	  }
 	  gHyp_data_append ( pResult, pValue ) ;

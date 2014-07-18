@@ -10,6 +10,41 @@
 /* Modifications:
  *
  * $Log: env.c,v $
+ * Revision 1.30  2006/07/17 16:55:48  bergsma
+ * The count function needs and Lvalue as well.
+ *
+ * Revision 1.29  2006/01/16 18:56:35  bergsma
+ * HS 3.6.6
+ * 1. Save query timeout events.  Don't let queries repeat indefinitely.
+ * 2. Rework DEBUG_DIAGNOSTIC debugging.  Less overhead.
+ *
+ * Revision 1.28  2005/10/15 21:42:09  bergsma
+ * Added renameto functionality.
+ *
+ * Revision 1.27  2005/08/12 01:16:16  bergsma
+ * no message
+ *
+ * Revision 1.26  2005/07/23 22:34:41  bergsma
+ * Added insertbefore and insertafter
+ *
+ * Revision 1.25  2005/05/10 17:31:38  bergsma
+ * Added "env" function
+ *
+ * Revision 1.24  2005/03/29 16:50:45  bergsma
+ * V 3.5.2
+ * Fix traceback in PROMIS exithandler when HS duplicate process name.
+ * Functions chop() and remove() were reversed.
+ *
+ * Revision 1.23  2005/03/09 04:15:12  bergsma
+ * Added appendval and insertval.  Also, disallow append or insert of a variable
+ * unto itself.  Needed new gHyp_data_isSilbing function.
+ *
+ * Revision 1.22  2005/01/31 06:04:43  bergsma
+ * Comment change.
+ *
+ * Revision 1.21  2005/01/10 20:06:32  bergsma
+ * In map() function, byte arrays were not being populated correctly.
+ *
  * Revision 1.20  2004/11/19 03:45:33  bergsma
  * Comment change
  *
@@ -152,7 +187,8 @@ void gHyp_env_count ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     if ( argCount != 1 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
     	"Invalid arguments. Usage: count ( variable )") ;
 
-    pData = gHyp_stack_popRdata ( pStack, pAI ) ;
+    pData = gHyp_stack_popLvalue ( pStack, pAI ) ;
+    /*pData = gHyp_stack_popRdata ( pStack, pAI ) ;*/
     pResult = gHyp_data_new ( NULL ) ;
     gHyp_data_setInt ( pResult, gHyp_data_getCount ( pData ) ) ;
     gHyp_stack_push ( pStack, pResult ) ;
@@ -357,9 +393,9 @@ void gHyp_env_exit ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 	       pAI,
 	       gHyp_frame_getMethodData(pFrame) ) ) ;
 
-    if ( guDebugFlags & DEBUG_DIAGNOSTICS )
-      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
-			   "diag : EXIT (longjmp to 0 from frame %d)",
+    if ( guDebugFlags & DEBUG_FRAME )
+      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
+			   "frame: EXIT (longjmp to 0 from frame %d)",
 			   gHyp_frame_depth(pFrame) );
     
     /* Flush the stack and clear the frame */
@@ -419,9 +455,9 @@ void gHyp_env_quit ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 				       TRUE ) ;
     }
 
-    if ( guDebugFlags & DEBUG_DIAGNOSTICS )
-      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
-			   "diag : QUIT (longjmp to 0 from frame %d)",
+    if ( guDebugFlags & DEBUG_FRAME )
+      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
+			   "frame: QUIT (longjmp to 0 from frame %d)",
 			   gHyp_frame_depth(pFrame) );
     
     /* Flush the stack and clear the frame */
@@ -476,13 +512,7 @@ void gHyp_env_idle ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     if ( argCount > 0 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
     	"Invalid arguments. Usage: idle ( )" ) ;
 
-    /* If the method was invoked from a query, then send all replies ********
-    while ( gHyp_instance_replyMessage (
-	       pAI,
-	       gHyp_frame_getMethodData(pFrame) ) ) ;
-    *************/
-
-    /* Exit and Idle */    
+    /* Idle */    
     gHyp_instance_setState ( pAI, STATE_IDLE ) ;
     gHyp_frame_setState ( pFrame, STATE_IDLE ) ;
     gHyp_frame_setHypIndex ( pFrame, gHyp_frame_getHypIndex(pFrame) - 1 ) ;
@@ -493,9 +523,9 @@ void gHyp_env_idle ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     if ( gHyp_concept_getConceptInstance ( pConcept ) == pAI ) 
       gHyp_concept_setReturnToStdIn ( pConcept, FALSE ) ;
 
-    if ( guDebugFlags & DEBUG_DIAGNOSTICS )
-      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS, 
-			   "diag : IDLE (longjmp to 1 from frame %d)",
+    if ( guDebugFlags & DEBUG_FRAME )
+      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME, 
+			   "frame: IDLE (longjmp to 1 from frame %d)",
 			   gHyp_frame_depth(pFrame) ) ;
 
     longjmp ( gsJmpStack[giJmpLevel=1], COND_SILENT) ;
@@ -596,7 +626,7 @@ void lHyp_env_instantiate ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE, sLOG
 				  pAI,
 				  instance,
 				  root,
-				  FALSE ) ;
+				  FALSE, FALSE, TRUE ) ;
     }
     else {    
       
@@ -611,7 +641,7 @@ void lHyp_env_instantiate ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE, sLOG
 					   pAI,
 					   instance,
 					   root,
-					   TRUE ) ;
+					   TRUE, TRUE, FALSE ) ;
 
       /* The new instance now has the frame once owned by the concept instance and
        * the concept instance now has a new frame.  However, the _main_ methodData of
@@ -2503,6 +2533,7 @@ sData* gHyp_env_mergeData ( sData *pDst,
 			    "Failed to load HyperScript segment '{'" ) ;
     }
     gHyp_frame_setGlobalFlag ( pFrame, FRAME_GLOBAL_MSGARGS ) ;
+    /*gHyp_util_debug("Deref from merge");*/
     gHyp_instance_setDerefHandler ( pAI, 
 				    hypIndex, 
 				    pHyp ) ; 
@@ -2693,6 +2724,14 @@ void gHyp_env_insert ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 	 gHyp_data_dataType ( pVariable ) < TYPE_BYTE ) {
 
       if ( (pSrcVariable = gHyp_data_getVariable ( pSrc ) ) ) {
+
+	if ( gHyp_data_isSibling ( pSrcVariable, pVariable ) ) {
+          gHyp_data_delete ( pSrc ) ;
+	  gHyp_instance_error ( pAI, 
+			    STATUS_INVALID, 
+			    "Cannot insert a variable into itself" ) ;
+	}
+
 	gHyp_data_detach ( pSrcVariable ) ;
 	if ( pSrc != pSrcVariable ) gHyp_data_delete ( pSrc ) ;
 	pSrc = pSrcVariable ;
@@ -2711,6 +2750,173 @@ void gHyp_env_insert ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     gHyp_instance_pushSTATUS ( pAI, pStack ) ;
   }
 }
+
+void gHyp_env_insertbefore ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: insertbefore ( sibling, src )
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   * Modifications:
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+  
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+    
+  else {
+ 
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+    
+    sData
+      *pDst,
+      *pSrc,
+      *pVariable,
+      *pSrcVariable;
+    
+    int
+      argCount = gHyp_parse_argCount ( pParse ) ;
+
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 2 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+	"Invalid arguments. Usage: insertbefore ( sibling, source )" ) ;
+
+    pSrc = gHyp_stack_popRdata2 ( pStack, pAI ) ;
+    pDst = gHyp_stack_popLvalue ( pStack, pAI ) ;
+    
+    /* Make sure the destination is a list variable */
+    if ( (pVariable = gHyp_data_getVariable ( pDst )) &&
+	 pVariable != pDst &&
+	 gHyp_data_dataType ( pVariable ) < TYPE_BYTE ) {
+
+      if ( (pSrcVariable = gHyp_data_getVariable ( pSrc ) ) ) {
+
+	if ( gHyp_data_isSibling ( pSrcVariable, pVariable ) ) {
+          gHyp_data_delete ( pSrc ) ;
+	  gHyp_instance_error ( pAI, 
+			    STATUS_INVALID, 
+			    "Cannot insert a variable into itself" ) ;
+	}
+
+	gHyp_data_detach ( pSrcVariable ) ;
+	if ( pSrc != pSrcVariable ) gHyp_data_delete ( pSrc ) ;
+	pSrc = pSrcVariable ;
+
+      }
+      gHyp_data_insertbefore ( pVariable, pSrc ) ;
+    }
+    else {
+      gHyp_data_delete ( pSrc ) ;
+      gHyp_instance_error ( pAI,
+			    STATUS_INVALID, 
+			    "'%s' is not a list variable, or is a temporary variable",
+			    gHyp_data_getLabel ( pDst ) ) ;
+    }
+
+    gHyp_instance_pushSTATUS ( pAI, pStack ) ;
+  }
+}
+
+void gHyp_env_insertafter ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: insertafter ( sibling, src )
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   * Modifications:
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+  
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+    
+  else {
+ 
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+    
+    sData
+      *pDst,
+      *pSrc,
+      *pVariable,
+      *pSrcVariable;
+    
+    int
+      argCount = gHyp_parse_argCount ( pParse ) ;
+
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 2 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+	"Invalid arguments. Usage: insertafter ( sibling, source )" ) ;
+
+    pSrc = gHyp_stack_popRdata2 ( pStack, pAI ) ;
+    pDst = gHyp_stack_popLvalue ( pStack, pAI ) ;
+    
+    /* Make sure the destination is a list variable */
+    if ( (pVariable = gHyp_data_getVariable ( pDst )) &&
+	 pVariable != pDst &&
+	 gHyp_data_dataType ( pVariable ) < TYPE_BYTE ) {
+
+      if ( (pSrcVariable = gHyp_data_getVariable ( pSrc ) ) ) {
+
+	if ( gHyp_data_isSibling ( pSrcVariable, pVariable ) ) {
+          gHyp_data_delete ( pSrc ) ;
+	  gHyp_instance_error ( pAI, 
+			    STATUS_INVALID, 
+			    "Cannot insert a variable into itself" ) ;
+	}
+
+	gHyp_data_detach ( pSrcVariable ) ;
+	if ( pSrc != pSrcVariable ) gHyp_data_delete ( pSrc ) ;
+	pSrc = pSrcVariable ;
+
+      }
+      gHyp_data_insertafter ( pVariable, pSrc ) ;
+    }
+    else {
+      gHyp_data_delete ( pSrc ) ;
+      gHyp_instance_error ( pAI,
+			    STATUS_INVALID, 
+			    "'%s' is not a list variable, or is a temporary variable",
+			    gHyp_data_getLabel ( pDst ) ) ;
+    }
+
+    gHyp_instance_pushSTATUS ( pAI, pStack ) ;
+  }
+}
+
 
 void gHyp_env_append ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
 {
@@ -2770,6 +2976,13 @@ void gHyp_env_append ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       if ( (pSrcVariable = gHyp_data_getVariable ( pSrc )) ) {
 
 	/* Variable exists */
+	if ( gHyp_data_isSibling ( pSrcVariable, pVariable ))  {
+          gHyp_data_delete ( pSrc ) ;
+	  gHyp_instance_error ( pAI, 
+			    STATUS_INVALID, 
+			    "Cannot append variable to itself" ) ;
+	}
+
 	gHyp_data_detach ( pSrcVariable ) ;
 	if ( pSrc != pSrcVariable ) gHyp_data_delete ( pSrc ) ;
 	pSrc = pSrcVariable ;
@@ -2844,7 +3057,7 @@ void gHyp_env_remove ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     if ( (pVariable = gHyp_data_getVariable ( pData )) &&
 	  gHyp_data_dataType ( pVariable ) < TYPE_BYTE ) {
 
-      pResult = gHyp_data_getLast ( pVariable ) ;
+      pResult = gHyp_data_getFirst ( pVariable ) ;
 
       if ( pResult ) {
 
@@ -2959,7 +3172,7 @@ void gHyp_env_chop ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 	  gHyp_data_dataType ( pVariable ) < TYPE_BYTE ) {
 
 
-      pResult = gHyp_data_getFirst ( pVariable ) ;
+      pResult = gHyp_data_getLast ( pVariable ) ;
 
       if ( pResult ) {
 
@@ -3321,6 +3534,62 @@ void gHyp_env_version ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 }
 
 
+void gHyp_env_env ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: env()
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   * Modifications:
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+
+  else {
+
+    sStack 	*pStack = gHyp_frame_stack ( pFrame ) ;
+    int	   	argCount = gHyp_parse_argCount ( pParse ) ;
+    sData	*pResult ;
+   
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+    if ( argCount != 0 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+    			   "Invalid arguments. Usage: env ( )" ) ;
+
+    pResult = gHyp_data_new ( NULL ) ;
+
+#ifdef AS_VMS
+    gHyp_data_setStr ( pResult, "VMS" ) ; 
+#elif defined ( AS_WINDOWS )
+    gHyp_data_setStr ( pResult, "WINDOWS" ) ; 
+#elif defined ( AS_UNIX )
+    gHyp_data_setStr ( pResult, "UNIX" ) ; 
+#else
+    gHyp_data_setStr ( pResult, "MAC" ) ; 
+#endif
+
+    gHyp_stack_push ( pStack, pResult ) ;
+  }
+}
+
+
+
 void gHyp_env_localhost ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
 {
   /* Description:
@@ -3406,5 +3675,227 @@ void gHyp_env_localaddr ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     pResult = gHyp_data_new ( NULL ) ;
     gHyp_data_setStr ( pResult, gzLocalAddr ) ; 
     gHyp_stack_push ( pStack, pResult ) ;
+  }
+}
+
+void gHyp_env_appendval ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: appendval ( dst, srcval )
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   * Modifications:
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+  
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+    
+  else {
+ 
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+    
+    sData
+      *pDst,
+      *pSrc,
+      *pVariable,
+      *pValue,
+      *pValue2 ;
+    
+    sLOGICAL
+      isVector ;
+
+    sBYTE
+      dataType ;
+
+    int
+      maxCount,
+      context,
+      ss,
+      argCount = gHyp_parse_argCount ( pParse ) ;
+
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 2 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+	"Invalid arguments. Usage: status = appendval ( destination, sourceval )" ) ;
+
+    pSrc = gHyp_stack_popRdata ( pStack, pAI ) ;
+    pDst = gHyp_stack_popLvalue ( pStack, pAI ) ;
+
+    /* Make sure the destination is a list variable */
+    if ( (pVariable = gHyp_data_getVariable ( pDst )) &&
+	 pVariable != pDst &&
+	 gHyp_data_dataType ( pVariable ) < TYPE_BYTE ) {
+
+      pValue = NULL ;
+      ss = gHyp_data_getSubScript ( pSrc ) ;
+      context = -1 ;
+      isVector = ( gHyp_data_getDataType (pSrc) > TYPE_STRING ) ;
+      dataType = gHyp_data_getDataType ( pSrc ) ;
+      maxCount = gHyp_data_getCount ( pSrc ) ;
+      while ( maxCount-- && 
+	      (pValue = gHyp_data_nextValue ( pSrc, 
+					     pValue, 
+					     &context,
+					     ss ))) {
+
+	if ( isVector ) {
+      
+	  pValue2 = gHyp_data_new ( NULL ) ;
+	  gHyp_data_newConstant ( pValue2, 
+				  dataType, 
+				  pSrc, 
+				  context ) ;
+	}
+	else {
+	  /* Copy first, then append. */
+	  pValue2 = gHyp_data_copyAll ( pValue ) ;
+
+          /* We need to also copy over any objects, like a method definition. */
+          /*gHyp_data_copyObject ( pValue2, pValue ) ;*/
+	}
+	gHyp_data_append ( pDst, pValue2 ) ;
+      }
+      if ( context == -2 ) {
+	gHyp_instance_error ( pAI, STATUS_BOUNDS, 
+			      "Subscript is out of bounds in value for appendval") ;
+      }
+    }
+    else {
+      gHyp_data_delete ( pSrc ) ;
+      gHyp_instance_error ( pAI, 
+			    STATUS_INVALID, 
+			    "'%s' is not a list or str variable, or is a temporary variable",
+			    gHyp_data_getLabel ( pDst ) ) ;
+     }
+
+    gHyp_instance_pushSTATUS ( pAI, pStack ) ;
+  }
+}
+
+void gHyp_env_insertval ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: insertval ( dst, srcval )
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   * Modifications:
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+  
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+    
+  else {
+ 
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+    
+    sData
+      *pDst,
+      *pSrc,
+      *pVariable,
+      *pValue,
+      *pValue2 ;
+    
+    sLOGICAL
+      isVector ;
+
+    sBYTE
+      dataType ;
+
+    int
+      maxCount,
+      context,
+      ss,
+      argCount = gHyp_parse_argCount ( pParse ) ;
+
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 2 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+	"Invalid arguments. Usage: status = insertval ( destination, sourceval )" ) ;
+
+    pSrc = gHyp_stack_popRdata ( pStack, pAI ) ;
+    pDst = gHyp_stack_popLvalue ( pStack, pAI ) ;
+
+    /* Make sure the destination is a list variable */
+    if ( (pVariable = gHyp_data_getVariable ( pDst )) &&
+	 pVariable != pDst &&
+	 gHyp_data_dataType ( pVariable ) < TYPE_BYTE ) {
+
+      pValue = NULL ;
+      ss = gHyp_data_getSubScript ( pSrc ) ;
+      context = -1 ;
+      isVector = ( gHyp_data_getDataType (pSrc) > TYPE_STRING ) ;
+      dataType = gHyp_data_getDataType ( pSrc ) ;
+      maxCount = gHyp_data_getCount ( pSrc ) ;
+      while ( maxCount-- &&
+	      (pValue = gHyp_data_nextValue ( pSrc, 
+					     pValue, 
+					     &context,
+					     ss ))) {
+
+	if ( isVector ) {
+      
+	  pValue2 = gHyp_data_new ( NULL ) ;
+	  gHyp_data_newConstant ( pValue2, 
+				  dataType, 
+				  pSrc, 
+				  context ) ;
+	}
+	else {
+	  /* Copy first, then insert. */
+	  pValue2 = gHyp_data_copyAll ( pValue ) ;
+
+          /* We need to also copy over any objects, like a method definition. */
+          /*gHyp_data_copyObject ( pValue2, pValue ) ;*/
+	}
+	gHyp_data_insert ( pDst, pValue2 ) ;
+      }
+      if ( context == -2 ) {
+	gHyp_instance_error ( pAI, STATUS_BOUNDS, 
+			      "Subscript is out of bounds in value for insertval") ;
+      }
+    }
+    else {
+      gHyp_data_delete ( pSrc ) ;
+      gHyp_instance_error ( pAI, 
+			    STATUS_INVALID, 
+			    "'%s' is not a list or str variable, or is a temporary variable",
+			    gHyp_data_getLabel ( pDst ) ) ;
+     }
+
+    gHyp_instance_pushSTATUS ( pAI, pStack ) ;
   }
 }

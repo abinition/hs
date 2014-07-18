@@ -4,6 +4,16 @@
  * Modifications:
  *
  * $Log: data.h,v $
+ * Revision 1.10  2005/09/02 04:35:54  bergsma
+ * no message
+ *
+ * Revision 1.9  2005/07/23 22:31:14  bergsma
+ * Added insertafter and Insertbefore
+ *
+ * Revision 1.8  2005/03/09 04:15:12  bergsma
+ * Added appendval and insertval.  Also, disallow append or insert of a variable
+ * unto itself.  Needed new gHyp_data_isSilbing function.
+ *
  * Revision 1.7  2004/10/16 00:51:29  bergsma
  * New function names replace cryptic data functions:
  * gHyp_data_setStr<n>
@@ -40,15 +50,19 @@ extern void	       gHyp_data_copyObject ( sData *pDst, sData *pSrc ) ;
 extern void		gHyp_data_exchange ( sData*, sData* ) ;
 extern void 		gHyp_data_append ( sData*, sData* ) ;
 extern void 		gHyp_data_insert ( sData*, sData* ) ;
+extern void		gHyp_data_insertbefore ( sData *pSibling, sData *pData ) ;
+extern void		gHyp_data_insertafter ( sData *pSibling, sData *pData ) ;
 extern sLOGICAL        	gHyp_data_next ( sData* ) ;
 extern sLOGICAL		gHyp_data_prev ( sData* ) ;
 extern sData*		gHyp_data_copy ( sData* ) ;
 extern sData*		gHyp_data_copyAll ( sData* ) ;
 extern void		gHyp_data_moveValues ( sData*, sData* ) ;
+extern void		gHyp_data_moveValuesR ( sData*, sData* ) ;
 extern void		gHyp_data_copyValues ( sData*, sData* ) ;
 extern void 		gHyp_data_delete ( sData* ) ;
 extern void 		gHyp_data_deleteValues ( sData* ) ;
 extern sData* 		gHyp_data_getParent ( sData* ) ;
+extern sLOGICAL		gHyp_data_isSibling ( sData *pData, sData *pChild ) ; 
 extern sData* 		gHyp_data_getFirst ( sData* ) ;
 extern sData* 		gHyp_data_getLast ( sData* ) ;
 extern sData* 		gHyp_data_getNext ( sData* ) ;
@@ -74,6 +88,7 @@ extern sData* 		gHyp_data_getAll ( sData*, sBYTE*, sBYTE*,
 					   int*, unsigned long*, double*, sLOGICAL*,
 					   char*, int*, int, int, sLOGICAL ) ;
 extern int 		gHyp_data_getCount ( sData * ) ;
+extern int 		gHyp_data_check ( sData * ) ;
 extern sLOGICAL		gHyp_data_isCountOne ( sData * ) ;
 extern int 		gHyp_data_getSubScript ( sData * ) ;
 extern sLOGICAL		gHyp_data_isDynamic ( sData *pData ) ;

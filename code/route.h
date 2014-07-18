@@ -2,6 +2,9 @@
  * Modifications:
  *
  * $Log: route.h,v $
+ * Revision 1.5  2005/10/15 21:42:09  bergsma
+ * Added renameto functionality.
+ *
  * Revision 1.4  2004/04/29 08:24:33  bergsma
  * New functions service, open, tunnel, forward, unforward
  *
@@ -24,6 +27,7 @@ extern void    	gHyp_route_instance ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_route_concept ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_route_parent ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_route_moveto ( sInstance*, sCode*, sLOGICAL ) ;
+extern void    	gHyp_route_renameto ( sInstance*, sCode*, sLOGICAL ) ;
 extern void	gHyp_route_service ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) ;
 extern void	gHyp_route_open ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) ;
 extern void	gHyp_route_tunnel( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) ;
