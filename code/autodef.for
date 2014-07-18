@@ -2,7 +2,7 @@
 !
 !	Include file for AUTOSERVER.FOR, AUTOCLIENT.FOR, AUTOUTIL.FOR
 ! 
-	parameter	AUTOMAN_VERSION = 'AM V3.8-3'
+	parameter	AUTOMAN_VERSION = 'AM V3.8-4'
 !
 ! Modifications:
 !

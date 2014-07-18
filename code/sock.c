@@ -11,6 +11,9 @@
  * Modifications:
  *
  *	$Log: sock.c,v $
+ *	Revision 1.88  2008-08-27 07:22:59  bergsma
+ *	AUTOSPOOL was not extern
+ *	
  *	Revision 1.87  2008-06-11 18:50:19  bergsma
  *	Fix SECS1 TCP LISTEN
  *	

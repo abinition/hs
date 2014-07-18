@@ -11,6 +11,13 @@
  * Modifications:
  *
  *	$Log: system.c,v $
+ *	Revision 1.33  2008-09-09 13:48:48  bergsma
+ *	Make gzStream larger, 4* MAX_INPUT_LENGHT.  Allows bigger XML
+ *	structures to be parsed (large chrt records from PROMIS).
+ *	
+ *	Revision 1.32  2008-08-27 07:22:59  bergsma
+ *	AUTOSPOOL was not extern
+ *	
  *	Revision 1.31  2008-05-03 21:40:12  bergsma
  *	When doing shell command, capture all output.
  *	Make giLineCount the preferred way to know where the code is.
@@ -133,7 +140,7 @@
 
 /**********************	INTERNAL GLOBAL VARIABLES ****************************/
 
-static char gzStream[MAX_INPUT_LENGTH*3+1] ;
+static char gzStream[MAX_INPUT_LENGTH*4+1] ;
 
 /********************** INTERNAL OBJECT STRUCTURES ************************/
 
@@ -1530,6 +1537,8 @@ void gHyp_system_getenv ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 	strcpy ( value, gzAUTOBIN ) ;
       else if ( strcmp ( token, "AUTORUN"    ) == 0 )
 	strcpy ( value, gzAUTORUN ) ;
+      else if ( strcmp ( token, "AUTOSPOOL"    ) == 0 )
+	strcpy ( value, gzAUTOSPOOL ) ;
       else if ( strcmp ( token, "AUTOLOG"    ) == 0 )
 	strcpy ( value, gzAUTOLOG ) ;
       else {

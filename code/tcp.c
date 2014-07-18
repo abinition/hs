@@ -10,12 +10,6 @@
  * Modifications:
  *
  *	$Log: tcp.c,v $
- *	Revision 1.30  2008-07-10 17:41:06  bergsma
- *	 Make work for SOLARIS,  sendmsg and recvmsg issues
- *	
- *	Revision 1.29  2008-06-13 01:45:32  bergsma
- *	Bad use of detecting localhost
- *	
  *	Revision 1.27  2008-05-03 21:42:14  bergsma
  *	When incoming target is an ip address, don't assume that is the return
  *	address, so we must resolve all incoming ip addresses further.
@@ -128,7 +122,6 @@
 
 #ifdef AS_SOLARIS
 #include <sys/filio.h>		/* To define FIOCLEX */
-#define INADDR_NONE             0xffffffff
 #endif
 
 #if !defined( AS_VAXC ) && !defined(AS_WINDOWS)
@@ -1083,7 +1076,6 @@ sLOGICAL gHyp_tcp_sendmsg ( char *pClient, char *pService, SOCKET sendfd, int po
   struct iovec   iov[1];
   char buf[4] ; 
 
-#if !defined ( AS__TRUE64 ) && !defined ( AS_SOLARIS ) 
 #ifndef CMSG_SPACE
 #define CMSG_SPACE(len)	(_CMSG_ALIGN(sizeof(struct cmsghdr)) + _CMSG_ALIGN(len))
 #endif
@@ -1097,6 +1089,7 @@ sLOGICAL gHyp_tcp_sendmsg ( char *pClient, char *pService, SOCKET sendfd, int po
   } control_un;
   struct cmsghdr *cmptr;
 
+#ifndef AS_TRUE64
   msg.msg_control = control_un.control;
   msg.msg_controllen = sizeof(control_un.control);
 
@@ -1231,13 +1224,13 @@ SOCKET gHyp_tcp_recvmsg ( int s, int *pport )
   SOCKET
     newfd = INVALID_SOCKET;
 
-#if !defined ( AS__TRUE64 ) && !defined ( AS_SOLARIS ) 
   union {
     struct cmsghdr cm;
     char           control[CMSG_SPACE(sizeof(int))];
   } control_un;
   struct cmsghdr *cmptr;
 
+#ifndef AS_TRUE64
   msg.msg_control = control_un.control;
   msg.msg_controllen = sizeof(control_un.control);
 #else
@@ -1261,7 +1254,7 @@ SOCKET gHyp_tcp_recvmsg ( int s, int *pport )
 
   }
 
-#if !defined ( AS__TRUE64 ) && !defined ( AS_SOLARIS ) 
+#ifndef AS_TRUE64
   if ( (cmptr=CMSG_FIRSTHDR(&msg)) != NULL &&
        cmptr->cmsg_len == CMSG_LEN(sizeof(int) ) ) {
 
@@ -1276,7 +1269,7 @@ SOCKET gHyp_tcp_recvmsg ( int s, int *pport )
      port |= (((unsigned int)(buf[3])) & 0x0ff);
      *pport = port ;
 
-#if !defined ( AS__TRUE64 ) && !defined ( AS_SOLARIS ) 
+#ifndef AS_TRUE64
     }
     else {
 

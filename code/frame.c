@@ -10,6 +10,15 @@
 /* Modifications: 
  *
  * $Log: frame.c,v $
+ * Revision 1.24  2008-08-27 07:22:59  bergsma
+ * AUTOSPOOL was not extern
+ *
+ * Revision 1.23  2008-08-21 11:07:46  bergsma
+ * Check for null pAI in getVariable
+ *
+ * Revision 1.22  2008-08-21 11:06:56  bergsma
+ * Check for null pAI in getVariable
+ *
  * Revision 1.21  2008-05-03 21:43:55  bergsma
  * Use giLineCount and giProgram count together to better determine the
  * location of a program token code.
@@ -1071,11 +1080,16 @@ sData *gHyp_frame_findMethodVariable ( sFrame *pFrame, char *pStr, sInstance *pA
        (gHyp_data_getObjectType ( pVariable ) == DATA_OBJECT_METHOD ) )
     return pVariable ;
 
-  pConceptAI = gHyp_concept_getConceptInstance ( gHyp_instance_getConcept(pAI)) ;
-  if ( pAI != pConceptAI ) 
-    return gHyp_frame_findRootMethodVar ( gHyp_instance_frame(pConceptAI),
+  if ( pAI != NULL ) {
+    pConceptAI = gHyp_concept_getConceptInstance ( gHyp_instance_getConcept(pAI)) ;
+    if ( pAI != pConceptAI ) 
+      return gHyp_frame_findRootMethodVar ( gHyp_instance_frame(pConceptAI),
 						    pStr ) ;
-  
+  }
+
+
+
+
   return NULL ;
 }
 

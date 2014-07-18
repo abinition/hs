@@ -10,7 +10,7 @@
 #ifndef __HYPDEF_H_
 #define __HYPDEF_H_
 
-#define 	VERSION_HYPERSCRIPT	"3.8.3"
+#define 	VERSION_HYPERSCRIPT	"3.8.4"
 
 /* Modification history:
  *
@@ -422,10 +422,10 @@
  * 	Allocate memory for DEFAULT_HYPER_CODE instructions, then if more
  *	is needed, re-allocate memory up to MAX_HYPER_CODE by doubling the
  *	previous allocation, starting at 16.
- *	ie:  16->32->64->128->256->512->1024->2048->4096->8192->16K->32K
+ *	ie:  16->32->64->128->256->512->1024->2048->4096->8192->16K->32K->64K
  */
 #define		DEFAULT_HYPER_CODE	16
-#define		MAX_HYPER_CODE		DEFAULT_HYPER_CODE << 11
+#define		MAX_HYPER_CODE		DEFAULT_HYPER_CODE << 12
 
 /* HyperScript data */
 #define		VARIABLE_HASH_TABLE_SIZE	23

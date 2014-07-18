@@ -10,6 +10,16 @@
  * Modifications:
  *
  *	$Log: util.c,v $
+ *	Revision 1.63  2008-09-09 13:48:48  bergsma
+ *	Make gzStream larger, 4* MAX_INPUT_LENGHT.  Allows bigger XML
+ *	structures to be parsed (large chrt records from PROMIS).
+ *	
+ *	Revision 1.62  2008-08-28 14:21:57  bergsma
+ *	In breakString, avoid breaking lines ending with backslash
+ *	
+ *	Revision 1.61  2008-08-21 11:10:32  bergsma
+ *	Fix problems where neg value to 'isprint' causes traceback
+ *	
  *	Revision 1.60  2008-06-28 19:33:56  bergsma
  *	Mix memory overflow bug with util_parseXML
  *	
@@ -724,7 +734,7 @@ sLOGICAL gHyp_util_log ( char *pStr )
     strncpy ( pBuf, pStr, len ) ;
 
     /* Replace non-printing other than \n\, \r, \t with just a space */
-    for ( i=0; i<len; i++ ) if ( !isprint (pBuf[i]) && !isspace(pBuf[i]) ) pBuf[i] = ' ' ;
+    for ( i=0; i<len; i++ ) if ( pBuf[i]<=0 || (!isprint (pBuf[i]) && !isspace(pBuf[i])) ) pBuf[i] = ' ' ;
 
     /* Point to last character in string copied.
      * If its not a newline, add one.
@@ -956,7 +966,8 @@ sLOGICAL gHyp_util_logError ( const char *fmt, ... )
   va_end ( ap ) ;
   
   /* Replace non-printing just a space */
-  for ( i=0; i<strlen(gzPreBuf); i++ ) if ( !isprint (gzPreBuf[i]) ) gzPreBuf[i] = ' ' ;
+  for ( i=0; i<strlen(gzPreBuf); i++ ) 
+    if ( gzPreBuf[i]<=0 || (!isprint (gzPreBuf[i]) && !isspace(gzPreBuf[i])) ) gzPreBuf[i] = ' ' ;
 
   gHyp_util_log ( gzPreBuf ) ;
   
@@ -996,7 +1007,8 @@ sLOGICAL gHyp_util_logWarning ( const char *fmt, ... )
   va_end ( ap ) ;
   
   /* Replace non-printing just a space */
-  for ( i=0; i<strlen(gzPreBuf); i++ ) if ( !isprint (gzPreBuf[i]) ) gzPreBuf[i] = ' ' ;
+  for ( i=0; i<strlen(gzPreBuf); i++ )    
+    if ( gzPreBuf[i]<=0 || (!isprint (gzPreBuf[i]) && !isspace(gzPreBuf[i])) ) gzPreBuf[i] = ' ' ;
 
   gHyp_util_log ( gzPreBuf ) ;
     
@@ -2846,10 +2858,10 @@ char *gHyp_util_readStream (  char *pStream,
    * The data can either come from a FILE* (pp) or a sData* (pStreamData).   
    * In either case, the buffer is 3 times the size 
    * of what can be read from pp or pStreamData ( MAX_INPUT_LENGTH ).
-   * The buffer is filled until it exceeds MAX_INPUT_LENGTH*2.
+   * The buffer is filled until it exceeds MAX_INPUT_LENGTH*3.
    * When the current processing pointer exceeds MAX_INPUT_LENGTH, then
    * the contents are shifted to the beginning of the buffer, and the
-   * buffer is filled back to a point that exceeds MAX_INPUT_LENGTH*2.
+   * buffer is filled back to a point that exceeds MAX_INPUT_LENGTH*3.
    *
    *  pStream - the current processing position
    *  pAnchor - the start of the buffer
@@ -2907,10 +2919,10 @@ char *gHyp_util_readStream (  char *pStream,
   }
 
   /* We now read data until the FILE or sData source is exhausted or
-   * until the pEndOfStream value exceeds MAX_INPUT_LENGTH*2
+   * until the pEndOfStream value exceeds MAX_INPUT_LENGTH*3
    */
 
-  while ( pEndOfStream && (pEndOfStream < (pAnchor+(MAX_INPUT_LENGTH*2))) ) {
+  while ( pEndOfStream && (pEndOfStream < (pAnchor+(MAX_INPUT_LENGTH*3))) ) {
 
     if ( pStreamData ) {
    
@@ -3005,6 +3017,14 @@ void gHyp_util_breakStream ( char *buffer, int bufLen, sData *pParent, sLOGICAL 
 
       memcpy ( work, pBuf, width ) ;
       work[width] = '\0' ;
+
+      /* Avoid ending in backslash */
+      width2 = width ;
+      while ( width2 > 0 && work[width2-1] == '\\' ) width2-- ;
+      if ( width2 > 0 && width2 < width ) { 
+	width = width2 ;
+        work[width] = '\0' ;
+      }
 
       /* Get the length of the next line */
       width2 = strcspn ( work, "\r\n" ) ;

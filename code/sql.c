@@ -14,6 +14,18 @@
  * Modified:
  *
  * $Log: sql.c,v $
+ * Revision 1.64  2008-10-16 23:41:31  bergsma
+ * Bad datetime dbconv in SQLSERVER
+ *
+ * Revision 1.63  2008-09-11 00:46:28  bergsma
+ * Bad conversion of empty values to NULL using sql_toexternal
+ *
+ * Revision 1.62  2008-08-25 12:49:07  bergsma
+ * Typo (in support of PGSQL, missing { in function
+ *
+ * Revision 1.61  2008-08-21 11:08:55  bergsma
+ * For adapting to FreeTDS
+ *
  * Revision 1.60  2008-07-01 23:48:54  bergsma
  * When doing 'toexternal', make room for VALUE_SIZE*4
  *
@@ -197,6 +209,12 @@
 
 /********************** AUTOROUTER INTERFACE ********************************/
 
+#ifdef WIN32
+typedef unsigned char BYTE;
+typedef BYTE * LPBYTE;
+typedef const LPBYTE LPCBYTE ;
+#define _LPCBYTE_DEFINED 1
+#endif
 
 #include "auto.h"       /* System Interface and Function Prototypes */
 
@@ -220,6 +238,33 @@ include "sqlncli.h";
 #define DBNTWIN32
 #include <sqlfront.h>
 #include <sqldb.h>
+#ifndef AS_WINDOWS
+typedef int INT;
+typedef char * LPCSTR;
+#define SQLVOID        0x1f
+#define SQLTEXT        0x23
+#define SQLVARBINARY   0x25
+#define SQLINTN        0x26
+#define SQLVARCHAR     0x27
+#define SQLBINARY      0x2d
+#define SQLIMAGE       0x22
+#define SQLCHAR        0x2f
+#define SQLINT1        0x30
+#define SQLBIT         0x32
+#define SQLINT2        0x34
+#define SQLINT4        0x38
+#define SQLMONEY       0x3c
+#define SQLDATETIME    0x3d
+#define SQLFLT8        0x3e
+#define SQLFLTN        0x6d
+#define SQLMONEYN      0x6e
+#define SQLDATETIMN    0x6f
+#define SQLFLT4        0x3b
+#define SQLMONEY4      0x7a
+#define SQLDATETIM4    0x3a
+#define SQLDECIMAL     0x6a
+#define SQLNUMERIC     0x6c
+#endif
 #endif
 
 #ifdef AS_ORACLE
@@ -260,9 +305,9 @@ static int lHyp_sql_errHandler (PDBPROCESS dbproc, INT severity,
     INT dberr, INT oserr, LPCSTR dberrstr, LPCSTR oserrstr)
 {
   if (oserr != DBNOERR)
-    sprintf ( errbuf, "Operating System Error %i: %s\n", oserr, oserrstr);
+    sprintf ( errbuf, "Operating System Error %i: %s\n", oserr, (char*)oserrstr);
   else
-    sprintf (errbuf, "DB-Library Error %i: %s\n", dberr, dberrstr);
+    sprintf (errbuf, "DB-Library Error %i: %s\n", dberr, (char*)dberrstr);
 
   gHyp_util_logError ( errbuf ) ;
   return (INT_CANCEL);
@@ -272,7 +317,7 @@ static int lHyp_sql_msgHandler (PDBPROCESS dbproc, DBINT msgno, INT msgstate,
     INT severity, LPCSTR msgtext, LPCSTR server,
     LPCSTR procedure, DBUSMALLINT line)
 {
-  sprintf ( errbuf, "SQL Server Message %ld: %s\n", msgno, msgtext );
+  sprintf ( errbuf, "SQL Server Message %ld: %s\n", (long int) msgno, (char*) msgtext );
   gHyp_util_logWarning ( errbuf );
   return (0);
 }
@@ -1003,9 +1048,9 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 					pBytes,
 					n,
 					SQLCHAR,
-					buffer,
+					(unsigned char*) buffer,
 					MAX_BUFFER_SIZE);
-                        gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
+                        gHyp_data_setStr_n ( pData, (char*) buffer, n ) ;
                         break ;
 
 		      case SQLDECIMAL:
@@ -1016,7 +1061,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 					pBytes,
 					n,
 					SQLCHAR,
-					buffer,
+					(unsigned char*) buffer,
 					MAX_BUFFER_SIZE);
                         if ( n < 0 ) gHyp_data_newConstant_scanf ( pData, TYPE_DOUBLE, (char*)buffer, n ) ;
                         break ;
@@ -1028,7 +1073,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 					pBytes,
 					n,
 					SQLCHAR,
-					buffer,
+					(unsigned char*) buffer,
 					MAX_BUFFER_SIZE);
 
 			if ( n == 0 ) 
@@ -2123,9 +2168,12 @@ void gHyp_sql_open ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     DBSETLPWD (loginrec, sql_password);
     DBSETLAPP (loginrec, "hyperscript");
     DBSETLVERSION (loginrec,DBVER60);
+/*    DBSETLVERSION (loginrec,DBVERSION70);*/
 
     if ( isSecure ) {
+#ifdef AS_WINDOWS
       DBSETLSECURE (loginrec);
+#endif
     }
 
     /* Now attempt to create and initialize a DBPROCESS structure */
@@ -2144,13 +2192,21 @@ void gHyp_sql_open ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
         gHyp_data_setHandle ( pResult, (void*) dbproc ) ;
 
-
+#ifdef AS_UNIX
+        if ( dbsetopt( dbproc, DBTEXTSIZE, "64512", 0 ) != SUCCEED ) { 
+          gHyp_instance_warning ( pAI, STATUS_SQL, "Failed to dbsetopt DBTEXTSIZE");	 
+	}
+        else if ( dbsetopt( dbproc, DBTEXTLIMIT, "64512", 0 ) != SUCCEED ) { 
+          gHyp_instance_warning ( pAI, STATUS_SQL, "Failed to dbsetopt DBTEXTLIMIT");	 
+	}
+#else
         if ( dbsetopt( dbproc, DBTEXTSIZE, "64512" ) != SUCCEED ) { 
           gHyp_instance_warning ( pAI, STATUS_SQL, "Failed to dbsetopt DBTEXTSIZE");	 
 	}
         else if ( dbsetopt( dbproc, DBTEXTLIMIT, "64512" ) != SUCCEED ) { 
           gHyp_instance_warning ( pAI, STATUS_SQL, "Failed to dbsetopt DBTEXTLIMIT");	 
 	}
+#endif
       }
       else {
         gHyp_instance_warning ( pAI, STATUS_SQL, "Failed to dbuse()");
@@ -2595,6 +2651,7 @@ void gHyp_sql_toexternal(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 				pValue, 
 				context ) ;
         isEmpty = FALSE ;
+        gHyp_data_append ( pResult, pValue2 ) ;
       }
       else {
         n = gHyp_data_getStr ( pValue, 
@@ -2607,10 +2664,11 @@ void gHyp_sql_toexternal(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 	if ( doTrim ) n = gHyp_util_trim ( strVal ) ;
         n = gHyp_util_unparseString ( strVal2, pStr, n, VALUE_SIZE*4, FALSE, FALSE, TRUE,"" ) ;
         gHyp_data_setStr_n ( pValue2, strVal2, n ) ;
-	if ( n > 0 ) isEmpty = FALSE ;
+	if ( n > 0 ) {
+	  isEmpty = FALSE ;
+          gHyp_data_append ( pResult, pValue2 ) ;
+        }
       }
-
-      gHyp_data_append ( pResult, pValue2 ) ;
     }
     if ( context== -2 && ss != -1 ) {
       gHyp_data_delete ( pResult ) ;

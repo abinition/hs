@@ -10,6 +10,9 @@
  * Modifications:
  *
  *   $Log: load.c,v $
+ *   Revision 1.52  2008-10-10 14:43:46  bergsma
+ *   INFORMIX
+ *
  *   Revision 1.51  2008-03-05 22:21:10  bergsma
  *   Try and get recvmsg and sendmsg working for TRU64
  *
@@ -400,15 +403,14 @@ void gHyp_load_new ()
   /* SQL Interface */
   lHyp_load_newKey ( "sql_toexternal", gHyp_sql_toexternal, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "sql_datetime", gHyp_sql_datetime, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
-  lHyp_load_newKey ( "sql_query", gHyp_sql_query, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
-#ifndef AS_PROC
+#ifndef AS_INFORMIX
   /* SQL functions */
   lHyp_load_newKey ( "sql_open",  gHyp_sql_open, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "sql_close", gHyp_sql_close, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "sql_query", gHyp_sql_query, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
 #else
-  lHyp_load_newKey ( "sql_open",    gHyp_sql_connect, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
-  lHyp_load_newKey ( "sql_connect", gHyp_sql_connect, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
-  lHyp_load_newKey ( "sql",         gHyp_sql_query, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "sql_open",  gHyp_esql_connect, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "sql_query", gHyp_esql_query, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
 #endif
 
   /* SECS functions */

@@ -10,6 +10,13 @@
 /* Modifications:
  *
  * $Log: env.c,v $
+ * Revision 1.39  2008-09-09 13:48:48  bergsma
+ * Make gzStream larger, 4* MAX_INPUT_LENGHT.  Allows bigger XML
+ * structures to be parsed (large chrt records from PROMIS).
+ *
+ * Revision 1.38  2008-08-09 04:45:28  bergsma
+ * Initialize tempBuffer in getnodebyattr
+ *
  * Revision 1.37  2007-09-03 06:24:08  bergsma
  * No newlines at end of file
  *
@@ -166,7 +173,7 @@ gHyp_env_node_name
 
 /**********************	INTERNAL GLOBAL VARIABLES ****************************/
 
-static char gzStream[MAX_INPUT_LENGTH*3+1] ;
+static char gzStream[MAX_INPUT_LENGTH*4+1] ;
 
 /********************** INTERNAL OBJECT STRUCTURES ************************/
 
@@ -5008,7 +5015,8 @@ void gHyp_env_node_getnodebyattr ( sInstance *pAI, sCode *pCode, sLOGICAL isPARS
                                            gHyp_data_getLabel(pAttrVar),
                                            gHyp_data_getLabel(pAttrVal),
                                            valueBuffer )) ) {                               	     
-      /*generate the ancestory chain back up to pData*/                         	
+      /*generate the ancestory chain back up to pData*/  
+      tempBuffer[0] = '\0' ;				      
       while( pChild != gHyp_data_getVariable( pData ) ) {
       	pBuffer = buffer; 
       	/* gHyp_util_debug("current ancestor: %s\n", gHyp_data_getLabel( pChild ) ); */

@@ -3,6 +3,9 @@
  * Modifications:
  *
  * $Log: auto.h,v $
+ * Revision 1.24  2008-08-27 07:22:59  bergsma
+ * AUTOSPOOL was not extern
+ *
  * Revision 1.23  2007-09-26 00:36:59  bergsma
  * Comment out math.h, use in operator.c only
  *
@@ -187,6 +190,7 @@ extern char    		gzAUTOFIFO[MAX_PATH_SIZE+1];	/* AUTOFIFO path */
 extern char    		gzAUTOBIN[MAX_PATH_SIZE+1];	/* AUTOBIN path */
 extern char    		gzAUTORUN[MAX_PATH_SIZE+1];	/* AUTORUN path */
 extern char    		gzAUTOLOG[MAX_PATH_SIZE+1];	/* AUTOLOG path */
+extern char    		gzAUTOSPOOL[MAX_PATH_SIZE+1];	/* AUTOLOG path */
 extern char		gzInstance[INSTANCE_SIZE+1] ;
 extern char		gzConcept[TARGET_SIZE+1] ;
 extern char		gzConceptPath[MAX_PATH_SIZE+1] ;

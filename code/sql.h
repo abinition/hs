@@ -16,12 +16,13 @@
  * Removed ^M occurances and added Modification section.
  *
  */
-#ifndef AS_PROC
+#ifndef AS_INFORMIX
 extern void		gHyp_sql_open ( sInstance*, sCode*, sLOGICAL ) ;
 extern void		gHyp_sql_close ( sInstance*, sCode*, sLOGICAL ) ;
+extern void		gHyp_sql_query ( sInstance*, sCode*, sLOGICAL ) ;
 #else
-extern void		gHyp_sql_connect ( sInstance*, sCode*, sLOGICAL ) ;
+extern void		gHyp_esql_connect ( sInstance*, sCode*, sLOGICAL ) ;
+extern void		gHyp_esql_query ( sInstance*, sCode*, sLOGICAL ) ;
 #endif
 extern void		gHyp_sql_datetime ( sInstance*, sCode*, sLOGICAL ) ;
-extern void		gHyp_sql_query ( sInstance*, sCode*, sLOGICAL ) ;
 extern void		gHyp_sql_toexternal(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) ;

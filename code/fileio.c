@@ -11,6 +11,12 @@
  * Modifications:
  *
  *	$Log: fileio.c,v $
+ *	Revision 1.53  2008-08-09 04:46:52  bergsma
+ *	Allow attribute values to exceed INTERNAL_VALUE_SIZE
+ *	
+ *	Revision 1.52  2008-07-27 15:09:59  bergsma
+ *	When outputing \n is xsdescribe, don't do it for the last value of a tag's elements.
+ *	
  *	Revision 1.51  2008-07-02 01:01:46  bergsma
  *	Add \n after every end tag for xsdescribe
  *	
@@ -348,6 +354,7 @@ static int lHyp_fileio_describe2 ( sData *pParent,
     tmpOutputLen=0,
     size,
     ss,
+    maxLen,
     context,
     numNonAttributes=0 ;
 
@@ -786,6 +793,7 @@ static int lHyp_fileio_describe2 ( sData *pParent,
 	noValue = TRUE ;
 	value[0] = '\0' ;
 
+	maxLen = VALUE_SIZE ;
 	while ( (pData = gHyp_data_nextValue ( pParent, 
 					       pData, 
 					       &context,
@@ -794,9 +802,13 @@ static int lHyp_fileio_describe2 ( sData *pParent,
 					context,
 					isParentVector ) ;
 	  value[i++] = c ;
+	  /* If the character will be unprintable, then unparsing it
+	   * will cost real estate, we must subtract from the cutoff point 
+	   */
+	  if ( c < 32 ) maxLen -= 3 ;  /*Figure allow 3 extra chars for expansion */
 	  noValue = FALSE ;
 
-	  if ( i  >= INTERNAL_VALUE_SIZE ) {
+	  if ( i  >= maxLen ) {
 
 	    /* Output what is there and start a new line */
 	    value[i] = '\0' ;

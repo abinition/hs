@@ -10,6 +10,13 @@
 /* Modifications: 
  *
  * $Log: cgi.c,v $
+ * Revision 1.42  2008-09-13 20:11:34  bergsma
+ * pSearch became invalid after gHyp_util_readStream
+ *
+ * Revision 1.41  2008-09-09 13:48:48  bergsma
+ * Make gzStream larger, 4* MAX_INPUT_LENGHT.  Allows bigger XML
+ * structures to be parsed (large chrt records from PROMIS).
+ *
  * Revision 1.40  2008-06-29 00:55:57  bergsma
  * When parsing XML, record warings in STATUS variable
  *
@@ -598,7 +605,8 @@ char *gHyp_cgi_parseXML ( char *pStream,
 	    pStream += strLen ;
 
 	    /* Get more data if necessary *
-	     * Make sure we update "pTag", because it becomes invalid 
+	     * Make sure we update "pTag", because it can become invalid
+	     * if gHyp_util_readStream does a memmove or memcpy
 	     */
 	    i = pTag - pStream ;
 	    pStream = gHyp_util_readStream (  pStream, pAnchor, ppEndOfStream,
@@ -843,7 +851,11 @@ char *gHyp_cgi_parseXML ( char *pStream,
   /* Create the valid tag name */
   strncpy ( tag, pStream, tagLen ) ;
   tag[tagLen] = '\0' ;
-  /*gHyp_util_debug("Processing %s",tag);*/
+  
+  if ( strcmp ( tag, "var1value" ) == 0 ) {
+    gHyp_util_debug("Processing %s",tag);
+  }
+  
   strcpy ( tag_lc, tag ) ;
   gHyp_util_lowerCase ( tag_lc, tagLen ) ;
 
@@ -1327,7 +1339,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
     }
     else {
 
-      /* The stuff inside the tag, ie: <TAG ...stuff...> */
+      /* The stuff inside the tag, ie: <TAG> ...stuff...</TAG> */
 
       /* Collect attributes so long as we can (and we are not in a script or style or textarea */
       if ( allowAttributes && !isSCR && !isTXT ) {
@@ -1419,7 +1431,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
 	    pStream++ ;
 
 	    terminated = FALSE ;
-	    pSearch = pStream ;
+	    pSearch = NULL ;
 	    while ( !terminated ) {
 
 	      /* Get more data if necessary */
@@ -1427,7 +1439,9 @@ char *gHyp_cgi_parseXML ( char *pStream,
 					    &streamLen, pStreamData, 
 					    ppValue, pContext, ss, isVector, 
 					    pp ) ;
-		    
+
+	      if ( pSearch == NULL ) pSearch = pStream ;
+
 	      pStr = strchr ( pSearch, quote ) ;
 	      
 	      /* If no ending quote, quit, returning pointer to start */

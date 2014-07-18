@@ -720,7 +720,7 @@ sLOGICAL gHyp_concept_init ( sConcept *pConcept,
   gpsAImsg = gHyp_aimsg_new ( ) ; 
   giMaxExprSize = maxExprSize ;
   giMaxStackDepth = giMaxExprSize * 2 ;
-  giMaxFrameDepth = giMaxExprSize;
+  giMaxFrameDepth = giMaxExprSize / 2 ;
   gpsTempData = NULL ;
   gpsTempData2 = NULL ;
 
