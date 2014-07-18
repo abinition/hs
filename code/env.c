@@ -91,6 +91,8 @@
 
 /**********************	INTERNAL GLOBAL VARIABLES ****************************/
 
+static char gzStream[MAX_INPUT_LENGTH*3+1] ;
+
 /********************** INTERNAL OBJECT STRUCTURES ************************/
 
 /**********************	FUNCTION DEFINITIONS ********************************/
@@ -1099,78 +1101,104 @@ void gHyp_env_prev ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
   }
 }
 
-sData* lHyp_env_map ( sData *pDst,
-		      sData *pSrc,
-		      sData *pSrcValue,
-		      int *pContextSrc,
+static sData* lHyp_env_map ( sData *pDst,
+		      char  **ppStream,
+		      char  **ppAnchor,
+		      char  **ppEndOfStream,
+		      sData *pStreamData,
+		      sData **ppValue,
+		      int   *pContextSrc,
+		      int   ss,
+		      sLOGICAL  isVectorSrc,
 		      sInstance *pAI,
-		      sLOGICAL isLittleEndian )
+		      sLOGICAL  isLittleEndian,
+		      int sss )
 {
   sData	
     *pResult,
+    *pData,
     *pValue,
     *pDstValue,
-    *pNextSrcValue,
     *pNextDstValue,
     *pVariable ;
 
   char
+    *pStream = *ppStream,
+    *pAnchor = *ppAnchor,
+    *pBuf,
     value[VALUE_SIZE+1] ;
 
   int
     i,
     n,
-    byteBufferLen=0,
+    streamLen=0,
     dstDataLen,
-    srcDataLen,
-    contextSrc,
     contextDst,
-    ssv=-1,
     sdv=-1,
-    sss,
     ssd ;
 
   sLOGICAL
-    isVectorDst,
-    isVectorSrc ;
+    isVectorDst ;
 
   sBYTE
-    *pBuf,
-    *pByteBuffer=NULL,
     dstDataType,
-    srcDataType,
-    srcTokenType,
     dstTokenType ;
   
   sEndian 
     endian ;
 
-  srcTokenType = gHyp_data_getTokenType ( pSrc ) ;
   dstTokenType = gHyp_data_getTokenType ( pDst ) ;
-  srcDataType = gHyp_data_getDataType ( pSrc ) ;
-  dstDataType = gHyp_data_getDataType ( pDst ) ;
+  dstDataType =  gHyp_data_getDataType ( pDst ) ;
+  dstDataLen = gHyp_data_dataLen ( pDst ) ;
+  isVectorDst = ( dstTokenType == TOKEN_VARIABLE && dstDataType > TYPE_STRING ) ;
+  ssd = gHyp_data_getSubScript ( pDst ) ; 
+  pNextDstValue = pDst ;
+  contextDst = -1 ;
+  pDstValue = NULL ;
 
-  isVectorSrc = ( srcTokenType == TOKEN_VARIABLE &&
-		  srcDataType > TYPE_STRING ) ;
-  isVectorDst = ( dstTokenType == TOKEN_VARIABLE &&
-		  dstDataType > TYPE_STRING ) ;
-
-  /* Create the result */
+  /* Create a result */
   pResult = gHyp_data_new ( gHyp_data_getLabel ( pDst ) ) ;
-  if ( isVectorDst )
+
+  /* Get more stream data if needed */
+  pStream = gHyp_util_readStream (	pStream, pAnchor, ppEndOfStream,
+					&streamLen, pStreamData, 
+					ppValue, pContextSrc, ss, isVectorSrc, 
+					NULL ) ;
+  *ppStream = pStream ;
+
+
+  if ( isVectorDst ) {
+
     gHyp_data_newVector ( pResult, 
 			  dstDataType, 
 			  gHyp_data_getCount ( pDst ),
 			  gHyp_data_isDynamic ( pDst ) ) ;
-  pNextSrcValue = pSrc ;
-  pNextDstValue = pDst ;
-  sss = gHyp_data_getSubScript ( pSrc ) ; 
-  ssd = gHyp_data_getSubScript ( pDst ) ; 
-  contextDst = -1 ;
-  pDstValue = NULL ;
+
+
+    if ( !pStream ) return pResult ;
+    if ( isLittleEndian ) {
+
+      pBuf = pStream ;
+      for ( i=dstDataLen-1; i>=0; i-- ) endian.x.b[i] = *pBuf++ ;
+      gHyp_data_setVectorRaw ( pResult, 
+			       &endian.x.b, 
+			       sss ) ;
+    }
+    else
+      gHyp_data_setVectorRaw ( pResult, 
+  			       pStream, 
+			       sss ) ;
+    pStream += dstDataLen ;
+    *ppStream = pStream ;
+    return pResult ;
+  }
+
+  if ( !pStream ) return pResult ;
+
   while ( 1 ) {
 
     if ( pNextDstValue ) {
+
       /* This is either the start of the scan, or there was a previous value.
        * Get the next value of the destination.
        */
@@ -1179,11 +1207,11 @@ sData* lHyp_env_map ( sData *pDst,
 					    &contextDst,
 					    ssd ) ;
       if ( contextDst == -2 ) {
-	gHyp_data_delete ( pResult ) ;
 	gHyp_instance_error ( 
           pAI, STATUS_BOUNDS, 
 	  "Destination subscript is out of bounds in map()");
       }
+
       if ( isVectorDst ) 
 	sdv = contextDst ;
       else
@@ -1197,208 +1225,61 @@ sData* lHyp_env_map ( sData *pDst,
     /* If there is no more source or destination values, we're done. */
     if ( !pDstValue ) break ;
 
-    if ( pNextSrcValue ) {
-      /* This is either the start of the scan, or there was a previous value.
-       * Get the next value from the source data.
-       */
-      pNextSrcValue = gHyp_data_nextValue ( pSrc, 
-					    pSrcValue,
-					    pContextSrc,
-					    sss ) ;
-      if ( *pContextSrc == -2 ) {
-	gHyp_data_delete ( pResult ) ;
-
-	gHyp_instance_error ( pAI, STATUS_BOUNDS, 
-			      "Source subscript is out of bounds in map()");
-      }
-      if ( isVectorSrc ) 
-	ssv = *pContextSrc ;
-      else
-	ssv = 0 ;
-    }
-    /* Get the next source value. */
-    pSrcValue = pNextSrcValue ;
-    /*if ( pSrcValue ) gHyp_util_debug ( "Next src value at %d for %d is %s",*pContextSrc,ssv, gHyp_data_print ( pSrcValue ));*/
-        
-    /* If there is no more source or destination values, we're done. */
-    if ( !pSrcValue ) break ;
-
-    /* Initialize the byte buffer */
-    pByteBuffer = gHyp_data_buffer ( pSrcValue, ssv ) ;
-    byteBufferLen = gHyp_data_bufferLen ( pSrcValue, ssv ) ;
-    pByteBuffer[byteBufferLen] = '\0' ;
-    
-    /*gHyp_util_debug("Next byte starts with %x at %d",
-		     *pByteBuffer,
-		     ssv );
-    */
-    
-    srcDataType = gHyp_data_dataType ( pSrcValue ) ;
-    srcTokenType = gHyp_data_tokenType ( pSrcValue ) ;
-    srcDataLen = gHyp_data_dataLen ( pSrcValue ) ;
-
     dstDataType = gHyp_data_dataType ( pDstValue ) ;
     dstTokenType = gHyp_data_tokenType ( pDstValue ) ;
     dstDataLen = gHyp_data_dataLen ( pDstValue ) ;
-    
-    if ( isVectorDst ) {
 
-      /* Replace destination vector element with that from source.
-       * Make sure there is enough buffer to read from.
-       * Advance the context of the destination if required.
-       */
-      if ( byteBufferLen < dstDataLen ) {
-	
-	/* Have to cast */
-	gHyp_data_setVector ( pResult, 
-			      pSrcValue, 
-			      sdv,
-			      ssv,
-			      isVectorSrc ) ;
-	  
-      }
-      else { 
-	
-	/* How many elements of source are processed in this mapping? 
-	 * At what position will the ssv pointer end up at?  
-	 */
-	n = dstDataLen / srcDataLen ;
-	if ( n > 1 ) {
-	  *pContextSrc += (n-1) ;
-	  if ( isVectorSrc ) 
-	    ssv = *pContextSrc ;
-	  else
-	    ssv = 0 ;
-	}
-	
-	/*gHyp_util_debug("RAW TRANSFER to %s of %d bytes at [%d]",
-			  gHyp_data_getLabel(pResult),
-			  dstDataLen,ssv ) ;
-	*/
-
-	if ( isLittleEndian ) {
-	  pBuf = pByteBuffer ;
-	  for ( i=dstDataLen-1; i>=0; i-- ) endian.x.b[i] = *pBuf++ ;
-	  gHyp_data_setVectorRaw ( pResult, 
-				   &endian.x.b, 
-				   sdv ) ;
-	}
-	else
-	  gHyp_data_setVectorRaw ( pResult, 
-				   pByteBuffer, 
-				   sdv ) ;
-      }
-
-    }
-    else if ( dstTokenType == TOKEN_CONSTANT || 
-	      dstTokenType == TOKEN_LITERAL ) {
-      
-      /* Skip - just keep literals and constants. */
+    if ( dstTokenType != TOKEN_VARIABLE ) {
+       
+      /* Skip - just keep literals and constants and references */
       pValue = gHyp_data_copy ( pDstValue ) ;
       gHyp_data_append ( pResult, pValue ) ;
-    }
+      pStream += dstDataLen ;
+      *ppStream = pStream ;
     
-    else if ( dstTokenType == TOKEN_REFERENCE ) {
-      
-      if ( srcTokenType == TOKEN_VARIABLE ) {
-	
-	/* Make copy of source data, then rename it. */
-	pVariable = gHyp_data_copyAll ( pSrcValue ) ;
-	gHyp_data_setLabel ( pVariable, gHyp_data_getLabel ( pDstValue ) ) ;
-	gHyp_data_append ( pResult, pVariable ) ;
-      }
-      else {
-
-	/* Create new variable, then insert contents of source */
-	pVariable = gHyp_data_new ( NULL ) ;
-	gHyp_data_setVariable (pVariable, gHyp_data_getLabel(pDstValue), srcDataType);
-	if ( srcDataType > TYPE_STRING )
-	   gHyp_data_setVector ( pVariable, 
-				 pSrcValue, 
-				 0,
-				 ssv,
-				 isVectorSrc ) ;
-	else
-	  gHyp_data_copyValues ( pVariable, pSrcValue ) ;
-
-	gHyp_data_append ( pResult, pVariable ) ;
-      }
     }
     else {
       
-      /* Destination must be a VARIABLE */
+      if ( dstDataType == TYPE_STRING ) {
 
-      if ( srcTokenType != TOKEN_VARIABLE ) {
-	
 	/* Replace destination values with that from the source. */
 	pVariable = gHyp_data_new ( gHyp_data_getLabel ( pDstValue ) ) ;
 	pValue = gHyp_data_new ( NULL ) ;
-	n = MIN ( byteBufferLen, VALUE_SIZE ) ;
-	/* Take up to first null for strings
-	if ( dstDataType <= TYPE_STRING ) {
-	  n = MIN ( n, (int) strlen ( pByteBuffer ) ) ;
-	  srcDataLen = n ;
-	} 
-	*/
-	memcpy ( value, (const char*) pByteBuffer, n ) ;
-	value[n] = '\0' ;
-	if ( srcDataType == TYPE_STRING )
-	  gHyp_data_setStr_n ( pValue, value, n ) ;
-	else
-	  gHyp_data_setToken ( pValue, value ) ;
-	
-	/*gHyp_util_debug("NEW VALUE %s = %s",
-			  gHyp_data_getLabel ( pDstValue ),
-			  value) ;
-	*/
+	n = MIN ( streamLen, VALUE_SIZE ) ;
+	n = MIN ( n, (int) strlen ( pStream ) ) ;
 
+	memcpy ( value, (const char*) pStream, n ) ;
+	value[n] = '\0' ;
+	gHyp_data_setStr_n ( pValue, value, n ) ;
 	gHyp_data_append ( pVariable, pValue ) ;
 	gHyp_data_append ( pResult, pVariable ) ;	
 
-	/* How many elements are skipped over ? */
-	n = n / srcDataLen ;
-	if ( n > 1 ) {
-	  *pContextSrc += (n-1) ;
-	  if ( isVectorSrc ) 
-	    ssv = *pContextSrc ;
-	  else
-	    ssv = 0 ;
-	}	
+	pStream += n ;
+	*ppStream = pStream ;
+
       }
       else {
+	
+	pData = lHyp_env_map (	pDstValue,
+				ppStream,
+				ppAnchor,
+				ppEndOfStream,
+				pStreamData,
+		      		ppValue,
+				pContextSrc,
+				ss,
+				isVectorSrc,
+		      		pAI,
+			        isLittleEndian,
+				sdv ) ;
+	  	
+	pStream = *ppStream ;
 
-	/* Source is also a VARIABLE  */
-	if ( pSrc == pSrcValue ) {
-
-	  /* Source is a vector */
-	  /*gHyp_util_debug("Source vector (%d)",ssv ) ;*/
-
-	  *pContextSrc -= 1 ;
-	  gHyp_data_append ( pResult, 
-			     lHyp_env_map ( pDstValue,
-					    pSrcValue, 
-					    pSrcValue,
-					    pContextSrc,
-					    pAI,
-					    isLittleEndian ));
-	  /*gHyp_util_debug("End source vector");*/
-	}
-	else {
-
-	  contextSrc = -1 ;
-
-	  /*gHyp_util_debug("Source list (%d)",contextSrc ) ;*/
-	  gHyp_data_append ( pResult, 
-			     lHyp_env_map ( pDstValue,
-					    pSrcValue, 
-					    NULL,
-					    &contextSrc,
-					    pAI,
-					    isLittleEndian ));	
-	}
+	gHyp_data_append ( pResult, pData ) ;
       }
-    }
-  }
+    } 
+  }  
+
   return pResult ;
 }
 
@@ -1436,17 +1317,25 @@ void gHyp_env_map ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       *pStack = gHyp_frame_stack ( pFrame ) ;
 
     sData
+      *pValue,
+      *pSrc,
       *pSrcData,
       *pDstData,
-      *pSrc,
       *pDst,
       *pResult ;
 
+    char
+      *pStream,
+      *pAnchor,
+      *pEndOfStream ;
+
     int
-      contextSrc = -1,
+      ss,
+      contextSrc,
       argCount = gHyp_parse_argCount ( pParse ) ;
     
     sLOGICAL
+      isVectorSrc,
       isLittleEndian = gHyp_util_isLittleEndian() ;
 
     gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
@@ -1454,19 +1343,34 @@ void gHyp_env_map ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     if ( argCount != 2 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
 	"Invalid arguments. Usage: map ( destination, source )" ) ;
 
-    pSrcData = gHyp_stack_popRdata ( pStack, pAI ) ;
-    pDstData = gHyp_stack_popRdata ( pStack, pAI ) ;
+    pSrc = gHyp_stack_popRdata ( pStack, pAI ) ;
+    pSrcData = gHyp_data_getVariable ( pSrc ) ;
+    if ( !pSrcData ) pSrcData = pSrc ;
+    
+    pDst = gHyp_stack_popRdata ( pStack, pAI ) ;
+    pDstData = gHyp_data_getVariable ( pDst ) ;
+    if ( !pDstData ) pDstData = pDst ;
 
-    pSrc = gHyp_data_getVariable ( pSrcData ) ;
-    pDst = gHyp_data_getVariable ( pDstData ) ;
-    if ( !pSrc ) pSrc = pSrcData ;
-    if ( !pDst ) pDst = pDstData ;
-    pResult = lHyp_env_map ( pDst, 
-			     pSrc,
-			     NULL,
-			     &contextSrc,
-			     pAI,
-			     isLittleEndian ) ;
+    gzStream[0] = '\0' ;
+    pStream = gzStream ;
+    pAnchor = pStream ;	
+    pEndOfStream = pStream ;
+    pValue = NULL ;
+    contextSrc = -1 ;
+    ss = gHyp_data_getSubScript ( pSrcData ) ;
+    isVectorSrc = ( gHyp_data_getDataType ( pSrcData ) > TYPE_STRING ) ;
+    pResult = lHyp_env_map (  pDstData,
+			      &pStream,
+			      &pAnchor,
+			      &pEndOfStream,
+			      pSrcData,
+			      &pValue,
+			      &contextSrc,
+			      ss,
+			      isVectorSrc,
+			      pAI,
+			      isLittleEndian,
+			      0) ;
 
     gHyp_stack_push ( pStack, pResult ) ;
   }

@@ -4867,7 +4867,7 @@ void gHyp_data_setText ( sData *pData, char *pString, int n )
 
     pStr = strchr ( pSearch, '\n' ) ;
 
-    /* If no linefeed, take min of 256 or end of buffer */
+    /* If no linefeed, take min of VALUE_SIZE or end of buffer */
     if ( pStr == NULL ) {
       n = MIN ( (pEndStr-pSearch), VALUE_SIZE ) ;
     }

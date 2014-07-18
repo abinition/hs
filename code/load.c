@@ -583,7 +583,8 @@ char *gHyp_load_fromStream (	sInstance *pAI,
       if ( tokenLen > 0 ) strncpy ( pToken, pStream, tokenLen ) ;
       pToken[tokenLen] = '\0' ;
       if ( stringLen > VALUE_SIZE ) {
-	gHyp_util_logError ( "%c%s...%c was truncated", ch, pToken, ch ) ;
+	gHyp_util_logError ( "%c%s...%c was truncated at %d characters", 
+	  ch, pToken, ch, VALUE_SIZE ) ;
 	guErrorCount++ ;
       }
       

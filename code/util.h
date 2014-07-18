@@ -60,4 +60,14 @@ extern sLOGICAL		gHyp_util_isLittleEndian() ;
 extern sLOGICAL		gHyp_util_breakTarget ( char *, char *, char*, char*, char*, char* ) ;
 extern int gHyp_util_base64Decode( char *in, int size_in, char *out )  ;
 extern int gHyp_util_base64Encode( char *in, int size_in, char *out )  ;
+extern char *gHyp_util_readStream (  char *pStream,
+				    char *pAnchor,
+				    char **ppEndOfStream,
+				    int *pStreamLen,
+				    sData *pStreamData,
+				    sData **ppValue,
+				    int *pContext,
+				    int ss,
+				    sLOGICAL isVector,
+				    FILE *pp )  ;
 

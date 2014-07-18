@@ -990,8 +990,8 @@ void gHyp_secs_assign ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
     /* Check that secsFd already exists */
     pConcept =  gHyp_instance_getConcept(pAI) ;
-    pSecs1 = gHyp_concept_getSocketObject ( pConcept, secsFd, DATA_OBJECT_SECS1 ) ;
-    pHsms = gHyp_concept_getSocketObject ( pConcept, secsFd, DATA_OBJECT_HSMS ) ;
+    pSecs1 = (sSecs1*) gHyp_concept_getSocketObject ( pConcept, secsFd, DATA_OBJECT_SECS1 ) ;
+    pHsms = (sHsms*) gHyp_concept_getSocketObject ( pConcept, secsFd, DATA_OBJECT_HSMS ) ;
     if ( !pSecs1 && !pHsms) {
 
       status = FALSE ;

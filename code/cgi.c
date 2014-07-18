@@ -170,113 +170,6 @@ void gHyp_cgi_plusToSpace(char *str)
 }
 
 
-static char *lHyp_cgi_readStream (  char *pStream,
-				    char *pAnchor,
-				    char **ppEndOfStream,
-				    sData *pStreamData,
-				    sData **ppValue,
-				    int *pContext,
-				    int ss,
-				    sLOGICAL isVector,
-				    FILE *pp )  
-{
-  /* The function of this routine is to keep the XML buffer filled.
-   * The data can either come from a FILE* (pp) or a sData* (pStreamData).   
-   * In either case, the XML buffer is 3 times the size 
-   * of what can be read from pp or pStreamData ( MAX_INPUT_LENGTH ).
-   * The buffer is filled until it exceeds MAX_INPUT_LENGTH*2.
-   * When the current processing pointer exceeds MAX_INPUT_LENGTH, then
-   * the contents are shifted to the beginning of the buffer, and the
-   * buffer is filled back to a point that exceeds MAX_INPUT_LENGTH*2.
-   *
-   *  pStream - the current processing position
-   *  pAnchor - the start of the buffer
-   *  pEndOfStream - the end of the buffer
-   *  pStreamData - one possible source of data
-   *  (ppValue,pContext,ss,isVector) - needed for pStreamData
-   *  pp - another possible source of data 
-   *
-   * The return value is the new pEndOfStream.
-   * When the data is exhausted, the return value will be null, so that
-   * subsequent calls to this routine will do nothing.
-   */
-
-  sData *pValue ;
-  int n ;
-  char *pStr ;
-  char *pEndOfStream = *ppEndOfStream ;
-
-  /* If there's no more data to be read, then just return */
-  if ( pEndOfStream == NULL ) return pStream ;
-
-  /* If the current processing pointer has not moved passed 
-   * MAX_INPUT_LENGTH, then we don't need to read more data in yet.
-   */
-  if ( pStream < pEndOfStream &&
-       pStream < (pAnchor + MAX_INPUT_LENGTH ) ) return pStream ;
-
-  /* Need to read some more data */
-  if ( pStream > pAnchor ) {
-
-    /* Shift the remaining stream back to the anchor position */
-    strcpy ( pAnchor, pStream ) ;
-
-    /* Calculate new end of stream, where we will append data. */
-    pEndOfStream = pAnchor + (pEndOfStream - pStream) ;
-    *ppEndOfStream = pEndOfStream ;
-
-    pStream = pAnchor ;
-  }
-
-  /* We now read data until the FILE or sData source is exhausted or
-   * until the pEndOfStream value exceeds MAX_INPUT_LENGTH*2
-   */
-
-  while ( pEndOfStream && pEndOfStream < (pAnchor+MAX_INPUT_LENGTH*2) ) {
-
-    if ( pStreamData ) {
-   
-      /* Data comes from an sData source */
-      pValue = ppValue ? *ppValue : NULL ;
-
-      /* Get next line */
-      pValue = gHyp_data_nextValue ( pStreamData, 
-				     pValue,
-				     pContext,
-				     ss ) ;
-      *ppValue = pValue ;
-
-      if ( !pValue ) { 
-	pEndOfStream = NULL ;
-	*ppEndOfStream = pEndOfStream ;
-      }
-      else {
-
-        pStream = pAnchor ;
-        n = gHyp_data_getStr (	pValue, 
-	 			pEndOfStream, 
-				MAX_INPUT_LENGTH, 
-				*pContext, 
-				isVector ) ;
-        /*n = gHyp_util_trim ( pEndOfStream ) ; */
-	pEndOfStream += n ;
-	*ppEndOfStream = pEndOfStream ;
-      }
-    }
-    else if ( pp ) {
-
-      /* Data comes from a file */
-      pStr = fgets ( pEndOfStream, MAX_INPUT_LENGTH, pp ) ;
-      if (!pStr)
-	pEndOfStream = NULL ;
-      else
-	pEndOfStream += strlen ( pStr ) ;
-      *ppEndOfStream = pEndOfStream ; 
-    }
-  }
-  return pStream ;
-}
-
 char *gHyp_cgi_parseXML ( char *pStream,
 			  char *pAnchor,
 			  char **ppEndOfStream,
@@ -325,6 +218,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
     context2,
     ss2,
     i,
+    streamLen,
     span,
     tagLen,
     tag2Len,
@@ -352,8 +246,8 @@ char *gHyp_cgi_parseXML ( char *pStream,
  #define SEG_SIZE 10 
 
   /* Get more data if necessary */
-  pStream = lHyp_cgi_readStream (	pStream, pAnchor, ppEndOfStream,
-					pStreamData, 
+  pStream = gHyp_util_readStream (	pStream, pAnchor, ppEndOfStream,
+					&streamLen, pStreamData, 
 					ppValue, pContext, ss, isVector, 
 					pp ) ;
 
@@ -448,8 +342,8 @@ char *gHyp_cgi_parseXML ( char *pStream,
       pStream = pTag ;
 
       /* Get more data if necessary */
-      pStream = lHyp_cgi_readStream (  pStream, pAnchor, ppEndOfStream,
-					    pStreamData, 
+      pStream = gHyp_util_readStream (  pStream, pAnchor, ppEndOfStream,
+					    &streamLen, pStreamData, 
 					    ppValue, pContext, ss, isVector, 
 					    pp ) ;
       /* Advance past '<' */
@@ -607,8 +501,8 @@ char *gHyp_cgi_parseXML ( char *pStream,
 	  pTag = NULL ;
 
           /* Get more data if necessary */
-	  pStream = lHyp_cgi_readStream (	pStream, pAnchor, ppEndOfStream,
-						pStreamData, 
+	  pStream = gHyp_util_readStream (	pStream, pAnchor, ppEndOfStream,
+						&streamLen, pStreamData, 
 						ppValue, pContext, ss, isVector, 
 						pp ) ;
 
@@ -634,8 +528,8 @@ char *gHyp_cgi_parseXML ( char *pStream,
   gHyp_util_lowerCase ( tag_lc, tagLen ) ;
 
    /* Check if more of the stream is needed */
-  pStream = lHyp_cgi_readStream (	pStream, pAnchor, ppEndOfStream,
-					pStreamData, 
+  pStream = gHyp_util_readStream (	pStream, pAnchor, ppEndOfStream,
+					&streamLen, pStreamData, 
 					ppValue, pContext, ss, isVector, 
 					pp ) ;
 
@@ -969,8 +863,8 @@ char *gHyp_cgi_parseXML ( char *pStream,
   }
 
   /* Check if more of the stream is needed */
-  pStream = lHyp_cgi_readStream (	pStream, pAnchor, ppEndOfStream,
-					pStreamData, 
+  pStream = gHyp_util_readStream (	pStream, pAnchor, ppEndOfStream,
+					&streamLen, pStreamData, 
 					ppValue, pContext, ss, isVector, 
 					pp ) ;
 

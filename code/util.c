@@ -2444,3 +2444,130 @@ int gHyp_util_base64Decode( char *in, int size_in, char *out )
   return i_out ;
 
 }
+
+char *gHyp_util_readStream (  char *pStream,
+			      char *pAnchor,
+			      char **ppEndOfStream,
+			      int *pStreamLen,
+			      sData *pStreamData,
+			      sData **ppValue,
+			      int *pContext,
+			      int ss,
+			      sLOGICAL isVector,
+			      FILE *pp )  
+{
+  /* The function of this routine is to keep the XML buffer filled.
+   * The data can either come from a FILE* (pp) or a sData* (pStreamData).   
+   * In either case, the XML buffer is 3 times the size 
+   * of what can be read from pp or pStreamData ( MAX_INPUT_LENGTH ).
+   * The buffer is filled until it exceeds MAX_INPUT_LENGTH*2.
+   * When the current processing pointer exceeds MAX_INPUT_LENGTH, then
+   * the contents are shifted to the beginning of the buffer, and the
+   * buffer is filled back to a point that exceeds MAX_INPUT_LENGTH*2.
+   *
+   *  pStream - the current processing position
+   *  pAnchor - the start of the buffer
+   *  pEndOfStream - the end of the buffer
+   *  pStreamData - one possible source of data
+   *  (ppValue,pContext,ss,isVector) - needed for pStreamData
+   *  pp - another possible source of data 
+   *
+   * The return value is the new pEndOfStream.
+   * When the data is exhausted, the return value will be null, so that
+   * subsequent calls to this routine will do nothing.
+   */
+
+  sData *pValue ;
+  int n ;
+  int dataLen ;
+  char *pStr ;
+  char *pBuf ;
+  char *pEndOfStream = *ppEndOfStream ;
+
+  /* If there's no more data to be read, then just return */
+  if ( pEndOfStream == NULL ) return pStream ;
+
+  /* If the current processing pointer has not moved passed 
+   * MAX_INPUT_LENGTH, then we don't need to read more data in yet.
+   */
+
+  *pStreamLen = (pEndOfStream - pStream) ;
+
+  if ( pStream < pEndOfStream &&
+       pStream < (pAnchor + MAX_INPUT_LENGTH ) ) return pStream ;
+
+  /* Need to read some more data */
+  if ( pStream > pAnchor ) {
+
+    /* Shift the remaining stream back to the anchor position */
+    strcpy ( pAnchor, pStream ) ;
+
+    /* Calculate new end of stream, where we will append data. */
+    pEndOfStream = pAnchor + (pEndOfStream - pStream) ;
+    *ppEndOfStream = pEndOfStream ;
+    pStream = pAnchor ;
+    *pStreamLen = (pEndOfStream - pStream) ;
+  }
+
+  /* We now read data until the FILE or sData source is exhausted or
+   * until the pEndOfStream value exceeds MAX_INPUT_LENGTH*2
+   */
+
+  while ( pEndOfStream && pEndOfStream < (pAnchor+MAX_INPUT_LENGTH*2) ) {
+
+    if ( pStreamData ) {
+   
+      /* Data comes from an sData source */
+      pValue = ppValue ? *ppValue : NULL ;
+
+      /* Get next line */
+      pValue = gHyp_data_nextValue ( pStreamData, 
+				     pValue,
+				     pContext,
+				     ss ) ;
+      *ppValue = pValue ;
+
+      if ( !pValue ) { 
+	pEndOfStream = NULL ;
+	*ppEndOfStream = pEndOfStream ;
+      }
+      else {
+
+	if ( gHyp_data_dataType ( pValue ) > TYPE_STRING ) {
+
+	  pBuf = gHyp_data_buffer ( pValue, *pContext ) ;
+	  n = gHyp_data_bufferLen ( pValue, *pContext ) ;
+
+	  memcpy ( pEndOfStream, pBuf, n ) ;
+
+	  dataLen = gHyp_data_dataLen ( pValue ) ;
+	  *pContext += n/dataLen ;
+	}
+	else {
+          n = gHyp_data_getStr (pValue, 
+	 			pEndOfStream, 
+				MAX_INPUT_LENGTH, 
+				*pContext, 
+				isVector ) ;
+	}
+
+        pStream = pAnchor ;
+	pEndOfStream += n ;
+	*ppEndOfStream = pEndOfStream ;
+        *pStreamLen = (pEndOfStream - pStream) ;
+      }
+    }
+    else if ( pp ) {
+
+      /* Data comes from a file */
+      pStr = fgets ( pEndOfStream, MAX_INPUT_LENGTH, pp ) ;
+      if (!pStr)
+	pEndOfStream = NULL ;
+      else
+	pEndOfStream += strlen ( pStr ) ;
+      *ppEndOfStream = pEndOfStream ; 
+      *pStreamLen = (pEndOfStream - pStream) ;
+    }
+  }
+  return pStream ;
+}

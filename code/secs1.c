@@ -2127,7 +2127,7 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
     isBinary=FALSE,
     isPOSTdata=FALSE,
     isXMLEncoded=FALSE,
-    isLineBased=FALSE,
+    isLineBased=TRUE,
     doKnitting=FALSE,
     isMessageComplete,
     jmpEnabled ;
