@@ -932,6 +932,9 @@ void gHyp_secs_assign ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     sWORD
       id ;
 
+    short
+      flags ;
+
     int
       ID,
       argCount = gHyp_parse_argCount ( pParse ) ;
@@ -939,6 +942,12 @@ void gHyp_secs_assign ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     sLOGICAL
       rBit=FALSE,
       status=TRUE ;
+
+    sSecs1
+      *pSecs1 ;
+
+    sHsms
+      *pHsms ;
 
     sSecs2
       *pSecs2 ;
@@ -981,7 +990,9 @@ void gHyp_secs_assign ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
     /* Check that secsFd already exists */
     pConcept =  gHyp_instance_getConcept(pAI) ;
-    if ( !gHyp_concept_getSocketObject ( pConcept, secsFd, DATA_OBJECT_NULL )  ) {
+    pSecs1 = gHyp_concept_getSocketObject ( pConcept, secsFd, DATA_OBJECT_SECS1 ) ;
+    pHsms = gHyp_concept_getSocketObject ( pConcept, secsFd, DATA_OBJECT_HSMS ) ;
+    if ( !pSecs1 && !pHsms) {
 
       status = FALSE ;
       gHyp_instance_warning ( pAI,
@@ -1011,6 +1022,12 @@ void gHyp_secs_assign ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 					id,
 					pSecs2, 
 					rBit ) ;
+      /* In case the pSecs1 device was opened with port_open or http_open */
+      if ( pSecs1 ) {
+        flags = gHyp_secs1_flags ( pSecs1 ) ;
+        flags = (flags & MASK_SOCKET) | PROTOCOL_SECS1 ;
+        gHyp_secs1_setFlags ( pSecs1, flags ) ;
+      }
     }
 
     gHyp_instance_pushSTATUS ( pAI, pStack ) ;

@@ -2070,7 +2070,7 @@ void gHyp_fileio_fread ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 	pData = gHyp_data_new ( NULL ) ;
 
 	width = MIN ( bufLen, INTERNAL_VALUE_SIZE ) ;
-	gHyp_data_setStr2 ( pData, (char*) pBuf, width ) ;
+	gHyp_data_setStr_n ( pData, (char*) pBuf, width ) ;
 	gHyp_data_append ( pResult, pData ) ;
 
 	bufLen -= width ;
@@ -2680,7 +2680,7 @@ void gHyp_fileio_echo ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 	      buflen = strlen ( pBuf ) ;
 	      */
               buflen = gHyp_util_parseString ( pBuf ) ;
-	      gHyp_data_setStr2 ( pValue, pBuf, buflen ) ;
+	      gHyp_data_setStr_n ( pValue, pBuf, buflen ) ;
 	    }
 	    gHyp_data_append ( pResult, pValue ) ;
 	  }
@@ -2709,7 +2709,7 @@ void gHyp_fileio_echo ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 	      buflen = sprintf ( buf, "`%s`", pBuf ) ;
 	      pBuf = buf ;
   	    }
-	    gHyp_data_setStr2 ( pValue, pBuf, buflen ) ;
+	    gHyp_data_setStr_n ( pValue, pBuf, buflen ) ;
 	    gHyp_data_append ( pResult, pValue ) ;
 	  }
 	}
@@ -2835,7 +2835,7 @@ void gHyp_fileio_load( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 	    gHyp_data_setNull ( pValue ) ;
 	  else {
 	    gHyp_util_trim ( pBuf ) ;
-	    gHyp_data_setStr2 ( pValue, pBuf, strlen(pBuf) ) ;
+	    gHyp_data_setStr_n ( pValue, pBuf, strlen(pBuf) ) ;
 	  }
 	  gHyp_data_append ( pResult, pValue ) ;
 	  line++ ;
@@ -2967,7 +2967,7 @@ void gHyp_fileio_load_binary( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 	  filePtr += buflen ;
 
 	  pValue = gHyp_data_new ( NULL ) ;
-	  gHyp_data_setStr2 ( pValue, pBuf, buflen ) ;
+	  gHyp_data_setStr_n ( pValue, pBuf, buflen ) ;
 	  gHyp_data_append ( pResult, pValue ) ;
 	}
       }

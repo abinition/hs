@@ -95,7 +95,7 @@ struct endian_t
     unsigned long	ul ;
     short		ss ;
     unsigned short	us ;
-    unsigned char     b[8] ;		
+    unsigned char       b[8] ;		
   } x ;
 } ;
 

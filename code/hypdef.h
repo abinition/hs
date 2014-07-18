@@ -6,11 +6,16 @@
 !          ***** Program property of Ab Initio Software                       !
 !                                                                             !
 !*****************************************************************************/
-#define 	VERSION_HYPERSCRIPT	"3.3.0"
+#define 	VERSION_HYPERSCRIPT	"3.3.1"
 
 /* Modification history:
  *
  * $Log: hypdef.h,v $
+ * Revision 1.29  2004/09/18 21:51:49  bergsma
+ * SSL buffer size can be 16K
+ * SSL timeout increased from 1 to 1.5 seconds
+ * New functions ssl_setSession and ssl_getSession, for Session Id's
+ *
  * Revision 1.28  2004/07/23 18:39:44  bergsma
  * Version 3.3.0
  *
@@ -178,9 +183,10 @@
 #define 	TOKEN_SIZE  		128
 #define 	VALUE_SIZE  		512
 #define		INTERNAL_VALUE_SIZE	VALUE_SIZE/4
-#define		PORT_READ_SIZE	  	MIN ( 5*1024, MAX_MESSAGE_SIZE )	
+#define		PORT_READ_SIZE	  	MIN ( 4*1024, MAX_MESSAGE_SIZE )	
 #define 	FIELD_SIZE  		20
 #define 	DEFAULT_DELIMITER 	'|'
+#define		OVERFLOW_READ_SIZE	16*1024	
 
 /* Minimum message size, must contain space for TARGET, MODE, METHOD, SENDER,
  * 7 delimiters, and a null terminatror: 
@@ -210,7 +216,7 @@
 #ifdef AS_SSL
 /* SSL */
 #define		SSL_ERROR_BUF_SIZE	120 
-#define		SSL_BUFFER_SIZE		PORT_READ_SIZE/2
+#define		SSL_BUFFER_SIZE		PORT_READ_SIZE*2
 #define		SSL_WAIT_INCREMENT	100 /* milliseconds */
 #define		SSL_TIMEOUT		15000 /* milliseconds - 1.5 seconds */
 #endif

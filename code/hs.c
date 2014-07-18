@@ -536,13 +536,13 @@ BOOL APIENTRY DllMain(HINSTANCE hModule,
 
     switch (ul_reason_for_call) {
 	case DLL_PROCESS_ATTACH :
-	    //printf( "DllMain: DLL_PROCESS_ATTACH for hModule = 0x%x\n", hModule);
+	  /*printf( "DllMain: DLL_PROCESS_ATTACH for hModule = 0x%x\n", hModule);*/
 	    ghInstance = hModule;
 	    break;
 
 	case DLL_PROCESS_DETACH :
 	{
-	    //printf( "DllMain: DLL_PROCESS_DETACH\n");
+	  /*printf( "DllMain: DLL_PROCESS_DETACH\n");*/
 	    break;
 	}
 
@@ -1046,13 +1046,14 @@ int main ( int argc, char * argv[] )
       }
     }
   } 
-  /*gHyp_util_debug("Quiting");*/
-  gHyp_concept_quit ( pConcept ) ;
-  
+
 #ifdef AS_PROMIS
   aeqSsp_automan_closeFiles ( ) ;
   gHyp_promis_cleanFields ( -1 ) ;
 #endif
+
+  /*gHyp_util_debug("Quiting");*/
+  gHyp_concept_quit ( pConcept ) ;  
 
 #ifdef PROFILE
     exit(2) ;

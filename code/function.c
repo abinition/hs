@@ -583,16 +583,19 @@ void gHyp_function_strext ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     int
       stringLen,
       offset,
-      length,
+      length=0,
       argCount = gHyp_parse_argCount ( pParse ) ;
 		
     gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
     
-    if ( argCount != 3 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-	"Invalid arguments. Usage: strext ( string, offset, length )" ) ;
+    if ( argCount != 3 && argCount != 2 ) 
+      gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+	"Invalid arguments. Usage: strext ( string, offset [, length] )" ) ;
 
-    pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
-    length = gHyp_data_getInt ( pData, gHyp_data_getSubScript(pData), TRUE ) ;
+    if ( argCount == 3 ) {
+      pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
+      length = gHyp_data_getInt ( pData, gHyp_data_getSubScript(pData), TRUE ) ;
+    }
 
     pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
     offset = gHyp_data_getInt ( pData,gHyp_data_getSubScript(pData), TRUE ) ;
@@ -604,6 +607,8 @@ void gHyp_function_strext ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 				   gHyp_data_getSubScript(pData),
 				   TRUE ) ;
     pStr = strVal ;
+
+    if ( argCount == 2 ) length = stringLen - offset ;
 
     /* Be forgiving about going out of bounds in the length. */
     pResult = gHyp_data_new ( NULL ) ;
@@ -617,7 +622,7 @@ void gHyp_function_strext ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       pStr += offset ;
       memcpy ( pSubStr, pStr, length ) ;
       pSubStr[length] = '\0' ;
-      gHyp_data_setStr2 ( pResult, pSubStr, length ) ;
+      gHyp_data_setStr_n ( pResult, pSubStr, length ) ;
       ReleaseMemory ( pSubStr ) ;
     }
     else {
@@ -962,7 +967,7 @@ void gHyp_function_strtok ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 	/* CONSTANT OR IDENTIFIER */
 	pValue = gHyp_data_new ( NULL ) ;
 	if ( pValStart < pValEnd )
-	  gHyp_data_setStr2 ( pValue, pValStart, pValEnd-pValStart ) ;
+	  gHyp_data_setStr_n ( pValue, pValStart, pValEnd-pValStart ) ;
 	else
 	  gHyp_data_setNull ( pValue ) ;
       }
@@ -1121,7 +1126,7 @@ void gHyp_function_tolower ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
         memcpy ( strVal2, pStr, n ) ;
         strVal2[n] = '\0' ;
         gHyp_util_lowerCase ( strVal2, n ) ;
-        gHyp_data_setStr2 ( pValue2, strVal2, n ) ;
+        gHyp_data_setStr_n ( pValue2, strVal2, n ) ;
       }
       gHyp_data_append ( pResult, pValue2 ) ;
     }
@@ -1221,7 +1226,7 @@ void gHyp_function_toupper ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
         memcpy ( strVal2, pStr, n ) ;
         strVal2[n] = '\0' ;
         gHyp_util_upperCase ( strVal2, n ) ;
-        gHyp_data_setStr2 ( pValue2, strVal2, n ) ;
+        gHyp_data_setStr_n ( pValue2, strVal2, n ) ;
       }
 
       gHyp_data_append ( pResult, pValue2 ) ;
@@ -1434,7 +1439,7 @@ void gHyp_function_toexternal(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
         pStr = strVal ;
         pValue2 = gHyp_data_new ( NULL ) ;
         n = gHyp_util_unparseString ( strVal2, pStr, n, VALUE_SIZE, FALSE, FALSE, specialChars ) ;
-        gHyp_data_setStr2 ( pValue2, strVal2, n ) ;
+        gHyp_data_setStr_n ( pValue2, strVal2, n ) ;
       }
 
       gHyp_data_append ( pResult, pValue2 ) ;
@@ -1536,7 +1541,7 @@ void gHyp_function_tointernal(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
         memcpy ( strVal2, pStr, n ) ;
         strVal2[n] = '\0' ;
         n = gHyp_util_parseString ( strVal2 ) ;
-        gHyp_data_setStr2 ( pValue2, strVal2, n ) ;
+        gHyp_data_setStr_n ( pValue2, strVal2, n ) ;
       }
 
       gHyp_data_append ( pResult, pValue2 ) ;
@@ -1730,7 +1735,7 @@ void gHyp_function_decode(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
         pStr = encrypted ;
         pValue2 = gHyp_data_new ( NULL ) ;
 	n = gHyp_util_base64Decode ( encrypted, n, decrypted ) ;
-        gHyp_data_setStr2 ( pValue2, decrypted, n ) ;
+        gHyp_data_setStr_n ( pValue2, decrypted, n ) ;
 
       gHyp_data_append ( pResult, pValue2 ) ;
     }
@@ -1821,7 +1826,7 @@ void gHyp_function_encode(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
         pStr = encrypted ;
         pValue2 = gHyp_data_new ( NULL ) ;
 	n = gHyp_util_base64Encode ( decrypted, n, encrypted ) ;
-        gHyp_data_setStr2 ( pValue2, encrypted, n ) ;
+        gHyp_data_setStr_n ( pValue2, encrypted, n ) ;
 
       gHyp_data_append ( pResult, pValue2 ) ;
     }

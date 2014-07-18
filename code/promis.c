@@ -11,6 +11,11 @@
  * Modifications:
  *
  *	$Log: promis.c,v $
+ *	Revision 1.17  2004/09/18 21:48:06  bergsma
+ *	- warning, not error, when DCOP has 4 or more dimensions
+ *	- DcOp prompt strings need externalizing
+ *	- fixed memory leak
+ *	
  *	Revision 1.16  2004/07/28 00:49:18  bergsma
  *	Version 3.3.0
  *	
@@ -694,7 +699,7 @@ static int lHyp_promis_parseRecord ( sData *pTV,
 	 gHyp_util_trim ( value ) ;
 	*/
 
-	gHyp_data_setStr2 ( pValue, value, j ) ;
+	gHyp_data_setStr_n ( pValue, value, j ) ;
         gHyp_data_append ( pData, pValue ) ;
         pBuf += fieldSize ;
       }
@@ -888,9 +893,11 @@ static int lHyp_promis_tresData ( sInstance *pAI,
    *    1    item[0]  item[1]  item[2]  item[3]  ...item[numTestDi-1]
    */
 
-  if ( numDims > 3 )
-    gHyp_instance_error ( pAI, STATUS_PROMIS,
+  if ( numDims > 3 ) {
+    gHyp_instance_warning ( pAI, STATUS_PROMIS,
 	"No support for 4-dimensioned tests. Please contact support" ) ;
+    return -1 ;
+  }
 
   /* Create the structure descriptor.
    * The first argument is 0, this is the location reserved for the virutal 
@@ -2389,10 +2396,11 @@ void gHyp_promis_putline (  sDescr* output_d,
 			    long outputLen )  
 {
   sData
-    *pValue = gHyp_data_new ( NULL ) ;
+    *pValue ;
 
   if ( gpData ) {
-    gHyp_data_setStr2 ( pValue, output_d->dsc_a_pointer, outputLen ) ;
+    pValue = gHyp_data_new ( NULL ) ;
+    gHyp_data_setStr_n ( pValue, output_d->dsc_a_pointer, outputLen ) ;
     gHyp_data_append ( gpData, pValue ) ;
   }
 
@@ -2931,10 +2939,13 @@ void gHyp_promis_cleanFields ( long fileIndex )
         for ( k=0; k<pField->nameCount; k++ ) {
           /*gHyp_util_logInfo("Freeing %s",(*name)[k]);*/
  	  ReleaseMemory ( (*name)[k] ) ;
+	  (*name)[k] = NULL ;
 	}
         ReleaseMemory ( pField->name ) ;
+	pField->name = NULL ;
       }
       ReleaseMemory ( pFields ) ;
+      pFields = NULL ;
       gpsFieldCache[i] = NULL ;
       giNumFields[i] = 0 ;
     }

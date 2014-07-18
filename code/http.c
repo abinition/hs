@@ -48,6 +48,7 @@ struct http_t {
   sLOGICAL isXMLEncoded ;
   sLOGICAL isURLEncoded ;
   sLOGICAL isPlainText ;
+  sLOGICAL isBinary ;
 } ;
 
 /**********************	FUNCTION DEFINITIONS ********************************/
@@ -66,6 +67,7 @@ sHTTP *gHyp_http_new ( )
   pHTTP->isXMLEncoded = FALSE ;
   pHTTP->isURLEncoded = FALSE ;
   pHTTP->isPlainText = FALSE ;
+  pHTTP->isBinary = FALSE ;
 
   return pHTTP ;
 }
@@ -87,6 +89,7 @@ void gHyp_http_reset ( sHTTP *pHTTP )
   pHTTP->isXMLEncoded = FALSE ;
   pHTTP->isURLEncoded = FALSE ;
   pHTTP->isPlainText = FALSE ;
+  pHTTP->isBinary = FALSE ;
   gHyp_data_deleteValues ( pHTTP->pContentData ) ;
   gHyp_data_deleteValues ( pHTTP->pAttributeData ) ;
 }
@@ -197,6 +200,16 @@ void gHyp_http_setPlainText( sHTTP* pHTTP )
 sLOGICAL gHyp_http_isPlainText( sHTTP* pHTTP )
 {
   return pHTTP->isPlainText ;
+}
+
+void gHyp_http_setBinary( sHTTP* pHTTP, sLOGICAL isBinary )
+{
+  pHTTP->isBinary = isBinary ;
+}
+
+sLOGICAL gHyp_http_isBinary( sHTTP* pHTTP )
+{
+  return pHTTP->isBinary ;
 }
 
 void gHyp_http_service ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
@@ -669,6 +682,12 @@ void gHyp_http_assign ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     sConcept
       *pConcept ;
 
+    short
+      flags ;
+
+    sSecs1
+      *pHttp ;
+
     int
       id ;
 
@@ -699,7 +718,8 @@ void gHyp_http_assign ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
     /* Check that portFd already exists */
     pConcept =  gHyp_instance_getConcept(pAI) ;
-    if ( !gHyp_concept_getSocketObject ( pConcept, (SOCKET) portFd, DATA_OBJECT_NULL ) ) {
+    pHttp = (sSecs1*) gHyp_concept_getSocketObject ( pConcept, (SOCKET) portFd, DATA_OBJECT_NULL ) ;
+    if ( !pHttp ) {
       gHyp_instance_warning ( pAI,
 			      STATUS_HTTP, 
 			      "No port '%d'. Use http_open to open port ",
@@ -716,9 +736,142 @@ void gHyp_http_assign ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 			      gHyp_instance_getDeviceId ( pAIassigned, portFd ),
 			      gHyp_instance_getTargetId ( pAIassigned ) ) ;
       }
-      else
+      else {
 	gHyp_instance_updateFd ( pAI, (SOCKET) portFd, (sWORD) id, NULL, FALSE ) ;
+	flags = gHyp_secs1_flags ( pHttp ) ;
+	flags = (flags & MASK_SOCKET) | PROTOCOL_HTTP ;
+	gHyp_secs1_setFlags ( pHttp, flags ) ;
+      }
+
     }
+    gHyp_instance_pushSTATUS ( pAI, pStack ) ;
+  }
+}
+
+void gHyp_http_binary ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: http_binary ( )
+   *	Returns 1
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+  
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+    
+  else {
+ 
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+    
+    sData
+      *pData ;
+
+    sLOGICAL
+      status=FALSE,
+      isBinary = FALSE ;
+
+    SOCKET
+      portFd ;
+
+    sSecs1
+      *pHttpPort ;
+
+    sHTTP
+      *pHttp ;
+
+
+    int
+      id ;
+
+    int
+      argCount = gHyp_parse_argCount ( pParse ) ;
+
+    sInstance
+      *pAIassigned ;
+    
+    /* Assume success */	
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 2 )
+      gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+      "Invalid args. Usage: http_binary ( id, boolean )");
+    
+    /* Get the boolean value */
+    pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
+    isBinary = gHyp_data_getBool ( pData, gHyp_data_getSubScript ( pData ), TRUE );
+
+    /* Get the device id */
+    pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
+    id = gHyp_data_getInt ( pData, gHyp_data_getSubScript ( pData ), TRUE ) ;
+
+    /* Check id */
+    if ( id < 0 || id > 65535 )
+      gHyp_instance_error ( pAI,STATUS_BOUNDS, "Device ID out of range" ) ;
+
+    /* Get the http structure */
+    pAIassigned = gHyp_concept_getInstForDeviceId ( gHyp_instance_getConcept ( pAI ), (sWORD) id ) ;
+
+    if ( !pAIassigned ) {
+      gHyp_instance_warning ( pAI,STATUS_HTTP, 
+			    "Device id %d is not assigned",
+			    id ) ;
+      status = FALSE ;
+    }
+
+    if ( status ) {
+
+      portFd = gHyp_instance_getDeviceFd ( pAIassigned, (sWORD) id ) ;
+      if ( portFd == INVALID_SOCKET ) {
+	gHyp_instance_warning ( pAI,STATUS_HTTP, 
+			    "Socket %d does not exist.",
+			    portFd ) ;
+	status = FALSE ;
+      }
+    }
+
+    if ( status ) {
+      pHttpPort = (sSecs1*) gHyp_concept_getSocketObject ( gHyp_instance_getConcept(pAI), 
+							(SOCKET) portFd, 
+							DATA_OBJECT_NULL ) ;
+      if ( !pHttpPort ) {
+	gHyp_instance_warning ( pAI,STATUS_HTTP, 
+	  		    "Socket %d does not exist.",
+			    portFd ) ;
+	status = FALSE ;
+      }
+    }
+
+    if ( status ) {
+      pHttp = gHyp_secs1_getHttp ( pHttpPort ) ; 
+      if ( !pHttp ) {
+        gHyp_instance_warning ( pAI,
+			      STATUS_HTTP, 
+			      "No port '%d'. Use http_open to open port ", portFd ) ;
+	status = FALSE ;
+      }
+    }
+
+    if ( status ) {
+      gHyp_http_setBinary ( pHttp, isBinary ) ;
+    }
+
     gHyp_instance_pushSTATUS ( pAI, pStack ) ;
   }
 }
@@ -966,6 +1119,7 @@ static void lHyp_http_QE (	sInstance 	*pAI,
   sInstance
     *pAIassigned ;
 
+
   char
     line[VALUE_SIZE+3],	    /* Extra 2 chars for \r\n */
     value[VALUE_SIZE+1],
@@ -1066,6 +1220,11 @@ static void lHyp_http_QE (	sInstance 	*pAI,
     /* Create the HTTP message */
     pHttpList = gHyp_data_new ( "_http_" ) ;
 
+    /*
+    pHttp = gHyp_secs1_getHttp ( pHttpPort ) ;
+    gHyp_http_reset ( pHTTP, HTTP_EXPECT_HEADER ) ;
+    */
+
     hasContentLength = FALSE ;
     hasContentType = FALSE ;
     hasUserAgent = FALSE ;
@@ -1150,7 +1309,7 @@ static void lHyp_http_QE (	sInstance 	*pAI,
 		line[lineLen++] = '\n' ;
 		line[lineLen] = '\0' ;
 		pValue = gHyp_data_new ( NULL ) ;
-		gHyp_data_setStr2 ( pValue, line, lineLen ) ;
+		gHyp_data_setStr_n ( pValue, line, lineLen ) ;
 		gHyp_data_append ( pHttpList, pValue ) ;
 
 		line[0] = '\0' ;
@@ -1169,7 +1328,7 @@ static void lHyp_http_QE (	sInstance 	*pAI,
 	  line[lineLen] = '\0' ;
 
           pValue = gHyp_data_new ( NULL ) ;
-	  gHyp_data_setStr2 ( pValue, line, lineLen ) ;
+	  gHyp_data_setStr_n ( pValue, line, lineLen ) ;
           gHyp_data_append ( pHttpList, pValue ) ;
 	}
       }
@@ -1216,15 +1375,16 @@ static void lHyp_http_QE (	sInstance 	*pAI,
       pValue = gHyp_data_new ( NULL ) ;
       n = sprintf ( line, "User-Agent: HyperScript/%s\r\n", 
 		      VERSION_HYPERSCRIPT ) ;
-      gHyp_data_setStr2 ( pValue, line, n ) ;
+      gHyp_data_setStr_n ( pValue, line, n ) ;
       gHyp_data_insert ( pHttpList, pValue ) ;
     }
 
     if ( !hasHost) {
       pValue = gHyp_data_new ( NULL ) ;
-      n = sprintf ( line, "Host: %s:%d\r\n",gzLocalHost,
+      n = sprintf ( line, "Host: %s:%d\r\n",
+		      gHyp_secs1_device(pHttpPort),
 		      gHyp_secs1_port(pHttpPort));
-      gHyp_data_setStr2 ( pValue, line, n ) ;
+      gHyp_data_setStr_n ( pValue, line, n ) ;
       gHyp_data_insert ( pHttpList, pValue ) ;
     }
 
@@ -1233,21 +1393,21 @@ static void lHyp_http_QE (	sInstance 	*pAI,
       gHyp_util_trim ( value ) ;
       pValue = gHyp_data_new ( NULL ) ;
       n = sprintf ( line, "Date: %s\r\n", value );
-      gHyp_data_setStr2 ( pValue, line, n ) ;
+      gHyp_data_setStr_n ( pValue, line, n ) ;
       gHyp_data_insert ( pHttpList, pValue ) ;
     }
 
     if ( !hasContentLength && contentLength > 0) {
       pValue = gHyp_data_new ( NULL ) ;
       n = sprintf ( line, "Content-Length: %d\r\n", contentLength ) ;
-      gHyp_data_setStr2 ( pValue, line, n ) ;
+      gHyp_data_setStr_n ( pValue, line, n ) ;
       gHyp_data_append ( pHttpList, pValue ) ;
     }
 
     if ( contentLength > 0 ) {
       /* Add double line */
       pValue = gHyp_data_new ( NULL ) ;
-      gHyp_data_setStr2 ( pValue, "\r\n", 2 ) ;
+      gHyp_data_setStr_n ( pValue, "\r\n", 2 ) ;
       gHyp_data_append ( pHttpList, pValue ) ;
 
       /* Add HTTP data */
@@ -1256,7 +1416,7 @@ static void lHyp_http_QE (	sInstance 	*pAI,
     else {
       /* Add double line */
       pValue = gHyp_data_new ( NULL ) ;
-      gHyp_data_setStr2 ( pValue, "\r\n", 2 ) ;
+      gHyp_data_setStr_n ( pValue, "\r\n", 2 ) ;
       gHyp_data_append ( pHttpList, pValue ) ;
     }
 
@@ -1267,7 +1427,7 @@ static void lHyp_http_QE (	sInstance 	*pAI,
     else
       n = sprintf ( line, "%s %s HTTP/1.1\r\n", pArg2, pArg3 ) ;
 
-    gHyp_data_setStr2 ( pValue, line, n ) ;
+    gHyp_data_setStr_n ( pValue, line, n ) ;
     gHyp_data_insert ( pHttpList, pValue ) ;
 
 

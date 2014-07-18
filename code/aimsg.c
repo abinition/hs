@@ -1116,7 +1116,7 @@ sLOGICAL gHyp_aimsg_parse ( sAImsg * pAImsg, char *pMsg )
 	pValue = gHyp_data_new ( NULL ) ;
 	/* Convert the string to internal form */
 	n = gHyp_util_parseString ( pElement ) ;
-	gHyp_data_setStr2 ( pValue, pElement, n ) ;
+	gHyp_data_setStr_n ( pValue, pElement, n ) ;
 	gHyp_data_append ( pToken, pValue ) ;
     }
 

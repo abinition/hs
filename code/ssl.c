@@ -10,6 +10,11 @@
 /* Modifications:
  *
  * $Log: ssl.c,v $
+ * Revision 1.3  2004/09/18 21:51:49  bergsma
+ * SSL buffer size can be 16K
+ * SSL timeout increased from 1 to 1.5 seconds
+ * New functions ssl_setSession and ssl_getSession, for Session Id's
+ *
  * Revision 1.2  2004/07/28 00:49:18  bergsma
  * Version 3.3.0
  *

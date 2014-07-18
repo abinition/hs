@@ -2087,10 +2087,11 @@ static int lHyp_sock_doSSL( sSSL* pSSL,
    */
 
   int 
+    n,
     maxWait,
     sslTimeout,
     outBioPending,
-    filterBioPending,
+    filterBioPending=0,
     maxBytes,
     numBytes,
     bytesWrote=0,
@@ -2110,6 +2111,8 @@ static int lHyp_sock_doSSL( sSSL* pSSL,
     DEBUG=FALSE ;
 
   char 
+    debug[60],
+    *pBuf,
     *pDataBuf,
     *pSSLbuf ;
 
@@ -2132,6 +2135,7 @@ static int lHyp_sock_doSSL( sSSL* pSSL,
     gHyp_util_logInfo ( "In SSL handshake - %s",
 			SSL_state_string_long( pSSL->ssl ) ) ;
 
+  pBuf = pMsg ;
   pSSLbuf = gzSSLbuf ;
   maxWait = SSL_TIMEOUT  ;
   do {
@@ -2143,10 +2147,10 @@ static int lHyp_sock_doSSL( sSSL* pSSL,
      * 
      * This section is only called for SSL write operations.
      */
-    if ( shouldWrite && numBytes > 0 ) {
+    if ( (shouldWrite && numBytes > 0) || filterBioPending > 0 ) {
 
       /* We must always write what the application requested */
-      nWriteFilter = BIO_write( pSSL->filterBio, pMsg, numBytes );
+      nWriteFilter = BIO_write( pSSL->filterBio, pBuf, numBytes );
 
       if ( nWriteFilter < 0 ) {
 
@@ -2159,14 +2163,14 @@ static int lHyp_sock_doSSL( sSSL* pSSL,
   
       else if ( nWriteFilter == 0 ) {
 
-	gHyp_util_logWarning ( "SSL App->Filter BIO_write error" ) ;
+	/*gHyp_util_logWarning ( "SSL App->Filter BIO_write error" ) ;*/
 	/*return -1 ;*/
       }
       else {
 
 	/* Engine accepted write. */
         if ( DEBUG ) gHyp_util_debug("App->Filter BIO_write, %d bytes",nWriteFilter ) ;
-        /*if ( DEBUG ) gHyp_util_debug("[%.*s]",nWriteFilter,pMsg);*/
+        /*if ( DEBUG ) gHyp_util_debug("[%.*s]",nWriteFilter,pBuf);*/
 	 
 	numBytes -= nWriteFilter ;
 	bytesWrote += nWriteFilter ;
@@ -2189,7 +2193,11 @@ static int lHyp_sock_doSSL( sSSL* pSSL,
      * being produced.
      * 
      */
-    if ( shouldRead) {
+    if ( shouldRead || filterBioPending > 0 ) {
+
+      if ( bytesRead >= maxBytes ) {
+	if ( DEBUG ) gHyp_util_debug("Received maxumum %d bytes",bytesRead);
+      }
 
       /* Read decrypted data from engine into application */
       nReadFilter = BIO_read ( pSSL->filterBio, pSSLbuf, maxBytes );
@@ -2205,7 +2213,7 @@ static int lHyp_sock_doSSL( sSSL* pSSL,
 
       else if ( nReadFilter == 0 ) {
 
-	gHyp_util_logWarning ( "SSL App<-Filter BIO_read error" ) ;
+	/*gHyp_util_logWarning ( "SSL App<-Filter BIO_read error" ) ;*/
 	/*return -1 ; */
       }
       else {
@@ -2218,14 +2226,17 @@ static int lHyp_sock_doSSL( sSSL* pSSL,
 	/* If have already given the application some data, don't
 	 * give it any more right now
 	 */
-	if ( bytesRead > 0 ) break ;
 
         if ( DEBUG ) gHyp_util_debug("App<-Filter BIO_read, %d bytes",nReadFilter ) ;
-	memcpy ( pMsg, pSSLbuf, nReadFilter ) ;
-	pMsg[nReadFilter] = '\0' ;
-        /*if ( DEBUG ) gHyp_util_debug("[%.*s]",nReadFilter,pMsg);*/
-	pMsg += nReadFilter ;
-	bytesRead = nReadFilter ;
+	memcpy ( pBuf, pSSLbuf, nReadFilter ) ;
+	pBuf[nReadFilter] = '\0' ;
+	if ( DEBUG ) {
+	  n = gHyp_util_unparseString ( debug, pBuf, nReadFilter, 60, FALSE, FALSE, "" ) ; 
+	  debug[n] = '\0' ;
+	  gHyp_util_debug(debug) ;
+	}
+	pBuf += nReadFilter ;
+	bytesRead += nReadFilter ;
       }
     }
     
@@ -2242,11 +2253,15 @@ static int lHyp_sock_doSSL( sSSL* pSSL,
       nWriteOut = BIO_get_write_guarantee ( pSSL->outBio ) ;
 
       if ( DEBUG ) gHyp_util_debug("Guarantee %d bytes write into engine",nWriteOut,maxBytes ) ;
+      
+      /*
+      nReadSock = BIO_get_read_request ( pSSL->outBio ) ;
+      if ( DEBUG ) gHyp_util_debug("Read request is %d bytes",nReadSock ) ;
+      */
 
-      /*if ( sslTimeout == 0 ) sslTimeout = SSL_WAIT_INCREMENT ;*/
       if ( nWriteOut > 0 ) {
 
-	nWriteOut = MIN ( maxBytes, nWriteOut ) ;
+	nWriteOut = MIN ( SSL_BUFFER_SIZE, nWriteOut ) ;
 
 	nReadSock = lHyp_sock_read (  s, 
 				  pSSLbuf,
@@ -2268,16 +2283,17 @@ static int lHyp_sock_doSSL( sSSL* pSSL,
 	}
 	else if ( nReadSock == 0 ) {
 	  if ( sslTimeout == 0 ) {
-	    gHyp_util_logWarning ( "Zero bytes. Failed Engine<-Socket read" ) ;
-	    return 0 ;
+	    gHyp_util_logWarning ( "Expecting bytes but zero received. Failed Engine<-Socket read" ) ;
+	    return COND_SILENT ;
 	  }
+	  /* Wait some more - SSL could be slower than expected */
 	  maxWait -= SSL_WAIT_INCREMENT ;
 	}
 	else {
 
-	  sslTimeout = SSL_WAIT_INCREMENT ;
+	  sslTimeout = SSL_WAIT_INCREMENT ; /* If was zero, no longer */
 	  nWriteOut = BIO_write( pSSL->outBio, pSSLbuf, nReadSock ) ;
-	  maxWait = SSL_TIMEOUT ;
+	  maxWait = SSL_TIMEOUT ; /* Reset maximum wait */
 
 	  if ( DEBUG ) gHyp_util_debug("Filter<-Engine BIO_write, %d bytes",nWriteOut ) ;
 	}
@@ -2329,7 +2345,7 @@ static int lHyp_sock_doSSL( sSSL* pSSL,
     /* Determine if we still need to do more */
     filterBioPending = BIO_pending ( pSSL->filterBio ) ; 
     shouldWrite = BIO_should_write ( pSSL->filterBio ) ;
-    shouldRead = BIO_should_read  ( pSSL->filterBio ) ;
+    shouldRead = BIO_should_read   ( pSSL->filterBio ) ;
     
     if ( DEBUG ) {
       gHyp_util_debug("Filter BIO shouldWrite = %d",shouldWrite);
@@ -2337,25 +2353,37 @@ static int lHyp_sock_doSSL( sSSL* pSSL,
       gHyp_util_debug("Filter BIO pending = %d",filterBioPending);     
     }
 
-    shouldRead = shouldRead || ( filterBioPending > 0 );
-    shouldWrite = shouldWrite || ( filterBioPending > 0 );
   
     if (  isWriter && 
 	  outBioPending == 0 && 
 	  !shouldWrite &&
 	  filterBioPending == 0 &&
 	  numBytes == 0 ) {
-      gHyp_util_debug("SSL write, handshake finished");
+      if ( DEBUG ) gHyp_util_debug("SSL write, handshake finished");
       break ;
     }
 
+    else if ( isReader && 
+	      bytesRead > 0 &&
+	      outBioPending == 0 && 
+	      filterBioPending == 0 ) {
+      if ( DEBUG ) gHyp_util_debug("SSL read, handshake finished");
+      break ;
+    }
+
+    /*
+    *shouldRead = shouldRead || ( filterBioPending > 0 );
+    *shouldWrite = shouldWrite || ( filterBioPending > 0 );
+    */
+
     if ( maxWait <= 0 ) { 
-      gHyp_util_logError("SSL timeout");
+
+      gHyp_util_logError("SSL timeout - maybe increase past %d milliseconds",SSL_TIMEOUT);
       break ;
     }
 
   }
-  while ( shouldRead || shouldWrite ) ;
+  while ( shouldRead || shouldWrite || filterBioPending > 0 ) ;
 
   if ( isReader )
     nBytes = bytesRead ;

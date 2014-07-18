@@ -312,6 +312,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
     *pTag2=NULL,
     *pStr,
     *pStr2,
+    *pStr3,
     *pSearch,
     attr[VALUE_SIZE+1],
     tag[TOKEN_SIZE+1],
@@ -329,6 +330,8 @@ char *gHyp_cgi_parseXML ( char *pStream,
     tag2Len,
     attrLen,
     strLen,
+    strLen2,
+    strLen3,
     truncStrLen ;
 
   sLOGICAL
@@ -394,30 +397,8 @@ char *gHyp_cgi_parseXML ( char *pStream,
 	  strLen = strcspn ( pStream, "\n\r" ) ;
 	  if ( strLen == 0 ) strLen = pTag - pStream ;
 	  if ( strLen > (pTag-pStream) ) strLen = pTag - pStream ;
-	 
-	  if ( strLen > VALUE_SIZE )
-	    gHyp_util_logError( "XML stream truncated from %d characters, [%.*s]...[%.*s]",
-	    strLen,SEG_SIZE,MAX(pAnchor,pStream-SEG_SIZE),SEG_SIZE,pStream+strLen);
 
-	  truncStrLen = MIN ( VALUE_SIZE, strLen ) ;
-	  if ( truncStrLen > 0 ) {
-	    pStr = (char*) AllocMemory ( truncStrLen + 1 ) ;
-	    assert ( pStr ) ;
-
-	    strncpy ( pStr, pStream, truncStrLen ) ;
-	    pStr[truncStrLen] = '\0' ;
-
-	    /* Parse the string */
-	    if ( !isSCR && !isPRE && !isTXT ) truncStrLen = gHyp_util_parseXML ( pStr ) ;
-  
-	    pStrData = gHyp_data_new ( NULL ) ;
-	    gHyp_data_setStr2 ( pStrData, pStr, truncStrLen ) ;
-
-	    ReleaseMemory ( pStr ) ;
-
-	    gHyp_data_append ( pParentTag, pStrData ) ;
-	  }
-	  else {
+	  if ( strLen == 0 ) {
 	    /* Empty line */
 	    if ( isPRE ) {
 	      /* Add a space */
@@ -426,8 +407,40 @@ char *gHyp_cgi_parseXML ( char *pStream,
 	      gHyp_data_append ( pParentTag, pStrData ) ;
 	    }
 	  }
-	  pStream += strLen ;
-	  while ( *pStream == '\n' || *pStream == '\r' ) pStream++ ; 
+	  else {
+	    strLen3 = strLen ;
+	    pStr3 = pStream ;
+
+	    while ( strLen3 > 0 ) {
+
+	      truncStrLen = MIN ( INTERNAL_VALUE_SIZE, strLen3 ) ;
+	      if ( truncStrLen > 0 ) {
+
+		pStr = (char*) AllocMemory ( truncStrLen + 1 ) ;
+		assert ( pStr ) ;
+
+		strncpy ( pStr, pStr3, truncStrLen ) ;
+		pStr[truncStrLen] = '\0' ;
+
+		/* Parse the string */
+		if ( !isSCR && !isPRE && !isTXT ) 
+		  strLen2 = gHyp_util_parseXML ( pStr ) ;
+		else
+		  strLen2 = truncStrLen ;
+  
+		pStrData = gHyp_data_new ( NULL ) ;
+		gHyp_data_setStr_n ( pStrData, pStr, strLen2 ) ;
+
+		ReleaseMemory ( pStr ) ;
+
+		gHyp_data_append ( pParentTag, pStrData ) ;
+	      }
+	      strLen3 -= truncStrLen ;
+	      pStr3 += truncStrLen ;
+	    }
+	    pStream += strLen ;
+	    while ( *pStream == '\n' || *pStream == '\r' ) pStream++ ; 
+	  }
 	}
       }
 
@@ -453,7 +466,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
       if ( isEndTag ) pStream++ ;
 
       /* Extract the tag name */
-      tagLen = gHyp_util_getToken2 ( pStream ) ;
+      tagLen = gHyp_util_getToken_okDash ( pStream ) ;
 
       /* A tagLen of zero means that there was not a valid tag name.
        * A tagLen of greater than 0 is the length of the tag name.
@@ -561,23 +574,26 @@ char *gHyp_cgi_parseXML ( char *pStream,
 	      if ( strLen == 0 ) strLen = pStream - pStr ;
 	      if ( strLen > (pStream-pStr) ) strLen = pStream - pStr ;
 	 
-	      if ( strLen > VALUE_SIZE )
-		gHyp_util_logError( "XML stream was truncated at %d characters, [%.*s]",
-		strLen,SEG_SIZE,MAX(pAnchor,pStream-SEG_SIZE));
+	      strLen3 = strLen ;
+	      pStr3 = pStr ;
+	      while ( strLen3 > 0 ) {
 
-	      truncStrLen = MIN ( VALUE_SIZE, strLen ) ;
-	      if ( truncStrLen > 0 ) {
-		pStr2 = (char*) AllocMemory ( truncStrLen + 1 ) ;
-		assert ( pStr2 ) ;
+		truncStrLen = MIN ( INTERNAL_VALUE_SIZE, strLen3 ) ;
+		if ( truncStrLen > 0 ) {
+		  pStr2 = (char*) AllocMemory ( truncStrLen + 1 ) ;
+		  assert ( pStr2 ) ;
 
-		strncpy ( pStr2, pStr, truncStrLen ) ;
-		pStr2[truncStrLen] = '\0' ;
+		  strncpy ( pStr2, pStr3, truncStrLen ) ;
+		  pStr2[truncStrLen] = '\0' ;
   
-		pStrData = gHyp_data_new ( NULL ) ;
-		gHyp_data_setStr2 ( pStrData, pStr2, truncStrLen ) ;
+		  pStrData = gHyp_data_new ( NULL ) ;
+		  gHyp_data_setStr_n ( pStrData, pStr2, truncStrLen ) ;
 
-		ReleaseMemory ( pStr2 ) ;
-		gHyp_data_append ( pParentTag, pStrData ) ;
+		  ReleaseMemory ( pStr2 ) ;
+		  gHyp_data_append ( pParentTag, pStrData ) ;
+		}
+		strLen3 -= truncStrLen ;
+		pStr3 += truncStrLen ;
 	      }
 	      pStr += strLen ;
 	      if ( *pStr == '\n' || *pStr == '\r' ) pStr++ ; 
@@ -777,7 +793,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
 	    if ( isEndTag ) {
 	      /* It's what we want, hoping for the reversed tag */
 	      pStr++ ;
-	      tag2Len = gHyp_util_getToken2 ( pStr ) ;
+	      tag2Len = gHyp_util_getToken_okDash ( pStr ) ;
 	      if ( tag2Len > 0 ) break ;
 	      pTag2 = NULL ;
 	      break ;
@@ -855,7 +871,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
 	  }
 	}
 	if ( !found ) {
-	  gHyp_util_logError( "Inserting tag <%s> after <%s>",
+	  gHyp_util_logWarning( "Inserting tag <%s> after <%s>",
 				tag,gHyp_data_getLabel(pParentTag) ) ;
 	  pData = gHyp_data_new ( tag ) ;
 	  gHyp_data_moveValues ( pData, pParentTag ) ;
@@ -999,7 +1015,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
       if ( allowAttributes && !isSCR && !isTXT ) {
 
         /* Pull out attributes value */
-        attrLen = gHyp_util_getToken2 ( pStream ) ;
+        attrLen = gHyp_util_getToken_okDash ( pStream ) ;
         if ( attrLen <= 0 ) {
           gHyp_util_logWarning ( "Invalid Attribute Value [%.*s]...[%.*s]",
 				 SEG_SIZE,MAX(pAnchor,pStream-SEG_SIZE),SEG_SIZE,pStream);

@@ -1237,12 +1237,12 @@ int gHyp_util_getToken ( char *pStr, sLOGICAL isUnaryOk )
   return lHyp_util_getToken ( pStr, isUnaryOk, FALSE, FALSE ) ;
 }
 
-int gHyp_util_getToken2 ( char *pStr )
+int gHyp_util_getToken_okDash ( char *pStr )
 {
   return lHyp_util_getToken ( pStr, FALSE, TRUE, FALSE ) ;
 }
 
-int gHyp_util_getToken3 ( char *pStr )
+int gHyp_util_getToken_okDot ( char *pStr )
 {
   return lHyp_util_getToken ( pStr, FALSE, FALSE, TRUE ) ;
 }

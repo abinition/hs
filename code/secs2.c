@@ -929,9 +929,11 @@ static void lHyp_secs2_fill ( sInstance *pAI,
     bo,
     bi ;
 
+  /*
   unsigned long
     x,
     o ;
+  */
 
   unsigned short
     u ;
@@ -1158,16 +1160,35 @@ static void lHyp_secs2_fill ( sInstance *pAI,
 	  break ;
 	  
 	case TYPE_HEX :
+	  endian.x.ul = 
+	    (unsigned long) gHyp_data_getRaw ( pValue, context, isVector ) ;
+	  if ( isLittleEndian ) 
+	    for ( j=3; j>=0; j-- ) *pBuf++ = endian.x.b[j] ; 
+	  else
+	    for ( j=0; j<4; j++ ) *pBuf++ = endian.x.b[j] ;
+	  /*
 	  x = (unsigned long) gHyp_data_getRaw ( pValue, context, isVector ) ;
 	  *pBuf++ = (sBYTE) x ;
+	  */
 	  break ;
 	  
 	case TYPE_OCTAL :
+	  endian.x.ul = 
+	    (unsigned long) gHyp_data_getRaw ( pValue, context, isVector ) ;
+	  if ( isLittleEndian ) 
+	    for ( j=3; j>=0; j-- ) *pBuf++ = endian.x.b[j] ; 
+	  else
+	    for ( j=0; j<4; j++ ) *pBuf++ = endian.x.b[j] ;
+	  /*
 	  o = (unsigned long) gHyp_data_getRaw ( pValue, context, isVector ) ;
 	  *pBuf++ = (sBYTE) o ;
+	  */
 	  break ;
 	  
 	case TYPE_UNICODE :
+	  /* This is not right.  We should be applying the algorithm
+	   * to convert UNICODE 2 byte sequences to UTF-8
+	   */
 	  u = (unsigned short) gHyp_data_getRaw ( pValue, context, isVector ) ;
 	  *pBuf++ = (sBYTE) u ;
 	  break ;
@@ -1175,34 +1196,58 @@ static void lHyp_secs2_fill ( sInstance *pAI,
 	case TYPE_SHORT :
 	  endian.x.ss = 
 	    (short) gHyp_data_getRaw ( pValue, context, isVector ) ;
+	  if ( isLittleEndian ) 
+	    for ( j=1; j>=0; j-- ) *pBuf++ = endian.x.b[j] ; 
+	  else
+	    for ( j=0; j<2; j++ ) *pBuf++ = endian.x.b[j] ;
+	  /*
 	  *pBuf++ = (sBYTE) (endian.x.ss >> 8);
 	  *pBuf++ = (sBYTE) endian.x.ss ;
+	  */
 	  break ;
 	  
 	case TYPE_USHORT :
 	  endian.x.us = 
 	    (unsigned short) gHyp_data_getRaw ( pValue, context, isVector ) ;
+	  if ( isLittleEndian ) 
+	    for ( j=1; j>=0; j-- ) *pBuf++ = endian.x.b[j] ; 
+	  else
+	    for ( j=0; j<2; j++ ) *pBuf++ = endian.x.b[j] ;
+	  /*
 	  *pBuf++ = (sBYTE) (endian.x.us >> 8) ;
 	  *pBuf++ = (sBYTE) endian.x.us ;
+	  */
 	  break ;
 	  
 	case TYPE_INTEGER :
 	case TYPE_LONG :
 	  endian.x.sl = 
-	    (long) gHyp_data_getRaw ( pValue, context, isVector ) ;
+	    (long) gHyp_data_getInt ( pValue, context, isVector ) ;
+	  if ( isLittleEndian ) 
+	    for ( j=3; j>=0; j-- ) *pBuf++ = endian.x.b[j] ; 
+	  else
+	    for ( j=0; j<4; j++ ) *pBuf++ = endian.x.b[j] ;
+	  /*
 	  *pBuf++ = (sBYTE) (endian.x.sl >> 24) ;
 	  *pBuf++ = (sBYTE) (endian.x.sl >> 16) ;
 	  *pBuf++ = (sBYTE) (endian.x.sl >> 8) ;
 	  *pBuf++ = (sBYTE) endian.x.sl ;
+	  */
 	  break ;
 	  
 	case TYPE_ULONG :
 	  endian.x.ul = 
 	    (unsigned long) gHyp_data_getRaw ( pValue, context, isVector ) ;
+	  if ( isLittleEndian ) 
+	    for ( j=3; j>=0; j-- ) *pBuf++ = endian.x.b[j] ; 
+	  else
+	    for ( j=0; j<4; j++ ) *pBuf++ = endian.x.b[j] ;
+	  /*
 	  *pBuf++ = (sBYTE) (endian.x.ul >> 24) ;
 	  *pBuf++ = (sBYTE) (endian.x.ul >> 16) ;
 	  *pBuf++ = (sBYTE) (endian.x.ul >> 8) ;
 	  *pBuf++ = (sBYTE) endian.x.ul ;
+	  */
 	  break ;
 	  
 	case TYPE_FLOAT :
@@ -1211,7 +1256,7 @@ static void lHyp_secs2_fill ( sInstance *pAI,
 	  if ( isLittleEndian ) 
 	    for ( j=3; j>=0; j-- ) *pBuf++ = endian.x.b[j] ; 
 	  else
-	    for ( j=0; j>4; j++ ) *pBuf++ = endian.x.b[j] ;
+	    for ( j=0; j<4; j++ ) *pBuf++ = endian.x.b[j] ;
 	  break ;
 	  
 	case TYPE_DOUBLE :
@@ -1220,7 +1265,7 @@ static void lHyp_secs2_fill ( sInstance *pAI,
 	  if ( isLittleEndian ) 
 	    for ( j=7; j>=0; j-- ) *pBuf++ = endian.x.b[j] ; 
 	  else
-	    for ( j=0; j>8; j++ ) *pBuf++ = endian.x.b[j] ;
+	    for ( j=0; j<8; j++ ) *pBuf++ = endian.x.b[j] ;
 	  break ;
 	}
       }

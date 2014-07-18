@@ -546,7 +546,7 @@ void gHyp_data_newConstant ( sData *pData,
   gHyp_data_setLabel ( pData, value ) ;
 }
 
-void gHyp_data_newConstant2 ( sData *pData, 
+void gHyp_data_newConstant_raw ( sData *pData, 
 			     sBYTE dataType,
 			     void *pSrcData )
 {
@@ -563,10 +563,10 @@ void gHyp_data_newConstant2 ( sData *pData,
   gHyp_data_setLabel ( pData, value ) ;
 }
 
-void gHyp_data_newConstant3 ( sData *pData, 
-			      sBYTE dataType,
-			      char *pSrcData,
-			      int n )
+void gHyp_data_newConstant_scanf (  sData *pData, 
+				    sBYTE dataType,
+				    char *pSrcData,
+				    int n )
 {
   short
     s ;
@@ -2623,7 +2623,7 @@ sData* gHyp_data_getAll ( sData 	*pData,
       else {
 	i = sl ;
 	u = (unsigned long ) sl ;
-	d = (double) ul ;
+	d = (double) sl ;
       }
     }
     else if ( strspn ( pValue->pStrVal, "0123456789.eE+-" ) == (size_t) j ) {
@@ -3684,7 +3684,7 @@ void gHyp_data_setStr ( sData *pData, char *pStr )
   return ;
 }
 
-void gHyp_data_setStr2 ( sData *pData, char *pStr, int n )
+void gHyp_data_setStr_n ( sData *pData, char *pStr, int n )
 {
   /* Description:
    *
@@ -4876,7 +4876,7 @@ void gHyp_data_setText ( sData *pData, char *pString, int n )
     }
     pValue = gHyp_data_new ( NULL ) ;
     pStr = pSearch+n ; *pStr = '\0' ;
-    gHyp_data_setStr2 ( pValue, pSearch, n ) ;
+    gHyp_data_setStr_n ( pValue, pSearch, n ) ;
     gHyp_data_append ( pData, pValue ) ;
     pSearch += n+1 ;
   }

@@ -325,6 +325,8 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
          (  results  )
 #endif
           {
+
+	    /*gHyp_util_debug("GOT RESULTS");*/
             if
 #ifdef AS_SQLSERVER
          (results == SUCCEED)
@@ -443,42 +445,42 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
                       case SQLCHAR :
                       case SQLTEXT :
                       case SQLIMAGE :
-                        gHyp_data_setStr2 ( pData, (char*) pBytes, n ) ;
+                        gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
                         break ;
 
                       case SQLBINARY :
                         if ( n == 1 )
-                          gHyp_data_newConstant2 ( pData, TYPE_BINARY, pBytes ) ;
+                          gHyp_data_newConstant_raw ( pData, TYPE_BINARY, pBytes ) ;
                         else
-                          gHyp_data_setStr2 ( pData, (char*) pBytes, n ) ;
+                          gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
                         break ;
 
                       case SQLINT1 :
-                        gHyp_data_newConstant2 ( pData, TYPE_BYTE, pBytes ) ;
+                        gHyp_data_newConstant_raw ( pData, TYPE_BYTE, pBytes ) ;
                         break ;
 
                       case SQLINT2 :
-                        gHyp_data_newConstant2 ( pData, TYPE_SHORT, pBytes ) ;
+                        gHyp_data_newConstant_raw ( pData, TYPE_SHORT, pBytes ) ;
                         break ;
 
                       case SQLINT4 :
-                        gHyp_data_newConstant2 ( pData, TYPE_LONG, pBytes ) ;
+                        gHyp_data_newConstant_raw ( pData, TYPE_LONG, pBytes ) ;
                         break ;
 
                       case SQLFLT4 :
-                        gHyp_data_newConstant2 ( pData, TYPE_FLOAT, pBytes ) ;
+                        gHyp_data_newConstant_raw ( pData, TYPE_FLOAT, pBytes ) ;
                         break ;
 
                       case SQLFLT8 :
-                        gHyp_data_newConstant2 ( pData, TYPE_DOUBLE, pBytes ) ;
+                        gHyp_data_newConstant_raw ( pData, TYPE_DOUBLE, pBytes ) ;
                         break ;
 
                       default :
                         n = dbconvert ( dbproc,colTypes[i],pBytes,n,SQLCHAR,value,VALUE_SIZE);
                         if ( n > 0 )
-                          gHyp_data_setStr2 ( pData, (char*) value, n ) ;
+                          gHyp_data_setStr_n ( pData, (char*) value, n ) ;
                         else
-                          gHyp_data_setStr2 (pData, "NULL", 4 ) ;
+                          gHyp_data_setStr_n (pData, "NULL", 4 ) ;
                         break ;
 
                       }
@@ -531,38 +533,38 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
                       case FIELD_TYPE_STRING :
                       case FIELD_TYPE_VAR_STRING :
-                        gHyp_data_setStr2 ( pData, (char*) pBytes, n ) ;
+                        gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
                         break ;
 
                       case FIELD_TYPE_BLOB :
                         if ( n == 1 )
-                          gHyp_data_newConstant2 ( pData, TYPE_BINARY, pBytes ) ;
+                          gHyp_data_newConstant_raw ( pData, TYPE_BINARY, pBytes ) ;
                         else
-                          gHyp_data_setStr2 ( pData, (char*) pBytes, n ) ;
+                          gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
                         break ;
 
                       case FIELD_TYPE_TINY :
-                        gHyp_data_newConstant3 ( pData, TYPE_BYTE, (char*)pBytes, n ) ;
+                        gHyp_data_newConstant_scanf ( pData, TYPE_BYTE, (char*)pBytes, n ) ;
                         break ;
 
                       case FIELD_TYPE_SHORT :
-                        gHyp_data_newConstant3 ( pData, TYPE_SHORT, (char*)pBytes, n ) ;
+                        gHyp_data_newConstant_scanf ( pData, TYPE_SHORT, (char*)pBytes, n ) ;
                         break ;
 
                       case FIELD_TYPE_LONG :
-                        gHyp_data_newConstant3 ( pData, TYPE_LONG, (char*)pBytes, n ) ;
+                        gHyp_data_newConstant_scanf ( pData, TYPE_LONG, (char*)pBytes, n ) ;
                         break ;
 
                       case FIELD_TYPE_FLOAT :
-                        gHyp_data_newConstant3 ( pData, TYPE_FLOAT, (char*)pBytes, n ) ;
+                        gHyp_data_newConstant_scanf ( pData, TYPE_FLOAT, (char*)pBytes, n ) ;
                         break ;
 
                       case FIELD_TYPE_DOUBLE :
-                        gHyp_data_newConstant3 ( pData, TYPE_DOUBLE, (char*)pBytes, n ) ;
+                        gHyp_data_newConstant_scanf ( pData, TYPE_DOUBLE, (char*)pBytes, n ) ;
                         break ;
 
                       default :
-                        gHyp_data_setStr2 ( pData, (char*) pBytes, n ) ;
+                        gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
                         break ;
 
                       }
@@ -626,49 +628,49 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
                         /* Text, use util_parseString to internalize */
                         /* Convert the string to internal form */
                         n = gHyp_util_parseString ( pBytes ) ;
-                        gHyp_data_setStr2 ( pData, pBytes, n ) ;
+                        gHyp_data_setStr_n ( pData, pBytes, n ) ;
                         break ;
 
                       case 18 :
                         /* TYPE_CHAR */
-                        gHyp_data_newConstant2 ( pData, TYPE_BYTE, (char*)pBytes ) ;
+                        gHyp_data_newConstant_raw ( pData, TYPE_BYTE, (char*)pBytes ) ;
                         break ;
 
                       case 21 :
                         /* TYPE_SHORT */
                         if ( isDataBinary[col] )
-                          gHyp_data_newConstant2 ( pData, TYPE_SHORT, (char*)pBytes ) ;
+                          gHyp_data_newConstant_raw ( pData, TYPE_SHORT, (char*)pBytes ) ;
                         else
-                          gHyp_data_newConstant3 ( pData, TYPE_SHORT, (char*)pBytes, n ) ;
+                          gHyp_data_newConstant_scanf ( pData, TYPE_SHORT, (char*)pBytes, n ) ;
                         break ;
 
                       case 23:
                         /* TYPE_LONG */
                         if ( isDataBinary[col] )
-                          gHyp_data_newConstant2 ( pData, TYPE_LONG, (char*)pBytes ) ;
+                          gHyp_data_newConstant_raw ( pData, TYPE_LONG, (char*)pBytes ) ;
                         else
-                          gHyp_data_newConstant3 ( pData, TYPE_LONG, (char*)pBytes, n ) ;
+                          gHyp_data_newConstant_scanf ( pData, TYPE_LONG, (char*)pBytes, n ) ;
                         break ;
 
                       case 700 :
 
                         /* 4-byte single-precision */
                         if ( isDataBinary[col] )
-                          gHyp_data_newConstant2 ( pData, TYPE_FLOAT, (char*)pBytes ) ;
+                          gHyp_data_newConstant_raw ( pData, TYPE_FLOAT, (char*)pBytes ) ;
                         else
-                          gHyp_data_newConstant3 ( pData, TYPE_FLOAT, (char*)pBytes, n ) ;
+                          gHyp_data_newConstant_scanf ( pData, TYPE_FLOAT, (char*)pBytes, n ) ;
                         break ;
 
                       case 701 :
                         if ( isDataBinary[col] )
-                          gHyp_data_newConstant2 ( pData, TYPE_DOUBLE, (char*)pBytes ) ;
+                          gHyp_data_newConstant_raw ( pData, TYPE_DOUBLE, (char*)pBytes ) ;
                         else
-                          gHyp_data_newConstant3 ( pData, TYPE_DOUBLE, (char*)pBytes, n ) ;
+                          gHyp_data_newConstant_scanf ( pData, TYPE_DOUBLE, (char*)pBytes, n ) ;
                         break ;
 
                       case 25 :
                       default :
-                        gHyp_data_setStr2 ( pData, (char*) pBytes, n ) ;
+                        gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
                         break ;
 
                     }
@@ -699,30 +701,48 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
                 results = NULL ;
 /*  end of PGSQL row processing */
 #endif
-            }
-            else {
+
+	   /* Post processing, results were found */
 
             #ifdef AS_PGSQL
               if ( results ) PQclear ( results ) ;
               results = NULL ;
+	    #elif AS_MYSQL
+	      if ( results ) mysql_free_result ( results ) ;
+	      results = NULL ;
             #endif
+
+/*
+#ifdef AS_MYSQL
+	    if ( rows == 0 ) {
+	      rows = (int) mysql_affected_rows ( dbproc ) ;
+	      gHyp_util_debug("Affected rows = %d",rows);
+	    }
+#endif
+*/
+            }
+            else {
 
               gHyp_instance_warning ( pAI, STATUS_SQL, "Failed to get results");
               status = FALSE ;
               break;
-            }
-          }
+
+            } /* End if ( results ) */
+
+          } /* end while ( get (results ) ) */
+
+    } /* if ( query != NULL ) */ 
+    else {
+      /* Query failed */
 #ifdef AS_MYSQL
-          if ( rows == 0 ) {
-            /*gHyp_util_debug("Determining affected rows");*/
-            rows = (int) mysql_affected_rows ( dbproc ) ;
-          }
+        gHyp_instance_warning ( pAI, STATUS_SQL, 
+	    "Failed SQL query, reason is '%s'.",mysql_error(dbproc) );
+#else
+        gHyp_instance_warning ( pAI, STATUS_SQL, 
+	    "Failed SQL query" );
 #endif
-      }
-      else {
-        gHyp_instance_warning ( pAI, STATUS_SQL, "Failed to process SQL statement.");
         status = FALSE ;
-      }
+    }
 
 #endif    /* from AS_SQL way up above  */
 

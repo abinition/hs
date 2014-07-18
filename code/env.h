@@ -39,6 +39,7 @@ extern void	gHyp_env_global ( sInstance*, sCode*, sLOGICAL ) ;
 extern void	gHyp_env_next ( sInstance*, sCode*, sLOGICAL ) ;
 extern void	gHyp_env_prev ( sInstance*, sCode*, sLOGICAL ) ;
 extern void	gHyp_env_map ( sInstance*, sCode*, sLOGICAL ) ;
+extern void	gHyp_env_unmap ( sInstance*, sCode*, sLOGICAL ) ;
 extern void	gHyp_env_merge ( sInstance*, sCode*, sLOGICAL ) ;
 extern sData*	gHyp_env_mergeData ( sData*, sData*, sInstance*, int, sLOGICAL, sLOGICAL, sData* ) ;
 extern void	gHyp_env_sort ( sInstance*, sCode*, sLOGICAL ) ;

@@ -1192,7 +1192,8 @@ sData* lHyp_env_map ( sData *pDst,
 
     /* Get the next destination value. */
     pDstValue = pNextDstValue ;
-    
+    /* if ( pDstValue ) gHyp_util_debug ( "Next dst value at %d for %d is %s",contextDst,sdv,gHyp_data_print ( pDstValue )) ;*/
+
     /* If there is no more source or destination values, we're done. */
     if ( !pDstValue ) break ;
 
@@ -1217,6 +1218,7 @@ sData* lHyp_env_map ( sData *pDst,
     }
     /* Get the next source value. */
     pSrcValue = pNextSrcValue ;
+    /*if ( pSrcValue ) gHyp_util_debug ( "Next src value at %d for %d is %s",*pContextSrc,ssv, gHyp_data_print ( pSrcValue ));*/
         
     /* If there is no more source or destination values, we're done. */
     if ( !pSrcValue ) break ;
@@ -1224,11 +1226,13 @@ sData* lHyp_env_map ( sData *pDst,
     /* Initialize the byte buffer */
     pByteBuffer = gHyp_data_buffer ( pSrcValue, ssv ) ;
     byteBufferLen = gHyp_data_bufferLen ( pSrcValue, ssv ) ;
-    /*
-    gHyp_util_logInfo("Next byte starts with %x at %d",
-		      *pByteBuffer,
-		      ssv );
-		      */
+    pByteBuffer[byteBufferLen] = '\0' ;
+    
+    /*gHyp_util_debug("Next byte starts with %x at %d",
+		     *pByteBuffer,
+		     ssv );
+    */
+    
     srcDataType = gHyp_data_dataType ( pSrcValue ) ;
     srcTokenType = gHyp_data_tokenType ( pSrcValue ) ;
     srcDataLen = gHyp_data_dataLen ( pSrcValue ) ;
@@ -1255,7 +1259,9 @@ sData* lHyp_env_map ( sData *pDst,
       }
       else { 
 	
-	/* How many elements are skipped over ? */
+	/* How many elements of source are processed in this mapping? 
+	 * At what position will the ssv pointer end up at?  
+	 */
 	n = dstDataLen / srcDataLen ;
 	if ( n > 1 ) {
 	  *pContextSrc += (n-1) ;
@@ -1264,11 +1270,12 @@ sData* lHyp_env_map ( sData *pDst,
 	  else
 	    ssv = 0 ;
 	}
-	/*
-	gHyp_util_logInfo("RAW TRANSFER to %s of %d bytes at [%d]",
+	
+	/*gHyp_util_debug("RAW TRANSFER to %s of %d bytes at [%d]",
 			  gHyp_data_getLabel(pResult),
 			  dstDataLen,ssv ) ;
 	*/
+
 	if ( isLittleEndian ) {
 	  pBuf = pByteBuffer ;
 	  for ( i=dstDataLen-1; i>=0; i-- ) endian.x.b[i] = *pBuf++ ;
@@ -1327,17 +1334,24 @@ sData* lHyp_env_map ( sData *pDst,
 	pVariable = gHyp_data_new ( gHyp_data_getLabel ( pDstValue ) ) ;
 	pValue = gHyp_data_new ( NULL ) ;
 	n = MIN ( byteBufferLen, VALUE_SIZE ) ;
+	/* Take up to first null for strings
+	if ( dstDataType <= TYPE_STRING ) {
+	  n = MIN ( n, (int) strlen ( pByteBuffer ) ) ;
+	  srcDataLen = n ;
+	} 
+	*/
 	memcpy ( value, (const char*) pByteBuffer, n ) ;
 	value[n] = '\0' ;
 	if ( srcDataType == TYPE_STRING )
-	  gHyp_data_setStr2 ( pValue, value, n ) ;
+	  gHyp_data_setStr_n ( pValue, value, n ) ;
 	else
 	  gHyp_data_setToken ( pValue, value ) ;
-	/*
-	gHyp_util_logInfo("NEW VALUE %s = %s",
+	
+	/*gHyp_util_debug("NEW VALUE %s = %s",
 			  gHyp_data_getLabel ( pDstValue ),
 			  value) ;
 	*/
+
 	gHyp_data_append ( pVariable, pValue ) ;
 	gHyp_data_append ( pResult, pVariable ) ;	
 
@@ -1357,7 +1371,7 @@ sData* lHyp_env_map ( sData *pDst,
 	if ( pSrc == pSrcValue ) {
 
 	  /* Source is a vector */
-	  /*gHyp_util_logInfo("Source vector (%d)",ssv ) ;*/
+	  /*gHyp_util_debug("Source vector (%d)",ssv ) ;*/
 
 	  *pContextSrc -= 1 ;
 	  gHyp_data_append ( pResult, 
@@ -1367,13 +1381,13 @@ sData* lHyp_env_map ( sData *pDst,
 					    pContextSrc,
 					    pAI,
 					    isLittleEndian ));
-	  /*gHyp_util_logInfo("End source vector");*/
+	  /*gHyp_util_debug("End source vector");*/
 	}
 	else {
 
 	  contextSrc = -1 ;
 
-	  /*gHyp_util_logInfo("Source list (%d)",contextSrc ) ;*/
+	  /*gHyp_util_debug("Source list (%d)",contextSrc ) ;*/
 	  gHyp_data_append ( pResult, 
 			     lHyp_env_map ( pDstValue,
 					    pSrcValue, 
@@ -1453,6 +1467,362 @@ void gHyp_env_map ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 			     &contextSrc,
 			     pAI,
 			     isLittleEndian ) ;
+
+    gHyp_stack_push ( pStack, pResult ) ;
+  }
+}
+
+static void lHyp_env_unmap ( sData *pResult, 
+			     sData *pParent, 
+			     int parentContext,
+			     sLOGICAL isLittleEndian ) 
+{
+ 
+  sData
+    *pData,
+    *pValue,
+    *pValue2 ;
+
+  int
+    j,
+    n,
+    bufferLen,
+    maxLen,
+    ss,
+    context ;
+
+  sLOGICAL
+    isParentVector ;
+
+  char
+    *pBuf,
+    value[VALUE_SIZE+1],
+    buffer[INTERNAL_VALUE_SIZE+1],
+    *pBuffer ;
+
+
+  sBYTE
+    parentTokenType,
+    parentDataType ;
+
+  sEndian
+    endian ;
+
+  char	       	
+    sb,
+    sc ;
+
+  unsigned char
+    ub, 
+    uc,
+    bo,
+    bi ;
+
+  pValue = NULL ;
+  n = 0 ;
+  pBuf = buffer ;
+
+  parentTokenType = gHyp_data_tokenType ( pParent ) ;
+  parentDataType = gHyp_data_dataType ( pParent ) ;
+  isParentVector = ( parentDataType > TYPE_STRING ) ;
+
+  switch ( parentTokenType ) {
+
+    case TOKEN_REFERENCE :
+    case TOKEN_UNIDENTIFIED : 
+    
+      pBuffer = gHyp_data_getLabel ( pParent ),
+      bufferLen = strlen ( pBuffer ) ;
+
+      while ( bufferLen > 0 ) {
+
+	maxLen = MIN ( bufferLen, INTERNAL_VALUE_SIZE ) ;
+
+	if ( n + maxLen > INTERNAL_VALUE_SIZE ) {
+	  pValue2 = gHyp_data_new ( NULL ) ;
+	  gHyp_data_setStr_n ( pValue2, buffer, n ) ;
+	  gHyp_data_append ( pResult, pValue2 ) ;
+	  n = 0 ;
+	  pBuf = buffer ;
+	}
+
+	memcpy ( pBuf, pBuffer, maxLen ) ;
+	n += maxLen ;
+	pBuf += maxLen ;
+
+	pBuffer += maxLen ;
+	bufferLen -= maxLen ;
+
+      }
+      break ;
+    
+    case TOKEN_LITERAL : 
+
+      if ( n > 0 ) {
+        pValue2 = gHyp_data_new ( NULL ) ;
+        gHyp_data_setStr_n ( pValue2, buffer, n ) ;
+        gHyp_data_append ( pResult, pValue2 ) ;
+	n = 0 ;
+	pBuf = buffer ;
+      }
+      
+      n = gHyp_data_getStr (	pParent, 
+	 			value, 
+				VALUE_SIZE,
+				0,
+				FALSE ) ;
+      pValue2 = gHyp_data_new ( NULL ) ;
+      gHyp_data_setStr_n ( pValue2, value, n  ) ;
+      gHyp_data_append ( pResult, pValue2 ) ;
+      n = 0 ;
+      pBuf = buffer ;
+
+      break ;
+    
+    case TOKEN_VARIABLE :
+    
+      if ( parentContext == -1 ) {
+ 
+	/* Non-subscripted, print out all the variable's values */ 
+	pData = NULL ;
+	context = -1 ;
+	ss = -1 ;
+	while ( (pData = gHyp_data_nextValue ( pParent, 
+					       pData, 
+					       &context,
+					       ss ))) {
+
+	  if ( isParentVector ) {
+
+	    lHyp_env_unmap ( pResult, pData, context, isLittleEndian ) ;
+	  }
+	  else {
+
+	    lHyp_env_unmap ( pResult, pData, -1, isLittleEndian ) ;
+	  }
+	  
+	}
+	break ;
+      }
+      /* Fall through to TOKEN_CONSTANT */
+
+    case TOKEN_CONSTANT :
+
+      pBuf = buffer ;
+      n = 0 ;
+      switch ( parentDataType ) {
+
+	case TYPE_BYTE :
+	  sb = (char) gHyp_data_getRaw ( pParent, parentContext, isParentVector ) ;
+	  *pBuf++ = sb ;
+	  n = 1 ;
+	  break ;
+	  
+	case TYPE_CHAR :
+	case TYPE_ATTR :
+	  sc = (char) gHyp_data_getRaw ( pParent, parentContext, isParentVector ) ;
+	  *pBuf++ = sc ;
+	  n = 1 ;
+	  break ;
+	  
+	case TYPE_UBYTE :
+	  ub = (unsigned char) gHyp_data_getRaw ( pParent, parentContext, isParentVector ) ;
+	  *pBuf++ = ub ;
+	  n = 1 ;
+	  break ;
+	  
+	case TYPE_UCHAR :
+	  uc = (unsigned char) gHyp_data_getRaw ( pParent, parentContext, isParentVector ) ;
+	  *pBuf++ = uc ;
+	  n = 1 ;
+	  break ;
+	  
+	case TYPE_BOOLEAN :
+	  bo = (unsigned char) gHyp_data_getRaw ( pParent, parentContext, isParentVector ) ;
+	  *pBuf++ = bo ;
+	  n = 1 ;
+	  break ;
+	  
+	case TYPE_BINARY :
+	  bi = (unsigned char) gHyp_data_getRaw ( pParent, parentContext, isParentVector ) ;
+	  *pBuf++ = bi ;
+	  n = 1 ;
+	  break ;
+	  
+	case TYPE_HEX :
+	  endian.x.ul = 
+	    (unsigned long) gHyp_data_getRaw ( pParent, parentContext, isParentVector ) ;
+	  if ( isLittleEndian ) 
+	    for ( j=3; j>=0; j-- ) *pBuf++ = endian.x.b[j] ; 
+	  else
+	    for ( j=0; j<4; j++ ) *pBuf++ = endian.x.b[j] ;
+	  n = 4 ;
+	  break ;
+	  
+	case TYPE_OCTAL :
+	  endian.x.ul = 
+	    (unsigned long) gHyp_data_getRaw ( pParent, parentContext, isParentVector ) ;
+	  if ( isLittleEndian ) 
+	    for ( j=3; j>=0; j-- ) *pBuf++ = endian.x.b[j] ; 
+	  else
+	    for ( j=0; j<4; j++ ) *pBuf++ = endian.x.b[j] ;
+	  n = 4 ;
+	  break ;
+	  
+	case TYPE_UNICODE :
+	  endian.x.us = 
+	    (unsigned short) gHyp_data_getRaw ( pParent, parentContext, isParentVector ) ;
+	  if ( isLittleEndian ) 
+	    for ( j=1; j>=0; j-- ) *pBuf++ = endian.x.b[j] ; 
+	  else
+	    for ( j=0; j<2; j++ ) *pBuf++ = endian.x.b[j] ;
+	  n = 2 ;
+	  break ;
+	  
+	case TYPE_SHORT :
+	  endian.x.ss = 
+	    (short) gHyp_data_getRaw ( pParent, parentContext, isParentVector ) ;
+	  if ( isLittleEndian ) 
+	    for ( j=1; j>=0; j-- ) *pBuf++ = endian.x.b[j] ; 
+	  else
+	    for ( j=0; j<2; j++ ) *pBuf++ = endian.x.b[j] ;
+	  n = 2 ;
+	  break ;
+	  
+	case TYPE_USHORT :
+	  endian.x.us = 
+	    (unsigned short) gHyp_data_getRaw ( pParent, parentContext, isParentVector ) ;
+	  if ( isLittleEndian ) 
+	    for ( j=1; j>=0; j-- ) *pBuf++ = endian.x.b[j] ; 
+	  else
+	    for ( j=0; j<2; j++ ) *pBuf++ = endian.x.b[j] ;
+	  n = 2 ;
+	  break ;
+	  
+	case TYPE_INTEGER :
+	case TYPE_LONG :
+	  endian.x.sl = 
+	    (long) gHyp_data_getInt ( pParent, parentContext, isParentVector ) ;
+	  if ( isLittleEndian ) 
+	    for ( j=3; j>=0; j-- ) *pBuf++ = endian.x.b[j] ; 
+	  else
+	    for ( j=0; j<4; j++ ) *pBuf++ = endian.x.b[j] ;
+	  n = 4 ;
+	  break ;
+	  
+	case TYPE_ULONG :
+	  endian.x.ul = 
+	    (unsigned long) gHyp_data_getRaw ( pParent, parentContext, isParentVector ) ;
+	  if ( isLittleEndian ) 
+	    for ( j=3; j>=0; j-- ) *pBuf++ = endian.x.b[j] ; 
+	  else
+	    for ( j=0; j<4; j++ ) *pBuf++ = endian.x.b[j] ;
+	  n = 4 ;
+	  break ;
+	  
+	case TYPE_FLOAT :
+	  endian.x.f = 
+	    (float) gHyp_data_getDouble ( pParent, parentContext, isParentVector ) ;
+	  if ( isLittleEndian ) 
+	    for ( j=3; j>=0; j-- ) *pBuf++ = endian.x.b[j] ; 
+	  else
+	    for ( j=0; j<4; j++ ) *pBuf++ = endian.x.b[j] ;
+	  n = 4 ;
+
+	  break ;
+	  
+	case TYPE_DOUBLE :
+	  endian.x.d = 
+	    (double) gHyp_data_getDouble ( pParent, parentContext, isParentVector ) ;
+	  if ( isLittleEndian ) 
+	    for ( j=7; j>=0; j-- ) *pBuf++ = endian.x.b[j] ; 
+	  else
+	    for ( j=0; j<8; j++ ) *pBuf++ = endian.x.b[j] ;
+	  n = 8 ;
+	  break ;
+      }
+
+      pValue2 = gHyp_data_new ( NULL ) ;
+      gHyp_data_setStr_n ( pValue2, buffer, n ) ;
+      gHyp_data_append ( pResult, pValue2 ) ;
+      n = 0 ;
+      pBuf = buffer ;
+
+      break ;
+
+  }
+  if ( n > 0 ) {
+    pValue2 = gHyp_data_new ( NULL ) ;
+    gHyp_data_setStr_n ( pValue2, buffer, n ) ;
+    gHyp_data_append ( pResult, pValue2 ) ;
+    n = 0 ;
+    pBuf = buffer ;
+  }
+  return ;
+}
+
+void gHyp_env_unmap ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: unmap ( variable )
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   * Modifications:
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+  
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+    
+  else {
+ 
+    sStack 	
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+
+    sData
+      *pVariable,
+      *pData,
+      *pResult ;
+
+    int
+      ss,
+      context,
+      argCount = gHyp_parse_argCount ( pParse ) ;
+
+    sLOGICAL
+      isLittleEndian = gHyp_util_isLittleEndian() ;
+
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 1 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+	"Invalid arguments. Usage: unmap ( source )" ) ;
+
+    pData = gHyp_stack_popRdata ( pStack, pAI ) ;
+    if ( (pVariable = gHyp_data_getVariable ( pData ) ) )
+      pData = pVariable ;
+
+    context = -1 ;
+    ss = gHyp_data_getSubScript ( pData ) ;
+    pResult = gHyp_data_new ( "_unmap_" ) ;
+    lHyp_env_unmap (	pResult,
+	  		pData,
+			ss,
+			isLittleEndian) ;
 
     gHyp_stack_push ( pStack, pResult ) ;
   }
@@ -1795,7 +2165,7 @@ sData* gHyp_env_mergeData ( sData *pDst,
 
     if ( isMsgMerge &&
          !gHyp_load_isKey ( pLabel ) &&  
-	 gHyp_util_getToken3 ( pLabel ) != labelLen ) {
+	 gHyp_util_getToken_okDot ( pLabel ) != labelLen ) {
 
 
       /* SPECIAL CASE:  Merge called from instance_consumeMessage. */
@@ -2092,7 +2462,7 @@ sData* gHyp_env_mergeData ( sData *pDst,
 				      context, 
 				      isVector ) ;
 	      pValue2 = gHyp_data_new ( NULL ) ;
-	      gHyp_data_setStr2 ( pValue2, value, n ) ;
+	      gHyp_data_setStr_n ( pValue2, value, n ) ;
 	      gHyp_data_append ( pData2, pValue2 ) ;
 	    }
 	    
@@ -2577,7 +2947,7 @@ void gHyp_env_remove ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 	  else if ( isVariable ) {
 	    /* Create new variable */
 	    pVariable = gHyp_data_detach ( pResult ) ;
-	    gHyp_data_append( gHyp_frame_getMethodData(pFrame),pResult ) ;
+	    gHyp_data_append( gHyp_frame_getMethodData(pFrame),pVariable ) ;
 	    pResult = NULL ;
  	  }
 	  else {
@@ -2692,7 +3062,7 @@ void gHyp_env_chop ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 	  else if ( isVariable ) {
 	    /* Create new variable */
 	    pVariable = gHyp_data_detach ( pResult ) ;
-	    gHyp_data_append( gHyp_frame_getMethodData(pFrame),pResult ) ;
+	    gHyp_data_append( gHyp_frame_getMethodData(pFrame),pVariable ) ;
 	    pResult = NULL ;
  	  }
 	  else {

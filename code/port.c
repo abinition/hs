@@ -535,8 +535,14 @@ void gHyp_port_assign ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     sConcept
       *pConcept ;
 
+    sSecs1
+      *pPort ;
+
     int
       id ;
+
+    short
+      flags ;
 
     int
       argCount = gHyp_parse_argCount ( pParse ) ;
@@ -565,7 +571,8 @@ void gHyp_port_assign ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
     /* Check that portFd already exists */
     pConcept =  gHyp_instance_getConcept(pAI) ;
-    if ( !gHyp_concept_getSocketObject ( pConcept, (SOCKET) portFd, DATA_OBJECT_NULL ) ) {
+    pPort = (sSecs1*) gHyp_concept_getSocketObject ( pConcept, (SOCKET) portFd, DATA_OBJECT_NULL ) ;
+    if ( !pPort ) {
         gHyp_instance_warning ( pAI,
 			      STATUS_PORT, 
 			      "No port '%d'. Use port_open to open port ",
@@ -582,8 +589,13 @@ void gHyp_port_assign ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 			      gHyp_instance_getDeviceId ( pAIassigned, portFd ),
 			      gHyp_instance_getTargetId ( pAIassigned ) ) ;
 	}
-        else
-         gHyp_instance_updateFd ( pAI, (SOCKET) portFd, (sWORD) id, NULL, FALSE ) ;
+        else {
+          gHyp_instance_updateFd ( pAI, (SOCKET) portFd, (sWORD) id, NULL, FALSE ) ;
+	  /* Make sure protocol is NONE */
+	  flags = gHyp_secs1_flags ( pPort ) ;
+	  flags = (flags & MASK_SOCKET) | PROTOCOL_NONE ;
+	  gHyp_secs1_setFlags ( pPort, flags ) ;
+	}  
       }
     gHyp_instance_pushSTATUS ( pAI, pStack ) ;
   }

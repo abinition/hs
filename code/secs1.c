@@ -1012,7 +1012,7 @@ static int lHyp_secs1_incoming ( sSecs1 *pSecs1,
       pSecs2 = gHyp_instance_getSecs2byId ( pAI, header.deviceId ) ;
 	    
       if ( !pSecs2 ) { 
-	gHyp_instance_warning ( pAI, STATUS_SECS,
+	gHyp_instance_error ( pAI, STATUS_SECS,
 				"SECS II device id %d is not assigned to port %d", 
 				header.deviceId, pSecs1->fd ) ;
       } 
@@ -1987,7 +1987,7 @@ unsigned gHyp_secs1_SID ( sSecs1 *pSecs1 )
 }
 
 static void lHyp_secs1_httpHeaders ( char *pLine, 
-				     char *pContent, 
+				     char *pEndBuf, 
 				     sData* pAttributeData )
 {
 
@@ -2002,7 +2002,7 @@ static void lHyp_secs1_httpHeaders ( char *pLine,
     *pAttr,
     *pValue ;
 
-  while ( pLine < pContent ) {
+  while ( pLine < pEndBuf ) {
 
     /* Advamnce past newline */
     pLine += strspn ( pLine, "\r\n" ) ;
@@ -2011,7 +2011,7 @@ static void lHyp_secs1_httpHeaders ( char *pLine,
      * This is the first  "\r\n" that isn't preceeded by a ','
      */
     pChar = pLine ;
-    while ( pChar < pContent ) {
+    while ( pChar < pEndBuf ) {
       width = strcspn ( pChar, "\r\n" ) ;
       if ( width > 2 ) {
 	if ( *(pLine+width-1) == ',' && *(pLine+width-2) != '\\' ) {
@@ -2026,7 +2026,7 @@ static void lHyp_secs1_httpHeaders ( char *pLine,
       *pChar = '\0' ;
       break ;
     }
-    if ( pChar >= pContent ) break ;
+    if ( pChar >= pEndBuf ) break ;
     /* Where's the colon separating attribute name from value */
     pChar = strchr ( pLine, ':' ) ;
     if ( pChar ) {
@@ -2046,7 +2046,7 @@ static void lHyp_secs1_httpHeaders ( char *pLine,
 	pLine = pChar ;
 	pLine += strspn ( pLine, " \t" ) ;
 
-	while ( pChar < pContent ) {
+	while ( pChar < pEndBuf ) {
 	  /* Search for ',' that separates values */
 	  pChar = strchr ( pLine, ',' ) ;
 	  if ( pChar ) {
@@ -2057,7 +2057,7 @@ static void lHyp_secs1_httpHeaders ( char *pLine,
 	      if ( strlen ( pLine ) > 0 ) {
 		pValue = gHyp_data_new ( NULL ) ;
 		n = gHyp_util_parseString ( pLine ) ;
-		gHyp_data_setStr2 ( pValue, pLine, n ) ;
+		gHyp_data_setStr_n ( pValue, pLine, n ) ;
 		gHyp_data_append ( pAttr, pValue ) ;
 	      }
 	      pLine = pChar+1 ;
@@ -2079,7 +2079,7 @@ static void lHyp_secs1_httpHeaders ( char *pLine,
 	if ( strlen ( pLine ) ) {
 	  pValue = gHyp_data_new ( NULL ) ;
 	  n = gHyp_util_parseString ( pLine ) ;
-	  gHyp_data_setStr2 ( pValue, pLine, n ) ;
+	  gHyp_data_setStr_n ( pValue, pLine, n ) ;
 	  gHyp_data_append ( pAttr, pValue ) ;
 	}
 
@@ -2120,13 +2120,14 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
     isReply,
     isVector,
     isChunkedTransferEncoded=FALSE,
-    isChunkedTransferDone=FALSE,
-    isEndOfMessage = FALSE,
+    isEndOfMessage=FALSE,
+    isEndOfBuffer=FALSE,
     isURLEncoded=FALSE,
     isPlainText=FALSE,
+    isBinary=FALSE,
     isPOSTdata=FALSE,
     isXMLEncoded=FALSE,
-    isLineBased,
+    isLineBased=FALSE,
     doKnitting=FALSE,
     isMessageComplete,
     jmpEnabled ;
@@ -2158,7 +2159,7 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
   char
     *pBuf,
     *pEndBuf,
-    buffer[PORT_READ_SIZE+1],
+    buffer[OVERFLOW_READ_SIZE+1],
     *pChar,
     *pTokenName,
     *pTokenValue,
@@ -2179,7 +2180,7 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
     *pSTATUS,
     *pData,
     *pFirst,
-    *pLast,
+    *pLast=NULL,
     *pNext,
     *pValue,
     *pTV,
@@ -2202,8 +2203,11 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
     gHyp_util_logError ( "Port jump level overflow at %d", MAX_JMP_LEVEL ) ;
     longjmp ( gsJmpStack[0], COND_FATAL ) ;
   }
+
+  /******************************************************************
+   * WHO GETS THE DATA
+   ******************************************************************/
   
-  /* Who gets the data? */
   pAIassigned = gHyp_concept_getInstForFd ( pConcept, pPort->fd ) ;
 
   if ( pAIassigned ) {
@@ -2277,6 +2281,10 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
     }
   }
 
+  /******************************************************************
+   * READ THE BUFFER CONTENTS
+   ******************************************************************/
+
   /* Save the previous longjmp return point. */
   jmpEnabled = giJmpEnabled ;
   giJmpEnabled = FALSE ;
@@ -2334,13 +2342,21 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
      * all the data until we get the complete record.
      */
     buffer[nBytes] = '\0' ;
-    /*gHyp_util_debug("%d bytes",nBytes);*/
-    /*gHyp_util_debug("---------------------------------------------");*/
-    /*gHyp_util_debug("%s",pBuf);*/
-    /*gHyp_util_debug("---------------------------------------------");*/
+    
+    
+    /*
+      gHyp_util_debug("%d bytes",nBytes);
+    gHyp_util_debug("---------------------------------------------");
+    gHyp_util_debug("%s",pBuf);
+    gHyp_util_debug("---------------------------------------------");
+    */
+    
     pEndBuf = pBuf + nBytes ;
 
-    /* Is the port data being forwarded? */
+
+    /******************************************************************
+     * PORT-FORWARD IF REQUESTED
+     ******************************************************************/
     forwardCount = 0 ;
     if ( pPort->forwardPorts ) {
 
@@ -2403,6 +2419,9 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
       if ( forwardCount > 0 ) return COND_SILENT ;
     }
 
+    /******************************************************************
+     * PRE-PROCESS THE DATA - GET HTTP HEADER ELEMENTS
+     ******************************************************************/
     if ( objectType == DATA_OBJECT_HTTP ) {
 
       pHTTP = pPort->pHTTP ;
@@ -2417,6 +2436,7 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
       isXMLEncoded = gHyp_http_isXMLEncoded(pHTTP);
       isURLEncoded = gHyp_http_isURLEncoded(pHTTP);
       isPlainText = gHyp_http_isPlainText(pHTTP);
+      isBinary = gHyp_http_isBinary(pHTTP);
 
       if ( httpState == HTTP_EXPECT_HEADER ) {
 
@@ -2433,6 +2453,7 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
 	  pContent++ ;
 	  pContent += strspn ( pContent, "\r\n" ) ;
 	  actualContentLength = nBytes - (pContent-buffer) ;
+  	  gHyp_http_updateContent ( pHTTP,  contentLength, actualContentLength ) ;
 	}
 
 	/* Now look for "Content-Length" and get value */
@@ -2450,8 +2471,10 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
 	      if ( *pChar ) {
 		pChar += strspn ( pChar, " \t" ) ;
 		gHyp_util_trim ( pChar ) ;
-		sscanf ( pChar, "%d", &contentLength )  ;
-		if ( contentLength < 0 ) contentLength = 0 ;
+		n = sscanf ( pChar, "%d", &contentLength )  ;
+		if ( n != 1 || contentLength < 0 ) contentLength = 0 ;
+		/*gHyp_util_debug("Content Length = %d",contentLength,actualContentLength);*/
+		gHyp_http_updateContent ( pHTTP,  contentLength, actualContentLength ) ;
 	      }
 	    }
 	  }
@@ -2502,6 +2525,10 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
 		  isXMLEncoded = TRUE ;
 		  gHyp_http_setXMLEncoded ( pHTTP ) ;
 		}
+		else if ( strstr ( pChar, "text/java" ) != NULL ) {
+		  isBinary = TRUE ;
+		  gHyp_http_setBinary ( pHTTP, TRUE ) ;
+		}
 		else if ( strstr ( pChar, "text/plain" ) != NULL ) {
 		  isPlainText = TRUE ;
 		  gHyp_http_setPlainText ( pHTTP ) ;
@@ -2515,9 +2542,11 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
 	  }
 	}
 
+        /******************************************************************
+         * SAVE THE HTTP HEADER ELEMENTS
+         ******************************************************************/
 
-	/* Get the header elements.
-	 *
+	/*
 	 * Eg: GET /target HTTP/1.1
 	 * Eg: HTTP/1.1 200 Ok
 	 *
@@ -2572,7 +2601,7 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
 	  if ( width == 0 ) { 
     	    gHyp_util_logError("Invalid HTTP header '%s'",pLine ) ;
 	    return COND_SILENT ;
-	  }
+	  } 
 	  pArg3 = pLine ;
 
 	  gHyp_http_setHeader ( pHTTP, pArg1, pArg2, pArg3 ) ;
@@ -2586,324 +2615,334 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
 	  httpState = HTTP_EXPECT_CONTENT ;
 	  gHyp_http_setState ( pHTTP, httpState ) ;
 
+	  pBuf = pContent ;
 	}
       }
       else {
-	/* We've already processed the header.
+	/* We've already processed the HTTP header.
 	 * The entire buffer is content continued.
 	 * Add the length to the content received so far.
 	 */
 	pContent = buffer ;
-
 	actualContentLength += nBytes ;
+	/*gHyp_util_debug("Actual/content now is %d/%d",actualContentLength,contentLength);*/
+  	gHyp_http_updateContent ( pHTTP,  contentLength, actualContentLength ) ;
+        pBuf = pContent ;
       }
-
-      /* Set the pointer to the content */
-      pBuf = pContent ;
-
-      if ( isChunkedTransferEncoded ) {
-
-	if ( contentLength == 0 ) {
-
-	  /* Content hasn't been specified.
-	   * pBuf should be pointing to a hex value which is
-	   * the content length.
-	   */
-	  pChar = pBuf ;
-	  width = strcspn ( pChar, "\r\n" ) ;
-	  if ( width > 0 && width < VALUE_SIZE ) {
-	    strncpy ( value, pChar, width ) ;
-	    value[width]='\0' ;
-	    pChar = strchr ( value, ';' ) ;
-	    if ( pChar ) *pChar = '\0' ;
-	    gHyp_util_trim ( value ) ;
-	    sscanf ( value, "%x", &contentLength )  ;
-	    if ( contentLength < 0 ) 
-
-	      contentLength = 0 ;
-	    
-	    else if ( contentLength == 0 ) {
-
-	      /*gHyp_util_debug("Chunk transfer complete");*/
-	      isChunkedTransferDone = TRUE ;
-
-	    }
-	    /*gHyp_util_debug("Chunked size is %d",contentLength);*/
-
-	    if ( contentLength > 0 ) {
-
-	      /* Got a content length. Get new start of content */
-	      pChar = pBuf + width ;
-	      pChar += strspn ( pChar, "\r\n" ) ;
-	      pContent = pChar ;
-	      pBuf = pContent ;
-	      actualContentLength = pEndBuf - pContent ;
-	      /*gHyp_util_debug("Content/Actual = %d/%d",contentLength,actualContentLength);
-	       *gHyp_util_debug("Remainder = %s",pEndBuf-(actualContentLength-contentLength));*/
-
-	    }
-	  }
-	}
-      }
-      else {
-
-	/* Not chunked transfer. If the content is text/html,
-	 * then if we see a </html> or </HTML> at the end, we
-	 * say we are done. Another way maybe is to see a CR
-	 * or LF at the end, but this could be unpredictable.
-	 */
-	if ( contentLength == 0 ) {
-
-	  if ( actualContentLength > 0 ) { 
-
-	    if ( !isXMLEncoded ) {
-	      pChar = pEndBuf - 1 ;
-	      if ( *pChar == '\r' || *pChar == '\n' ) isEndOfMessage = TRUE ;
-	    }
-	    else if ( actualContentLength > 7 ) {
-	      /* Look for ending tag. This really should be changed to
-	       * compare the start tag with the end tag.
-	       * ...</HTML>"
-	       *    ^       
-	       *    
-	       */
-	      pChar = pEndBuf - 7 ;
-	      if ( strcmp ( pChar, "</HTML>" ) == 0 ||
-		   strcmp ( pChar, "</html>" ) == 0 )
-		 isEndOfMessage = TRUE ;
-
-	    }
-	  }
-	}
-
-
-      }
-
-      /* How many bytes are left to process */ 
-      n = MIN ( actualContentLength, pEndBuf-pContent ) ;
-
     }
     else {
-      /* With standard port incoming data, we assume its
-       * reply data only if the state of the socket is
-       * query()
-       */
 
-      /* The entire buffer is the results */
-      pBuf = buffer ;
+      /* Standard port incoming data.
+       * The entire buffer is the result 
+       */
+      pContent = buffer ;
+      pBuf = pContent ;
       pContentData = gHyp_data_new ( "_data_" ) ;
-      n = nBytes ;
+      actualContentLength = nBytes ;
+      contentLength = actualContentLength ;
     }
 
-    isLineBased =  ( objectType == DATA_OBJECT_HTTP &&
-		    ( isPlainText || isXMLEncoded ) ) ;
 
-    /* Knit together sections for chunked transfer
-       encoded data */
-    doKnitting = FALSE ;
-    pLast = NULL ;
-    if ( isLineBased && pContentData ) {
+    /******************************************************************
+     * EXTRACT THE DATA INTO THE pContentData sData object.
+     ******************************************************************/
 
-      /* Get last value of pContent data */
-      pLast = gHyp_data_getLast ( pContentData ) ;
-      if ( pLast ) {
-	lineLen = gHyp_data_getStr ( pLast, value, VALUE_SIZE, 0, TRUE ) ;
-	value[lineLen] = '\0' ;
-	/* So lone as the line does not end with \n\r, we can knit it to the
-	 * start of the next line
-	 */
-	if ( lineLen > 1 ) {
-	  if ( value[lineLen-1] != '\n' && value[lineLen-1] != '\r' ) {
-	     doKnitting = TRUE ;
-	  }
-	}
-      }
-    }
+    while ( !isEndOfBuffer ) {
 
-    /* Add the content to the content data area */
-    f = TRUE ;
-    while ( n > 0 ) {
+      if ( objectType == DATA_OBJECT_HTTP ) {
 
-      /* We use INTERVAL_VALUE size to cover the case where each byte
-       * happens to require a 4 character \nnnn to represent it.
-       * To display exterally, the would require INTERNAL_VALUE_SIZE*4 bytes,
-       * which is VALUE_SIZE bytes, the HyperScript internal maximum segment
-       * size of a 'str'.
-       */
-      width = MIN ( n, INTERNAL_VALUE_SIZE ) ;
+	if ( contentLength == 0 ) {
 
-      if ( isLineBased ) {
+	  /* We don't know how much data there is */
 
-	/* Ah, but, if the object is HTTP and its plain text or html/xml, then
-	 * the data is often determined by line feeds.
-	 */
+	  if ( isChunkedTransferEncoded ) {
 
-	/* Skip past lf and cr */
-        width2 = (int) strspn ( pBuf, "\r\n" ) ;
-	if ( width2 > 0 ) {
-	  pBuf += width2 ;
-	  n -= width2 ;
-	  width = MIN ( n, INTERNAL_VALUE_SIZE ) ;
-	}
+	    /* There may be several chunks in a buffer.
+	     * Chunks do not necessarily align with the
+	     * start or end of the content.
+	     * When contentLength is 0, we are expecting
+	     * a chunked length.
+	     * If the chunked length is zero, we are done.
+	     *
+	     * pBuf should be pointing to a hex value which is
+	     * the content length.
+	     */
+	    pChar = pBuf ;
+	    width = strcspn ( pChar, "\r\n" ) ;
+	    pBuf += width;
+	    if ( width > 0 && width < VALUE_SIZE ) {
 
-	/* Get the next line */
-	width2 = strcspn ( pBuf, "\r\n" ) ;
+	      strncpy ( value, pChar, width ) ;
+	      value[width]='\0' ;
+	      pChar = strchr ( value, ';' ) ;
+	      if ( pChar ) *pChar = '\0' ;
+	      gHyp_util_trim ( value ) ;
+	      /*gHyp_util_debug("Chunked value = %s",value);*/
+	      n = sscanf ( value, "%x", &contentLength )  ;
+	      if ( n != 1 ) {
 
-	if ( width2 > 0 ) {
-	  
-	  if ( width2 < width ) {
+		/* Conversion error. */
+		gHyp_util_logWarning("Expecting chunked value, received '%s'",value);
+		contentLength = 0 ;
+  	        gHyp_http_updateContent ( pHTTP,  contentLength, actualContentLength ) ;
+	      }
 
-	    /* Shorter is ok */
-	    width = width2 ;
-	  }
-	  else if ( width2 > width ) { 
+	      else if ( contentLength == 0 ) {
 
-	    /* We'd like to store longer, but will it fit? */
+		/*gHyp_util_debug("Chunked transfer complete");*/
+  	        gHyp_http_updateContent ( pHTTP,  contentLength, actualContentLength ) ;
+		isEndOfMessage = TRUE ;
+		lHyp_secs1_httpHeaders ( pBuf, pEndBuf, pAttributeData ) ;
+		isEndOfBuffer = TRUE ;
+	      } 
+	      else { /* if ( contentLength > 0 ) { */
 
-	    width3 = width2 ;
-	    for ( i=0;i<width2;i++ ) if ( !isprint(pBuf[i]) ) width3+=3;
-	  
-	    if ( width3 <= VALUE_SIZE ) 
+		/* Got a content length. Get new start of content */
+		pChar = pBuf ;
+		pChar += strspn ( pChar, "\r\n" ) ;
 
-	      /* Yes, it will fit - adjust size */
-	      width = width2 ;
-
-	  }
-	}
-      }
-
-      if ( f && doKnitting &&  (width + lineLen <= VALUE_SIZE) ) {
-	
-	strncat ( value, pBuf, width ) ;
-	lineLen+=width ;
-	gHyp_data_setStr2 ( pLast, value, lineLen ) ;
-	doKnitting = FALSE ;
-
-      }
-      else {
-
-        pValue = gHyp_data_new ( NULL ) ;
-        gHyp_data_setStr2 ( pValue, (char*) pBuf, width ) ;
-	gHyp_data_append ( pContentData, pValue ) ;
-      }
-      f = FALSE ;
-      n -= width ;
-      pBuf += width ;
-    }
-
-    /* Determine if we are done and can create the message */
-    if ( objectType == DATA_OBJECT_HTTP ) {
-
-      if ( contentLength > actualContentLength ) {
-
-	/* We haven't received all of the content. Wait for more. */
-	gHyp_http_updateContent ( pHTTP, contentLength, actualContentLength ) ;
-	return COND_SILENT ;
-      }
-
-      if ( contentLength < actualContentLength ) {
-
-	/* We've got more data than expected. That's ok if we're
-	 * receiving chunked data, because headers can follow
-	 */
-
-	if ( isChunkedTransferEncoded ) {
-
-	  /* There may be more chunks. */
-	      
-	  /* Find the segment after the chunk just processed,
-	   * the next chunk's size value should be there.
-	   */
-	  pBuf = pEndBuf - (actualContentLength-contentLength);
-	  pChar = pBuf ;
-
-	  /* Skip past any line breaks */
-	  pChar += strspn ( pChar, "\r\n" ) ;
-	  pLine = pChar ;
-
-	  /* Get the width of the token prior to the next line break */
-	  width = strcspn ( pLine, "\r\n" ) ;
-
-	  if ( width == 0 || pChar == pEndBuf ) {
-
-	    /* No new chunked content length values */
-	    if ( !isChunkedTransferDone ) {
-
-	      /* Chunk is done.  Reset for next chunk */
-  	      actualContentLength = 0 ;
-	      contentLength = 0 ;
-	      gHyp_http_updateContent ( pHTTP, 
-					contentLength, 
-					actualContentLength ) ;
-
-	      return COND_SILENT ;
-	    }
-
-	  }
-	  else if ( width > 0 && width < VALUE_SIZE ) {
-
-	    strncpy ( value, pLine, width ) ;
-	    value[width]='\0' ;
-	    pLine += width ;
-	    pChar = strchr ( value, ';' ) ;
-	    if ( pChar ) *pChar = '\0' ;
-	    gHyp_util_trim ( value ) ;
-	    sscanf ( value, "%x", &contentLength )  ;
-
-	    if ( contentLength < 0 ) contentLength = 0 ;
-	    if ( contentLength > 0 ) {
-
-	      /* Got a content length. Get new start of content */
-	      pChar = pBuf + width ;
-	      pChar += strspn ( pChar, "\r\n" ) ;
-	      pContent = pChar ;
-	      pBuf = pContent ;
-	      actualContentLength = pEndBuf - pContent ;
-	      gHyp_http_updateContent ( pHTTP, 
-					contentLength, 
-					actualContentLength ) ;
-
-	      return COND_SILENT ;
+		/* Update pContent */
+		pContent = pChar ;
+		pBuf = pContent ; 
+		actualContentLength = pEndBuf - pContent ;
+  		gHyp_http_updateContent ( pHTTP, 
+					  contentLength,
+					  actualContentLength ) ;
+ 		/*gHyp_util_debug("Content/Actual (1) = %d/%d",contentLength,actualContentLength);*/
+	      }
+		
 	    }
 	    else {
-	      /* Total end of chunked data.  Headers could follow. */
-	      lHyp_secs1_httpHeaders ( pLine, pEndBuf, pAttributeData ) ;
-	      isChunkedTransferDone = TRUE ;
+	      /* No chunked value, probably in next read */	    
+	      if ( pBuf == pEndBuf ) isEndOfBuffer = TRUE ;
 	    }
 	  }
 	  else {
-	    /* Not good - we will take the actual content length */
-	    gHyp_util_logWarning("ContentLength too low (%d), should be %d",
-	 		          contentLength, actualContentLength ) ;
-	  }
-	  contentLength = actualContentLength ;
 
+	    /* Not chunked transfer. If the content is text/html,
+	     * then if we see a </html> or </HTML> at the end, we
+	     * say we are done. Another way maybe is to see a CR
+	     * or LF at the end, but this could be unpredictable.
+	     */
+	    if ( actualContentLength > 0 ) { 
+
+	      if ( !isXMLEncoded ) {
+
+		pChar = pEndBuf - 1 ;
+		if ( *pChar == '\r' || *pChar == '\n' ) isEndOfMessage = TRUE ;
+	      }
+
+	      else if ( actualContentLength > 7 ) {
+
+		/* Look for ending tag. This really should be changed to
+		 * compare the start tag with the end tag.
+		 * ...</HTML>"
+		 *    ^       
+		 *    
+	         */
+		pChar = pEndBuf - 7 ;
+		if ( strcmp ( pChar, "</HTML>" ) == 0 ||
+		    strcmp ( pChar, "</html>" ) == 0 )
+		  isEndOfMessage = TRUE ;
+
+	      }
+	    }
+	  }
+	} /* end if ( contentLen == 0 ) */
+
+      } /* end if ( objectType == DATA_OBJECT_HTTP ) */
+      
+      /* How many bytes are left to process */ 
+      n = MIN ( actualContentLength, pEndBuf-pContent ) ;
+
+      if ( n > 0 ) {
+	
+	doKnitting = FALSE ;
+
+	if ( objectType == DATA_OBJECT_HTTP ) {
+
+          /************************************************************************
+	   * KNIT LAST LINE FROM PREVIOUS BUFFER WITH FIRST LINE OF CURRENT BUFFER 
+           *************************************************************************/
+
+	  isLineBased =  ( (!isBinary && isPlainText ) || isXMLEncoded ) ;
+	  /*isLineBased =  ( isPlainText || isXMLEncoded ) ;*/
+
+	  /* Find out if we even need to knit */
+	  pLast = NULL ;
+	  if ( isLineBased && pContentData ) {
+
+	    /* Get last value of pContent data */
+	    pLast = gHyp_data_getLast ( pContentData ) ;
+	    if ( pLast ) {
+	      lineLen = gHyp_data_getStr ( pLast, value, VALUE_SIZE, 0, TRUE ) ;
+	      value[lineLen] = '\0' ;
+	      /* So lone as the line does not end with \n\r, we can knit it to the
+	       * start of the next line
+	       */
+	      if ( lineLen > 1 ) {
+		if ( value[lineLen-1] != '\n' && value[lineLen-1] != '\r' ) {
+		  doKnitting = TRUE ;
+		}
+	      }
+	    }
+	  }
 	}
+
+	/* Extract the content, adding it section by section to pContentData */
+	f = TRUE ;
+	pBuf = pContent ;
+	while ( n > 0 ) {
+
+	  /* We use INTERVAL_VALUE size to cover the case where each byte
+	   * happens to require a 4 character \nnnn to represent it.
+	   * To display exterally, the would require INTERNAL_VALUE_SIZE*4 bytes,
+	   * which is VALUE_SIZE bytes, the HyperScript internal maximum segment
+	   * size of a 'str'.
+	   */
+	  width = MIN ( n, INTERNAL_VALUE_SIZE ) ;
+
+	  if ( isLineBased ) {
+
+	    /* The data should be logically divided by line feeds. */
+
+	    /* Get the length of the next line */
+	    width2 = strcspn ( pBuf, "\r\n" ) ;
+
+	    /* Add the lf and cr */
+	    width2 += strspn ( pBuf+width2, "\r\n" ) ;
+	    
+	    if ( width2 > 0 ) {
+	  
+	      if ( width2 < width ) {
+
+		/* Shorter is ok */
+		width = width2 ;
+	      }
+	      else if ( width2 > width ) { 
+
+		/* We'd like to store longer, but will it fit? */
+
+		width3 = width2 ;
+		for ( i=0;i<width2;i++ ) if ( !isprint(pBuf[i]) ) width3+=3;
+		if ( width3 <= VALUE_SIZE ) 
+		  /* Yes, it will fit - adjust size */
+		  width = width2 ;
+
+	      }
+	    }
+	  }
+
+	  if ( f && doKnitting &&  (width + lineLen <= VALUE_SIZE) ) {
+	
+	    memcpy ( value+lineLen, pBuf, width ) ;
+	    lineLen+=width ;
+	    /*gHyp_util_debug ( "Knitted line '%.*s'",lineLen, value ) ;*/
+	    gHyp_data_setStr_n ( pLast, value, lineLen ) ;
+	    doKnitting = FALSE ;
+
+	  }
+	  else {
+
+	    pValue = gHyp_data_new ( NULL ) ;
+	    gHyp_data_setStr_n ( pValue, (char*) pBuf, width ) ;
+	    gHyp_data_append ( pContentData, pValue ) ;
+	    /*if ( isLineBased ) gHyp_util_debug("ADDed: %.*s",width,pBuf) ;*/
+	  }
+	  f = FALSE ;
+	  n -= width ;
+	  pBuf += width ;
+
+	} /* end while ( n > 0 ) */
+
+
+	/*gHyp_util_debug("Content/Actual = %d/%d",contentLength,actualContentLength);*/
+	if ( actualContentLength < contentLength ) {
+
+	  /* We haven't received all of the content. Wait for more. */
+	  return COND_SILENT ;
+	}
+
 	else {
-	  /* Not chunked */
-	  if ( contentLength == 0 && !isEndOfMessage ) {
-	    /* Could be more to follow */
+
+	  /* ( actualContentLength >= contentLength )
+	   * We either received all the data or we've received more that expected 
+	   */
+
+	  if ( isChunkedTransferEncoded ) {
+
+	    /* There may be more chunks. */
+	      
+	    /* Find the segment after the chunk just processed,
+	     * the next chunk's size value should be there.
+	     */
+	    pBuf = pEndBuf - (actualContentLength-contentLength);
+	    pChar = pBuf ;
+
+	    /* Skip past any line breaks */
+	    pBuf += strspn ( pChar, "\r\n" ) ;
+
+	    /* Reset the http to expect a new chunku */
 	    actualContentLength = 0 ;
+	    contentLength = 0 ;
 	    gHyp_http_updateContent ( pHTTP, 
 				      contentLength,
 				      actualContentLength ) ;
 
-	    return COND_SILENT ;
+	    /* Check if we are at the end of the buffer */
+	    if ( pBuf == pEndBuf ) isEndOfBuffer = TRUE ;
+
+	    /* Otherwise loop around and continue processing */
 	  }
+	  else {
+
+	    /* Not chunked */
+
+	    /* For the case where we get an HTTP header without
+	     * any contentLength specified, and we are not at
+	     * the end of the buffer, then expect more data.
+	     */
+	    if ( contentLength == actualContentLength ) isEndOfBuffer = TRUE ;
+	  }
+	} 
+      } /* end if ( n > 0 ) */
+      else
+	/* No more data */
+	isEndOfBuffer = TRUE ;
+
+    } /* end while ( !isEndOfBuffer ) */
+
+    /******************************************************************
+     * BUFFER IS COMPLETE.  IF MESSAGE IS COMPLETE, THEN PROCESS AND RETURN
+     ******************************************************************/
+
+    if ( objectType == DATA_OBJECT_HTTP ) {
+
+      /*gHyp_util_debug("Buffer done: content/actual = %d/%d",contentLength,actualContentLength) ;*/
+
+      if ( !isEndOfMessage ) {
+
+	if ( isChunkedTransferEncoded ) {
+
+	  if ( contentLength > 0 && 
+	       contentLength == actualContentLength ) {
+	    /* Done the chunk, ready for another */
+	    contentLength = 0 ;
+	    actualContentLength = 0 ;
+	    gHyp_http_updateContent ( pHTTP, 
+				    contentLength,
+				    actualContentLength ) ;
+	  }
+	  return COND_SILENT ;
+	}
+	else {
+	  /* Not cbunked */
+	  if ( contentLength > actualContentLength ) return COND_SILENT ;
 	}
       }
 
-      /* We may actually be done - */
-
-      if ( isChunkedTransferEncoded && !isChunkedTransferDone ) {
-	/*gHyp_util_debug("MESSAGE IS NOT COMPLETE");*/
-	return COND_SILENT ;
-      }
-      /*gHyp_util_debug("MESSAGE content/actual len = %d/%d",contentLength,actualContentLength) ;*/
-
-      if ( contentLength == 0 && actualContentLength == 0 ) return COND_SILENT ;
-
-      if ( contentLength == 0 ) contentLength = actualContentLength ;
+      /* If haven't got an official content by now, set it to the actual */
+      if ( contentLength == 0 && actualContentLength > 0 ) contentLength = actualContentLength ;
 
       isReply = gHyp_http_isReply ( pPort->pHTTP ) ;
       isMessageComplete = TRUE ;
@@ -3014,14 +3053,8 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
   	gHyp_data_append ( pTV, pData ) ;
       }
 
-      /*
-      if ( isPOSTdata ) {
-	*gHyp_util_debug("POST");
-      }
-      */
-
       /* Parse the content */
-      if ( contentLength > 0 && isXMLEncoded ) {
+      if ( isXMLEncoded ) {
 	gHyp_cgi_xmlData ( pContentData, pAI, gHyp_instance_frame(pAI), pTV ) ;
       }
       else if ( contentLength > 0 && isPOSTdata ) {
@@ -3133,6 +3166,8 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
       gHyp_data_append ( pTV, pContentData ) ;
       isMessageComplete = TRUE ;
       isReply = ( pPort->state == MESSAGE_QUERY ) ;
+      /* Reset state */
+      pPort->state = MESSAGE_EVENT ;
     }
 
     if ( isMessageComplete ) {
@@ -3411,6 +3446,11 @@ void gHyp_secs1_setState ( sSecs1 *pSecs1, sBYTE state )
 LPOVERLAPPED gHyp_secs1_overlapped ( sSecs1 *pSecs1 )
 {
   return &pSecs1->overlapped ;
+}
+
+sHTTP *gHyp_secs1_getHttp ( sSecs1 *pSecs1 ) 
+{
+  return pSecs1->pHTTP ;
 }
 
 void gHyp_secs1_setSSL ( sSecs1 *pSecs1, sSSL *pSSL )

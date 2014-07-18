@@ -10,6 +10,9 @@
  * Modifications:
  *
  *   $Log: load.c,v $
+ *   Revision 1.16  2004/09/18 21:45:20  bergsma
+ *   New functions ssl_getSession, ssl_setSession, http_binary, unmap
+ *
  *   Revision 1.15  2004/07/23 18:43:29  bergsma
  *   Added pcapture()
  *
@@ -324,6 +327,7 @@ void gHyp_load_new ()
   lHyp_load_newKey ( "http_disable" ,  gHyp_http_disable, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "http_close" ,  gHyp_http_close, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "http_handle" ,  gHyp_http_handle, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "http_binary" ,  gHyp_http_binary, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
 
 #ifdef AS_SSL
   /* SSL functions */
@@ -357,6 +361,7 @@ void gHyp_load_new ()
   lHyp_load_newKey ( "chop" ,  gHyp_env_chop, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "detach" ,  gHyp_env_detach, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "map" ,  gHyp_env_map, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "unmap" ,  gHyp_env_unmap, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "merge" ,  gHyp_env_merge, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "sort" ,  gHyp_env_sort, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "reverse" ,  gHyp_env_reverse, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;

@@ -150,7 +150,7 @@ void gHyp_operand_token ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       pResult = gHyp_data_new ( NULL ) ;
       strcpy ( stream, pToken ) ;
       n = gHyp_util_parseString ( stream ) ;
-      gHyp_data_setStr2 ( pResult, stream, n ) ;
+      gHyp_data_setStr_n ( pResult, stream, n ) ;
       break ;      
       
     default:

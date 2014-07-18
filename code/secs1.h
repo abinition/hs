@@ -66,6 +66,7 @@ extern void		gHyp_secs1_setState ( sSecs1 *pSecs1, sBYTE state ) ;
 extern void		gHyp_secs1_setFlags ( sSecs1 *pSecs1, short flags ) ;
 extern LPOVERLAPPED	gHyp_secs1_overlapped ( sSecs1 *pSecs1 ) ;
 extern void		gHyp_secs1_setSSL ( sSecs1 *pSecs1, sSSL *pSSL ) ;
+extern sHTTP*		gHyp_secs1_getHttp ( sSecs1 *pSecs1 ) ;
 extern sSSL*		gHyp_secs1_getSSL ( sSecs1 *pSecs1 ) ;
 extern sData*		gHyp_secs1_getForwardPorts ( sSecs1 *pSecs1 ) ;
 extern void		gHyp_secs1_addForwardPort ( sSecs1 *pSecs1, int from_id, int to_id ) ;

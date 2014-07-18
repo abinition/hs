@@ -278,7 +278,7 @@ static sData *lHyp_operator_binaryOp (	sInstance	*pAI,
 	memcpy ( pStr3, pStr1, len1 ) ;
 	memcpy ( pStr3+len1, pStr2, len2 ) ;
 	*(pStr3+len1+len2) = '\0' ;
-	gHyp_data_setStr2 ( pTmp, pStr3, (len1+len2) ) ;
+	gHyp_data_setStr_n ( pTmp, pStr3, (len1+len2) ) ;
 	ReleaseMemory ( pStr3 ) ;
 	break ;
 	

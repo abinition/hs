@@ -270,7 +270,7 @@ sData *gHyp_type_assign ( sInstance *pAI,
 	
 	value[i] = '\0' ;
 	pValue2 = gHyp_data_new ( NULL ) ;
-	gHyp_data_setStr2 ( pValue2, value, i ) ;
+	gHyp_data_setStr_n ( pValue2, value, i ) ;
 	gHyp_data_append ( pResult, pValue2 ) ;
       }
       else {
@@ -286,7 +286,7 @@ sData *gHyp_type_assign ( sInstance *pAI,
 				 context,
 				 isVectorSrc ) ;
 	  pValue2 = gHyp_data_new ( NULL ) ;
-	  gHyp_data_setStr2 ( pValue2, value, n ) ;
+	  gHyp_data_setStr_n ( pValue2, value, n ) ;
 	  gHyp_data_append ( pResult, pValue2 ) ;
 	}
 	if ( context== -2 && sss != -1 ) {
@@ -827,7 +827,7 @@ sData *gHyp_type_assign ( sInstance *pAI,
 
 	    value[i] = '\0' ;
 	    pValue2 = gHyp_data_new ( NULL ) ;
-	    gHyp_data_setStr2 ( pValue2, value, i ) ;
+	    gHyp_data_setStr_n ( pValue2, value, i ) ;
 	    gHyp_data_append ( pVariable, pValue2 ) ;
 	  }
 	  else {
@@ -868,7 +868,7 @@ sData *gHyp_type_assign ( sInstance *pAI,
 					 context,
 					 isVectorSrc ) ;
 		  pValue2 = gHyp_data_new ( NULL ) ;
-		  gHyp_data_setStr2 ( pValue2, value, n ) ;
+		  gHyp_data_setStr_n ( pValue2, value, n ) ;
 		}
 		/*
 		else if ( srcDataType == TYPE_STRING ) {
@@ -1112,7 +1112,7 @@ sData *gHyp_type_assign ( sInstance *pAI,
 				 VALUE_SIZE,
 				 sss,
 				 TRUE ) ;
-	  gHyp_data_setStr2 ( pValue, value, n ) ;
+	  gHyp_data_setStr_n ( pValue, value, n ) ;
 	}
 	else {
 	  n = gHyp_data_getStr ( pSrcData, 
@@ -1131,7 +1131,7 @@ sData *gHyp_type_assign ( sInstance *pAI,
 			       VALUE_SIZE,
 			       sss,
 			       TRUE ) ;
-	gHyp_data_setStr2 ( pValue, value, n ) ;
+	gHyp_data_setStr_n ( pValue, value, n ) ;
       }
       else {
 	
