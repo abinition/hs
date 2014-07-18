@@ -807,12 +807,12 @@ static int lHyp_sock_intHandler ( int signo )
 
   /* Longjmp out of here if a setjmp return point was set up */
   if ( giJmpOverride ) {
-    /*gHyp_util_debug( "Longjmp override" ) ;*/
+    gHyp_util_debug( "Longjmp override" ) ;
     longjmp ( gsJmpOverride, 1 ) ;
   }
 
   if ( giJmpEnabled && giJmpLevel >= 0 ) {
-    /*gHyp_util_debug("Longjump outa here to %p",gsJmpStack[giJmpLevel] );*/
+    gHyp_util_debug("Longjump outa here to %p",gsJmpStack[giJmpLevel] );
     longjmp ( gsJmpStack[giJmpLevel], COND_NORMAL ) ;
   }
 #endif

@@ -11,6 +11,9 @@
  * Modifications:
  *
  *	$Log: fileio.c,v $
+ *	Revision 1.51  2008-07-02 01:01:46  bergsma
+ *	Add \n after every end tag for xsdescribe
+ *	
  *	Revision 1.50  2008-05-30 01:21:43  bergsma
  *	puts() function overflows if too many quotes.
  *	
@@ -488,10 +491,19 @@ static int lHyp_fileio_describe2 ( sData *pParent,
 			      FALSE ) ;
 
     if ( isXML ) {
-      if ( pResult ) 
-        newOffset = sprintf ( newOutput,
+      if ( pResult ) {
+	/* Add \n if not the last value */
+	pData = gHyp_data_getParent ( pParent ) ;
+	if ( pData && gHyp_data_getLast ( pData ) == pParent )
+	  /* Last value - no newline */
+          newOffset = sprintf ( newOutput,
+			    "%s",
+			    pValue ) ;
+	else
+          newOffset = sprintf ( newOutput,
 			    "%s\n",
 			    pValue ) ;
+      }
       else 
         newOffset = sprintf ( newOutput,
 			    "%s",
@@ -1006,7 +1018,10 @@ static int lHyp_fileio_describe2 ( sData *pParent,
 	        outputLen = strlen ( pOutput ) ;
 	      }
 	    }
-	    tmpOutputLen = sprintf ( tmpOutput, "</%s>",  gHyp_data_getLabel (pParent)) ;
+	    if ( pResult ) 
+	      tmpOutputLen = sprintf ( tmpOutput, "</%s>\n",  gHyp_data_getLabel (pParent)) ;
+	    else
+	      tmpOutputLen = sprintf ( tmpOutput, "</%s>",  gHyp_data_getLabel (pParent)) ;
 	  }
 	  strcat ( newOutput, tmpOutput ) ;
 	  newOffset = strlen ( newOutput ) ;

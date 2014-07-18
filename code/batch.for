@@ -342,7 +342,7 @@
         character*(TYP__EQPTYPSZ)       eqpType
         character*(TYP__EQPIDSZ)        eqpId
         character*(TYP__CAPABILITYSZ)   eqpCapability  ! Added For Advanced Equipment Capability Checking
-        character*(TYP__CAPABILITYSZ)   capGrp  ! Added For Advanced Equipment         character*(TYP__EQPIDSZ)        logFile
+        character*(TYP__EQPIDSZ)        logFile
 
 
         character*(TYP__STAGEIDSZ)      lotStageId
@@ -368,9 +368,6 @@
         call fil_check ( fil_open ( FIL__FUTA, FIL__READONLY ) )
 	    call fil_check ( fil_open ( FIL__OPER, FIL__READONLY ) )
         call fil_check ( fil_open ( FIL__TEST, FIL__READONLY ) )
-
-	! For group capability
-        call fil_check ( fil_open ( FIL__CEXP, FIL__READONLY ) )
 
         ! Get list of all lots waiting and running at current location
         ! The waiting and running lots are not sorted in the list.

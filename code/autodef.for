@@ -2,11 +2,14 @@
 !
 !	Include file for AUTOSERVER.FOR, AUTOCLIENT.FOR, AUTOUTIL.FOR
 ! 
-	parameter	AUTOMAN_VERSION = 'AM V3.8-2'
+	parameter	AUTOMAN_VERSION = 'AM V3.8-3'
 !
 ! Modifications:
 !
 !	$Log: autodef.for,v $
+!	Revision 1.51  2008-07-07 15:22:59  bergsma
+!	Update to HS 3.8.3
+!	
 !	Revision 1.50  2008-02-12 23:03:04  bergsma
 !	V3.8.2 (compiled with VS C 2008)
 !	

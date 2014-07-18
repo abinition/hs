@@ -5,6 +5,9 @@ $ !
 $ ! Modifications:
 $ !
 $ ! 	$Log: config_template.com,v $
+$ ! 	Revision 1.13  2008-05-06 02:16:21  bergsma
+$ ! 	no message
+$ ! 	
 $ ! 	Revision 1.12  2005-12-08 03:04:41  bergsma
 $ ! 	Added AUTOMGR, AUTOSTAT, AUTODCOP
 $ ! 	

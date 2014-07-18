@@ -10,11 +10,14 @@
 #ifndef __HYPDEF_H_
 #define __HYPDEF_H_
 
-#define 	VERSION_HYPERSCRIPT	"3.8.2"
+#define 	VERSION_HYPERSCRIPT	"3.8.3"
 
 /* Modification history:
  *
  * $Log: hypdef.h,v $
+ * Revision 1.82  2008-07-07 15:22:59  bergsma
+ * Update to HS 3.8.3
+ *
  * Revision 1.81  2008-05-25 02:30:40  bergsma
  * OCIlobRead function problems
  *

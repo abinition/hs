@@ -10,6 +10,18 @@
 /* Modifications: 
  *
  * $Log: cgi.c,v $
+ * Revision 1.40  2008-06-29 00:55:57  bergsma
+ * When parsing XML, record warings in STATUS variable
+ *
+ * Revision 1.39  2008-06-28 19:39:46  bergsma
+ * Remove debug output line
+ *
+ * Revision 1.38  2008-06-28 19:33:56  bergsma
+ * Mix memory overflow bug with util_parseXML
+ *
+ * Revision 1.37  2008-06-28 00:54:55  bergsma
+ * Make XML buffer larger, don't use strlen in case there's no \0
+ *
  * Revision 1.36  2007-09-01 20:21:28  bergsma
  * Typo, meant ',' rather than ' '
  *
@@ -189,7 +201,7 @@ static char * cgi_error_strings[CGIERR_NUM_ERRS] = {
   "Content Length Discrepancy"
 };
 
-static char gzStream[MAX_INPUT_LENGTH*3+1] ;
+static char gzStream[MAX_INPUT_LENGTH*4+1] ;
 
 /********************** INTERNAL OBJECT STRUCTURES ***************************/
 
@@ -452,7 +464,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
     pTag = strchr ( pStream, '<' ) ;
     if ( !pTag ) {
       /*
-       gHyp_util_logWarning ( "No starting '<' found in XML stream, searching from [%.*s]",
+       gHyp_instance_warning ( pAI, STATUS_XML, "No starting '<' found in XML stream, searching from [%.*s]",
 			      SEG_SIZE,pStream );
        */
       return NULL ;
@@ -563,7 +575,8 @@ char *gHyp_cgi_parseXML ( char *pStream,
 		pStr = (char*) AllocMemory ( truncStrLen + 1 ) ;
 		assert ( pStr ) ;
 
-		strncpy ( pStr, pStr3, truncStrLen ) ;
+		/*strncpy ( pStr, pStr3, truncStrLen ) ;*/
+		memcpy ( pStr, pStr3, truncStrLen ) ;
 		pStr[truncStrLen] = '\0' ;
 
 		/* Parse the string */
@@ -612,7 +625,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
       tagged = TRUE ;
 
       if ( !*pStream ) {
-	gHyp_util_logWarning ( "Unexpected end of stream encountered at [%.*s]  ",
+	gHyp_instance_warning ( pAI, STATUS_XML, "Unexpected end of stream encountered at [%.*s]  ",
 				SEG_SIZE,MAX(pAnchor,pStream-SEG_SIZE));
         return NULL ;
       }
@@ -658,7 +671,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
 
 	  pStream += tagLen ;
           if ( *pStream != '>' ) {
-	    gHyp_util_logError ( "Invalid end tag, expecting '>' [%.*s]...[%.*s]",
+	    gHyp_instance_warning ( pAI, STATUS_XML, "Invalid end tag, expecting '>' [%.*s]...[%.*s]",
 				 SEG_SIZE,MAX(pAnchor,pStream-SEG_SIZE),SEG_SIZE,pStream);
 	    return NULL ;
 	  }
@@ -685,7 +698,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
 
       if ( !inComment && !inDefinition ) {
 	if ( !isSCR && !isTXT )
-	  gHyp_util_logError ( "Unexpected tag, skipping [%.*s]",
+	  gHyp_instance_warning ( pAI, STATUS_XML, "Unexpected tag, skipping [%.*s]",
 				 SEG_SIZE,MAX(pAnchor,pStream-SEG_SIZE));
 	pTag = NULL ;
       }
@@ -699,10 +712,10 @@ char *gHyp_cgi_parseXML ( char *pStream,
 
  	if ( !pTag ) {
 	  if ( inComment )
-	    gHyp_util_logError ( "No comment end found in XML stream [%.*s]",
+	    gHyp_instance_warning ( pAI, STATUS_XML, "No comment end found in XML stream [%.*s]",
 				      SEG_SIZE,pAnchor);
 	  else
-	    gHyp_util_logError ( "No end of defintion found XML stream [%.*s]",
+	    gHyp_instance_warning ( pAI, STATUS_XML,"No end of defintion found XML stream [%.*s]",
 				   SEG_SIZE,pAnchor);
 	  return NULL ;
 	}
@@ -802,7 +815,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
 	  }
 
 	  if ( isEndTag )
-	    gHyp_util_logError ( "Unexpected end tag, skipping [%.*s]...[%.*s]",
+	    gHyp_instance_warning ( pAI, STATUS_XML, "Unexpected end tag, skipping [%.*s]...[%.*s]",
 		  		  SEG_SIZE,MAX(pAnchor,pTag-SEG_SIZE),SEG_SIZE,pTag);
 
 	  pTag = NULL ;
@@ -875,7 +888,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
 
       /* Check for '>' */
       if ( *pStream != '>' ) {
-	gHyp_util_logError ( "Invalid end tag, expecting '>' [%.*s]...[%.*s]",
+	gHyp_instance_warning ( pAI, STATUS_XML, "Invalid end tag, expecting '>' [%.*s]...[%.*s]",
 				 SEG_SIZE,MAX(pAnchor,pStream-SEG_SIZE),SEG_SIZE,pStream);
         return NULL ;
       }
@@ -947,7 +960,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
 
         /* Check for '>' */
         if ( *pStream != '>' ) {
-	  gHyp_util_logError ( "Invalid end tag, expecting '>' [%.*s]...[%.*s]",
+	  gHyp_instance_warning ( pAI, STATUS_XML, "Invalid end tag, expecting '>' [%.*s]...[%.*s]",
 				 SEG_SIZE,MAX(pAnchor,pStream-SEG_SIZE),SEG_SIZE,pStream);
           return NULL ;
 	}
@@ -957,7 +970,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
       }
 
       /* Ending tag does not match. */
-      gHyp_util_logWarning ( "Unexpected end tag </%s>, expecting </%s> [%.*s]...[%.*s]",
+      gHyp_instance_warning ( pAI, STATUS_XML,"Unexpected end tag </%s>, expecting </%s> [%.*s]...[%.*s]",
 			      tag,pExpectedEndTag,
 			      SEG_SIZE,MAX(pAnchor,pStream-SEG_SIZE),SEG_SIZE,pStream) ;
 
@@ -1022,7 +1035,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
       if ( !pParentTag ) {
 
 	/* We're at the top.  Reject the tag and continue the parse */
-	gHyp_util_logError ( "Discarding end tag </%s>. Continuing...[%.*s]",
+	gHyp_instance_warning ( pAI, STATUS_XML,"Discarding end tag </%s>. Continuing...[%.*s]",
 				tag,
 				SEG_SIZE,pStream) ;
 	/* Ending tag */
@@ -1030,7 +1043,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
 
 	/* Check for '>' */
 	if ( *pStream != '>' ) {
-	  gHyp_util_logError ( "Invalid end tag [%.*s]...[%.*s]",
+	  gHyp_instance_warning ( pAI, STATUS_XML, "Invalid end tag [%.*s]...[%.*s]",
 				 SEG_SIZE,MAX(pAnchor,pStream-SEG_SIZE),SEG_SIZE,pStream);
           return NULL ;
 	}
@@ -1123,7 +1136,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
 		strcmp ( gHyp_data_getLabel(pGrandParentTag), tag ) == 0 ) {
 
 	    if ( strcmp ( tag2, pExpectedEndTag ) == 0 ) {
-	      gHyp_util_logError("Ending tag </%s> is reversed with </%s>",
+	      gHyp_instance_warning ( pAI, STATUS_XML,"Ending tag </%s> is reversed with </%s>",
 				  pExpectedEndTag,tag) ;
 	      /* Switch tags, and exit at the location of the next tag. */
 	      pTag = pStr = pTag2 + tag2Len - tagLen ;
@@ -1155,7 +1168,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
 	  }
 	}
 	if ( !found ) {
-	  gHyp_util_logWarning( "Inserting tag <%s> after <%s>",
+	  gHyp_instance_warning ( pAI, STATUS_XML,"Inserting tag <%s> after <%s>",
 				tag,gHyp_data_getLabel(pParentTag) ) ;
 	  pData = gHyp_data_new ( tag ) ;
 	  gHyp_data_moveValues ( pData, pParentTag ) ;
@@ -1178,7 +1191,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
 	  if ( strstr ( childLess, tag2_lc ) ) {
 
 	    // Move the children of the tag we are ending up to the grandparent.
-	    gHyp_util_logWarning ( "Assuming childless tag <%s />",pExpectedEndTag);
+	    gHyp_instance_warning ( pAI, STATUS_XML,"Assuming childless tag <%s />",pExpectedEndTag);
 	    pChildTag = NULL ; 
 	    ss2 = -1 ; 
 	    context2 = -1 ;
@@ -1195,7 +1208,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
 	      gHyp_data_detach ( pChildTag ) ;
 	      
 	      /*
-	      gHyp_util_logWarning ( 
+	      gHyp_instance_warning ( pAI, STATUS_XML, 
 		     "Appending element <%s> from <%s> to <%s> [%.*s]...[%.*s]",
 		      gHyp_data_getLabel(pChildTag),
 		      gHyp_data_getLabel(pParentTag),
@@ -1322,7 +1335,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
         /* Pull out attributes value */
         attrLen = gHyp_util_getToken_okDash ( pStream ) ;
         if ( attrLen <= 0 ) {
-          gHyp_util_logWarning ( "Invalid attribute name [%.*s]...[%.*s]",
+          gHyp_instance_warning ( pAI, STATUS_XML, "Invalid attribute name [%.*s]...[%.*s]",
 				 SEG_SIZE,MAX(pAnchor,pStream-SEG_SIZE),SEG_SIZE,pStream);
 
 	  /* Span non-whitespace to find the end of the invalid value */
@@ -1332,7 +1345,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
       
         /* Found an attribute */
 	if ( attrLen > VALUE_SIZE ) {
-          gHyp_util_logWarning ( "Attribute name greater than %d characters, it has been truncated [%.*s]...[%.*s]",
+          gHyp_instance_warning ( pAI, STATUS_XML,"Attribute name greater than %d characters, it has been truncated [%.*s]...[%.*s]",
 				 VALUE_SIZE, SEG_SIZE,MAX(pAnchor,pStream-SEG_SIZE),SEG_SIZE,pStream);
 
 	}
@@ -1355,7 +1368,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
         /* The "=" sign should be next */
         if ( *pStream != '=' ) {
 
-	  gHyp_util_logWarning ( "No ending '\"' on prev attr or new attr '%s' has no '=' [%.*s]...[%.*s]",
+	  gHyp_instance_warning ( pAI, STATUS_XML, "No ending '\"' on prev attr or new attr '%s' has no '=' [%.*s]...[%.*s]",
 				 attr, SEG_SIZE,MAX(pAnchor,pStream-SEG_SIZE),SEG_SIZE,pStream);
 
 	  /* Create the attribute space */
@@ -1382,7 +1395,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
 
 	  if ( *pStream != '"' && *pStream != '\'' ) {
 
-	    gHyp_util_logWarning ( "No starting \" on attribute [%.*s]...[%.*s]",
+	    gHyp_instance_warning ( pAI, STATUS_XML, "No starting \" on attribute [%.*s]...[%.*s]",
 				   SEG_SIZE,MAX(pAnchor,pStream-SEG_SIZE),SEG_SIZE,pStream);
 
 	    /* Span non-whitespace (and ">") to find the end of the attribute value */
@@ -1399,7 +1412,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
 	    quote = *pStream ;
 
 	    if ( quote == '\'' )
-	      gHyp_util_logWarning ( "Attribute using single quote \'[%.*s]...[%.*s]",
+	      gHyp_instance_warning ( pAI, STATUS_XML, "Attribute using single quote \'[%.*s]...[%.*s]",
 				   SEG_SIZE,MAX(pAnchor,pStream-SEG_SIZE),SEG_SIZE,pStream);
 	    
 	    /* Found starting quote, extract attribute value */
@@ -1419,7 +1432,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
 	      
 	      /* If no ending quote, quit, returning pointer to start */
 	      if ( !pStr ) {
-		gHyp_util_logWarning ( "No ending quote [%.*s]...[%.*s]",
+		gHyp_instance_warning ( pAI, STATUS_XML,"No ending quote [%.*s]...[%.*s]",
 				       SEG_SIZE,MAX(pAnchor,pStream-SEG_SIZE),SEG_SIZE,pStream);
 
 		/* Span across non-whitespace */
@@ -1445,7 +1458,6 @@ char *gHyp_cgi_parseXML ( char *pStream,
 
 	    }
 	  }
-	  
 	  /*gHyp_util_debug("Got value %.*s",strLen, pStream );*/
 
 	  /* Extract string - maximum of MAX_INPUT_LENGTH characters. */
@@ -1629,9 +1641,6 @@ void gHyp_cgi_xml ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     int
       argCount = gHyp_parse_argCount ( pParse ) ;
 
-    sLOGICAL
-      status ;
-
     /* Assume success */	
     gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
 
@@ -1639,7 +1648,6 @@ void gHyp_cgi_xml ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 	"Invalid arguments. Usage: xml ( string )" ) ;
 
     pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
-    status = TRUE ;
 
     /* Parse the xml */
     gHyp_cgi_xmlData ( pData, pAI, pFrame, NULL) ;

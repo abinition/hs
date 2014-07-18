@@ -10,6 +10,12 @@
  * Modifications:
  *
  *	$Log: util.c,v $
+ *	Revision 1.60  2008-06-28 19:33:56  bergsma
+ *	Mix memory overflow bug with util_parseXML
+ *	
+ *	Revision 1.59  2008-06-28 00:54:55  bergsma
+ *	Make XML buffer larger, don't use strlen in case there's no \0
+ *	
  *	Revision 1.58  2008-06-07 02:49:50  bergsma
  *	Added gHyp_util_breakTokenForMsg
  *	
@@ -1728,6 +1734,7 @@ int gHyp_util_parseXML ( char *pStr )
   
   char 
     *pStart,
+    *pEnd,
     *pAnchor ;
 
   int
@@ -1738,7 +1745,8 @@ int gHyp_util_parseXML ( char *pStr )
     u ;
 
   pStart = pAnchor = pStr ;
-  for ( ;*pStr; pStr++ ) {
+  pEnd = pStart + strlen ( pStr ) ;
+  while ( pStr < pEnd ) {
     
     if ( *pStr == '&' ) {
       
@@ -1801,8 +1809,15 @@ int gHyp_util_parseXML ( char *pStr )
     }
     else
       *pAnchor++ = *pStr ;
+
+    pStr++ ;
+
   }
+
+  /* Null terminate the result */
   *pAnchor = '\0' ;
+
+  /* Return the new length */
   return ( pAnchor - pStart ) ;
 }
 
@@ -2862,6 +2877,7 @@ char *gHyp_util_readStream (  char *pStream,
    * MAX_INPUT_LENGTH, then we don't need to read more data in yet.
    */
 
+  /* Get the current length of the stream */
   *pStreamLen = (pEndOfStream - pStream) ;
 
   if ( pStream < pEndOfStream &&
@@ -2871,20 +2887,30 @@ char *gHyp_util_readStream (  char *pStream,
   if ( pStream > pAnchor ) {
 
     /* Shift the remaining stream back to the anchor position */
-    memmove ( pAnchor, pStream, strlen ( pStream ) ) ;
+    memmove ( pAnchor, pStream, *pStreamLen ) ;
+
+    /*(old way)memmove ( pAnchor, pStream, strlen ( pStream ) ) ;*/
 
     /* Calculate new end of stream, where we will append data. */
-    pEndOfStream = pAnchor + (pEndOfStream - pStream) ;
+    pEndOfStream = pAnchor + *pStreamLen ;
+
+    /*(old way)pEndOfStream = pAnchor + (pEndOfStream - pStream) ;*/
+
     *ppEndOfStream = pEndOfStream ;
     pStream = pAnchor ;
+
+    /*gHyp_util_debug("[[%.*s]]",*pStreamLen, pStream);*/
+
+	/*(old way) - redundant calculation. 
     *pStreamLen = (pEndOfStream - pStream) ;
+    */
   }
 
   /* We now read data until the FILE or sData source is exhausted or
    * until the pEndOfStream value exceeds MAX_INPUT_LENGTH*2
    */
 
-  while ( pEndOfStream && pEndOfStream < (pAnchor+MAX_INPUT_LENGTH*2) ) {
+  while ( pEndOfStream && (pEndOfStream < (pAnchor+(MAX_INPUT_LENGTH*2))) ) {
 
     if ( pStreamData ) {
    
@@ -2940,6 +2966,8 @@ char *gHyp_util_readStream (  char *pStream,
       *pStreamLen = (pEndOfStream - pStream) ;
     }
   }
+  /*gHyp_util_debug("{{%.*s}}",*pStreamLen, pStream);*/
+
   return pStream ;
 }
 

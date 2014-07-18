@@ -10,6 +10,9 @@
  * Modifications:
  *
  *   $Log: function.c,v $
+ *   Revision 1.53  2008-07-01 23:48:54  bergsma
+ *   When doing 'toexternal', make room for VALUE_SIZE*4
+ *
  *   Revision 1.52  2008-02-12 23:10:29  bergsma
  *   vt2html numCols and numRows are variables now,.
  *
@@ -1663,7 +1666,7 @@ void gHyp_function_toexternal(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     char
       specialChars[VALUE_SIZE+1],
       strVal[VALUE_SIZE+1],
-      strVal2[VALUE_SIZE+1],
+      strVal2[VALUE_SIZE*4+1],
       *pStr ;
     
     sLOGICAL
@@ -1713,7 +1716,7 @@ void gHyp_function_toexternal(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 			     isVector ) ;
         pStr = strVal ;
         pValue2 = gHyp_data_new ( NULL ) ;
-        n = gHyp_util_unparseString ( strVal2, pStr, n, VALUE_SIZE, FALSE, FALSE, FALSE,specialChars ) ;
+        n = gHyp_util_unparseString ( strVal2, pStr, n, VALUE_SIZE*4, FALSE, FALSE, FALSE,specialChars ) ;
         gHyp_data_setStr_n ( pValue2, strVal2, n ) ;
       }
 

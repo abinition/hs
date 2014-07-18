@@ -14,6 +14,9 @@
  * Modified:
  *
  * $Log: sql.c,v $
+ * Revision 1.60  2008-07-01 23:48:54  bergsma
+ * When doing 'toexternal', make room for VALUE_SIZE*4
+ *
  * Revision 1.59  2008-06-13 04:22:00  bergsma
  * Make CLOB _data_
  *
@@ -2552,7 +2555,7 @@ void gHyp_sql_toexternal(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     
     char
       strVal[VALUE_SIZE+1],
-      strVal2[VALUE_SIZE+1],
+      strVal2[VALUE_SIZE*4+1],
       *pStr ;
     
     sLOGICAL
@@ -2602,7 +2605,7 @@ void gHyp_sql_toexternal(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
         pStr = strVal ;
         pValue2 = gHyp_data_new ( NULL ) ;
 	if ( doTrim ) n = gHyp_util_trim ( strVal ) ;
-        n = gHyp_util_unparseString ( strVal2, pStr, n, VALUE_SIZE, FALSE, FALSE, TRUE,"" ) ;
+        n = gHyp_util_unparseString ( strVal2, pStr, n, VALUE_SIZE*4, FALSE, FALSE, TRUE,"" ) ;
         gHyp_data_setStr_n ( pValue2, strVal2, n ) ;
 	if ( n > 0 ) isEmpty = FALSE ;
       }
