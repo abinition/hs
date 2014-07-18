@@ -11,6 +11,26 @@
  * Modifications:
  *
  * $Log: secs.c,v $
+ * Revision 1.5  2007-07-09 05:39:00  bergsma
+ * TLOGV3
+ *
+ * Revision 1.21  2007-05-08 01:27:12  bergsma
+ * Used deleteFd rather than updateFd when id is reassigned to another
+ * instance.
+ *
+ * Revision 1.20  2007-04-07 17:52:06  bergsma
+ * When a device id has already been assigned to another port, report
+ * the warning and using updateFd instead of deleteFd. (deleteFd removes
+ * all device ids assigned to the port).
+ *
+ * Revision 1.19  2007-02-24 01:54:52  bergsma
+ * Added secs_*_raw functions.
+ *
+ * Revision 1.18  2006-09-25 05:05:31  bergsma
+ * When assigned a device id to a port which was already assigned to
+ * another instance, the previous device assignement must be deleted in
+ * addition to the new assignment made.
+ *
  * Revision 1.17  2006/01/19 20:33:33  bergsma
  * no message
  *
@@ -1027,15 +1047,17 @@ void gHyp_secs_assign ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 			      secsFd ) ;
     }
 
-    /* Check to see if the device is already assigned */
-    
-    pAIassigned = gHyp_concept_getInstForDeviceId ( pConcept, id ) ;
-    if ( pAIassigned )
-      gHyp_util_logWarning ( "Device Id %d was already assigned to port %d by instance %s",
-			      id, 
-			      gHyp_instance_getDeviceFd ( pAIassigned, id ),
-			      gHyp_instance_getTargetId( pAIassigned ) ) ;
-    
+    /* Check to see if the port is already assigned */
+    pAIassigned = gHyp_concept_getInstForDeviceId ( pConcept, (sWORD) id ) ;
+
+    if ( pAIassigned ) {
+      gHyp_util_logWarning ( "Device id %d was previously assigned to port %d by instance %s, deleting old assignment",
+			      (sWORD) id,
+			      gHyp_instance_getDeviceFd ( pAIassigned, (sWORD) id ),
+			      gHyp_instance_getTargetId ( pAIassigned ) ) ;
+      gHyp_instance_deleteFd ( pAIassigned, gHyp_instance_getDeviceFd ( pAIassigned, (sWORD) id ) ) ;
+    }
+        
     if ( status ) {
  
       pSecs2 = gHyp_secs2_new ( ) ;
@@ -1252,7 +1274,8 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
 				sParse		*pParse,
 				sCode		*pCode,
 				sBYTE		mode,
-				int		argCount )
+				int		argCount,
+				sLOGICAL	isRaw )
 {
   /* Description:
    *
@@ -1428,7 +1451,10 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
     gpsTempData = pSecsIIdata ; 
 
     /* Initialize the secs structures. */
-    gHyp_secs2_unParseSecs ( pSecs2, pSecsIIdata, pAI, stream, function ) ;
+    if ( isRaw ) 
+      gHyp_secs2_unParseSecsRaw ( pSecs2, pSecsIIdata ) ;
+    else
+      gHyp_secs2_unParseSecs ( pSecs2, pSecsIIdata, pAI, stream, function ) ;
 
     /* Send message. */
     if ( pSecs1 ) {
@@ -1621,7 +1647,7 @@ void gHyp_secs_event ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     	gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
      "Invalid arguments. Usage: secs_event ( id, stream, function, data )");
 
-    lHyp_secs_QE ( pAI, pFrame, pStack, pParse, pCode, MESSAGE_EVENT, argCount ) ;
+    lHyp_secs_QE ( pAI, pFrame, pStack, pParse, pCode, MESSAGE_EVENT, argCount, FALSE ) ;
   
     /* Result is in status variable */
     gHyp_instance_pushSTATUS ( pAI, pStack ) ;
@@ -1667,7 +1693,66 @@ void gHyp_secs_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
      "Invalid arguments. Usage: secs_query ( id, stream, function, data )");
 
-    lHyp_secs_QE ( pAI, pFrame, pStack, pParse, pCode, MESSAGE_QUERY, argCount ) ;
+    lHyp_secs_QE ( pAI, pFrame, pStack, pParse, pCode, MESSAGE_QUERY, argCount, FALSE ) ;
+  
+    /* Result from query is in STATUS variable. */
+    gHyp_instance_pushSTATUS ( pAI, pStack ) ;
+  }
+  return ;
+}
+
+
+void gHyp_secs_event_raw ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+  
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+    
+  else {
+ 
+    sStack 	*pStack = gHyp_frame_stack ( pFrame ) ;
+    int	   	argCount = gHyp_parse_argCount ( pParse ) ;
+		
+    /* Assume success */	
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount < 3 || argCount > 4 )
+    	gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+     "Invalid arguments. Usage: secs_event_raw ( id, stream, function, data )");
+
+    lHyp_secs_QE ( pAI, pFrame, pStack, pParse, pCode, MESSAGE_EVENT, argCount, TRUE ) ;
+  
+    /* Result is in status variable */
+    gHyp_instance_pushSTATUS ( pAI, pStack ) ;
+  }
+  return ;
+}
+
+void gHyp_secs_query_raw ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+  
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+    
+  else {
+ 
+    sStack 	*pStack = gHyp_frame_stack ( pFrame ) ;
+    int	   	argCount = gHyp_parse_argCount ( pParse ) ;
+    
+    /* Assume success */	
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount < 3 || argCount > 4 )
+      gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+     "Invalid arguments. Usage: secs_query_raw ( id, stream, function, data )");
+
+    lHyp_secs_QE ( pAI, pFrame, pStack, pParse, pCode, MESSAGE_QUERY, argCount, TRUE ) ;
   
     /* Result from query is in STATUS variable. */
     gHyp_instance_pushSTATUS ( pAI, pStack ) ;

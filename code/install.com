@@ -5,6 +5,9 @@ $!
 $! Modifications:
 $! 
 $!    $Log: install.com,v $
+$!    Revision 1.3  2005-03-14 17:02:53  bergsma
+$!    EXPUTIL No longer a valid patch
+$!
 $!    Revision 1.2  2002/11/12 20:13:42  bergsma
 $!    Added AEQ: patch
 $!
@@ -159,12 +162,12 @@ $ if ( patch .eq. 0 ) then patchErrors = patchErrors + 1
 $ if arg .eqs. "AEQSSP" then goto WRAPUP
 $
 $EXPUTIL:
-$ fileName = "EXPUTIL"
-$ fileDir= "EQP_CONST"
-$ filetype = "FOR"
-$ gosub PATCH
-$ if ( patch .eq. 0 ) then patchErrors = patchErrors + 1
-$ if arg .eqs. "EXPUTIL" then goto WRAPUP
+$! fileName = "EXPUTIL"
+$! fileDir= "EQP_CONST"
+$! filetype = "FOR"
+$! gosub PATCH
+$! if ( patch .eq. 0 ) then patchErrors = patchErrors + 1
+$! if arg .eqs. "EXPUTIL" then goto WRAPUP
 $
 $ goto WRAPUP
 $

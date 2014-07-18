@@ -3,9 +3,6 @@
 # Modifications:
 #
 #	$Log: makefile,v $
-#	Revision 1.8  2006/02/16 16:55:51  myockey
-#	Changes to HP-UX compile options
-#	
 #	Revision 1.7  2004/06/13 14:15:22  bergsma
 #	Comments about AS_SSL, AS_JNI, AS_DLL
 #	
@@ -69,30 +66,27 @@ PROC_FLAGS = sqlcheck=full define=AS_UNIX define=AS_HS
 #LIBS = -L$(ORACLE_HOME)/lib -lclntsh 
 
 # HP-UX
-###CC = c89
-###LIBS = 
-###CFLAGS = -Ac -g -w -I.
-#CC = gcc
-#CFLAGS = -g -O -Wall -I. -I/usr/include -I/usr/local/include
-#CDEFS = -DAS_HPUX
-#LIBS = -L/usr/lib -lm
-
+#CC = c89
+#CFLAGS = -Ac -g -w -I.
+#CDEFS = -DAS_HPUX 
+#LIBS = 
 
 # DEC UNIX
-#CC = gcc
-#CFLAGS =  -g -O -Wall -I.
-#CDEFS = 
+CC = cc
+CFLAGS =  -g3 -O -Wall -I.
+CDEFS = -DAS_SQL -DAS_MYSQL -DAS_TRUE64
+LIBS  = -lm -L/usr/lib/mysql -lmysqlclient 
 #LIBS  = -L $(CELLworks)/FASTech/SDT/lib -lCw
 #LIBS = -L$(ORACLE_HOME)/lib -lclntsh 
 
 # LINUX
-CC = gcc 
+##CC = gcc 
 #CC = g++
 #CC = insure 
-CFLAGS = -g -O -Wall -I. -I/usr/include
-CDEFS =   -DAS_SQL -DAS_MYSQL -DAS_MEMTRACK -DAS_SSL
+##CFLAGS = -g -O -Wall -I. -I/usr/include
+##CDEFS =   -DAS_SQL -DAS_MYSQL -DAS_MEMTRACK -DAS_SSL
 ##CPPFLAGS=-I/usr/kerberos/include LDFLAGS=-L/usr/kerberos/lib
-LIBS = -lc -L/usr/lib/mysql -lmysqlclient -lz -lm -lssl -lcrypto
+##LIBS = -lc -L/usr/lib/mysql -lmysqlclient -lz -lm -lssl -lcrypto
 #LIBS = -L/usr/lib -L$(ORACLE_HOME)/lib -lclntsh 
 #LIBS = -lefence
 

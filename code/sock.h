@@ -3,6 +3,20 @@
  * Modifications:
  *
  * $Log: sock.h,v $
+ * Revision 1.5  2007-07-09 05:39:00  bergsma
+ * TLOGV3
+ *
+ * Revision 1.17  2006-11-13 02:11:34  bergsma
+ * Added functions ssl_setState and ssl_getState
+ *
+ * Revision 1.16  2006/10/02 06:22:32  bergsma
+ * For egain to work properly with SSL, the data that's already been encypted
+ * needs to be saved in a special buffer, pEagainPartial, so that it may be
+ * sent again without having to go through the SSL engine.
+ *
+ * Revision 1.15  2006/10/01 16:26:43  bergsma
+ * Support for EAGAIN processing.
+ *
  * Revision 1.14  2006/08/09 00:51:22  bergsma
  * Undo last change to createNetwork
  *
@@ -48,6 +62,10 @@
  *
  */
 extern sLOGICAL	gHyp_sock_init () ;
+extern sLOGICAL	gHyp_sock_isEagain () ;
+extern void	gHyp_sock_doEagain () ;
+extern sBYTE* gHyp_sock_eagainBuf() ;
+extern int gHyp_sock_eagainBufLen() ;
 extern void	gHyp_sock_usleep ( unsigned int ) ;
 extern void gHyp_sock_cancelIO ( SOCKET ) ;
 extern HANDLE	gHyp_sock_fifo ( char*, sLOGICAL, sLOGICAL, sLOGICAL, sLOGICAL ) ;
@@ -67,6 +85,8 @@ extern void *gHyp_sock_getSession ( void *ctx ) ;
 extern void gHyp_sock_enableSessions ( void *ctx ) ;
 extern sSSL* gHyp_sock_copySSL ( sSSL *pSSL ) ;
 extern sSSL* gHyp_sock_createSSL ( void *ctx, sLOGICAL isClient ) ;
+extern sData *gHyp_sock_getSSLstate(  sSSL *pSSL  ) ;
+extern sLOGICAL gHyp_sock_setSSLstate ( sSSL *pSSL, sData *pSSLdata ) ;
 #endif
 extern int gHyp_sock_readJNI ( SOCKET s, 
 			char *pMsgOff,

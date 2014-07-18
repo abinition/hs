@@ -11,6 +11,16 @@
  * Modifications:
  *
  *	$Log: promis.c,v $
+ *	Revision 1.5  2007-07-09 05:39:00  bergsma
+ *	TLOGV3
+ *	
+ *	Revision 1.28  2007-06-07 17:31:20  bergsma
+ *	Close and reopen TEST file before we use it, because we were assuming it
+ *	was already open, and this may not always be the case.
+ *	
+ *	Revision 1.27  2006-10-12 23:09:09  bergsma
+ *	Fix problems with STATE_SLEEP state.
+ *	
  *	Revision 1.26  2006/04/04 14:59:03  bergsma
  *	PROMIS prompts sometimes have nulls in them, they must be removed,
  *	otherwise the prompt becomes truncated.
@@ -916,6 +926,10 @@ static int lHyp_promis_tresData ( sInstance *pAI,
   n = gHyp_data_getStr ( pTRES_TESTOPNO, value, VALUE_SIZE, -1, TRUE ) ;
   pValue = value ;
   pTEST = NULL ;
+
+  /* Close it and reopen it */
+  lHyp_promis_closeFile ( pAI, pFrame, "TEST" ) ;
+  lHyp_promis_openFile ( pAI, pFrame, "TEST" ) ;
   if ( lHyp_promis_getrec (pAI,pFrame,"test.opno",CMP_EQ,pValue,n) )
     pTEST = gHyp_promis_parseRecord ( pAI, pFrame, "test", pTEST ) ;
 
@@ -1885,8 +1899,7 @@ sLOGICAL gHyp_promis_hs (	sDescr*		token_d,
 	/* Check to see if we are going back for more input */
         if ( gpAI == gpAImain &&
 	     gHyp_concept_returnToStdIn ( gpsConcept ) &&
-	     (gHyp_instance_getState ( gpAImain ) != STATE_QUERY &&
-	      gHyp_instance_getState ( gpAImain ) != STATE_SLEEP) ) {
+	     gHyp_instance_getState ( gpAImain ) != STATE_QUERY ) {
       
           /* HyperScript finished running */
           giJmpLevel = -1 ;	/* Disallow longjmp */

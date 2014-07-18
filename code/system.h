@@ -3,6 +3,15 @@
  * Modifications:
  *
  * $Log: system.h,v $
+ * Revision 1.5  2007-07-09 05:39:00  bergsma
+ * TLOGV3
+ *
+ * Revision 1.5  2007-03-15 01:08:27  bergsma
+ * Added getclock function
+ *
+ * Revision 1.4  2006-10-01 16:25:26  bergsma
+ * Added support for asctime() function and the means to parse it (in dateparse.c)
+ *
  * Revision 1.3  2005/10/25 16:39:37  bergsma
  * Added usleep() function
  *
@@ -12,6 +21,7 @@
  */
 extern void    	gHyp_system_date ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_system_datetime ( sInstance*, sCode*, sLOGICAL ) ;
+extern void    	gHyp_system_asctime ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_system_exec ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_system_system ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_system_random ( sInstance*, sCode*, sLOGICAL ) ;
@@ -20,6 +30,7 @@ extern void    	gHyp_system_sleep ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_system_usleep ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_system_time ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_system_timestamp ( sInstance*, sCode*, sLOGICAL ) ;
+extern void    	gHyp_system_getclock ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_system_parsedate ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_system_parse ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_system_xparse ( sInstance*, sCode*, sLOGICAL ) ;

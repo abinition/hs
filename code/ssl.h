@@ -2,6 +2,12 @@
  * Modifications:
  *
  * $Log: ssl.h,v $
+ * Revision 1.5  2007-07-09 05:39:00  bergsma
+ * TLOGV3
+ *
+ * Revision 1.5  2006-11-13 02:11:34  bergsma
+ * Added functions ssl_setState and ssl_getState
+ *
  * Revision 1.4  2005/12/17 20:38:34  bergsma
  * Added ssl_enableSessions
  *
@@ -29,4 +35,7 @@ extern void gHyp_ssl_assign ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) ;
 extern void gHyp_ssl_delete ( sInstance *, sCode *, sLOGICAL  ) ;
 extern void gHyp_ssl_setSession ( sInstance *, sCode *, sLOGICAL  ) ;
 extern void gHyp_ssl_getSession ( sInstance *, sCode *, sLOGICAL  ) ;
+extern void gHyp_ssl_getState ( sInstance *, sCode *, sLOGICAL  ) ;
+extern void gHyp_ssl_setState ( sInstance *, sCode *, sLOGICAL  ) ;
 extern void gHyp_ssl_enableSessions ( sInstance *, sCode *, sLOGICAL  ) ;
+extern sData *gHyp_ssl_getData ( sData *pData, char *a, char *b, char *c ) ;

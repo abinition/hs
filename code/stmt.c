@@ -10,7 +10,13 @@
  * Modifications:
  *
  *	$Log: stmt.c,v $
- *	Revision 1.14  2006/08/22 20:18:07  bergsma
+ *	Revision 1.5  2007-07-09 05:39:00  bergsma
+ *	TLOGV3
+ *	
+ *	Revision 1.15  2007-06-16 17:56:17  bergsma
+ *	Placeholder for 'when'
+ *	
+ *	Revision 1.14  2006-08-22 20:18:07  bergsma
  *	When doing tag subscripting, any kind of "variable" is ok.
  *	
  *	Revision 1.13  2006/07/20 17:47:09  bergsma
@@ -1378,5 +1384,55 @@ void gHyp_stmt_continue ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
 
 
+  }
+}
+
+void gHyp_stmt_when ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: when ( condition ) stmt ;
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	TRUE or FALSE
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+
+  else {
+
+    sStack 	
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+    
+    int
+      argCount = gHyp_parse_argCount ( pParse ) ;
+
+    sData
+      *pData ;
+
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 1 ) gHyp_instance_error ( pAI,STATUS_ARGUMENT,
+	"Invalid arguments. Usage: when ( condition " ) ;
+    pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
+
+    gHyp_instance_warning ( pAI,STATUS_UNDEFINED,
+	"Keyword 'when' is reserved, currently not implemented. " ) ;
+
+    gHyp_instance_pushSTATUS ( pAI, pStack  ) ;
   }
 }

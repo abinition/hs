@@ -5,6 +5,9 @@ $!
 $! Modifications:
 $!
 $!	$Log: ccc.com,v $
+$!	Revision 1.4  2005-03-14 16:55:58  bergsma
+$!	Part of 3.5-0
+$!	
 $!	Revision 1.3  2004/12/06 20:46:33  bergsma
 $!	For newer versions of VMS, the TCP/IP stack is available in the
 $!	default system library.
@@ -57,7 +60,9 @@ $   ! Clear any predefined system include paths for 'cc'
 $   if f$trnlnm("DECC$SYSTEM_INCLUDE","LNM$PROCESS_TABLE") .nes. "" then -
     deass DECC$SYSTEM_INCLUDE
 $
-$   def sys sys$common:[decc$lib.reference.decc$rtldef]
+$   !!!Per Analog Philippines and Brooks recommended change.
+$   !!!def sys sys$common:[decc$lib.reference.decc$rtldef]
+$   def sys sys$common:[syslib]decc$rtldef.tlb
 $
 $   open/write opt hs.opt
 $     write opt "sys$library:decc$shr.exe/share"

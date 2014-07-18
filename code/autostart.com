@@ -2,7 +2,7 @@ $ ! AEQ_SSP:AUTOSTART.COM
 $ !
 $ ! Modifications:
 $ ! 	$Log: autostart.com,v $
-$ ! 	Revision 1.5  2002/11/22 16:06:27  bergsma
+$ ! 	Revision 1.5  2002-11-22 16:06:27  bergsma
 $ ! 	Restore back to V3.0.6.
 $ ! 	
 $ !

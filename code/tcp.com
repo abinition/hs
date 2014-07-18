@@ -4,6 +4,10 @@ $!
 $! Modifications:
 $!
 $!   $Log: tcp.com,v $
+$!   Revision 1.5  2005-01-10 18:55:46  bergsma
+$!   Detect whether default TCP stack is to be used for VMS or if a specific type
+$!   is installed.
+$!
 $!   Revision 1.3  2004/12/06 20:46:05  bergsma
 $!   For newer versions of VMS, the TCP/IP stack is available in the
 $!   default system library.

@@ -3,7 +3,7 @@
 ! Modifications:
 !
 ! $Log: autofil.for,v $
-! Revision 1.3  2005/04/22 19:23:50  bergsma
+! Revision 1.3  2005-04-22 19:23:50  bergsma
 ! When reading TLOG records, use only one slot in aeqssp_fildata, this prevents
 ! an overflow in the array.
 !

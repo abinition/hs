@@ -2,7 +2,10 @@
  * Modifications:
  *
  * $Log: secshead.h,v $
- * Revision 1.3  2004/04/29 02:04:40  bergsma
+ * Revision 1.5  2007-07-09 05:39:00  bergsma
+ * TLOGV3
+ *
+ * Revision 1.3  2004-04-29 02:04:40  bergsma
  * Device id is sWORD instead of int.
  *
  * Revision 1.2  2002/11/14 01:40:45  bergsma

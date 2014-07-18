@@ -11,6 +11,12 @@
  * Modifications:
  *
  *	$Log: dateparse.c,v $
+ *	Revision 1.5  2007-07-09 05:39:00  bergsma
+ *	TLOGV3
+ *	
+ *	Revision 1.7  2006-10-01 16:25:26  bergsma
+ *	Added support for asctime() function and the means to parse it (in dateparse.c)
+ *	
  *	Revision 1.6  2006/08/22 18:45:19  bergsma
  *	Resolve Win32 problem with qsort
  *	
@@ -1081,6 +1087,24 @@ time_t gHyp_dateparse_parse( char* str )
       got_zone = 1;
       tm.tm_year = tm_year;
     }
+  /* ANSI asctime: Sun Nov 6 08:49:37 1994  
+     wdy mth DD HH:MM   YY */
+  else if ( ( sscanf( cp, "%[a-zA-Z] %[a-zA-Z] %d %d:%d:%d %d",
+			str_wday, str_mon, &tm_mday, &tm_hour, &tm_min,
+			&tm_sec, &tm_year ) == 7 ) &&
+	    ( lHyp_dateparse_scanWday( str_wday, &tm_wday ) ) &&
+	    ( lHyp_dateparse_scanMon( str_mon, &tm_mon ) ) )
+    {
+      /*DP( "wdy mth DD HH:MM:SS zone YY" );*/
+      tm.tm_wday = tm_wday;
+      tm.tm_mon = tm_mon;
+      tm.tm_mday = tm_mday;
+      tm.tm_hour = tm_hour ;
+      tm.tm_min = tm_min;
+      tm.tm_sec = tm_sec ;
+      tm.tm_year = tm_year;
+    }
+
   /* mth DD HH:MM:SS ampm */
   else if ( ( ( sscanf( cp, "%[a-zA-Z] %d %d:%d:%d %[apmAPM]",
 			str_mon, &tm_mday, &tm_hour, &tm_min, &tm_sec,

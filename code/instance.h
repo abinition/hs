@@ -3,6 +3,19 @@
  * Modifications:
  *
  * $Log: instance.h,v $
+ * Revision 1.5  2007-07-09 05:39:00  bergsma
+ * TLOGV3
+ *
+ * Revision 1.13  2007-02-26 02:35:01  bergsma
+ * No longer user NULL_DEVICEID placeholder.  PORT and HTTP
+ * autoallocate device ids, HSMS and SECS I are pre-determined.
+ *
+ * Revision 1.12  2006-12-09 00:06:44  bergsma
+ * Move gpsAI and gpsAImain to global external status out of hs.c.
+ *
+ * Revision 1.11  2006/09/25 05:12:19  bergsma
+ * Problem 90% solved for renamed parent concept issues.
+ *
  * Revision 1.10  2006/01/19 20:28:01  bergsma
  * Added gHyp_instance_hasNullDeviceId, this allows different instances to
  * do listen socket assignments to the same socket.
@@ -83,7 +96,6 @@ extern void gHyp_instance_deleteFd ( sInstance *pAI, SOCKET fd ) ;
 extern SOCKET	gHyp_instance_getDeviceFd ( sInstance *, sWORD ) ;
 extern sWORD    gHyp_instance_getDeviceId ( sInstance *pAI, SOCKET fd ) ;
 extern sLOGICAL gHyp_instance_hasDeviceId ( sInstance *pAI, SOCKET fd ) ;
-extern sLOGICAL gHyp_instance_hasNullDeviceId ( sInstance *pAI, SOCKET fd ) ;
 extern sLOGICAL gHyp_instance_isRbitSet ( sInstance *, sWORD ) ;
 extern void	gHyp_instance_portEnable ( sInstance*, sWORD , sData* ) ;
 extern void	gHyp_instance_portDisable ( sInstance*, sWORD ) ;
@@ -128,3 +140,5 @@ extern sLOGICAL	gHyp_instance_handleCondition ( sInstance * pAI ) ;
 extern int	gHyp_instance_parse ( sInstance * ) ;
 extern int     	gHyp_instance_run ( sInstance * ) ;
 extern void     gHyp_instance_pushSTATUS ( sInstance *pAI, sStack *pStack ) ;
+extern void     gHyp_instance_setgpAI( sInstance *pAI ) ;
+extern void     gHyp_instance_setgpAImain ( sInstance *pAI ) ;

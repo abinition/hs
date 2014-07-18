@@ -2,7 +2,13 @@
  * Modifications:
  *
  * $Log: cgi.h,v $
- * Revision 1.11  2006/08/17 05:03:30  bergsma
+ * Revision 1.5  2007-07-09 05:39:00  bergsma
+ * TLOGV3
+ *
+ * Revision 1.12  2007-02-15 19:27:46  bergsma
+ * Fix for datatype attribute, truncstrlen adjusments (added mayReturnChildLess)
+ *
+ * Revision 1.11  2006-08-17 05:03:30  bergsma
  * Detect non-XML (HTML) and assume childless tags won't have /> endings
  *
  * Revision 1.10  2005/12/10 00:30:30  bergsma
@@ -61,4 +67,5 @@ extern char     *gHyp_cgi_parseXML (  char *pStream,
 				      FILE *pp,
 				      sInstance *pAI,
 				      sBYTE requestedType,
-				      sLOGICAL isPureXML ) ; 
+				      sLOGICAL isPureXML,
+				      sLOGICAL mayReturnChildLess) ; 

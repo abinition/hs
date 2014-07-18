@@ -10,6 +10,22 @@
 /* Modifications: 
  *
  * $Log: router.c,v $
+ * Revision 1.5  2007-07-09 05:39:00  bergsma
+ * TLOGV3
+ *
+ * Revision 1.32  2007-02-15 03:23:47  bergsma
+ * Initialize a variable pMethodObj to NULL
+ *
+ * Revision 1.31  2006-10-27 17:26:52  bergsma
+ * Change annoying logInfo SIGNAL message to DIAGNOSITICS debug.
+ *
+ * Revision 1.30  2006/10/12 14:41:42  bergsma
+ * For messaged intended for ourselves, pre-check to make sure
+ * the method is enabled before creating the instance to serve it.
+ *
+ * Revision 1.29  2006/09/25 05:05:56  bergsma
+ * Cosmetic
+ *
  * Revision 1.28  2006/08/22 18:46:27  bergsma
  * Return COND_NORMAL when the message is queued (is for us).
  *
@@ -223,7 +239,8 @@ int gHyp_router_message ( sConcept *pConcept,
    
   sData
     *pTargetData,
-    *pSenderData ;
+    *pSenderData,
+    *pMethodVariable ;
    
   sChannel
     *pTargetChannel,
@@ -286,6 +303,9 @@ int gHyp_router_message ( sConcept *pConcept,
 
   sInstance
     *pAI ;
+
+  sMethod
+    *pMethodObj=NULL ;
 
   isRouted = FALSE ;
   strcpy ( reason, "No reason supplied" );
@@ -859,7 +879,6 @@ int gHyp_router_message ( sConcept *pConcept,
 
   }
   
-  /* Process DISCONNECT or ABORT messages to router */
   if (	isLocalTarget ) {
 
     if ( isMsgToUs ) {
@@ -877,12 +896,29 @@ int gHyp_router_message ( sConcept *pConcept,
       /* Which instance */
       pAI = gHyp_concept_getNamedInstance ( pConcept, pTargetInstance ) ;
       if ( !pAI )  {
-        /* Instance was not found - create new one */
-	pAI = gHyp_concept_instantiate (  pConcept, 
-					  NULL, /* ok if 4th arg is FALSE */
-				          pTargetInstance,
-					  targetRoot2,
-				          FALSE, FALSE, TRUE ) ;
+        /* Instance was not found - create new one - but only if the
+	 * method is already enabled by the parent.
+	 */
+
+        pMethodVariable = gHyp_frame_findMethodVariable ( 
+	  gHyp_instance_frame ( gHyp_concept_getConceptInstance ( pConcept ) ),
+	  pMethod,
+	  pAI ) ;
+
+	if ( pMethodVariable )
+	  pMethodObj = (sMethod*) gHyp_data_getObject ( pMethodVariable ) ;
+
+	  /* The method must be enabled */
+	if ( pMethodVariable && pMethodObj && gHyp_method_isEnabled(pMethodObj) ) { 
+      
+  	  pAI = gHyp_concept_instantiate (  pConcept, 
+		    			    NULL, /* ok if 4th arg is FALSE */
+					    pTargetInstance,
+					    targetRoot2,
+					    FALSE,	/* Don't swap frames */ 
+					    FALSE,	/* Don't swap data */
+					    TRUE ) ;	/* Do reset */
+	}
       }
       if ( pAI ) {
 	if ( guDebugFlags & DEBUG_DIAGNOSTICS )
@@ -890,6 +926,12 @@ int gHyp_router_message ( sConcept *pConcept,
 			       "Found instance %s#%s",pTargetInstance,pTargetConcept) ;
 	gHyp_aimsg_initParse ( gHyp_instance_incomingMsg(pAI), (char*) pMsg ) ;
 	cond = COND_NORMAL ;
+      }
+      else {
+        sprintf ( reason, "Message '%s' was not enabled for %s", pMethod, pTargetInstance  ) ;
+	cond = COND_ERROR ;
+	msgDisplayed = TRUE ;
+	isRouted = FALSE ;
       }
     }
   }
@@ -1120,7 +1162,9 @@ int gHyp_router_process ( sConcept *pConcept,
 	     strncmp ( pMsg, "|SIGHUP||", 9) == 0 ||
 	     strncmp ( pMsg, "|SIGINT||", 9) == 0 ||
 	     strncmp ( pMsg, "|SIGTERM||", 10) == 0 ) ) {
-	gHyp_util_logInfo("SIGNAL Message %s",pMsg);
+	if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+	  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
+			       "SIGNAL Message %s",pMsg) ;
 	stat = COND_NORMAL ;
       }
       else

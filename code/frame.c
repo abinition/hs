@@ -10,6 +10,33 @@
 /* Modifications: 
  *
  * $Log: frame.c,v $
+ * Revision 1.5  2007-07-09 05:39:00  bergsma
+ * TLOGV3
+ *
+ * Revision 1.20  2007-05-08 01:27:49  bergsma
+ * Make giMaxFrameDepth variable, tied to -x option.
+ *
+ * Revision 1.19  2007-04-12 16:48:03  bergsma
+ * Put in fix for spinning.
+ *
+ * Revision 1.18  2007-03-26 00:30:19  bergsma
+ * Only allow setting of returnToStdin to TRUE when the controlling instance
+ * is the parent instance.
+ *
+ * Revision 1.17  2007-03-15 01:06:38  bergsma
+ * Do not allow return to stdin for parent that doesn't have more input to get or
+ * is at a frame level greater than 0
+ *
+ * Revision 1.16  2007-02-15 03:21:57  bergsma
+ * SLEEP problems continue.  Must not return to stdin unless depth is
+ * below 2 (not 1)
+ *
+ * Revision 1.15  2006-10-12 23:09:09  bergsma
+ * Fix problems with STATE_SLEEP state.
+ *
+ * Revision 1.14  2006/09/25 05:12:19  bergsma
+ * Problem 90% solved for renamed parent concept issues.
+ *
  * Revision 1.13  2006/01/23 04:53:28  bergsma
  * Comment change
  *
@@ -98,7 +125,7 @@ struct level_t {
   sParse	*pParse ;		/* Parsing structure */
 } ;
 
-/* The frame has MAX_FRAME_DEPTH levels, the upper limit for nesting and
+/* The frame has giMaxFrameDepth levels, the upper limit for nesting and
  * recursion.
  */
 struct frame_t
@@ -106,7 +133,8 @@ struct frame_t
   int		depth ;				/* Current frame depth */
   sLOGICAL	globalScope ;			/* Global or Local default */
   sData		*pTempData ;			/* Used during frame_endStmt */
-  sLevel	*pLevel[MAX_FRAME_DEPTH] ; 	/* Levels of frame */
+  sLevel*	*pLevel ;		 	/* Levels of frame */
+  /*sLevel	*pLevel[MAX_FRAME_DEPTH] ; 	 * Levels of frame */
 } ;
 
 static char *gzaState[29] = {
@@ -253,15 +281,19 @@ sFrame *gHyp_frame_new ( )
   assert ( pFrame ) ;
 
   /* Create array space for the frame levels */
-  pFrame->pLevel[0] = (sLevel*) AllocMemory ( sizeof ( sLevel ) * MAX_FRAME_DEPTH ) ;
-  assert ( pFrame->pLevel[0] ) ;
+  /*pFrame->pLevel[0] = (sLevel*) AllocMemory ( sizeof ( sLevel ) * MAX_FRAME_DEPTH ) ;*/
+  pFrame->pLevel = (sLevel**) AllocMemory ( sizeof ( sLevel* ) * giMaxFrameDepth ) ;
+  /*pStack->data = (sData **) AllocMemory ( sizeof ( sData* ) * giMaxStackDepth ) ;*/
+  assert ( pFrame->pLevel ) ;
 
   /* Set the array pointers to the frame level space just allocated */
-  for ( i=1; i<MAX_FRAME_DEPTH; i++ )
-    pFrame->pLevel[i] = pFrame->pLevel[0] + i ;
-  
+  for ( i=0;i<giMaxFrameDepth; i++ ) {
+    pFrame->pLevel[i] = (sLevel*) AllocMemory ( sizeof ( sLevel ) ) ;
+    /*pFrame->pLevel[i] = pFrame->pLevel[0] + i ;*/
+  }
+
   /* For each frame level, create the internal objects */
-  for ( i=0; i<MAX_FRAME_DEPTH; i++ ) {
+  for ( i=0; i<giMaxFrameDepth; i++ ) {
     pLevel = pFrame->pLevel[i] ;
     pLevel->pParse = gHyp_parse_new ()  ;
     pLevel->pStack = gHyp_stack_new () ;
@@ -303,7 +335,7 @@ void gHyp_frame_delete ( sFrame * pFrame )
     *pLevel ;
 
   /* First remove any local data */
-  for ( i=0; i<MAX_FRAME_DEPTH; i++ ) {
+  for ( i=0; i<giMaxFrameDepth; i++ ) {
 
     /* For next level */
     pLevel = pFrame->pLevel[i] ;
@@ -317,7 +349,7 @@ void gHyp_frame_delete ( sFrame * pFrame )
   }
   
   /* Next remove the parse and stack objects from all the frame levels */
-  for ( i=0; i<MAX_FRAME_DEPTH; i++ ) {
+  for ( i=0; i<giMaxFrameDepth; i++ ) {
 
     /* For next level */
     pLevel = pFrame->pLevel[i] ;
@@ -327,6 +359,10 @@ void gHyp_frame_delete ( sFrame * pFrame )
 
     /* Delete the stack data */
     gHyp_stack_delete ( pLevel->pStack ) ;
+
+    /* Delete the frame */
+    ReleaseMemory ( pFrame->pLevel[i] ) ;
+ 
   }
  
   /* Delete any temp data */
@@ -335,7 +371,8 @@ void gHyp_frame_delete ( sFrame * pFrame )
   }
 
   /* Deallocate the frame levels space */
-  ReleaseMemory ( pFrame->pLevel[0] ) ;
+  /*ReleaseMemory ( pFrame->pLevel[0] ) ;*/
+  ReleaseMemory ( pFrame->pLevel ) ;
   
   /* Deallocate the frame space */
   ReleaseMemory ( pFrame ) ;
@@ -351,25 +388,33 @@ void gHyp_frame_swapRootMethodData ( sFrame *pFrameNew, sFrame *pFrameMain )
 
   sData
     *pMethodDataMain,
-    *pMethodDataNew ;
+    *pMethodDataNew,
+    *pMethodVariableMain,
+    *pMethodVariableNew ;
 
-  /* pFrameNew was switched with pFrameMain.
-   *
-   * We need to give back pFrameMain the root _main_ method data,
-   * so we swap it back.
+  /* 
+   * We need to give pFrameNew the root _main_ method data from pFrameMain.
+   * The pMethodVariable points to a root variable called _main_ which is
+   * shared by the two frames - they both were created in the mode as parents.
    *
    */
   pLevelNew = pFrameNew->pLevel[0] ;
   pMethodDataNew = pLevelNew->pMethodData ;
+  pMethodVariableNew = pLevelNew->pMethodVariable ;
 
   pLevelMain = pFrameMain->pLevel[0] ;
   pMethodDataMain = pLevelMain->pMethodData ;
+  pMethodVariableMain = pLevelMain->pMethodVariable ;
 
   pLevelNew->pMethodData = pMethodDataMain ;
+  pLevelNew->pMethodVariable = pMethodVariableMain ;
   pLevelMain->pMethodData = pMethodDataNew ;
+  pLevelMain->pMethodVariable = pMethodVariableNew ;
 
   /* Now pLevelMain has the correct method data.  Make sure we
    * swap the pHyp pointer as well.
+   * Actually, just take it, cause the hyp area is not deleted
+   * by the instance - it is deleted when pMethodVariable is deleted.
    */ 
   pLevelMain->pHyp = pLevelNew->pHyp ;
   
@@ -427,7 +472,7 @@ int gHyp_frame_depth ( sFrame * pFrame )
    *
    * Return value:
    *
-   *	Depth: 0 through MAX_FRAME_DEPTH
+   *	Depth: 0 through giMaxFrameDepth
    *
    */
   return pFrame->depth ;
@@ -1896,6 +1941,7 @@ static void lHyp_frame_return ( sFrame *pFrame,
 
   if ( wasCompletedStmtHandler ) {
 
+    /* Get the status of the handler - did it return 1 or 0? */
     status = gHyp_data_getBool ( pSTATUS, 0, TRUE ) ;
   }
   else if ( wasCompletedMessageCall ) {
@@ -1916,14 +1962,23 @@ static void lHyp_frame_return ( sFrame *pFrame,
   /* Return */
   if ( pFrame->depth == 0 ) {
 
-    /* Return from incoming message or handler that was called from an idle state */
+    /* Return from incoming message or handler that was called from a
+     * the lowest level of an idle state 
+     */
+
+    /*gHyp_util_debug("LOW LEVEL RETURN");*/
     if ( guDebugFlags & DEBUG_FRAME )
       gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
 			   "frame: IDLE (longjmp to %d from frame %d)",
 			   giJmpLevel, pFrame->depth );
     
-    if ( !status ) 
-      gHyp_concept_setReturnToStdIn ( gHyp_instance_getConcept(pAI),TRUE ) ;
+    if ( !status ) {
+      /* The handler returned false.  We will fall out of an idle, sleep, query
+       * state.
+       */
+      if ( pAI == pAImain && !gHyp_instance_isEND ( pAI ) )
+        gHyp_concept_setReturnToStdIn ( gHyp_instance_getConcept(pAI),TRUE ) ;
+    }
 
     if ( pAI == pAImain && 
          gHyp_concept_returnToStdIn ( gHyp_instance_getConcept ( pAI )) ) 
@@ -1936,7 +1991,7 @@ static void lHyp_frame_return ( sFrame *pFrame,
     /* Return from an internal method call or from a handler that was invoked while we
      * were executing tokens (gHyp_parse_expression).
      * In this cases, we want to continue to EXECUTE.
-     .*/
+     */
     if ( guDebugFlags & DEBUG_FRAME )
       gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
 			   "frame: EXECUTE (longjmp to %d from frame %d)",
@@ -1948,12 +2003,13 @@ static void lHyp_frame_return ( sFrame *pFrame,
     /* giJmpLevel = 1
      *
      * Returning from a handler that was invoked while we were either parsing new input
-     * or returning back to a query or idle state.
+     * or returning back to a query or idle or sleep state.
      */
     if ( pLevel->state == STATE_IDLE ) {
       if ( status ) {
 	if ( pAI == pAImain &&
 	  gHyp_concept_returnToStdIn(gHyp_instance_getConcept(pAI)) ) {
+
 	  gHyp_instance_setState ( pAI, STATE_PARSE ) ;
 	  if ( guDebugFlags & DEBUG_FRAME )
 	    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
@@ -1962,6 +2018,7 @@ static void lHyp_frame_return ( sFrame *pFrame,
 	}
 	else {
 	  gHyp_instance_setState ( pAI, STATE_IDLE ) ;
+
 	  if ( guDebugFlags & DEBUG_FRAME )
 	    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
 			       "frame: IDLE (longjmp to %d from frame %d)",
@@ -1970,7 +2027,11 @@ static void lHyp_frame_return ( sFrame *pFrame,
       }
       else {
 	gHyp_util_logInfo ( "...aborting idle state, status = %s",gHyp_data_print(pSTATUS)) ;
-	gHyp_concept_setReturnToStdIn ( gHyp_instance_getConcept(pAI),TRUE ) ;
+
+	if ( pAI == pAImain && !gHyp_instance_isEND ( pAI ) )
+	  gHyp_concept_setReturnToStdIn ( gHyp_instance_getConcept(pAI),TRUE ) ;
+
+
 	gHyp_instance_setState ( pAI, STATE_PARSE ) ;
 	gHyp_instance_pushSTATUS ( pAI, pLevel->pStack ) ;
 	if ( guDebugFlags & DEBUG_FRAME )
@@ -1980,10 +2041,13 @@ static void lHyp_frame_return ( sFrame *pFrame,
       }
     }
     else if ( pLevel->state == STATE_SLEEP ) {
+
       if ( status ) {
+
 	if ( pAI == pAImain && 
 	  gHyp_concept_returnToStdIn(gHyp_instance_getConcept(pAI) ) ) {
-	  /*gHyp_util_debug("WAKEUP3");*/
+
+	  /*gHyp_util_debug("Parent instance can return to stdin after sleep(), setting PARSE");*/
 	  gHyp_instance_setState ( pAI, STATE_PARSE ) ;
 	  if ( guDebugFlags & DEBUG_FRAME )
 	    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
@@ -1991,7 +2055,8 @@ static void lHyp_frame_return ( sFrame *pFrame,
 			       giJmpLevel, pFrame->depth );
 	}
 	else if ( gHyp_instance_getWakeTime ( pAI ) == 0 ) {
-	  /*gHyp_util_debug("WAKEUP2");*/
+
+	  /*gHyp_util_debug("Finished Sleeping");*/
 	  gHyp_instance_setState ( pAI, STATE_PARSE ) ;
 	  if ( guDebugFlags & DEBUG_FRAME )
 	    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
@@ -1999,8 +2064,10 @@ static void lHyp_frame_return ( sFrame *pFrame,
 			       giJmpLevel, pFrame->depth );
 	}
 	else {
+
 	  /* Continue sleeping */
 	  /*gHyp_util_debug("CONTINUE SLEEPING");*/
+
 	  gHyp_instance_setState ( pAI, STATE_SLEEP ) ;
 	  if ( guDebugFlags & DEBUG_FRAME )
 	    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
@@ -2011,7 +2078,9 @@ static void lHyp_frame_return ( sFrame *pFrame,
       }
       else {
 	gHyp_util_logInfo ( "...aborting sleep state, status = %s",gHyp_data_print(pSTATUS)) ;
-	gHyp_concept_setReturnToStdIn ( gHyp_instance_getConcept(pAI),TRUE ) ;
+
+	if ( pAI == pAImain && !gHyp_instance_isEND ( pAI ) )
+	  gHyp_concept_setReturnToStdIn ( gHyp_instance_getConcept(pAI),TRUE ) ;
 	gHyp_instance_setState ( pAI, STATE_PARSE ) ;
 	gHyp_instance_pushSTATUS ( pAI, pLevel->pStack ) ;
 	if ( guDebugFlags & DEBUG_FRAME )
@@ -2246,7 +2315,7 @@ static void lHyp_frame_push ( 	sFrame *pFrame,
   sLevel 	*pLowerLevel = pFrame->pLevel[pFrame->depth] ,
 		*pLevel ;
 		
-  if ( pFrame->depth >= (MAX_FRAME_DEPTH-1) ) {
+  if ( pFrame->depth >= (giMaxFrameDepth-1) ) {
     gHyp_util_logError ( "Frame overflow at depth %d",
 			 pFrame->depth ) ;
     longjmp ( gsJmpStack[0], COND_FATAL ) ;
@@ -2527,8 +2596,8 @@ void gHyp_frame_endStmt ( sFrame *pFrame, sInstance *pAI )
 			    pData ) ;
 	
 	
-	  if ( guDebugFlags & DEBUG_DIAGNOSTICS )
-	    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
+	  if ( guDebugFlags & DEBUG_PARSE )
+	    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PARSE,
 				 "diag : Ended method definition of %s",
 				 gHyp_data_print(pData) ) ;
 

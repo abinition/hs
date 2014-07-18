@@ -2,6 +2,12 @@
  * Modifications:
  *
  * $Log: http.h,v $
+ * Revision 1.5  2007-07-09 05:39:00  bergsma
+ * TLOGV3
+ *
+ * Revision 1.5  2006-10-11 16:16:00  bergsma
+ * Make EAGAIN an optional feature that must be turned on.
+ *
  * Revision 1.4  2005/03/16 23:53:21  bergsma
  * V 3.5.1 - fixes for use with DECC compiler.
  *
@@ -48,6 +54,7 @@ extern void	gHyp_http_assign ( sInstance *, sCode *, sLOGICAL  ) ;
 extern void	gHyp_http_enable ( sInstance *, sCode *, sLOGICAL  ) ;
 extern void	gHyp_http_disable ( sInstance *, sCode *, sLOGICAL  ) ;
 extern void	gHyp_http_binary ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) ;
+extern void	gHyp_http_eagain ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) ;
 extern void	gHyp_http_event ( sInstance *, sCode *, sLOGICAL  ) ;
 extern void	gHyp_http_query ( sInstance *, sCode *, sLOGICAL  ) ;
 extern void	gHyp_http_reply ( sInstance *, sCode *, sLOGICAL  ) ;

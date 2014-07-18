@@ -3,6 +3,21 @@
  * Modifications:
  *
  * $Log: auto.h,v $
+ * Revision 1.5  2007-07-09 05:39:00  bergsma
+ * TLOGV3
+ *
+ * Revision 1.22  2007-05-08 01:27:49  bergsma
+ * Make giMaxFrameDepth variable, tied to -x option.
+ *
+ * Revision 1.21  2007-04-19 00:51:33  bergsma
+ * Don't need to hide sql_* functions behind AS_SQL
+ *
+ * Revision 1.20  2007-03-15 01:46:36  bergsma
+ * New functions.
+ *
+ * Revision 1.19  2006-12-09 00:06:43  bergsma
+ * Move gpsAI and gpsAImain to global external status out of hs.c.
+ *
  * Revision 1.18  2005/10/15 21:36:00  bergsma
  * Mods for PPC
  *
@@ -85,6 +100,7 @@
 #include <ctype.h>	/* is* macros and functions */
 #include <string.h>	/* string functions */
 #include <setjmp.h>	/* setjmp and longjmp functions */
+#include <math.h>	/* math functions */
 
 #ifdef AS_MEMTRACK
 #include "memtrack.h"
@@ -162,6 +178,9 @@ extern time_t		gsCurTime ; 	/* Current time, updated regularily. */
 extern sLOGICAL 	guTimeStamp ;	/* Integer timeStamp. */
 extern unsigned short	guRunFlags ; 	/* General flags */
 
+extern sInstance *gpAI ;	/* HyperScript instance */
+extern sInstance *gpAImain  ;	/* Main HyperScript instance */
+
 /* Environment variables */
 extern char    		gzAUTOROUTER[OBJECT_SIZE+1];	/* AUTOROUTER root name "router" */
 extern char    		gzAUTOFIFO[MAX_PATH_SIZE+1];	/* AUTOFIFO path */
@@ -183,6 +202,7 @@ extern sData*		gpsTempData ;	/* If defined, its a leak */
 extern sData*		gpsTempData2 ;	/* If defined, its a leak */
 extern int		giMaxExprSize ; /* Heap allocation for expression and stack */
 extern int		giMaxStackDepth ; /* Heap allocation for stack */
+extern int		giMaxFrameDepth ; /* Heap allocation for frame */
 extern sConcept*       	gpsConcept ;    /* Pointer to concept */
 extern unsigned short	guDebugFlags ; 	/* Debug flags */
 extern unsigned		guErrorCount ;	/* HyperScript error count */
@@ -257,9 +277,8 @@ extern unsigned		guSIGMBX ;     	/* Set when SIGMBX */
 #include "stmt.h"
 #include "system.h"
 
-#ifdef AS_SQL
+/* Don't make sql functions an option anymore */
 #include "sql.h"
-#endif
 
 #ifdef AS_MAPI
 #include "mapi.h"

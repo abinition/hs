@@ -10,6 +10,52 @@
  * Modifications:
  *
  *   $Log: load.c,v $
+ *   Revision 1.6  2007-07-09 05:39:00  bergsma
+ *   TLOGV3
+ *
+ *   Revision 1.46  2007-06-16 17:57:43  bergsma
+ *   palceholder for 'when'
+ *
+ *   Revision 1.45  2007-04-19 00:51:08  bergsma
+ *   Don't need to hide sql_* functions behind AS_SQL
+ *
+ *   Revision 1.44  2007-03-26 21:16:18  bergsma
+ *   Added parseurl function().
+ *
+ *   Revision 1.43  2007-03-21 02:21:31  bergsma
+ *   Added round() function.
+ *
+ *   Revision 1.42  2007-03-19 05:32:08  bergsma
+ *   New functions: min, max, pow, hypot, abs, acos, asin, atan,  ceil, cos,
+ *    floor, log10, logN, sin, sqrt, tan, exp printf, sprintf, fprintf
+ *
+ *   Revision 1.41  2007-03-15 01:46:36  bergsma
+ *   New functions.
+ *
+ *   Revision 1.40  2007-03-15 01:14:20  bergsma
+ *   New functions.
+ *
+ *   Revision 1.39  2007-02-24 01:54:21  bergsma
+ *   Added secs_*_raw functions.
+ *
+ *   Revision 1.38  2007-02-17 01:53:13  bergsma
+ *   Socket handoff does not work with TRUE64
+ *
+ *   Revision 1.37  2006-11-13 02:11:34  bergsma
+ *   Added functions ssl_setState and ssl_getState
+ *
+ *   Revision 1.36  2006/10/27 17:27:19  bergsma
+ *   Added port_sendmsg and port_recvmsg
+ *
+ *   Revision 1.35  2006/10/11 16:16:00  bergsma
+ *   Make EAGAIN an optional feature that must be turned on.
+ *
+ *   Revision 1.34  2006/10/01 16:25:26  bergsma
+ *   Added support for asctime() function and the means to parse it (in dateparse.c)
+ *
+ *   Revision 1.33  2006/08/28 21:04:40  bergsma
+ *   Placeholder for parseurl() function.
+ *
  *   Revision 1.32  2006/05/07 18:32:48  bergsma
  *   From strcpy to memcpy
  *
@@ -172,6 +218,7 @@ void gHyp_load_new ()
   lHyp_load_newKey ( "while", gHyp_stmt_while, TOKEN_KEYWORD, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "do", gHyp_stmt_do, TOKEN_KEYWORD, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "for", gHyp_stmt_for, TOKEN_KEYWORD, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "when", gHyp_stmt_when, TOKEN_KEYWORD, PRECEDENCE_UNARY ) ;
 
   /* FUNCTION EXPRESSIONS */
 
@@ -206,6 +253,7 @@ void gHyp_load_new ()
   /* Message functions */
   lHyp_load_newKey ( "query" ,  gHyp_route_query, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "event" ,  gHyp_route_event, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "reply" ,  gHyp_route_reply, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "requeue" ,  gHyp_route_requeue, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "enable" ,  gHyp_route_enable, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "disable" ,  gHyp_route_disable, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
@@ -253,9 +301,11 @@ void gHyp_load_new ()
   lHyp_load_newKey ( "srandom" ,  gHyp_system_srandom, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "random" ,  gHyp_system_random, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "datetime" ,  gHyp_system_datetime, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "asctime" ,  gHyp_system_asctime, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "time" ,  gHyp_system_time, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "date" ,  gHyp_system_date, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ; 
   lHyp_load_newKey ( "timestamp" ,  gHyp_system_timestamp, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "getclock" ,  gHyp_system_getclock, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "parsedate" ,  gHyp_system_parsedate, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "getenv" ,  gHyp_system_getenv, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "setenv" ,  gHyp_system_setenv, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
@@ -289,7 +339,7 @@ void gHyp_load_new ()
   lHyp_load_newKey ( "urlencode" ,  gHyp_function_urlEncode, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "urldecode" ,  gHyp_function_urlDecode, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "vt2html" ,  gHyp_function_vt2html, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
- /* lHyp_load_newKey ( "parseurl" ,  gHyp_function_parseurl, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;*/
+  lHyp_load_newKey ( "parseurl" ,  gHyp_function_parseurl, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
 
   /* String functions, some like 'C' */
   lHyp_load_newKey ( "strlen" ,  gHyp_function_strlen, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
@@ -322,6 +372,8 @@ void gHyp_load_new ()
   lHyp_load_newKey ( "echo" ,  gHyp_fileio_echo, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "load" ,  gHyp_fileio_load, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "load_binary" ,  gHyp_fileio_load_binary, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "checksum" ,  gHyp_fileio_checksum, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "round" ,  gHyp_function_round, TOKEN_TYPECAST, PRECEDENCE_UNARY ) ;
 
   /* XML Conversion */
   lHyp_load_newKey ( "xdescribe", gHyp_fileio_xdescribe, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
@@ -330,19 +382,18 @@ void gHyp_load_new ()
   lHyp_load_newKey ( "xml", gHyp_cgi_xml, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "xparse" , gHyp_system_xparse, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   
-#ifdef AS_SQL
+  /* SQL Interface */
+  lHyp_load_newKey ( "sql_toexternal", gHyp_sql_toexternal, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "sql_datetime", gHyp_sql_datetime, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "sql_query", gHyp_sql_query, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
 #ifndef AS_PROC
   /* SQL functions */
   lHyp_load_newKey ( "sql_open",  gHyp_sql_open, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
-  lHyp_load_newKey ( "sql_query", gHyp_sql_query, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "sql_close", gHyp_sql_close, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
-  lHyp_load_newKey ( "sql_toexternal", gHyp_sql_toexternal, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
 #else
   lHyp_load_newKey ( "sql_open",    gHyp_sql_connect, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
-  lHyp_load_newKey ( "sql_query",   gHyp_sql_query, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "sql_connect", gHyp_sql_connect, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "sql",         gHyp_sql_query, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
-#endif
 #endif
 
   /* SECS functions */
@@ -353,6 +404,8 @@ void gHyp_load_new ()
   lHyp_load_newKey ( "secs_enable" ,  gHyp_secs_enable, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "secs_query" ,  gHyp_secs_query, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "secs_event" ,  gHyp_secs_event, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "secs_query_raw" ,  gHyp_secs_query_raw, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "secs_event_raw" ,  gHyp_secs_event_raw, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "secs_disable" ,  gHyp_secs_disable, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "secs_close" ,  gHyp_secs_close, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "secs_mlb" ,  gHyp_secs_mlb, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
@@ -370,6 +423,12 @@ void gHyp_load_new ()
   lHyp_load_newKey ( "port_close" ,  gHyp_port_close, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "port_handle" ,  gHyp_port_handle, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "port_binary" ,  gHyp_port_binary, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "port_eagain" ,  gHyp_port_eagain, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+
+#if defined ( AS_UNIX ) && !defined (AS_TRUE64)
+  lHyp_load_newKey ( "port_recvmsg" ,  gHyp_port_recvmsg, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "port_sendmsg" ,  gHyp_port_sendmsg, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+#endif
 
   /* Tunneling functions */
   lHyp_load_newKey ( "tunnel", gHyp_route_tunnel, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
@@ -388,6 +447,7 @@ void gHyp_load_new ()
   lHyp_load_newKey ( "http_close" ,  gHyp_http_close, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "http_handle" ,  gHyp_http_handle, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "http_binary" ,  gHyp_http_binary, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "http_eagain" ,  gHyp_http_eagain, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
 
 #ifdef AS_SSL
   /* SSL functions */
@@ -402,12 +462,15 @@ void gHyp_load_new ()
   lHyp_load_newKey ( "ssl_getSession", gHyp_ssl_getSession, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "ssl_setSession", gHyp_ssl_setSession, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "ssl_enableSessions", gHyp_ssl_enableSessions, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "ssl_getState", gHyp_ssl_getState, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "ssl_setState", gHyp_ssl_setState, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
 #endif
 
 #ifdef AS_MAPI
   lHyp_load_newKey ( "mapi_register", gHyp_mapi_register, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "mapi_getPort", gHyp_mapi_getPort, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
 #endif
+
   /* Environment */
   lHyp_load_newKey ( "undef" ,  gHyp_env_undef, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "exists" ,  gHyp_env_exists, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
@@ -430,6 +493,7 @@ void gHyp_load_new ()
   lHyp_load_newKey ( "map" ,  gHyp_env_map, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "unmap" ,  gHyp_env_unmap, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "merge" ,  gHyp_env_merge, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "sjm" ,  gHyp_env_sjm, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "sort" ,  gHyp_env_sort, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "reverse" ,  gHyp_env_reverse, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "debug" ,  gHyp_env_debug, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
@@ -444,6 +508,27 @@ void gHyp_load_new ()
   lHyp_load_newKey ( "scopeof",  gHyp_type_scopeof, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "localhost" ,  gHyp_env_localhost, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "localaddr" ,  gHyp_env_localaddr, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "round" ,  gHyp_function_round, TOKEN_TYPECAST, PRECEDENCE_UNARY ) ;
+
+  /* Math functions */
+  lHyp_load_newKey ( "max" ,  gHyp_operator_max, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "min" ,  gHyp_operator_min, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "hypot", gHyp_operator_hypot, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "pow" ,  gHyp_operator_pow, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "abs" ,  gHyp_operator_abs, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "acos" ,  gHyp_operator_acos, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "asin" ,  gHyp_operator_asin, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "atan" ,  gHyp_operator_atan, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "ceil" ,  gHyp_operator_ceil, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "cos" ,  gHyp_operator_cos, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "floor" ,  gHyp_operator_floor, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "log10" ,  gHyp_operator_log10, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "logN" ,  gHyp_operator_logN, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "sin" ,  gHyp_operator_sin, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "sqrt" ,  gHyp_operator_sqrt, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "tan" ,  gHyp_operator_sqrt, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "exp" ,  gHyp_operator_exp, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+
 }
 
 void gHyp_load_delete()

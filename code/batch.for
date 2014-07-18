@@ -35,7 +35,7 @@
 ! Modifications:
 !
 !    $Log: batch.for,v $
-!    Revision 1.8  2005/01/12 23:13:50  bergsma
+!    Revision 1.8  2005-01-12 23:13:50  bergsma
 !    Redundant definition of "accept' variable.
 !
 !    Revision 1.7  2005/01/10 18:54:45  bergsma

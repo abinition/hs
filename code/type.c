@@ -11,6 +11,19 @@
  * Modifications:
  *
  *	$Log: type.c,v $
+ *	Revision 1.5  2007-07-09 05:39:00  bergsma
+ *	TLOGV3
+ *	
+ *	Revision 1.18  2007-06-24 17:49:02  bergsma
+ *	Return proper "typeof" for literals.
+ *	
+ *	Revision 1.17  2006-11-25 03:10:19  bergsma
+ *	Incease size of buffer for getStr to accomodate larger strings.
+ *	
+ *	Revision 1.16  2006/09/16 20:07:10  bergsma
+ *	When converting from ATTR, CHAR, UCHAR, or UNICODE to string,
+ *	look for line breaks \n.
+ *	
  *	Revision 1.15  2006/07/17 16:42:52  bergsma
  *	The 'typeof' function must use an Lvalue, not Rdata.
  *	
@@ -144,6 +157,7 @@ sData *gHyp_type_assign ( sInstance *pAI,
     variable[VALUE_SIZE+1],
     *pStream,
     *pStreamEnd,
+    buffer[MAX_INPUT_LENGTH+1],
     value[VALUE_SIZE+1] ;
 
   sData
@@ -282,6 +296,10 @@ sData *gHyp_type_assign ( sInstance *pAI,
 					context,
 					isVectorSrc ) ;
 	    value[i++] = c ;
+	    /* So that conversion into strings break the string in nice sections,
+	     * detect \n in the stream and start a new string segment after each one.
+	     */
+	    if ( c == '\n' ) break ;
 	  }
 	  if ( context == -2 && sss != -1 ) {
 	    gHyp_data_delete( pResult ) ;
@@ -310,12 +328,12 @@ sData *gHyp_type_assign ( sInstance *pAI,
 					       &context,
 					       sss ))) {
 	  n = gHyp_data_getStr ( pValue,
-				 value,
-				 VALUE_SIZE,
+				 buffer,
+				 MAX_INPUT_LENGTH,
 				 context,
 				 isVectorSrc ) ;
 	  pValue2 = gHyp_data_new ( NULL ) ;
-	  gHyp_data_setStr_n ( pValue2, value, n ) ;
+	  gHyp_data_setStr_n ( pValue2, buffer, n ) ;
 	  gHyp_data_append ( pResult, pValue2 ) ;
 	}
 	if ( context== -2 && sss != -1 ) {
@@ -816,8 +834,8 @@ sData *gHyp_type_assign ( sInstance *pAI,
 	    do {
 	      i = 0 ;
 	      value[0] = '\0' ;
-	      copySize = MIN ( copySize, VALUE_SIZE ) ;
-	      while ( i < copySize &&
+	      /*copySize = MIN ( copySize, VALUE_SIZE ) ;*/
+	      while ( i < VALUE_SIZE &&
 		      (pValue = gHyp_data_nextValue( pSrcData,
 					      pValue,
 					      &context,
@@ -827,6 +845,8 @@ sData *gHyp_type_assign ( sInstance *pAI,
 					context,
 					isVectorSrc ) ;
 		value[i++] = c ;
+		/* Detect \n and start a new string segment */
+		if ( c == '\n' ) break ;
 	      }
 	      if ( context== -2 && sss != -1 ) {
 		if ( pResult  ) gHyp_data_delete ( pResult  ) ;	      
@@ -882,12 +902,12 @@ sData *gHyp_type_assign ( sInstance *pAI,
 		if ( dstDataType == TYPE_STRING ) {
 		  /* Convert element to string */
 		  n = gHyp_data_getStr ( pValue,
-					 value,
-					 VALUE_SIZE,
+					 buffer,
+					 MAX_INPUT_LENGTH,
 					 context,
 					 isVectorSrc ) ;
 		  pValue2 = gHyp_data_new ( NULL ) ;
-		  gHyp_data_setStr_n ( pValue2, value, n ) ;
+		  gHyp_data_setStr_n ( pValue2, buffer, n ) ;
 		}
 		/*
 		else if ( srcDataType == TYPE_STRING ) {
@@ -1127,11 +1147,11 @@ sData *gHyp_type_assign ( sInstance *pAI,
 	else if ( srcDataType == TYPE_STRING ) {
 
 	  n = gHyp_data_getStr ( pSrcData, 
-				 value, 
-				 VALUE_SIZE,
+				 buffer, 
+				 MAX_INPUT_LENGTH,
 				 sss,
 				 TRUE ) ;
-	  gHyp_data_setStr_n ( pValue, value, n ) ;
+	  gHyp_data_setStr_n ( pValue, buffer, n ) ;
 	}
 	else {
 	  n = gHyp_data_getStr ( pSrcData, 
@@ -1146,11 +1166,11 @@ sData *gHyp_type_assign ( sInstance *pAI,
 	
 	/* String result. Replace single value. */
 	n = gHyp_data_getStr ( pSrcData, 
-			       value, 
-			       VALUE_SIZE,
+			       buffer, 
+			       MAX_INPUT_LENGTH,
 			       sss,
 			       TRUE ) ;
-	gHyp_data_setStr_n ( pValue, value, n ) ;
+	gHyp_data_setStr_n ( pValue, buffer, n ) ;
       }
       else {
 	
@@ -2849,15 +2869,18 @@ void gHyp_type_typeof ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     
     sData
       *pData,
+      *pValue,
       *pResult ;
 
     sBYTE
+      tokenType,
       dataType ;
 
     char
       dataTypeString[10] ;
 
     int
+      ss,
       argCount = gHyp_parse_argCount ( pParse ) ;
     
     if ( argCount != 1 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
@@ -2865,8 +2888,25 @@ void gHyp_type_typeof ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
     /*pData = gHyp_stack_popRdata ( pStack, pAI ) ;*/
     pData = gHyp_stack_popLvalue ( pStack, pAI ) ;
- 
-    dataType = gHyp_data_getDataType ( pData ) ;
+
+    
+    /* Although we expect an lValue, if we get a LITERAL
+     * instead, then report the correct data type
+     */
+
+    ss = gHyp_data_getSubScript ( pData ) ;
+    tokenType = gHyp_data_tokenType ( pData ) ;
+
+    if ( ss >= 0 &&
+	 tokenType == TOKEN_REFERENCE &&
+	(pValue = gHyp_data_getValue ( pData, ss, TRUE )) != NULL && 
+       gHyp_data_getReference ( pData ) != pValue &&
+       gHyp_data_tokenType ( pValue ) != TOKEN_VARIABLE ) 
+       dataType = gHyp_data_getDataType ( pValue ) ;
+
+    else
+      dataType = gHyp_data_getDataType ( pData ) ;
+
 
     switch ( dataType ) {
 

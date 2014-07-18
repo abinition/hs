@@ -2,7 +2,13 @@
  * Modifications:
  *
  * $Log: secs2.h,v $
- * Revision 1.3  2004/04/29 02:21:18  bergsma
+ * Revision 1.5  2007-07-09 05:39:00  bergsma
+ * TLOGV3
+ *
+ * Revision 1.4  2007-02-24 01:54:08  bergsma
+ * Added secs_*_raw functions.
+ *
+ * Revision 1.3  2004-04-29 02:21:18  bergsma
  * Device id is sWORD, not int.
  *
  * Revision 1.2  2002/11/14 01:40:45  bergsma
@@ -23,6 +29,7 @@ extern int		gHyp_secs2_parseSecs(sSecs2*,sSecsHeader*,
 					     int,int,int,int);
 extern void		gHyp_secs2_unParseSecs( sSecs2*,sData*,
 						sInstance*,int,int) ;
+extern void		gHyp_secs2_unParseSecsRaw( sSecs2*,sData*) ;
 extern int		gHyp_secs2_stream ( sSecsHeader* ) ;
 extern int		gHyp_secs2_function ( sSecsHeader* ) ;
 extern sWORD		gHyp_secs2_deviceId ( sSecsHeader* ) ;

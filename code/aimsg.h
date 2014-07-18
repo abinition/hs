@@ -4,7 +4,10 @@
  * Modifications:
  *
  * $Log: aimsg.h,v $
- * Revision 1.5  2003/01/09 00:06:58  bergsma
+ * Revision 1.5  2007-07-09 05:39:00  bergsma
+ * TLOGV3
+ *
+ * Revision 1.5  2003-01-09 00:06:58  bergsma
  * V3.1.0
  * 1. Added gHyp_aimsg_setTV
  *

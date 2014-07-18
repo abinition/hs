@@ -16,6 +16,15 @@ $!
 $! Modifications:
 $!
 $!   $Log: compile_hs.com,v $
+$!   Revision 1.6  2006-12-09 00:06:44  bergsma
+$!   Move gpsAI and gpsAImain to global external status out of hs.c.
+$!
+$!   Revision 1.5  2005/04/03 17:36:19  bergsma
+$!   HS 3.54  (FIX OF FLOATING POINT OVERFLOW IN TLOGFEED).
+$!   1. Don't delete LISting files.
+$!   2. PackStart in aeqssp_autofil not being cleared - was causing an
+$!   unpack operation when not required.
+$!
 $!   Revision 1.4  2004/04/29 08:33:44  bergsma
 $!   Added HTTP support
 $!
@@ -88,6 +97,7 @@ $ ccc instance.c
 $ ccc label.c
 $ ccc load.c
 $ ccc method.c
+$ ccc memtrack.c
 $ ccc operand.c
 $ ccc operator.c
 $ ccc parse.c
@@ -138,13 +148,13 @@ frame.obj+-
 function.obj+-
 hash.obj+-
 hsms.obj+-
-hs.obj+-
 hyp.obj+-
 http.obj+-
 instance.obj+-
 label.obj+-
 load.obj+-
 method.obj+-
+memtrack.obj+-
 operand.obj+-
 operator.obj+-
 parse.obj+-
@@ -192,14 +202,15 @@ fileio.obj+-
 frame.obj+-
 function.obj+-
 hash.obj+-
-hsms.obj+-
 hs.obj+-
+hsms.obj+-
 hyp.obj+-
 http.obj+-
 instance.obj+-
 label.obj+-
 load.obj+-
 method.obj+-
+memtrack.obj+-
 operand.obj+-
 operator.obj+-
 parse.obj+-
@@ -236,7 +247,7 @@ $!
 $! Cleanup the directory
 $!
 $ purge/nolog *.*
-$ delete/nolog *.lis;*
+$ !!!delete/nolog *.lis;*
 $
 $ exit
 $!

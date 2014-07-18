@@ -62,7 +62,7 @@
 ! Modifications:
 !
 !   $Log: automan.for,v $
-!   Revision 1.5  2005/09/28 04:42:56  bergsma
+!   Revision 1.5  2005-09-28 04:42:56  bergsma
 !   OPCERT Functionality
 !
 !   Revision 1.4  2005/09/25 20:10:40  bergsma

@@ -10,7 +10,13 @@
  * Modifications:
  *
  * $Log: secs2.c,v $
- * Revision 1.11  2006/01/16 18:56:36  bergsma
+ * Revision 1.5  2007-07-09 05:39:00  bergsma
+ * TLOGV3
+ *
+ * Revision 1.12  2007-02-24 01:54:08  bergsma
+ * Added secs_*_raw functions.
+ *
+ * Revision 1.11  2006-01-16 18:56:36  bergsma
  * HS 3.6.6
  * 1. Save query timeout events.  Don't let queries repeat indefinitely.
  * 2. Rework DEBUG_DIAGNOSTIC debugging.  Less overhead.
@@ -1318,6 +1324,26 @@ void gHyp_secs2_unParseSecs ( sSecs2 *pSecs2,
 
   return ;
 }
+
+void gHyp_secs2_unParseSecsRaw ( sSecs2 *pSecs2, sData *pData )
+{
+  /* The pData object is taken as a raw SECS II stream. */
+
+  /* Reset the buffer */
+  gHyp_secs2_resetBuf ( pSecs2, SECS_OUTGOING ) ;
+
+  /* Parse the data and fill the secs II structure */
+  if ( pData ) {
+    /*gHyp_util_logInfo("Unparsing RAW SECS data %s",gHyp_data_print(pData));*/
+    gHyp_secs2_add2buf (  pSecs2, 
+			  gHyp_data_buffer ( pData, 0 ), 
+			  gHyp_data_bufferLen ( pData, 0 ), 
+			  SECS_OUTGOING ) ;
+  }
+
+  return ;
+}
+
 
 sWORD gHyp_secs2_deviceId ( sSecsHeader *pSecsHeader )
 {

@@ -10,6 +10,26 @@
 /* Modifications:
  *
  * $Log: ssl.c,v $
+ * Revision 1.5  2007-07-09 05:39:00  bergsma
+ * TLOGV3
+ *
+ * Revision 1.15  2007-05-09 00:43:19  bergsma
+ * Problem with secs1_rawoutgoing - segmentation fault when pData str
+ * is longer than PORT_WRITE_SIZE
+ *
+ * Revision 1.14  2007-05-02 20:34:01  bergsma
+ * Fix parseurl function.  Improve various print/debug/log statements.
+ * Fix problem with chunked data transfers.
+ *
+ * Revision 1.13  2007-02-13 22:34:37  bergsma
+ * SSL Handoff working
+ *
+ * Revision 1.12  2006/11/25 03:37:39  bergsma
+ * SSL set and get state development.
+ *
+ * Revision 1.11  2006/11/13 02:11:34  bergsma
+ * Added functions ssl_setState and ssl_getState
+ *
  * Revision 1.10  2005/12/27 02:53:25  bergsma
  * Removed functions ssl_certfile and ssl_keyfile
  *
@@ -723,7 +743,7 @@ void gHyp_ssl_assign ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
         if ( !pPort ) {
           gHyp_instance_warning ( pAI,
                                   STATUS_PORT,
-                                  "No port '%d'.",
+                                  "No socket '%d'.",
                                   fd ) ;
         }
         else {
@@ -747,7 +767,7 @@ void gHyp_ssl_assign ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
         if ( !pHsms ) {
           gHyp_instance_warning ( pAI,
                                   STATUS_HSMS,
-                                  "No hsms port '%d'.",
+                                  "No hsms socket '%d'.",
                                   fd ) ;
         }
         else {
@@ -771,7 +791,7 @@ void gHyp_ssl_assign ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
         if ( !pSecs1 ) {
           gHyp_instance_warning ( pAI,
                                   STATUS_SECS1,
-                                  "No secs1 port '%d'.",
+                                  "No secs1 socket '%d'.",
                                   fd ) ;
         }
         else {
@@ -989,6 +1009,380 @@ void gHyp_ssl_enableSessions ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
     gHyp_instance_pushSTATUS ( pAI, pStack ) ;
   }
+}
+
+void gHyp_ssl_getState ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
+{
+  /* Description:
+   *
+   *    PARSE or EXECUTE the built-in function: ssl_getState ( )
+   *    Returns 1
+   *
+   * Arguments:
+   *
+   *    pAI                                                     [R]
+   *    - pointer to instance object
+   *
+   *    pCode                                                   [R]
+   *    - pointer to code object
+   *
+   * Return value:
+   *
+   *    none
+   *
+   */
+  sFrame        *pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse        *pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+
+  else {
+
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+
+    sData
+      *pResult=NULL,
+      *pData ;
+
+    sInstance
+      *pAIassigned;
+
+    int
+      argCount = gHyp_parse_argCount ( pParse ),
+      id ;
+
+    sSecs1
+      *pPort ;
+
+    SOCKET
+      portFd ;
+
+    sLOGICAL
+      status = TRUE ;
+
+    sSSL
+      *pSSL ;
+
+    /* Assume success */
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 1 )
+      gHyp_instance_error ( pAI, STATUS_ARGUMENT,
+        "Invalid args. Usage: ssl_getState ( deviceId )");
+
+
+    /* Get the device id */
+    pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
+    id = gHyp_data_getInt ( pData, gHyp_data_getSubScript ( pData ), TRUE ) ;
+
+    /* Check id */
+    if ( id < 0 || id > 65535 )
+      gHyp_instance_error ( pAI,STATUS_BOUNDS, "Device ID out of range" ) ;
+
+    /* Get the port structure */
+    pAIassigned = gHyp_concept_getInstForDeviceId ( gHyp_instance_getConcept ( pAI ), (sWORD) id ) ;
+
+    if ( !pAIassigned ) {
+      gHyp_instance_warning ( pAI,STATUS_PORT, 
+			    "Device id %d is not assigned",
+			    id ) ;
+      status = FALSE ;
+    }
+
+    if ( status ) {
+
+      portFd = gHyp_instance_getDeviceFd ( pAIassigned, (sWORD) id ) ;
+      if ( portFd == INVALID_SOCKET ) {
+	gHyp_instance_warning ( pAI,STATUS_PORT, 
+			    "Socket %d does not exist.",
+			    portFd ) ;
+	status = FALSE ;
+      }
+    }
+
+    if ( status ) {
+      pPort = (sSecs1*) gHyp_concept_getSocketObject ( gHyp_instance_getConcept(pAI), 
+							(SOCKET) portFd, 
+							DATA_OBJECT_NULL ) ;
+      if ( !pPort ) {
+	gHyp_instance_warning ( pAI,STATUS_PORT, 
+	  		    "Socket %d does not exist.",
+			    portFd ) ;
+	status = FALSE ;
+      }
+    }
+
+    if ( status ) {
+
+      pSSL = gHyp_secs1_getSSL ( pPort ) ;
+      if ( pSSL ) {
+        pResult = gHyp_sock_getSSLstate ( pSSL ) ;
+      }
+      else {
+	status = FALSE ;
+	gHyp_instance_warning ( pAI,STATUS_PORT, 
+	  		    "Socket %d does not have an SSL structure.",
+			    portFd ) ;
+      }
+    }
+
+    if ( status && pResult ) 
+	gHyp_stack_push ( pStack, pResult ) ;
+    else
+      	gHyp_instance_pushSTATUS ( pAI, pStack ) ;
+
+  }
+}
+
+void gHyp_ssl_setState ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
+{
+  /* Description:
+   *
+   *    PARSE or EXECUTE the built-in function: ssl_setState ( )
+   *    Returns 1
+   *
+   * Arguments:
+   *
+   *    pAI                                                     [R]
+   *    - pointer to instance object
+   *
+   *    pCode                                                   [R]
+   *    - pointer to code object
+   *
+   * Return value:
+   *
+   *    none
+   *
+   */
+  sFrame        *pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse        *pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+
+  else {
+
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+
+    sData
+      *pSSLdata,
+      *pData ;
+
+    sInstance
+      *pAIassigned;
+
+    int
+      argCount = gHyp_parse_argCount ( pParse ),
+      id,
+      id2;
+
+    sSecs1
+      *pPort,
+      *pPort2=NULL;
+
+    SOCKET
+      portFd,
+      portFd2=INVALID_SOCKET;
+
+    sLOGICAL
+      status = TRUE ;
+
+    sSSL
+      *pSSL,
+      *pSSL2 =NULL;
+
+    /* Assume success */
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 3 && argCount != 2 )
+      gHyp_instance_error ( pAI, STATUS_ARGUMENT,
+        "Invalid args. Usage: ssl_setState ( deviceId, sslState[, sourceDeviceId] )");
+
+    if ( argCount == 3 ) {
+
+
+      /* Get the source id SSL object */
+      pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
+      id2 = gHyp_data_getInt ( pData, gHyp_data_getSubScript ( pData ), TRUE ) ;
+
+      /* Check id */
+      if ( id2 < 0 || id2 > 65535 )
+	gHyp_instance_error ( pAI,STATUS_BOUNDS, "Source device ID out of range" ) ;
+
+      /* Get the port structure */
+      pAIassigned = gHyp_concept_getInstForDeviceId ( gHyp_instance_getConcept ( pAI ), (sWORD) id2 ) ;
+
+      if ( !pAIassigned ) {
+        gHyp_instance_warning ( pAI,STATUS_PORT, 
+	  		      "Source device id %d is not assigned",
+			      id2 ) ;
+        status = FALSE ;
+      }
+
+      if ( status ) {
+
+        portFd2 = gHyp_instance_getDeviceFd ( pAIassigned, (sWORD) id2 ) ;
+        if ( portFd2 == INVALID_SOCKET ) {
+  	  gHyp_instance_warning ( pAI,STATUS_PORT, 
+			    "Socket %d does not exist for source ID %d",
+			    portFd2, id2 ) ;
+	  status = FALSE ;
+	}
+      }
+
+      if ( status ) {
+        pPort2 = (sSecs1*) gHyp_concept_getSocketObject ( gHyp_instance_getConcept(pAI), 
+							  (SOCKET) portFd2, 
+							  DATA_OBJECT_NULL ) ;
+        if ( !pPort2 ) {
+	  gHyp_instance_warning ( pAI,STATUS_PORT, 
+	  		    "Socket %d does not exist for source ID %d",
+			    portFd2, id2 ) ;
+	  status = FALSE ;
+	}
+      }
+
+      if ( status ) {
+
+        pSSL2 = gHyp_secs1_getSSL ( pPort2 ) ;
+    
+      }
+      if ( !pSSL2 ) {
+	gHyp_instance_warning ( pAI,STATUS_PORT, 
+	  		    "SSL structure does not exist for source ID %d",
+			    id2 ) ;
+	status = FALSE ;
+      }
+    
+    }
+
+    if ( status ) {
+
+      /* Get the SSL object */
+      pSSLdata = gHyp_stack_popRdata ( pStack, pAI ) ;
+
+      /* Get the device id */
+      pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
+      id = gHyp_data_getInt ( pData, gHyp_data_getSubScript ( pData ), TRUE ) ;
+
+      /* Check id */
+      if ( id < 0 || id > 65535 )
+        gHyp_instance_error ( pAI,STATUS_BOUNDS, "Device ID out of range" ) ;
+
+      /* Get the port structure */
+      pAIassigned = gHyp_concept_getInstForDeviceId ( gHyp_instance_getConcept ( pAI ), (sWORD) id ) ;
+
+      if ( !pAIassigned ) {
+        gHyp_instance_warning ( pAI,STATUS_PORT, 
+			    "Destination device id %d is not assigned",
+			    id ) ;
+        status = FALSE ;
+      }
+    }
+
+    if ( status ) {
+
+      portFd = gHyp_instance_getDeviceFd ( pAIassigned, (sWORD) id ) ;
+      if ( portFd == INVALID_SOCKET ) {
+	gHyp_instance_warning ( pAI,STATUS_PORT, 
+			    "Socket %d does not exist for destination ID %d.",
+			    portFd, id ) ;
+	status = FALSE ;
+      }
+    }
+
+    if ( status ) {
+      pPort = (sSecs1*) gHyp_concept_getSocketObject ( gHyp_instance_getConcept(pAI), 
+							(SOCKET) portFd, 
+							DATA_OBJECT_NULL ) ;
+      if ( !pPort ) {
+	gHyp_instance_warning ( pAI,STATUS_PORT, 
+	  		    "Socket %d does not exist for destination ID %d.",
+			    portFd, id ) ;
+	status = FALSE ;
+      }
+    }
+
+    if ( status ) {
+
+      pSSL = gHyp_secs1_getSSL ( pPort ) ;
+
+      if ( !pSSL && !pSSL2 ) {
+	/* There must be a least one SSL structure */
+	gHyp_instance_warning ( pAI,STATUS_PORT, 
+	  		    "SSL structure does not exist for destination ID %d",
+			    id ) ;
+	status = FALSE ;
+      }
+
+    }
+    if ( status ) {
+      
+      if ( pSSL2 ) {
+
+	/*pSSL2 = gHyp_sock_copySSL ( pSSL ) ;*/
+
+	/* We want to take this new SSL structure */
+
+	if ( pSSL ) {
+	  /* Old one exists.  Get rid of it first */
+	  gHyp_sock_deleteSSL ( pSSL ) ;
+	}
+
+	/* Assign pSSL2 to pSSL */
+	gHyp_secs1_setSSL ( pPort, pSSL2 ) ;
+
+	/* Remove SSL entry from other port */
+	gHyp_secs1_setSSL ( pPort2, NULL ) ;
+
+	/* Switch */
+	pSSL = pSSL2 ;
+
+      }
+
+      /* Hack the SSL state. GRIM IT IS, BUT WHAT ELSE? . */
+      status = gHyp_sock_setSSLstate ( pSSL, pSSLdata ) ;
+    }
+
+    gHyp_instance_pushSTATUS ( pAI, pStack ) ;
+
+  }
+}
+
+sData *gHyp_ssl_getData ( sData *pData, char *a, char *b, char *c )
+{
+
+  sData 
+     *pChild ;
+
+  pChild = gHyp_data_getChildByName ( pData, a ) ;
+
+  if ( pChild ) {
+
+    if ( strlen ( b ) > 0 ) {
+
+      pChild = gHyp_data_getChildByName ( pChild, b ) ;
+
+      if ( pChild ) {
+
+	if ( strlen ( c ) > 0 ) {
+
+          pChild = gHyp_data_getChildByName ( pChild, c ) ;
+
+	}
+      }
+    }
+  }
+
+  /*gHyp_util_debug("SSL structure %s %s %s",a,b,c);*/
+
+  return pChild ;
+
 }
 
 #endif

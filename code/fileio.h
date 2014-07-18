@@ -3,6 +3,22 @@
  * Modifications:
  *
  * $Log: fileio.h,v $
+ * Revision 1.5  2007-07-09 05:39:00  bergsma
+ * TLOGV3
+ *
+ * Revision 1.12  2007-03-19 05:32:08  bergsma
+ * New functions: min, max, pow, hypot, abs, acos, asin, atan,  ceil, cos,
+ *  floor, log10, logN, sin, sqrt, tan, exp printf, sprintf, fprintf
+ *
+ * Revision 1.11  2007-03-15 01:46:36  bergsma
+ * New functions.
+ *
+ * Revision 1.10  2007-03-15 01:04:39  bergsma
+ * Added checksum function
+ *
+ * Revision 1.9  2006-09-16 19:41:10  bergsma
+ * Added gHyp_fileio_dataTypeStr
+ *
  * Revision 1.8  2005/12/10 00:30:30  bergsma
  * HS 3.6.5
  *
@@ -26,6 +42,10 @@
  *
  */
 extern sBYTE	gHyp_fileio_dataType ( char *dt ) ;
+extern char*	gHyp_fileio_dataTypeStr ( int ) ;
+extern void	gHyp_fileio_printf ( sInstance*, sCode*, sLOGICAL ) ;
+extern void	gHyp_fileio_sprintf ( sInstance*, sCode*, sLOGICAL ) ;
+extern void	gHyp_fileio_fprintf ( sInstance*, sCode*, sLOGICAL ) ;
 extern void	gHyp_fileio_describe ( sInstance*, sCode*, sLOGICAL ) ;
 extern void	gHyp_fileio_sdescribe ( sInstance*, sCode*, sLOGICAL ) ;
 extern void	gHyp_fileio_fdescribe ( sInstance*, sCode*, sLOGICAL ) ;
@@ -51,3 +71,9 @@ extern void    	gHyp_fileio_unlink ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_fileio_echo ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_fileio_load ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_fileio_load_binary ( sInstance*, sCode*, sLOGICAL ) ;
+extern void    	gHyp_fileio_checksum ( sInstance*, sCode*, sLOGICAL ) ;
+/*
+extern void    	gHyp_fileio_sprintf ( sInstance*, sCode*, sLOGICAL ) ;
+extern void    	gHyp_fileio_printf ( sInstance*, sCode*, sLOGICAL ) ;
+extern void    	gHyp_fileio_fprintf ( sInstance*, sCode*, sLOGICAL ) ;
+*/

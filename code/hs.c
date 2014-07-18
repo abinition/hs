@@ -11,6 +11,43 @@
  * Modifications:
  *
  * $Log: hs.c,v $
+ * Revision 1.5  2007-07-09 05:39:00  bergsma
+ * TLOGV3
+ *
+ * Revision 1.45  2007-06-20 22:32:48  bergsma
+ * Use popRdata, not popRvalue before data_getNext
+ *
+ * Revision 1.44  2007-05-26 22:08:43  bergsma
+ * ADD -w "Ward" flag
+ *
+ * Revision 1.43  2007-04-12 16:48:03  bergsma
+ * Put in fix for spinning.
+ *
+ * Revision 1.42  2007-03-26 00:23:06  bergsma
+ * Only allow returnToStdin when the instance
+ * is the parent instance and its not in a QUERY state.
+ *
+ * Revision 1.41  2007-03-15 01:13:53  bergsma
+ * Another attempt to find and stop when instances spin.
+ *
+ * Revision 1.40  2007-02-15 03:24:52  bergsma
+ * Added comments
+ *
+ * Revision 1.39  2006-12-09 00:06:44  bergsma
+ * Move gpsAI and gpsAImain to global external status out of hs.c.
+ *
+ * Revision 1.38  2006/10/27 17:24:07  bergsma
+ * Remove debug statement
+ *
+ * Revision 1.37  2006/10/12 23:09:09  bergsma
+ * Fix problems with STATE_SLEEP state.
+ *
+ * Revision 1.36  2006/10/12 00:12:11  bergsma
+ * Little problems with SLEEP. :-)
+ *
+ * Revision 1.35  2006/09/25 05:12:19  bergsma
+ * Problem 90% solved for renamed parent concept issues.
+ *
  * Revision 1.34  2006/08/22 13:28:36  bergsma
  * Missing \n in help text
  *
@@ -149,9 +186,6 @@
 /********************** EXTERNAL GLOBAL VARIABLES ****************************/
 
 /********************** INTERNAL OBJECT STRUCTURES ***************************/
-
-static sInstance *gpAI = NULL ;	/* HyperScript instance */
-static sInstance *gpAImain = NULL ;	/* Main HyperScript instance */
 
 /********************** FUNCTION DECLARATIONS ********************************/
 #ifdef AS_PROMIS
@@ -500,8 +534,7 @@ JNIEXPORT jstring JNICALL Java_HyperScript2_hs(JNIEnv *env, jobject obj, jstring
 	/* Check to see if we are going back for more input */
         if ( gpAI == gpAImain &&
 	     gHyp_concept_returnToStdIn ( gpsConcept ) &&
-	     (gHyp_instance_getState ( gpAImain ) != STATE_QUERY &&
-	      gHyp_instance_getState ( gpAImain ) != STATE_SLEEP) ) {
+	     gHyp_instance_getState ( gpAImain ) != STATE_QUERY ) {
       
           /* HyperScript finished running */
           giJmpLevel = -1 ;	/* Disallow longjmp */
@@ -602,7 +635,7 @@ void gHyp_hs_jeval ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     	"Invalid arguments. Usage: jeval ( command )" ) ;
    
     /* Get command to execute */
-    pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
+    pData = gHyp_stack_popRdata ( pStack, pAI ) ;
 
     /* Construct the message to be sent to the shell. */
     pCmd = command ;
@@ -735,7 +768,7 @@ int main ( int argc, char * argv[] )
    *    0
    */
 
-#define NUM_OPTIONS 17
+#define NUM_OPTIONS 18
 
   char *usage[NUM_OPTIONS] =
   {
@@ -753,6 +786,7 @@ int main ( int argc, char * argv[] )
     "       -s stream              (input from 'stream' instead of stdin)\n",
     "       -t [instance#]object   (set target name of program)\n",
     "       -v                     (echo input stream)\n",
+    "       -w                     (ward fileio functions\n",
     "       -x                     (double expression size)\n",
     "       -y                     (Debug cgi scripts)\n",
     "       [arg1 [arg2 [arg3 [...]]]]\n"
@@ -830,7 +864,7 @@ int main ( int argc, char * argv[] )
   runFlags = 0 ;
      
   /* Get command line arguments and set flags, options */
-  while ((c = gHyp_util_getopt ( argc, argv,"cd:e:f:ghil:n:qrs:t:vxy")) != EOF) {
+  while ((c = gHyp_util_getopt ( argc, argv,"cd:e:f:ghil:n:qrs:t:vwxy")) != EOF) {
   
     switch ( c ) {
       
@@ -916,6 +950,10 @@ int main ( int argc, char * argv[] )
 
     case 'r' : 
       runFlags |= RUN_ROOT ;
+      break ;                    
+
+    case 'w' : 
+      runFlags |= RUN_RESTRICTED ;
       break ;                    
 
     case 's' :
@@ -1117,8 +1155,7 @@ int main ( int argc, char * argv[] )
       
       if ( gpAI == gpAImain &&
            gHyp_concept_returnToStdIn ( gpsConcept ) &&
-           (gHyp_instance_getState ( gpAImain ) != STATE_QUERY &&
-            gHyp_instance_getState ( gpAImain ) != STATE_SLEEP) ) {
+           gHyp_instance_getState ( gpAImain ) != STATE_QUERY ) {
                 
         /* See if more input can be loaded into the program */
         pFrame = gHyp_instance_frame ( gpAImain ) ;
@@ -1152,8 +1189,14 @@ int main ( int argc, char * argv[] )
         }
         else {
           
-          /* End-of-file or ^D (^Z) typed. */
+	  /* Disable return to stdin so we don't get caught in an endless loop */
           gHyp_concept_setReturnToStdIn ( gpsConcept, FALSE ) ;
+
+	  /* If already end-of-file from before, then continue */
+	  if ( endOfFile ) continue ;
+
+	  /*gHyp_util_debug("STATE is %d", gHyp_instance_getState ( gpAImain ) ) ;*/
+	  /* End-of-file or ^D (^Z) typed or just returning to IDLE */
           
           if ( !quiet ) {
             gHyp_util_output ( "End-of-file: HyperScript program completed loading\n") ;
@@ -1190,6 +1233,12 @@ int main ( int argc, char * argv[] )
         }
       }
       else {
+
+	/* gpAI != gpAImain ||
+           !gHyp_concept_returnToStdIn ( gpsConcept ) ||
+           gHyp_instance_getState ( gpAImain ) == STATE_QUERY ) 
+	 */
+
 	/*gHyp_util_debug("Nothing to do here");*/
       }
     }

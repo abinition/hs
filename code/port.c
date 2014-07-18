@@ -10,6 +10,45 @@
 /* Modifications:
  * 
  * $Log: port.c,v $
+ * Revision 1.5  2007-07-09 05:39:00  bergsma
+ * TLOGV3
+ *
+ * Revision 1.33  2007-05-08 01:27:12  bergsma
+ * Used deleteFd rather than updateFd when id is reassigned to another
+ * instance.
+ *
+ * Revision 1.32  2007-04-07 17:52:06  bergsma
+ * When a device id has already been assigned to another port, report
+ * the warning and using updateFd instead of deleteFd. (deleteFd removes
+ * all device ids assigned to the port).
+ *
+ * Revision 1.31  2007-02-26 02:35:01  bergsma
+ * No longer user NULL_DEVICEID placeholder.  PORT and HTTP
+ * autoallocate device ids, HSMS and SECS I are pre-determined.
+ *
+ * Revision 1.30  2007-02-17 01:53:13  bergsma
+ * Socket handoff does not work with TRUE64
+ *
+ * Revision 1.29  2007-02-15 03:24:15  bergsma
+ * Remove the handoff socket after handoff
+ *
+ * Revision 1.28  2007-02-13 22:35:50  bergsma
+ * typo in comment
+ *
+ * Revision 1.27  2006/10/27 17:27:19  bergsma
+ * Added port_sendmsg and port_recvmsg
+ *
+ * Revision 1.26  2006/10/11 16:16:00  bergsma
+ * Make EAGAIN an optional feature that must be turned on.
+ *
+ * Revision 1.25  2006/10/01 16:25:54  bergsma
+ * Changed rawOutgoing to the new Eagain method.
+ *
+ * Revision 1.24  2006/09/25 05:05:31  bergsma
+ * When assigned a device id to a port which was already assigned to
+ * another instance, the previous device assignement must be deleted in
+ * addition to the new assignment made.
+ *
  * Revision 1.23  2006/04/04 14:58:02  bergsma
  * STATUS was not STATUS_PORT, but STATUS_HTTP.  Fixed now.
  *
@@ -619,13 +658,16 @@ void gHyp_port_assign ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
         /* Check to see if the port is already assigned */
         pAIassigned = gHyp_concept_getInstForDeviceId ( pConcept, (sWORD) id ) ;
 
-        if ( pAIassigned )
-          gHyp_util_logWarning ( "Port %d was already assigned to device %d by instance %s",
-			      portFd,
-			      gHyp_instance_getDeviceId ( pAIassigned, portFd ),
+        if ( pAIassigned ) {
+          gHyp_util_logWarning ( "Device id %d was previously assigned to port %d by instance %s, deleting old assignment",
+			      (sWORD) id,
+			      gHyp_instance_getDeviceFd ( pAIassigned, (sWORD) id ),
 			      gHyp_instance_getTargetId ( pAIassigned ) ) ;
+	  gHyp_instance_deleteFd ( pAIassigned, gHyp_instance_getDeviceFd ( pAIassigned, (sWORD) id ) ) ;
+	}
         
         gHyp_instance_updateFd ( pAI, (SOCKET) portFd, (sWORD) id, NULL, FALSE ) ;
+
 	/* Make sure protocol is NONE */
 	flags = gHyp_secs1_flags ( pPort ) ;
 	flags = (flags & MASK_SOCKET) | PROTOCOL_NONE ;
@@ -744,6 +786,120 @@ void gHyp_port_binary ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
     if ( status ) {
       gHyp_secs1_setBinary ( pPort, isBinary ) ;
+    }
+
+    gHyp_instance_pushSTATUS ( pAI, pStack ) ;
+  }
+}
+
+void gHyp_port_eagain ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: port_eagain ( )
+   *	Returns 1
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+  
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+    
+  else {
+ 
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+    
+    sData
+      *pData ;
+
+    sLOGICAL
+      status=FALSE,
+      doEagain = FALSE ;
+
+    SOCKET
+      portFd ;
+
+    sSecs1
+      *pPort ;
+
+    int
+      id ;
+
+    int
+      argCount = gHyp_parse_argCount ( pParse ) ;
+
+    sInstance
+      *pAIassigned ;
+    
+    /* Assume success */	
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 2 )
+      gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+      "Invalid args. Usage: port_eagain ( id, boolean )");
+    
+    /* Get the boolean value */
+    pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
+    doEagain = gHyp_data_getBool ( pData, gHyp_data_getSubScript ( pData ), TRUE );
+
+    /* Get the device id */
+    pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
+    id = gHyp_data_getInt ( pData, gHyp_data_getSubScript ( pData ), TRUE ) ;
+
+    /* Check id */
+    if ( id < 0 || id > 65535 )
+      gHyp_instance_error ( pAI,STATUS_BOUNDS, "Device ID out of range" ) ;
+
+    /* Get the port structure */
+    pAIassigned = gHyp_concept_getInstForDeviceId ( gHyp_instance_getConcept ( pAI ), (sWORD) id ) ;
+
+    if ( !pAIassigned ) {
+      gHyp_instance_warning ( pAI,STATUS_PORT, 
+			    "Device id %d is not assigned",
+			    id ) ;
+      status = FALSE ;
+    }
+
+    if ( status ) {
+
+      portFd = gHyp_instance_getDeviceFd ( pAIassigned, (sWORD) id ) ;
+      if ( portFd == INVALID_SOCKET ) {
+	gHyp_instance_warning ( pAI,STATUS_PORT, 
+			    "Socket %d does not exist.",
+			    portFd ) ;
+	status = FALSE ;
+      }
+    }
+
+    if ( status ) {
+      pPort = (sSecs1*) gHyp_concept_getSocketObject ( gHyp_instance_getConcept(pAI), 
+							(SOCKET) portFd, 
+							DATA_OBJECT_NULL ) ;
+      if ( !pPort ) {
+	gHyp_instance_warning ( pAI,STATUS_PORT, 
+	  		    "Socket %d does not exist.",
+			    portFd ) ;
+	status = FALSE ;
+      }
+    }
+
+    if ( status ) {
+      gHyp_secs1_setEagain ( pPort, doEagain ) ;
     }
 
     gHyp_instance_pushSTATUS ( pAI, pStack ) ;
@@ -1027,7 +1183,17 @@ static void lHyp_port_QE (	sInstance 	*pAI,
   }
 
   if ( status ) {  
-    nBytes = gHyp_secs1_rawOutgoing ( pPort, pAI, pPortData, id ) ;
+
+    if ( gHyp_secs1_doEagain( pPort ) ) {
+      /* Non-blocking way */
+      nBytes = gHyp_secs1_rawOutgoingEagainInit ( pPort, pAI, pPortData ) ;
+      nBytes = gHyp_secs1_rawOutgoingEagain ( pPort, pAI, 0 ) ;
+    }
+    else {
+      /* Blocking way */
+      nBytes = gHyp_secs1_rawOutgoing( pPort, pAI, pPortData, id ) ;
+    }
+
     gHyp_secs1_setState ( pPort, mode ) ;
     if ( nBytes <= 0 ) status = FALSE ;
   }
@@ -1157,3 +1323,202 @@ void gHyp_port_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
   }
   return ;
 }
+
+#if defined ( AS_UNIX ) && !defined (AS_TRUE64)
+
+void gHyp_port_recvmsg ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: port_recvmsg ()
+   *	Returns 1
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+  
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+    
+  else {
+ 
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+    
+    sData
+      *pData,
+      *pResult ;
+    
+    SOCKET
+      socket ;
+
+    sSecs1
+      *pPort ;
+
+    int
+      n,
+      argCount = gHyp_parse_argCount ( pParse ) ;
+
+    char
+      service[VALUE_SIZE+1],
+      *pService ;
+
+    /* Assume success */	
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 1 ) 
+      gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+      "Invalid args. Usage: port_recvmsg ( name )");
+
+    /* Get the service name */
+    pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
+    n = gHyp_data_getStr ( pData,
+			   service,
+			   VALUE_SIZE,
+			   gHyp_data_getSubScript ( pData ),
+			   TRUE ) ;
+    pService = service ;
+    socket = gHyp_tcp_makeUNIX ( pService ) ;
+
+    if ( socket != INVALID_SOCKET ) {
+
+      /* Create a dummy device */ 
+      pPort = gHyp_secs1_new ( (SOCKET_UNIX_LISTEN | PROTOCOL_NONE ),
+			       socket,
+			       pService,
+			       giServicePort, 
+			       SECS_DEFAULT_T1,
+			       SECS_DEFAULT_T2,
+			       SECS_DEFAULT_T4,
+			       SECS_DEFAULT_RTY,
+			       socket,
+			       pAI ) ;
+
+      gHyp_concept_newSocketObject ( gHyp_instance_getConcept(pAI), 
+				     socket,
+				     pPort,
+				     DATA_OBJECT_PORT,
+				     (void (*)(void*))gHyp_secs1_delete ) ;
+    }
+    pResult = gHyp_data_new ( NULL ) ;
+    gHyp_data_setHandle ( pResult, (void*) socket ) ;
+    gHyp_stack_push ( pStack, pResult ) ;
+  }
+}
+
+
+void gHyp_port_sendmsg ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: port_sendmsg ()
+   *	Returns 1
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+  
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+    
+  else {
+ 
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+    
+    sData
+      *pData,
+      *pResult ;
+    
+    SOCKET
+      socket ;
+
+    int
+      port,
+      n,
+      argCount = gHyp_parse_argCount ( pParse ) ;
+
+    sLOGICAL
+      status ;
+
+    char
+      client[VALUE_SIZE+1],
+      *pClient,
+      service[VALUE_SIZE+1],
+      *pService ;
+
+    /* Assume success */	
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 4 ) 
+      gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+      "Invalid args. Usage: port_sendmsg ( client, server, handle, port )");
+
+    /* Get the port number */
+    pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
+    port =  gHyp_data_getInt ( pData, gHyp_data_getSubScript ( pData ), TRUE );
+
+    /* Get the port port fd */
+    pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
+    socket = (SOCKET) gHyp_data_getHandle ( pData, gHyp_data_getSubScript ( pData ), TRUE );
+
+    /* Get the service name */
+    pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
+    n = gHyp_data_getStr ( pData,
+			   service,
+			   VALUE_SIZE,
+			   gHyp_data_getSubScript ( pData ),
+			   TRUE ) ;
+    pService = service ;
+
+    /* Get the client name */
+    pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
+    n = gHyp_data_getStr ( pData,
+			   client,
+			   VALUE_SIZE,
+			   gHyp_data_getSubScript ( pData ),
+			   TRUE ) ;
+    pClient = client ;
+
+    status = gHyp_tcp_sendmsg ( pClient, pService, socket, port ) ;
+
+    if ( status ) {
+
+      /* Remove the socket */
+      gHyp_concept_deleteSocketObject ( gHyp_instance_getConcept ( pAI ), socket ) ;
+
+    }
+
+    pResult = gHyp_data_new ( NULL ) ;
+    gHyp_data_setBool ( pResult, status ) ;
+    gHyp_stack_push ( pStack, pResult ) ;
+
+  }
+}
+#endif

@@ -14,6 +14,57 @@
  * Modified:
  *
  * $Log: sql.c,v $
+ * Revision 1.5  2007-07-09 05:39:00  bergsma
+ * TLOGV3
+ *
+ * Revision 1.47  2007-06-20 22:31:41  bergsma
+ * no message
+ *
+ * Revision 1.46  2007-06-20 21:09:24  bergsma
+ * Use popRdata, not popRvalue, when subsequently doing a data_getNext
+ *
+ * Revision 1.45  2007-06-16 17:57:25  bergsma
+ * Optional arg for sql_toexternal to notTrim(1) or Trim(0), default = 0.
+ *
+ * Revision 1.44  2007-05-26 01:46:40  bergsma
+ * Make sql_datetime and sql_toexternal return quotes around the
+ * result, or NULL if invalid.
+ *
+ * Revision 1.43  2007-05-03 17:02:33  bergsma
+ * For sql_datetime, return NULL for errors.
+ *
+ * Revision 1.42  2007-03-22 16:45:23  bergsma
+ * No NL at eof.
+ *
+ * Revision 1.41  2007-03-15 01:08:48  bergsma
+ * Added sql_datetime function
+ *
+ * Revision 1.40  2006-10-15 18:52:35  bergsma
+ * SQLTEXT is _data_
+ *
+ * Revision 1.39  2006/10/12 23:08:42  bergsma
+ * TEXTOID for POSTGRESQL is _data_
+ *
+ * Revision 1.38  2006/10/12 00:33:14  bergsma
+ * Typedef required on setstr_n
+ *
+ * Revision 1.37  2006/10/11 16:16:42  bergsma
+ * Firx compile warnings.
+ *
+ * Revision 1.36  2006/10/01 16:27:16  bergsma
+ * Typo, change C++ comment to C style.
+ *
+ * Revision 1.35  2006/09/25 05:02:15  bergsma
+ * Convert ll results from SQL query to actual data type of column
+ *
+ * Revision 1.34  2006/09/16 20:06:28  bergsma
+ * Datatyping for columns.
+ * Added _sqlattr_ to further help distinguish datetime types.
+ *
+ * Revision 1.33  2006/09/14 17:09:12  bergsma
+ * Fixes for ORACLE.
+ * Also, make sure _sql_status_ is defined for each SQL db type.
+ *
  * Revision 1.32  2006/08/17 05:04:40  bergsma
  * Addd ORACLE OCI interface
  *
@@ -167,14 +218,16 @@ typedef struct oracle_t	sORACLE ;
 
 #ifdef AS_SQLSERVER
 
+static char errbuf[512];
 static int lHyp_sql_errHandler (PDBPROCESS dbproc, INT severity,
     INT dberr, INT oserr, LPCSTR dberrstr, LPCSTR oserrstr)
 {
   if (oserr != DBNOERR)
-    gHyp_util_logError ("Operating System Error %i: %s\n", oserr, oserrstr);
+    sprintf ( errbuf, "Operating System Error %i: %s\n", oserr, oserrstr);
   else
-    gHyp_util_logError ("DB-Library Error %i: %s\n", dberr, dberrstr);
+    sprintf (errbuf, "DB-Library Error %i: %s\n", dberr, dberrstr);
 
+  gHyp_util_logError ( errbuf ) ;
   return (INT_CANCEL);
 }
 
@@ -182,59 +235,75 @@ static int lHyp_sql_msgHandler (PDBPROCESS dbproc, DBINT msgno, INT msgstate,
     INT severity, LPCSTR msgtext, LPCSTR server,
     LPCSTR procedure, DBUSMALLINT line)
 {
-  gHyp_util_logWarning ( "SQL Server Message %ld: %s\n", msgno, msgtext );
+  sprintf ( errbuf, "SQL Server Message %ld: %s\n", msgno, msgtext );
+  gHyp_util_logWarning ( errbuf );
   return (0);
 }
 #endif
 
 #ifdef AS_ORACLE
 
-sword lHyp_sql_checkErr( OCIError *errhp, sword status)
+static char errbuf[512];
+static void lHyp_sql_checkErr( OCIError *errhp, sword status)
 {
-  text errbuf[512];
   sb4  errcode = 0;
+  sLOGICAL isError = 1 ;
+  sLOGICAL isWarning = 1 ;
 
   switch (status) {
 
   case OCI_SUCCESS:
+    strcpy ( errbuf, "SUCCESS" ) ;
+    isWarning = 0 ;
+    isError = 0 ;
     break;
 
   case OCI_SUCCESS_WITH_INFO:
-    gHyp_util_logWarning("OCI_SUCCESS_WITH_INFO");
+    strcpy ( errbuf, "OCI_SUCCESS_WITH_INFO");
     break;
 
   case OCI_NEED_DATA:
-    gHyp_util_logError("OCI_NEED_DATA");
+    strcpy ( errbuf, "OCI_NEED_DATA");
+    isWarning = 0 ;
     break;
 
   case OCI_NO_DATA:
-    gHyp_util_logWarning("OCI_NODATA");
+    strcpy ( errbuf, "OCI_NO_DATA");
     break;
 
   case OCI_ERROR:
-    (void) OCIErrorGet((dvoid *)errhp, (ub4) 1, (text *) NULL, &errcode,
-                        errbuf, (ub4) sizeof(errbuf), OCI_HTYPE_ERROR);
-    gHyp_util_logError("%.*s", 512, errbuf);
+    (void) OCIErrorGet( (dvoid *)errhp, (ub4) 1, (text *) NULL, &errcode,
+                        (text *) errbuf, (ub4) sizeof(errbuf), OCI_HTYPE_ERROR);
+    isWarning = 0 ;
     break;
 
   case OCI_INVALID_HANDLE:
-    gHyp_util_logError("OCI_INVALID_HANDLE");
+    strcpy ( errbuf, "OCI_INVALID_HANDLE");
+    isWarning = 0 ;
     break;
 
   case OCI_STILL_EXECUTING:
-    gHyp_util_logWarning("OCI_STILL_EXECUTE");
+    strcpy ( errbuf, "OCI_STILL_EXECUTE");
     break;
 
   case OCI_CONTINUE:
-    gHyp_util_logError("OCI_CONTINUE");
+    strcpy ( errbuf, "OCI_CONTINUE");
     break;
 
   default:
-    gHyp_util_logError("Unknown error %d",status );
+    sprintf ( errbuf, "Unknown error %d",status );
+    isWarning = 0 ;
     break;
   }
 
-  return status ;
+  if ( isError ) {
+    if ( isWarning ) 
+      gHyp_util_logWarning(errbuf );
+    else
+      gHyp_util_logError(errbuf );
+  }
+
+  return  ;
 }
 
 #endif
@@ -286,6 +355,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       status,
       isVector;
 
+
     int
       ss,
       context,
@@ -303,12 +373,17 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       sql_stmt[MAX_SQL_STMT_LENGTH+1] ;
 
 #ifdef AS_SQL
+    
     sData
+      *pLvalue,
+      *pAttr,
+      *pColAttr,
       *pArgs=NULL,
       *pVariable=NULL,
       *variables[MAX_SQL_ITEMS] ;
 
     sBYTE
+      hyperscript_datatype[MAX_SQL_ITEMS],
       *pBytes ;
 
     int
@@ -319,10 +394,15 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       n ;
 
     char
-      colName[VALUE_SIZE+1],
+      *pAttrStr,
       *colNames[MAX_SQL_ITEMS],
       *pColName ;
 
+    int msgLen ;
+    char msg[MAX_OUTPUT_LENGTH+1] ;
+
+    sLOGICAL
+	isSelect ;
 #endif
 
 #ifdef AS_SQL
@@ -339,16 +419,12 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     MYSQL_FIELD *field ;
     MYSQL_ROW row ;
     unsigned long *length ;
-    int msgLen ;
-    char msg[MAX_OUTPUT_LENGTH+1] ;
 
 #elif AS_PGSQL
 
     PGconn      *dbproc ;
     PGresult    *results ;
-    char       msg[MAX_OUTPUT_LENGTH+1] ;
     int
-	msgLen,
         numRows,
         isDataBinary[MAX_SQL_ITEMS],
         row,col;
@@ -361,14 +437,19 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
      OCIStmt    *stmthp;
      OCIParam   *mypard;
      void*	dataBuffer[MAX_SQL_ITEMS] ;
+     ub2	dataBufferLen[MAX_SQL_ITEMS] ;
      ub2	dataLen[MAX_SQL_ITEMS] ;
      OCIDefine*	defnp[MAX_SQL_ITEMS] ;
-     sb2	indicator[MAX_SQL_ITEMS] ;	
+     sb2	indicator[MAX_SQL_ITEMS],
+	        precision ;
+     sLOGICAL	isFloat[MAX_SQL_ITEMS];
      int	col,
 	        colNameLen ;
      ub2	dataType ;
      ub2	colLen ;
+     ub2	orientation ;
 
+    char colName[VALUE_SIZE+1] ;
 
 #endif
 
@@ -459,12 +540,30 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       gHyp_instance_error ( pAI, STATUS_BOUNDS,
                             "Subscript is out of bounds in sql_query()") ;
 
+    pEndSQL = pSQL ;
+    *pEndSQL = '\0' ;
+    pSQL = sql_stmt ;
+
 #ifdef AS_SQL
 
+    /* See if the first token is a "select" */
+    isSelect = FALSE ;
+    pSQL += strspn ( pSQL, " \t\n\r" ) ;
+    if ( pSQL < pEndSQL ) {
+      n = strcspn ( pSQL, " \t\n\r" ) ;
+      if ( n > 0 ) {
+	strncpy ( value, pSQL, n ) ;
+	value[n] = '\0' ;
+	gHyp_util_lowerCase ( value, n ) ;
+	isSelect = ( strcmp ( value, "select" ) == 0 ) ;
+      }
+    }
+    
+    results = 0 ;
 
 #ifdef AS_SQLSERVER
 
-    if ( dbsqlexec (dbproc) == SUCCEED )
+    if ( (results = dbsqlexec (dbproc)) == SUCCEED )
 
 #elif AS_MYSQL
 
@@ -495,6 +594,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 			(ub4) OCI_DEFAULT);
   lHyp_sql_checkErr (	dbproc->errhp, rc ) ;
 
+  orientation = isSelect ? OCI_DESCRIBE_ONLY : OCI_DEFAULT ;
   if ( rc == OCI_SUCCESS )
     rc = OCIStmtExecute(
 			dbproc->svchp, 
@@ -504,17 +604,37 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 			(ub4) 0,
 			(CONST OCISnapshot *) NULL, 
 			(OCISnapshot *) NULL, 
-			OCI_DESCRIBE_ONLY /*OCI_DEFAULT*/) ;
+			orientation ) ;
 
   lHyp_sql_checkErr (	dbproc->errhp, rc ) ;
 
   results = rc ;
+
+  if ( !isSelect ) rc = OCI_NO_DATA ;
+
   if ( rc == OCI_SUCCESS ) 
 
 #endif
       {
         /* now check the results from the SQL server */
-        while
+
+	if ( pTableStr ) {
+
+          /* List variables are created inside of pTable */
+          pTable = gHyp_frame_createVariable ( pFrame, pTableStr ) ;
+          gHyp_data_deleteValues ( pTable ) ;
+
+        }
+        else {
+
+          /* List variables are top-level variables. */
+
+          /* Create or retrieve the "sqlargs" variable, and clear it of any values. */
+          pArgs = gHyp_frame_createVariable ( pFrame, "sqlargs" ) ;
+          gHyp_data_deleteValues ( pArgs ) ;
+        }
+	
+	while
 
 #ifdef AS_SQLSERVER
          ( (results = dbresults(dbproc)) != NO_MORE_RESULTS )
@@ -539,21 +659,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 	 (results == OCI_SUCCESS )
 #endif
               {
-                if ( pTableStr ) {
 
-                  /* List variables are created inside of pTable */
-                  pTable = gHyp_frame_createVariable ( pFrame, pTableStr ) ;
-                  gHyp_data_deleteValues ( pTable ) ;
-
-                }
-                else {
-
-                  /* List variables are top-level variables. */
-
-                  /* Create or retrieve the "sqlargs" variable, and clear it of any values. */
-                  pArgs = gHyp_frame_createVariable ( pFrame, "sqlargs" ) ;
-                  gHyp_data_deleteValues ( pArgs ) ;
-                }
                 if ( pColStr != NULL ) pRow = gHyp_data_new ( pRowStr ) ;
 
                 /* Get info on each column */
@@ -598,57 +704,43 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 					(ub4) OCI_ATTR_NAME, 
 					(OCIError *) dbproc->errhp );
 
+		  strncpy ( colName, pColName, colNameLen ) ;
+		  colName[colNameLen] = '\0' ;
+		  pColName = colName ;
+
 #endif
-                  //gHyp_util_debug("Column name %d is %s",i,pColName);
-                  colNames[i] = pColName ;
+                  /*gHyp_util_debug("Column name %d is %s",i,pColName);*/
+                  colNames[i] = (char*) AllocMemory ( strlen ( pColName ) + 1 ) ;
+		  strcpy ( colNames[i], pColName ) ;
+		  gHyp_util_upperCase ( colNames[i], strlen ( colNames[i] ) ) ;
 
                   if ( pTable == NULL ) {
 
                     /* List variables are created from the column names */
-		    strcpy ( colName, pColName ) ;
-#ifdef AS_PGSQL
-		    /* Postgres is case sensitive, so we have to uppercase the name.
-		     * This line should probably be forced for all types 
-		     */
-		    gHyp_util_upperCase ( colName, strlen ( colName ) ) ;
-#endif
-                    pVariable = gHyp_frame_createVariable ( pFrame, colName ) ;
+                    pVariable = gHyp_frame_createVariable ( pFrame, colNames[i] ) ;
                     gHyp_data_deleteValues ( pVariable ) ;
+                    gHyp_data_setVariable ( pVariable, colNames[i], TYPE_LIST ) ;
 
                     /* Store a reference to the variable in the "sqlargs" variable */
                     pData = gHyp_data_new ( NULL ) ;
-                    gHyp_data_setReference ( pData, colName, NULL ) ;
+                    gHyp_data_setReference ( pData, colNames[i], NULL ) ;
                     gHyp_data_append ( pArgs, pData ) ;
                   }
                   else {
 
                     if ( pColStr != NULL ) {
 
-                      /* Column labels are strings under the pCol label */
                       pVariable = gHyp_data_new ( NULL ) ;
-		      strcpy ( colName, pColName ) ;
-#ifdef AS_PGSQL
-		     /* Postgres is case sensitive, so we have to uppercase the name.
-		      * This line should probably be forced for all types 
-		      */
-		      gHyp_util_upperCase ( colName, strlen ( colName ) ) ;
-#endif
-                      gHyp_data_setStr ( pVariable, colName ) ;
+                      gHyp_data_setStr ( pVariable, colNames[i] ) ;
                       pCol = gHyp_data_new ( pColStr ) ;
                       gHyp_data_append ( pCol, pVariable ) ;
                       gHyp_data_append ( pRow, pCol ) ;
                       gHyp_data_append ( pTable, pRow ) ;
+
                     }
                     else if ( pRowStr == NULL ) {
                       /* Table contains empty list variables */
-		      strcpy ( colName, pColName ) ;
-#ifdef AS_PGSQL
-		      /* Postgres is case sensitive, so we have to uppercase the name.
-		       * This line should probably be forced for all types 
-		       */
-		      gHyp_util_upperCase ( colName, strlen ( colName ) ) ;
-#endif
-                      pVariable = gHyp_data_new ( colName ) ;
+                      pVariable = gHyp_data_new ( colNames[i] ) ;
                       gHyp_data_append ( pTable, pVariable ) ;
                     }
                   }
@@ -657,7 +749,8 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
                   variables[i] = pVariable ;
 #ifdef AS_SQLSERVER
                   colTypes[i] = dbcoltype ( dbproc, i+1 ) ;
-                  colLens[i] = dbcollen ( dbproc, i+1 ) ; ;
+                  colLens[i] = dbcollen ( dbproc, i+1 ) ;
+
 #elif AS_MYSQL
                   colTypes[i] = field->type ;
                   colLens[i] = field->length ;
@@ -672,26 +765,81 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 					(ub4 *) 0, 
 					(ub4) OCI_ATTR_DATA_TYPE, 
 					(OCIError *) dbproc->errhp  );
+		  lHyp_sql_checkErr ( dbproc->errhp, rc ) ;
 
 		  colTypes[i] = dataType ;
 
-		  /* Retrieve the column width in characters */
+		  rc = OCIAttrGet(	(dvoid*) mypard, 
+					(ub4) OCI_DTYPE_PARAM, 
+					(dvoid*) &precision,
+					(ub4 *) 0, 
+					(ub4) OCI_ATTR_PRECISION, 
+					(OCIError *) dbproc->errhp  );
+
+ 		  lHyp_sql_checkErr ( dbproc->errhp, rc ) ;
+		  isFloat[i] = (dataType == SQLT_NUM && precision > 0) ? TRUE : FALSE ;
+
+		  /* Retrieve the data width in characters */
 		  rc = OCIAttrGet(	(dvoid*) mypard, 
 					(ub4) OCI_DTYPE_PARAM, 
 					(dvoid*) &colLen, 
 					(ub4 *) 0, 
 					(ub4) OCI_ATTR_DATA_SIZE, 
 					(OCIError *) dbproc->errhp  );
+
 		  colLens[i] = colLen ;
 
-		  /* Allocate a buffer to receive the data for column i+1 */
-		  dataBuffer[i] = (void*) AllocMemory ( colLens[i]+1 ) ;
-#endif
-                }
+		  if ( colLen < VALUE_SIZE ) colLen = VALUE_SIZE ;
+		  dataBufferLen[i] = colLen ;
 
-                /* now process the rows */
+		  /* Allocate a buffer to receive the data for column i+1 */
+		  dataBuffer[i] = (void*) AllocMemory ( dataBufferLen[i]+1 ) ;
+#endif
+		}
+
+		/* now process the rows */
                 rows = 0 ;
 #ifdef AS_SQLSERVER
+		for ( i=0; i<numCols;i++ ) {
+		  switch ( colTypes[i] ) {
+                      case SQLINT1 :
+		        hyperscript_datatype[i] = TYPE_BYTE ;
+                        break ;
+                      case SQLINT2 :
+		        hyperscript_datatype[i] = TYPE_SHORT ;
+                        break ;
+                      case SQLINT4 :
+		        hyperscript_datatype[i] = TYPE_LONG ;
+                        break ;
+                      case SQLFLT4 :
+		        hyperscript_datatype[i] = TYPE_FLOAT ;
+                        break ;
+                      case SQLFLT8 :
+		        hyperscript_datatype[i] = TYPE_DOUBLE ;
+                        break ;
+                      case SQLVARCHAR :
+                      case SQLCHAR :
+                      case SQLTEXT :
+		        hyperscript_datatype[i] = TYPE_STRING ;
+                        break ;
+                      case SQLIMAGE :
+                      case SQLBINARY :
+                      case SQLVARBINARY :
+		        hyperscript_datatype[i] = TYPE_STRING ;
+			break ;
+		      case SQLDATETIME:
+ 		        hyperscript_datatype[i] = TYPE_DATETIME ;
+                        break ;
+		      case SQLDECIMAL:
+		      case SQLNUMERIC:
+		        hyperscript_datatype[i] = TYPE_DOUBLE ;
+                        break ;
+                      default :
+		        hyperscript_datatype[i] = TYPE_STRING ;
+                        break ;
+		  }
+		}
+
                 while ( dbnextrow(dbproc) != NO_MORE_ROWS) {
 
                   rows++ ;
@@ -711,13 +859,6 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
                       pBytes = (sBYTE*) dbdata ( dbproc, i+1 ) ;
 
                       switch ( colTypes[i] ) {
-
-                      case SQLBINARY :
-                        if ( n == 1 )
-                          gHyp_data_newConstant_raw ( pData, TYPE_BINARY, pBytes ) ;
-                        else
-                          gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
-                        break ;
 
                       case SQLINT1 :
                         gHyp_data_newConstant_raw ( pData, TYPE_BYTE, pBytes ) ;
@@ -739,32 +880,21 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
                         gHyp_data_newConstant_raw ( pData, TYPE_DOUBLE, pBytes ) ;
                         break ;
 
+                      case SQLVARCHAR :
                       case SQLCHAR :
-
-			/*
-			pBytes[n] = '\0' ;
-                        n = gHyp_util_parseString ( (char*) pBytes ) ;
-			*/
-
-			/*if ( n <= VALUE_SIZE ) {*/
-                          gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
-                          break ;
-			/*} ;*/
-
-                      case SQLIMAGE :
-			
-                        if ( n == 1 ) {
-                          gHyp_data_newConstant_raw ( pData, TYPE_BINARY, pBytes ) ;
-                          break ;
-			}
+                        gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
+                        break ;
 
                       case SQLTEXT :
+                      case SQLIMAGE :
+                      case SQLBINARY :
+                      case SQLVARBINARY :
 
 			gHyp_data_setVariable ( pData, "_data_", TYPE_STRING ) ;
 			gHyp_util_breakStream ( (char*) pBytes, n, pData, TRUE ) ;
 			break ;
 
-                      default :
+		      case SQLDATETIME:
                         n = dbconvert (	dbproc,
 					colTypes[i],
 					pBytes,
@@ -772,10 +902,38 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 					SQLCHAR,
 					buffer,
 					MAX_BUFFER_SIZE);
+                        gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
+                        break ;
+
+		      case SQLDECIMAL:
+		      case SQLNUMERIC:
+
+                        n = dbconvert (	dbproc,
+					colTypes[i],
+					pBytes,
+					n,
+					SQLCHAR,
+					buffer,
+					MAX_BUFFER_SIZE);
+                        if ( n < 0 ) gHyp_data_newConstant_scanf ( pData, TYPE_DOUBLE, (char*)buffer, n ) ;
+                        break ;
+
+                      default :
+
+                        n = dbconvert (	dbproc,
+					colTypes[i],
+					pBytes,
+					n,
+					SQLCHAR,
+					buffer,
+					MAX_BUFFER_SIZE);
+
 			if ( n == 0 ) 
                           gHyp_data_setStr_n (pData, "NULL", 4 ) ;
-                        else if ( n <= VALUE_SIZE )
+
+                        else if ( colLens[i] <= INTERNAL_VALUE_SIZE )
                           gHyp_data_setStr_n ( pData, (char*) buffer, n ) ;
+
 			else {
   			  gHyp_data_setVariable ( pData, "_data_", TYPE_STRING ) ;
 			  gHyp_util_breakStream ( (char*) buffer, n, pData, TRUE ) ;
@@ -788,16 +946,51 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
                     if ( pColStr != NULL ) {
 
                       /* Append the column element to the row element */
-                      pCol = gHyp_data_new ( pColStr ) ;
+                      pCol = gHyp_data_new ( NULL ) ;
+		      gHyp_data_setVariable ( pCol, pColStr, TYPE_LIST ) ;
                       gHyp_data_append( pCol, pData ) ;
+
+		      if ( hyperscript_datatype[i] != TYPE_STRING &&
+			   hyperscript_datatype[i] != TYPE_DATETIME ) {
+
+			pLvalue = gHyp_data_new ( NULL ) ;
+			gHyp_data_setReference ( pLvalue, pColStr, pCol ) ;
+		        pResult = gHyp_type_assign ( 
+				pAI,
+				gHyp_instance_frame ( pAI ),
+				pLvalue,
+				NULL,
+				hyperscript_datatype[i], /* Into this datatype */
+				FALSE,	
+				FALSE  ) ;
+		        gHyp_data_delete ( pResult ) ;
+		        gHyp_data_delete ( pLvalue ) ;
+		      }
                       gHyp_data_append ( pRow, pCol ) ;
                     }
                     else if ( pRowStr != NULL ) {
 
                       /* Add the element to the row variable */
-		      strcpy ( colName, colNames[i] ) ;
-                      pVariable = gHyp_data_new ( colName ) ;
+                      pVariable = gHyp_data_new ( NULL ) ;
+		      gHyp_data_setVariable ( pVariable, colNames[i], TYPE_LIST ) ;
                       gHyp_data_append( pVariable, pData ) ;
+
+ 		      if ( hyperscript_datatype[i] != TYPE_STRING &&
+			   hyperscript_datatype[i] != TYPE_DATETIME ) {
+
+			pLvalue = gHyp_data_new ( NULL ) ;
+			gHyp_data_setReference ( pLvalue, colNames[i], pVariable ) ;	
+		        pResult = gHyp_type_assign ( 
+				pAI,
+				gHyp_instance_frame ( pAI ),
+				pLvalue,
+				NULL,
+				hyperscript_datatype[i], /* Into this datatype */
+				FALSE,	
+				FALSE  ) ;
+		        gHyp_data_delete ( pResult ) ;
+		        gHyp_data_delete ( pLvalue ) ;
+		      }
                       gHyp_data_append ( pRow, pVariable ) ;
                     }
                     else {
@@ -808,7 +1001,48 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
                   }
                 }
 #elif AS_MYSQL
-                while ( (row = mysql_fetch_row (results)) != NULL ) {
+		for ( i=0; i<numCols;i++ ) {
+		  switch ( colTypes[i] ) {
+                      case FIELD_TYPE_TINY :
+		        hyperscript_datatype[i] = TYPE_BYTE ;
+                        break ;
+                      case FIELD_TYPE_SHORT :
+		        hyperscript_datatype[i] = TYPE_SHORT ;
+                        break ;
+                      case FIELD_TYPE_LONG :
+ 		        hyperscript_datatype[i] = TYPE_LONG ;
+                        break ;
+                      case FIELD_TYPE_FLOAT :
+		        hyperscript_datatype[i] = TYPE_FLOAT ;
+                        break ;
+                      case FIELD_TYPE_DOUBLE :
+ 		        hyperscript_datatype[i] = TYPE_DOUBLE ;
+                        break ;
+                      case FIELD_TYPE_STRING :
+                      case FIELD_TYPE_VAR_STRING :
+		        hyperscript_datatype[i] = TYPE_STRING ;
+                        break ;
+                      case FIELD_TYPE_BLOB :
+		        hyperscript_datatype[i] = TYPE_STRING ;
+			break ;
+                      case FIELD_TYPE_TIMESTAMP :
+                      case FIELD_TYPE_DATE :
+                      case FIELD_TYPE_TIME :
+                      case FIELD_TYPE_DATETIME :
+                      case FIELD_TYPE_YEAR :
+		        hyperscript_datatype[i] = TYPE_DATETIME ;
+			break ;
+                      case FIELD_TYPE_SET :
+                      case FIELD_TYPE_ENUM :
+                      case FIELD_TYPE_NULL :
+                      case FIELD_TYPE_LONGLONG :
+		      default:
+		        hyperscript_datatype[i] = TYPE_STRING ;
+                        break ;
+                  }
+		}
+			  
+		while ( (row = mysql_fetch_row (results)) != NULL ) {
 
                   rows++ ;
 
@@ -854,41 +1088,88 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
                       case FIELD_TYPE_STRING :
                       case FIELD_TYPE_VAR_STRING :
 
-                        /*n = gHyp_util_parseString ( (char*) pBytes ) ;*/
-
-			/*if ( n <= VALUE_SIZE ) {*/
-                          gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
-                          break ;
-			/*}*/
+                        gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
+                        break ;
 
                       case FIELD_TYPE_BLOB :
 
-                        if ( n == 1 ) {
-                          gHyp_data_newConstant_raw ( pData, TYPE_BINARY, pBytes ) ;
-                          break ;
-			}
+  			gHyp_data_setVariable ( pData, "_data_", TYPE_STRING ) ;
+			gHyp_util_breakStream ( (char*) pBytes, n, pData, TRUE ) ;
+			break ;
 
+                      case FIELD_TYPE_TIMESTAMP :
+                      case FIELD_TYPE_DATE :
+                      case FIELD_TYPE_TIME :
+                      case FIELD_TYPE_DATETIME :
+                      case FIELD_TYPE_YEAR :
+                        gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
+			break ;
+
+                      case FIELD_TYPE_SET :
+                      case FIELD_TYPE_ENUM :
+                      case FIELD_TYPE_NULL :
+                      case FIELD_TYPE_LONGLONG :
 		      default:
 
-			gHyp_data_setVariable ( pData, "_data_", TYPE_STRING ) ;
-			gHyp_util_breakStream ( (char*) pBytes, n, pData, TRUE ) ;
+			if ( n == 0 ) 
+                          gHyp_data_setStr_n (pData, "NULL", 4 ) ;
+                        else if ( colLens[i] <= INTERNAL_VALUE_SIZE )
+                          gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
+			else {
+  			  gHyp_data_setVariable ( pData, "_data_", TYPE_STRING ) ;
+			  gHyp_util_breakStream ( (char*) pBytes, n, pData, TRUE ) ;
+			}
+                        break ;
 
                       }
                     }
                     if ( pColStr != NULL ) {
 
                       /* Append the column element to the row element */
-                      pCol = gHyp_data_new ( pColStr ) ;
+                      pCol = gHyp_data_new ( NULL ) ;
+		      gHyp_data_setVariable ( pCol, pColStr, TYPE_LIST ) ;
                       gHyp_data_append( pCol, pData ) ;
+		      if ( hyperscript_datatype[i] != TYPE_STRING &&
+			   hyperscript_datatype[i] != TYPE_DATETIME ) {
+
+			pLvalue = gHyp_data_new ( NULL ) ;
+			gHyp_data_setReference ( pLvalue, pColStr, pCol ) ;
+		        pResult = gHyp_type_assign ( 
+				pAI,
+				gHyp_instance_frame ( pAI ),
+				pLvalue,
+				NULL,
+				hyperscript_datatype[i], /* Into this datatype */
+				FALSE,	
+				FALSE  ) ;
+		        gHyp_data_delete ( pResult ) ;
+		        gHyp_data_delete ( pLvalue ) ;
+		      }
                       gHyp_data_append ( pRow, pCol ) ;
 
                     }
                     else if ( pRowStr != NULL ) {
 
                       /* Add the element to the row variable */
-		      strcpy ( colName, colNames[i] ) ;
-                      pVariable = gHyp_data_new ( colName ) ;
+                      pVariable = gHyp_data_new ( NULL ) ;
+		      gHyp_data_setVariable ( pVariable, colNames[i], TYPE_LIST ) ;
                       gHyp_data_append( pVariable, pData ) ;
+		      if ( hyperscript_datatype[i] != TYPE_STRING &&
+			   hyperscript_datatype[i] != TYPE_DATETIME ) {
+
+			pLvalue = gHyp_data_new ( NULL ) ;
+			gHyp_data_setReference ( pLvalue, colNames[i], pVariable ) ;	
+		        pResult = gHyp_type_assign ( 
+				pAI,
+				gHyp_instance_frame ( pAI ),
+				pLvalue,
+				NULL,
+				hyperscript_datatype[i], /* Into this datatype */
+				FALSE,	
+				FALSE  ) ;
+		        gHyp_data_delete ( pResult ) ;
+		        gHyp_data_delete ( pLvalue ) ;
+		      }
                       gHyp_data_append ( pRow, pVariable ) ;
 
                     }
@@ -900,7 +1181,47 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
                   }
                 }
 #elif AS_PGSQL
-                /*  Process PG rows  */
+                for ( col=0 ; col<numCols; col++ ) {
+                  switch ( colTypes[col] ) {
+		    case 16 : /*BOOLOID*/
+                        /* Boolean - true/false */
+		        hyperscript_datatype[col] = TYPE_BYTE ;
+                        break ;
+                    case 18: /*CHAROID*/
+                        /* TYPE_CHAR */
+		        hyperscript_datatype[col] = TYPE_CHAR ;
+                        break ;
+		    case 21 : /*INT2OID*/
+                        /* TYPE_SHORT */
+		        hyperscript_datatype[col] = TYPE_SHORT ;
+                        break ;
+		    case 23 : /*INT4OID*/
+		    case 702: /*ABSTIMEOID*/
+		        hyperscript_datatype[col] = TYPE_LONG ;
+                        break ;
+		    case 700 : /*FLOAT4OID*/
+		        hyperscript_datatype[col] = TYPE_FLOAT ;
+                        break ;
+		    case 701 : /*FLOAT8OID*/
+		        hyperscript_datatype[col] = TYPE_DOUBLE ;
+                        break ;
+		    case 1082: /*DATEOID*/
+		    case 1083: /*TIMEOID*/
+		    case 1114: /*TIMESTAMPOID */
+			/* Datetime */
+		        hyperscript_datatype[col] = TYPE_DATETIME ;
+                        break ;
+                    case 17: /*BYTEOID*/
+		    case 25: /*TEXTOID*/
+		    case 1043: /*VARCHAROID */
+			/* Text */
+		        hyperscript_datatype[col] = TYPE_STRING ;
+                        break ;
+		    default :
+		        hyperscript_datatype[col] = TYPE_STRING ;
+                        break ;
+                  }
+		}
 
                 numRows = PQntuples( results ) ;
                 rows = 0 ;
@@ -921,21 +1242,20 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
                     switch ( colTypes[col] ) {
 
-                      case 16:
+		    case 16 : /*BOOLOID*/
                         /* Boolean - true/false */
                         if ( strcmp ( (char*) pBytes, "true" ) == 0 )
                           gHyp_data_setBool ( pData, TRUE ) ;
                         else
                           gHyp_data_setBool ( pData, TRUE ) ;
-
                         break ;
 
-                      case 18 :
+                    case 18: /*CHAROID*/
                         /* TYPE_CHAR */
                         gHyp_data_newConstant_raw ( pData, TYPE_CHAR, (char*)pBytes ) ;
                         break ;
 
-                      case 21 :
+		    case 21 : /*INT2OID*/
                         /* TYPE_SHORT */
                         if ( isDataBinary[col] )
                           gHyp_data_newConstant_raw ( pData, TYPE_SHORT, (char*)pBytes ) ;
@@ -943,7 +1263,9 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
                           gHyp_data_newConstant_scanf ( pData, TYPE_SHORT, (char*)pBytes, n ) ;
                         break ;
 
-                      case 23:
+		    case 23 : /*INT4OID*/
+		    case 702: /*ABSTIMEOID*/
+
                         /* TYPE_LONG */
                         if ( isDataBinary[col] )
                           gHyp_data_newConstant_raw ( pData, TYPE_LONG, (char*)pBytes ) ;
@@ -951,8 +1273,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
                           gHyp_data_newConstant_scanf ( pData, TYPE_LONG, (char*)pBytes, n ) ;
                         break ;
 
-                      case 700 :
-
+		    case 700 : /*FLOAT4OID*/
                         /* 4-byte single-precision */
                         if ( isDataBinary[col] )
                           gHyp_data_newConstant_raw ( pData, TYPE_FLOAT, (char*)pBytes ) ;
@@ -960,48 +1281,94 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
                           gHyp_data_newConstant_scanf ( pData, TYPE_FLOAT, (char*)pBytes, n ) ;
                         break ;
 
-                      case 701 :
-                        if ( isDataBinary[col] )
+		    case 701 : /*FLOAT8OID*/
+			if ( isDataBinary[col] )
                           gHyp_data_newConstant_raw ( pData, TYPE_DOUBLE, (char*)pBytes ) ;
                         else
                           gHyp_data_newConstant_scanf ( pData, TYPE_DOUBLE, (char*)pBytes, n ) ;
                         break ;
 
-                      case 17 :
-		      case 1043:
+		    case 1082: /*DATEOID*/
+		    case 1083: /*TIMEOID*/
+		    case 1114: /*TIMESTAMPOID */
 
-                        /* Text, use util_parseString to internalize */
-                        /* Convert the string to internal form */
-                        /*n = gHyp_util_parseString ( (char*) pBytes ) ;*/
-
-			/*if ( n <= VALUE_SIZE ) {*/
-                          gHyp_data_setStr_n ( pData, pBytes, n ) ;
-                          break ;
-			/*}*/
-
-                      case 25 :
-                      default :
-
-			gHyp_data_setVariable ( pData, "_data_", TYPE_STRING ) ;
-			gHyp_util_breakStream ( (char*) pBytes, n, pData, TRUE ) ;
+			/* Datetime */
+                        gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
                         break ;
+
+                    case 17:   /*BYTEOID*/
+		    case 1043: /*VARCHAROID */
+
+			/* Text */
+                        gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
+                        break ;
+
+		    case 25: /*TEXTOID*/
+  			gHyp_data_setVariable ( pData, "_data_", TYPE_STRING ) ;
+			gHyp_util_breakStream ( (char*) pBytes, n, pData, TRUE ) ;
+			break ;
+
+		    default :
+			if ( n == 0 ) 
+                          gHyp_data_setStr_n (pData, "NULL", 4 ) ;
+                        else if ( colLens[col] <= INTERNAL_VALUE_SIZE )
+                          gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
+			else {
+  			  gHyp_data_setVariable ( pData, "_data_", TYPE_STRING ) ;
+			  gHyp_util_breakStream ( (char*) pBytes, n, pData, TRUE ) ;
+			}
+                        break ;
+
 
                     }
                     if ( pColStr != NULL ) {
 
                       /* Append the column element to the row element */
-                      pCol = gHyp_data_new ( pColStr ) ;
+                      pCol = gHyp_data_new ( NULL ) ;
+		      gHyp_data_setVariable ( pCol, pColStr, TYPE_LIST ) ;
                       gHyp_data_append( pCol, pData ) ;
+		      if ( hyperscript_datatype[col] != TYPE_STRING &&
+			   hyperscript_datatype[col] != TYPE_DATETIME ) {
+
+			pLvalue = gHyp_data_new ( NULL ) ;
+			gHyp_data_setReference ( pLvalue, pColStr, pCol ) ;	
+		        pResult = gHyp_type_assign ( 
+				pAI,
+				gHyp_instance_frame ( pAI ),
+				pLvalue,
+				NULL,
+				hyperscript_datatype[col], /* Into this datatype */
+				FALSE,	
+				FALSE  ) ;
+		        gHyp_data_delete ( pResult ) ;
+		        gHyp_data_delete ( pLvalue ) ;
+		      }
                       gHyp_data_append ( pRow, pCol ) ;
 
                     }
                     else if ( pRowStr != NULL ) {
 
-                      /* Add the element to the row variable */
-		      strcpy ( colName, colNames[i] ) ;
-		      gHyp_util_upperCase ( colName, strlen ( colName ) ) ;
-                      pVariable = gHyp_data_new ( colName ) ;
+                      /* Append the column element to the row element */
+                      pVariable = gHyp_data_new ( NULL ) ;
+		      gHyp_data_setVariable ( pVariable, colNames[col], TYPE_LIST ) ;
                       gHyp_data_append( pVariable, pData ) ;
+
+		      if ( hyperscript_datatype[col] != TYPE_STRING &&
+			   hyperscript_datatype[col] != TYPE_DATETIME ) {
+
+			pLvalue = gHyp_data_new ( NULL ) ;
+			gHyp_data_setReference ( pLvalue, colNames[col], pVariable ) ;	
+		        pResult = gHyp_type_assign ( 
+				pAI,
+				gHyp_instance_frame ( pAI ),
+				pLvalue,
+				NULL,
+				hyperscript_datatype[col], /* Into this datatype */
+				FALSE,	
+				FALSE  ) ;
+		        gHyp_data_delete ( pResult ) ;
+		        gHyp_data_delete ( pLvalue ) ;
+		      }
                       gHyp_data_append ( pRow, pVariable ) ;
 
                     }
@@ -1016,17 +1383,61 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
 #elif AS_ORACLE
 
-		if ( stmthp )
+                for ( col=0 ; col<numCols; col++ ) {
+                    switch ( colTypes[col] ) {
+                      case SQLT_CHR :
+                        /* VARCHAR2 */
+		        hyperscript_datatype[col] = TYPE_STRING ;
+                        break ;
+		      case SQLT_INT :
+			 /* Integer */
+		        hyperscript_datatype[col] = TYPE_LONG ;
+			break ;
+                      case SQLT_FLT:
+                        /* Float */
+		        hyperscript_datatype[col] = TYPE_FLOAT ;
+                        break ;
+		      case SQLT_NUM :
+			/* Numeric.  Must convert */
+			if ( isFloat[col] ) {
+		          hyperscript_datatype[col] = TYPE_DOUBLE ;
+			}
+			else {
+		          hyperscript_datatype[col] = TYPE_LONG ;
+			}
+			break ;
+		      case SQLT_DAT :
+		      case SQLT_DATE :
+	  	      case SQLT_STR :
+		      case SQLT_TIMESTAMP :
+		      case SQLT_TIMESTAMP_TZ :
+		      case SQLT_TIMESTAMP_LTZ :
+		      case SQLT_INTERVAL_YM :
+		      case SQLT_INTERVAL_DS :
+			/* Dates: convert to string */
+		        hyperscript_datatype[col] = TYPE_DATETIME ;
+			break ;
+		      case SQLT_BIN :
+			/* Binary */
+ 		        hyperscript_datatype[col] = TYPE_STRING ;
+			break ;
+                      default :
+		        hyperscript_datatype[col] = TYPE_STRING ;
+                        break ;
+		    }
+		}
+
+                if ( stmthp )
 		  OCIHandleFree( (dvoid *)stmthp, (ub4) OCI_HTYPE_STMT);
 
-  /* Create handle for the statement */
-  rc = OCIHandleAlloc(	(dvoid *) dbproc->envhp, 
+		rc = OCIHandleAlloc(	
+			(dvoid *) dbproc->envhp, 
 			(dvoid **) &stmthp, 
 			OCI_HTYPE_STMT,
 			(size_t) 0,
 			(dvoid **) 0);
 
-  lHyp_sql_checkErr ( dbproc->errhp, rc ) ;
+		lHyp_sql_checkErr ( dbproc->errhp, rc ) ;
 
 		rc = OCIStmtPrepare(
 			stmthp, 
@@ -1038,20 +1449,25 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 		lHyp_sql_checkErr ( dbproc->errhp, rc ) ;
 
 		if ( rc == OCI_SUCCESS ) {
+
 		  for ( i=0; i<numCols; i++ ) {
-		    /* Associate the buffer with a column definition */
+
+		    /* Associate the buffer with a column definition.
+		     * Convert everything to CHAR
+		     */
 		    rc = OCIDefineByPos(stmthp, 
 					&defnp[i], 
 					dbproc->errhp,
 					i+1, 
 					(dvoid *) dataBuffer[i],
-					(sword) colLens[i], 
-					(ub2) colTypes[i],
+					(sword) dataBufferLen[i], 
+					(ub2) SQLT_CHR, /*colTypes[i],*/
 					(dvoid *) &indicator[i], 
 					(ub2 *)&dataLen[i],
 					(ub2 *)0, 
 					OCI_DEFAULT);
-			lHyp_sql_checkErr ( dbproc->errhp, rc ) ;
+
+		    lHyp_sql_checkErr ( dbproc->errhp, rc ) ;
 		  }
 		}
 
@@ -1060,20 +1476,25 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 			dbproc->svchp, 
 			stmthp,
 			dbproc->errhp,
-			(ub4) 1, 
+			(ub4) 0, 
 			(ub4) 0,
 			(CONST OCISnapshot *) NULL, 
 			(OCISnapshot *) NULL, 
 			OCI_DEFAULT) ;
+			/*OCI_STMT_SCROLLABLE_READONLY) ;*/
 
 		lHyp_sql_checkErr ( dbproc->errhp, rc ) ;
 
                 rows = 0 ;
+
+		/*orientation = OCI_FETCH_NEXT ;*/
+		orientation = OCI_DEFAULT ;
+
                 while ( (results = OCIStmtFetch2(
 					stmthp, 
 					dbproc->errhp, 
 					(ub4) 1,
-					(ub2) OCI_FETCH_NEXT,
+					orientation,
 					(sb4) 0,
 					OCI_DEFAULT)) == OCI_SUCCESS) {
 
@@ -1082,7 +1503,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
                   if ( pRowStr ) {
                     pRow = gHyp_data_new ( pRowStr ) ;
                     gHyp_data_append ( pTable, pRow ) ;
-                  }
+                  } 
 
                   for ( col=0 ; col<numCols; col++ ) {
 
@@ -1093,53 +1514,113 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
                     switch ( colTypes[col] ) {
 
-                      case 1 :
-                      case 96 :
-                        /* VARCHAR2, CHAR */
+                      case SQLT_CHR :
+
+                        /* VARCHAR2 */
                         gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
                         break ;
 
-		      case 2:
-			 /* NUMBER */
+		      case SQLT_INT :
+
+			 /* Integer */
                         gHyp_data_newConstant_scanf ( pData, TYPE_LONG, (char*)pBytes, n ) ;
+			break ;
+
+                      case SQLT_FLT:
+
+                        /* Float */
+                        gHyp_data_newConstant_scanf ( pData, TYPE_FLOAT, (char*)pBytes, n ) ;
                         break ;
 
-                      case 8:
-                        /* LONG */
-                        gHyp_data_newConstant_raw ( pData, TYPE_LONG, (char*)pBytes ) ;
-                        break ;
+		      case SQLT_NUM :
+			/* Numeric.  Must convert */
+			if ( isFloat[col] ) {
+                          gHyp_data_newConstant_scanf ( pData, TYPE_DOUBLE, (char*)pBytes, n ) ;
+			}
+			else {
+                         gHyp_data_newConstant_scanf ( pData, TYPE_LONG, (char*)pBytes, n ) ;
+			}
+			break ;
 
-		      case 23:
-		      case 24 :
-			/* RAW and LONG RAW */
-                        if ( n == 1 )
-                          gHyp_data_newConstant_raw ( pData, TYPE_BINARY, pBytes ) ;
-                        else
-                          gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
-                        break ;
+		      case SQLT_DAT :
+		      case SQLT_DATE :
+	  	      case SQLT_STR :
+		      case SQLT_TIMESTAMP :
+		      case SQLT_TIMESTAMP_TZ :
+		      case SQLT_TIMESTAMP_LTZ :
+		      case SQLT_INTERVAL_YM :
+		      case SQLT_INTERVAL_DS :
+
+			/* Dates: convert to string */
+                        gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
+			break ;
+
+		      case SQLT_BIN :
+
+			/* Binary */
+  			gHyp_data_setVariable ( pData, "_data_", TYPE_STRING ) ;
+			gHyp_util_breakStream ( (char*) pBytes, n, pData, TRUE ) ;
+			break ;
 
                       default :
-
-			gHyp_data_setVariable ( pData, "_data_", TYPE_STRING ) ;
-			gHyp_util_breakStream ( (char*) pBytes, n, pData, TRUE ) ;
+			      
+			if ( n == 0 ) 
+                          gHyp_data_setStr_n (pData, "NULL", 4 ) ;
+                        else if ( colLens[col] <= INTERNAL_VALUE_SIZE )
+                          gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
+			else {
+  			  gHyp_data_setVariable ( pData, "_data_", TYPE_STRING ) ;
+			  gHyp_util_breakStream ( (char*) pBytes, n, pData, TRUE ) ;
+			}
                         break ;
 
                     }
+
                     if ( pColStr != NULL ) {
 
                       /* Append the column element to the row element */
-                      pCol = gHyp_data_new ( pColStr ) ;
+                      pCol = gHyp_data_new ( NULL ) ;
+		      gHyp_data_setVariable ( pCol, pColStr, TYPE_LIST ) ;
                       gHyp_data_append( pCol, pData ) ;
+		      if ( hyperscript_datatype[col] != TYPE_STRING &&
+			   hyperscript_datatype[col] != TYPE_DATETIME ) {
+			pLvalue = gHyp_data_new ( NULL ) ;
+			gHyp_data_setReference ( pLvalue, pColStr, pCol ) ;
+		        pResult = gHyp_type_assign ( 
+				pAI,
+				gHyp_instance_frame ( pAI ),
+				pLvalue,
+				NULL,
+				hyperscript_datatype[col],
+				FALSE,	
+				FALSE  ) ;
+		        gHyp_data_delete ( pResult ) ;
+		        gHyp_data_delete ( pLvalue ) ;
+		      }
                       gHyp_data_append ( pRow, pCol ) ;
 
                     }
                     else if ( pRowStr != NULL ) {
 
-                      /* Add the element to the row variable */
-		      strcpy ( colName, colNames[i] ) ;
-		      gHyp_util_upperCase ( colName, strlen ( colName ) ) ;
-                      pVariable = gHyp_data_new ( colName ) ;
+                      /* Append the column element to the row element */
+                      pVariable = gHyp_data_new ( NULL ) ;
+		      gHyp_data_setVariable ( pVariable, colNames[col], TYPE_LIST ) ;
                       gHyp_data_append( pVariable, pData ) ;
+		      if ( hyperscript_datatype[col] != TYPE_STRING &&
+			   hyperscript_datatype[col] != TYPE_DATETIME ) {
+			pLvalue = gHyp_data_new ( NULL ) ;
+			gHyp_data_setReference ( pLvalue, colNames[col], pVariable ) ;
+		        pResult = gHyp_type_assign ( 
+				pAI,
+				gHyp_instance_frame ( pAI ),
+				pLvalue,
+				NULL,
+				hyperscript_datatype[col], /* Into this datatype */
+				FALSE,	
+				FALSE  ) ;
+		        gHyp_data_delete ( pResult ) ;
+		        gHyp_data_delete ( pLvalue ) ;
+		      }
                       gHyp_data_append ( pRow, pVariable ) ;
 
                     }
@@ -1152,8 +1633,52 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
                 }
 
 #endif
-
 	        /* Post processing, results were found */
+                if ( pColStr == NULL && pRowStr == NULL ) {
+
+	          for ( i=0;i<numCols;i++) {
+			    
+		    if ( hyperscript_datatype[i] != TYPE_STRING &&
+			 hyperscript_datatype[i] != TYPE_DATETIME ) {
+
+                      pVariable = variables[i] ;
+		      pLvalue = gHyp_data_new ( NULL ) ;
+		      gHyp_data_setReference ( pLvalue, colNames[i], pVariable ) ;	
+		      pResult = gHyp_type_assign ( 
+				pAI,
+				gHyp_instance_frame ( pAI ),
+				pLvalue,
+				NULL,	
+				hyperscript_datatype[i], /* Into this datatype */
+				FALSE,	
+				FALSE  ) ;
+		      gHyp_data_delete ( pResult ) ;
+		      gHyp_data_delete ( pLvalue ) ;
+		    }
+		  }
+		}
+
+	        pAttr = gHyp_frame_createVariable ( pFrame, "_sqlattr_" ) ;
+                gHyp_data_deleteValues ( pAttr ) ;
+		for ( i=0; i<numCols; i++ ) {
+
+		  pColAttr = gHyp_data_new ( colNames[i] ) ;
+		  gHyp_data_append ( pAttr, pColAttr ) ;
+
+		  pData = gHyp_data_new ( "type" ) ;
+		  pAttrStr = gHyp_fileio_dataTypeStr ( hyperscript_datatype[i] ) ;
+		  gHyp_data_newVectorSrc ( pData, TYPE_ATTR, strlen (pAttrStr), FALSE, pAttrStr ) ;
+			  
+		  gHyp_data_append ( pColAttr, pData ) ;
+
+		  pData = gHyp_data_new ( "width" ) ;
+		  n = sprintf ( value, "%d", colLens[i] ) ; ;
+		  gHyp_data_newVectorSrc ( pData, TYPE_ATTR, n, FALSE, value ) ;
+			  
+		  gHyp_data_append ( pColAttr, pData ) ;
+		
+		}
+            
 
 #ifdef AS_PGSQL
                 if ( results ) PQclear ( results ) ;
@@ -1163,22 +1688,18 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 	        results = NULL ;
 #elif AS_ORACLE
 
+		if ( results != OCI_NO_DATA ) 
+		  lHyp_sql_checkErr ( dbproc->errhp, results ) ;
+
 		for ( i=0; i<numCols; i++ )
 		  ReleaseMemory ( dataBuffer[i] ) ;
 
 		if ( stmthp )
 		  OCIHandleFree( (dvoid *)stmthp, (ub4) OCI_HTYPE_STMT);
-
 #endif
+		for ( i=0; i<numCols; i++ )
+		  ReleaseMemory ( colNames[i] ) ;
 
-/*
-#ifdef AS_MYSQL
-	        if ( rows == 0 ) {
-	          rows = (int) mysql_affected_rows ( dbproc ) ;
-	          *gHyp_util_debug("Affected rows = %d",rows);*
-	        }
-#endif
-*/
             }
             else {
 
@@ -1187,8 +1708,9 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
               break;
 
             } /* End if ( results ) */
-
+ 	    
           } /* end while ( get (results ) ) */
+
 
     } /* if ( query != NULL ) */ 
     else {
@@ -1210,6 +1732,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       if (  (PQresultStatus(results) != PGRES_EMPTY_QUERY) &&
 	    (PQresultStatus(results) != PGRES_COMMAND_OK) ) {
 	msgLen = sprintf( msg, "Failed SQL query, reason is '%s'.",PQresStatus(PQresultStatus(results)) );
+        gHyp_data_setText ( pStatus, msg, msgLen ) ; 
         msg[msgLen] = '\0' ;
         gHyp_instance_warning ( pAI, STATUS_SQL, msg ) ;
         status = FALSE ;
@@ -1218,12 +1741,26 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
 #elif AS_ORACLE
 
+      if ( results != OCI_SUCCESS && results != OCI_NO_DATA ) {
+
+        msgLen = sprintf( msg, "Failed SQL query, reason is '%s'.",errbuf );
+        gHyp_data_setText ( pStatus, msg, msgLen ) ; 
+        msg[msgLen] = '\0' ;
+        gHyp_instance_warning ( pAI, STATUS_SQL, msg ) ;
+        status = FALSE ;
+
+      }
+
 #else
 
-      /* Probably SQLSERVER, but there is already a message handler */
-      /* SO, don't add anything to _sql_status_ 
-      gHyp_data_setText ( pStatus, msg, msgLen ) ; 
-      */
+      /* SQLSERVER */
+      if ( results != SUCCEED ) {
+        msgLen = sprintf( msg, "Failed SQL query, reason is '%s'.",errbuf );
+        gHyp_data_setText ( pStatus, msg, msgLen ) ; 
+        msg[msgLen] = '\0' ;
+        gHyp_instance_warning ( pAI, STATUS_SQL, msg ) ;
+        status = FALSE ;
+      }
 
 #endif
 
@@ -1324,15 +1861,18 @@ void gHyp_sql_open ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
   sword	rc ;
 
+   char
+      connectString[VALUE_SIZE+1] ;
+
 #endif
 
     /* Assume success */
     gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
 
-    if ( argCount != 3 && argCount !=4 && argCount != 5 )
+    if ( argCount !=4 && argCount != 5 )
       gHyp_instance_error (
                pAI, STATUS_ARGUMENT,
-               "Invalid arguments. Usage: sql_open ( user, password, server [,database [,isSecure]])");
+               "Invalid arguments. Usage: sql_open ( user, password, server ,database [,isSecure])");
 
     if ( argCount == 5 ) {
       pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
@@ -1341,22 +1881,20 @@ void gHyp_sql_open ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
                                      TRUE )  ;
     }
 
-    if ( argCount >= 4 ) {
-      /* Get name for database */
-      n = gHyp_data_getStr (      gHyp_stack_popRvalue ( pStack, pAI ),
+
+    /* Get name for database */
+    n = gHyp_data_getStr (      gHyp_stack_popRvalue ( pStack, pAI ),
 				  value,
                                   VALUE_SIZE,
                                   0,
                                   TRUE ) ;
-      if ( n > MAX_SQL_DATABASE_LENGTH )
-        gHyp_instance_error (pAI, STATUS_SQL,
-        "Database name must be %d characters or less",
-        MAX_SQL_DATABASE_LENGTH ) ;
+    if ( n > MAX_SQL_DATABASE_LENGTH )
+      gHyp_instance_error (pAI, STATUS_SQL,
+      "Database name must be %d characters or less",
+      MAX_SQL_DATABASE_LENGTH ) ;
 
-      strcpy ( sql_database, value ) ;
-    }
-    else
-      strcpy ( sql_database, "" ) ;
+    strcpy ( sql_database, value ) ;
+
 
     /* Get name for server */
     n = gHyp_data_getStr (      gHyp_stack_popRvalue ( pStack, pAI ),
@@ -1525,14 +2063,20 @@ void gHyp_sql_open ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
   lHyp_sql_checkErr ( dbproc->errhp, rc ) ;
  
-  if ( rc == OCI_SUCCESS )
+  if ( rc == OCI_SUCCESS ) {
     /* Attach to the server */
+
+    if ( strlen ( sql_database ) == 0 )
+      strcpy ( connectString, sql_server ) ;
+    else
+      sprintf ( connectString, "//%s/%s", sql_server, sql_database ) ;
+
     rc = OCIServerAttach(	dbproc->srvhp, 
 				dbproc->errhp,
-				(text *)sql_server,
-				strlen(sql_server),
+				(text *)connectString,
+				strlen(connectString),
 				OCI_DEFAULT );
-  
+  }
   lHyp_sql_checkErr ( dbproc->errhp, rc ) ;
 
 
@@ -1838,17 +2382,27 @@ void gHyp_sql_toexternal(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       *pStr ;
     
     sLOGICAL
+      doTrim=TRUE,
+      isEmpty,
       isVector ;
 
     /* Assume success */	
     gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
 
-    if ( argCount != 1 ) gHyp_instance_error ( pAI,STATUS_ARGUMENT,
-	"Invalid arguments. Usage: sql_toexternal ( string )" ) ;
+    if ( argCount > 2 ) gHyp_instance_error ( pAI,STATUS_ARGUMENT,
+	"Invalid arguments. Usage: sql_toexternal ( string [, notrim] )" ) ;
 
-    pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
+    if ( argCount == 2 ) {
+      pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
+      doTrim  = gHyp_data_getBool ( pData,
+				    gHyp_data_getSubScript ( pData  ),
+				    TRUE ) ;
+    }
+
+    pData = gHyp_stack_popRdata ( pStack, pAI ) ;
     pResult = gHyp_data_new ( NULL ) ;
     gHyp_data_setVariable ( pResult, "_toexternal_", TYPE_STRING ) ;
+    isEmpty = TRUE ;
     isVector = (gHyp_data_getDataType( pData ) > TYPE_STRING ) ;
     pValue = NULL ;
     ss = gHyp_data_getSubScript ( pData ) ; context = -1 ;
@@ -1863,6 +2417,7 @@ void gHyp_sql_toexternal(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 				gHyp_data_dataType ( pValue ), 
 				pValue, 
 				context ) ;
+        isEmpty = FALSE ;
       }
       else {
         n = gHyp_data_getStr ( pValue, 
@@ -1873,7 +2428,9 @@ void gHyp_sql_toexternal(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
         pStr = strVal ;
         pValue2 = gHyp_data_new ( NULL ) ;
         n = gHyp_util_unparseString ( strVal2, pStr, n, VALUE_SIZE, FALSE, FALSE, TRUE,"" ) ;
+	if ( doTrim ) n = gHyp_util_trim ( strVal2 ) ;
         gHyp_data_setStr_n ( pValue2, strVal2, n ) ;
+	if ( n > 0 ) isEmpty = FALSE ;
       }
 
       gHyp_data_append ( pResult, pValue2 ) ;
@@ -1884,7 +2441,136 @@ void gHyp_sql_toexternal(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 			    "Subscript '%s' is out of bounds in sql_toexternal()",
 			    ss);
     }
+    if ( isEmpty ) {
+      strcpy ( strVal, "NULL" ) ;
+      pValue = gHyp_data_new ( NULL ) ;
+      gHyp_data_setStr ( pValue, strVal ) ;
+      gHyp_data_append ( pResult, pValue ) ;
+    }
+    else {
+      strcpy ( strVal, "'" ) ;
+      pValue = gHyp_data_new ( NULL ) ;
+      gHyp_data_setStr ( pValue, strVal ) ;
+      gHyp_data_insert ( pResult, pValue ) ;
+      pValue = gHyp_data_new ( NULL ) ;
+      gHyp_data_setStr ( pValue, strVal ) ;
+      gHyp_data_append ( pResult, pValue ) ;
+    }
+
     gHyp_stack_push ( pStack, pResult ) ;
   }
 }
 
+void gHyp_sql_datetime ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: sql_datetime()
+   *	Returns YYYYMMDD:hhmmss
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+
+  else {
+
+    sStack 	
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+
+    sData
+      *pData,
+      *pValue,
+      *pValue2,
+      *pResult ;
+
+    struct tm	*pstm ;	
+
+    char
+      timeStamp[SQL_DATETIME_SIZE+1] ;
+
+    time_t
+      ts ;
+
+    sLOGICAL
+      isVector ;
+
+    int
+      ss,
+      context,
+      argCount = gHyp_parse_argCount ( pParse ) ;
+    
+    /* Assume success */	
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount > 1 ) gHyp_instance_error ( pAI,STATUS_ARGUMENT,
+	"Invalid arguments. Usage: sql_datetime ( [ansitime] )" ) ;
+
+    if ( argCount == 0 ) {
+
+      ts = gsCurTime = time(NULL) ;
+      pstm = localtime ( &ts ) ;
+      if ( !pstm ) 
+	strcpy ( timeStamp, "NULL" ) ;
+      else
+        sprintf (timeStamp, 
+		"'%04d-%02d-%02d %02d:%02d:%02d'", 
+		pstm->tm_year+1900, pstm->tm_mon+1, pstm->tm_mday,
+		pstm->tm_hour, pstm->tm_min, pstm->tm_sec ) ;
+      pResult = gHyp_data_new ( NULL ) ;
+      gHyp_data_setStr ( pResult, timeStamp ) ;
+      gHyp_stack_push ( pStack, pResult ) ;
+    }
+    else {
+
+      pResult = gHyp_data_new ( NULL ) ;
+      gHyp_data_setVariable ( pResult, "_sql_datetime_", TYPE_STRING ) ;
+
+      pData = gHyp_stack_popRdata ( pStack, pAI ) ;
+      isVector = (gHyp_data_getDataType( pData ) > TYPE_STRING ) ;
+      pValue = NULL ;
+      ss = gHyp_data_getSubScript ( pData ) ; 
+      context = -1 ;
+      while ( (pValue = gHyp_data_nextValue ( pData, 
+  					      pValue, 
+					      &context,
+					      ss ) ) ) {
+      
+        ts = gHyp_data_getRaw ( pValue, context, TRUE  ) ;
+        pstm = localtime ( &ts ) ;
+	if ( !pstm )
+  	  strcpy ( timeStamp, "NULL" ) ;
+	else
+          sprintf ( timeStamp, 
+	  	  "'%04d-%02d-%02d %02d:%02d:%02d'", 
+		  pstm->tm_year+1900, pstm->tm_mon+1, pstm->tm_mday,
+		  pstm->tm_hour, pstm->tm_min, pstm->tm_sec ) ;
+        pValue2 = gHyp_data_new ( NULL ) ;
+        gHyp_data_setStr ( pValue2, timeStamp ) ;
+        gHyp_data_append ( pResult, pValue2 ) ;
+      }
+      if ( context== -2 && ss != -1 ) {
+        gHyp_data_delete ( pResult ) ;
+        gHyp_instance_error ( pAI, STATUS_BOUNDS, 
+			    "Subscript '%s' is out of bounds in sql_toexternal()",
+			    ss);
+      }
+      gHyp_stack_push ( pStack, pResult ) ;
+    }
+  }
+}

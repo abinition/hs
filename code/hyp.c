@@ -10,7 +10,13 @@
 /* Modifications:
  *
  * $Log: hyp.c,v $
- * Revision 1.8  2006/01/16 18:56:36  bergsma
+ * Revision 1.5  2007-07-09 05:39:00  bergsma
+ * TLOGV3
+ *
+ * Revision 1.9  2007-02-13 22:31:23  bergsma
+ * Move method[METHOD_SIZE+1] so that the hyp structure aligns better.
+ *
+ * Revision 1.8  2006-01-16 18:56:36  bergsma
  * HS 3.6.6
  * 1. Save query timeout events.  Don't let queries repeat indefinitely.
  * 2. Rework DEBUG_DIAGNOSTIC debugging.  Less overhead.
@@ -76,10 +82,10 @@ struct code_t {
 /* The hyp_t structure holds the entire HyperScript program */
 struct	hyp_t
 {
-  char		method[METHOD_SIZE+1] ; /* Name of method which owns code */
   unsigned 	size ;			/* Size of pHyp memory allocated */
   unsigned 	count ;			/* Count of HyperScript commands */
   unsigned	highWaterCount ;	/* Dereference area */
+  char		method[METHOD_SIZE+1] ; /* Name of method which owns code */
   sCode		*pCode ;		/* Compiled HyperScript	*/
 } ;
 

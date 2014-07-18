@@ -26,7 +26,7 @@
 ! Modifications:
 !
 ! $Log: automan4.for,v $
-! Revision 1.19  2005/05/10 17:29:04  bergsma
+! Revision 1.19  2005-05-10 17:29:04  bergsma
 ! Fix algorithm for finding free buffer space.
 !
 ! Revision 1.18  2005/04/22 19:23:50  bergsma

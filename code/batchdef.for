@@ -3,7 +3,7 @@
 ! Modifications:
 !
 !    $Log: batchdef.for,v $
-!    Revision 1.2  2003/01/16 14:32:07  bergsma
+!    Revision 1.2  2003-01-16 14:32:07  bergsma
 !    V3.1.0
 !    Added Modification tags.
 !

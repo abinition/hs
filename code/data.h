@@ -4,6 +4,12 @@
  * Modifications:
  *
  * $Log: data.h,v $
+ * Revision 1.5  2007-07-09 05:39:00  bergsma
+ * TLOGV3
+ *
+ * Revision 1.11  2006-09-16 19:40:46  bergsma
+ * Added gHyp_data_newVectorSrc
+ *
  * Revision 1.10  2005/09/02 04:35:54  bergsma
  * no message
  *
@@ -40,6 +46,7 @@
 
 extern sData* 		gHyp_data_new ( char * ) ;
 extern void 		gHyp_data_newVector ( sData*, sBYTE, int, sLOGICAL ) ;
+extern void 		gHyp_data_newVectorSrc ( sData*, sBYTE, int, sLOGICAL, void* ) ;
 extern void 		gHyp_data_newConstant ( sData*, sBYTE, sData*, int ) ;
 extern void 		gHyp_data_newConstant_raw ( sData*, sBYTE, void* ) ;
 extern void 		gHyp_data_newConstant_scanf ( sData*, sBYTE, char*, int ) ;

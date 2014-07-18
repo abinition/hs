@@ -10,7 +10,33 @@
  * Modifications:
  *
  *   $Log: function.c,v $
- *   Revision 1.42  2006/07/17 16:54:58  bergsma
+ *   Revision 1.5  2007-07-09 05:39:00  bergsma
+ *   TLOGV3
+ *
+ *   Revision 1.49  2007-06-20 21:09:24  bergsma
+ *   Use popRdata, not popRvalue, when subsequently doing a data_getNext
+ *
+ *   Revision 1.48  2007-05-02 20:34:01  bergsma
+ *   Fix parseurl function.  Improve various print/debug/log statements.
+ *   Fix problem with chunked data transfers.
+ *
+ *   Revision 1.47  2007-03-27 00:42:30  bergsma
+ *   Newline at eof.
+ *
+ *   Revision 1.46  2007-03-26 21:16:18  bergsma
+ *   Added parseurl function().
+ *
+ *   Revision 1.45  2007-03-21 02:21:31  bergsma
+ *   Added round() function.
+ *
+ *   Revision 1.44  2007-03-19 05:32:08  bergsma
+ *   New functions: min, max, pow, hypot, abs, acos, asin, atan,  ceil, cos,
+ *    floor, log10, logN, sin, sqrt, tan, exp printf, sprintf, fprintf
+ *
+ *   Revision 1.43  2007-03-15 01:46:36  bergsma
+ *   New functions.
+ *
+ *   Revision 1.42  2006-07-17 16:54:58  bergsma
  *   When strtok uses an explicit delimeter, do not consider single and
  *   double quotes from the tokens....
  *
@@ -1095,18 +1121,24 @@ void gHyp_function_strtok ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     /* Assume success */	
     gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
 
-    if ( argCount != 1 && argCount != 2 ) 
+    if ( argCount < 1 || argCount > 3 ) 
       gHyp_instance_error ( pAI,STATUS_ARGUMENT,
-	"Invalid arguments. Usage: strtok ( string, [separator] )" ) ;
+	"Invalid arguments. Usage: strtok ( string, [separator,[doLitterally]])" ) ;
 
-    if ( argCount == 2 ) {
+    if ( argCount > 2 ) {
+      pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
+      doLiterally = gHyp_data_getBool ( pData,
+					  gHyp_data_getSubScript ( pData  ),
+					  TRUE ) ;
+    }
+
+    if ( argCount > 1 ) {
       pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
       n = gHyp_data_getStr ( pData, 
 			     separator, 
 			     VALUE_SIZE, 
 			     gHyp_data_getSubScript(pData),
 			     TRUE ) ;
-      doLiterally = TRUE ;
     }
     else
       strcpy ( separator, " \t" ) ;
@@ -1649,7 +1681,7 @@ void gHyp_function_toexternal(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     else
       specialChars[0] = '\0' ;
 
-    pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
+    pData = gHyp_stack_popRdata ( pStack, pAI ) ;
     pResult = gHyp_data_new ( NULL ) ;
     gHyp_data_setVariable ( pResult, "_toexternal_", TYPE_STRING ) ;
     isVector = (gHyp_data_getDataType( pData ) > TYPE_STRING ) ;
@@ -1749,7 +1781,7 @@ void gHyp_function_tointernal(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     if ( argCount != 1 ) gHyp_instance_error ( pAI,STATUS_ARGUMENT,
 	"Invalid arguments. Usage: tointernal ( string )" ) ;
 
-    pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
+    pData = gHyp_stack_popRdata ( pStack, pAI ) ;
     pResult = gHyp_data_new ( NULL ) ;
     gHyp_data_setVariable ( pResult, "_tointernal_", TYPE_STRING ) ;
     isVector = (gHyp_data_getDataType( pData ) > TYPE_STRING ) ;
@@ -7704,8 +7736,274 @@ void gHyp_function_vt2html ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
   }
 }
 
+void gHyp_function_round ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: round ( value, precision )
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
 
+  if ( isPARSE )
 
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
 
+  else {
 
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+    
+    sData
+      *pData,
+      *pValue,
+      *pValue2,
+      *pResult ;
+    
+    int
+      precision,
+      ss,
+      context,
+      argCount = gHyp_parse_argCount ( pParse ) ;
+    
+    char
+      strVal[VALUE_SIZE+1] ;
 
+    sLOGICAL
+      isVector ;
+
+    double
+      doubleValue ;
+
+    /* Assume success */	
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 2 ) gHyp_instance_error ( pAI,STATUS_ARGUMENT,
+	"Invalid arguments. Usage: round ( value, precision )" ) ;
+
+    pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
+    precision = gHyp_data_getInt ( pData,
+				 gHyp_data_getSubScript ( pData),
+				 TRUE ) ;
+
+    pResult = gHyp_data_new ( "_round_" ) ;
+
+    if ( precision < 0 || precision > 12 ) {
+      gHyp_instance_warning ( pAI, "STATUS_BOUNDS", "Precision not between 1 and 12, it is %d ", precision ) ;
+      precision = 7 ;
+    }
+
+    pData = gHyp_stack_popRdata ( pStack, pAI ) ;
+ 
+    isVector = (gHyp_data_getDataType(pData) > TYPE_STRING ) ;
+    pValue = NULL ;
+    ss = gHyp_data_getSubScript ( pData ) ; context = -1 ;
+    while ( (pValue = gHyp_data_nextValue ( pData, 
+					    pValue, 
+					    &context,
+					    ss ) ) ) {
+
+      doubleValue = gHyp_data_getDouble ( pValue, ss, FALSE ) ;
+      sprintf ( strVal, "%.*g", precision, doubleValue ) ;
+      pValue2 = gHyp_data_new ( NULL ) ;
+      gHyp_data_setToken ( pValue2, strVal ) ; 
+      gHyp_data_append ( pResult, pValue2 ) ;
+      
+    }
+    if ( context== -2 && ss != -1 )
+      gHyp_instance_error ( pAI, STATUS_BOUNDS, 
+			    "Subscript '%d' is out of bounds in strlen()",ss) ;
+
+    gHyp_stack_push ( pStack, pResult ) ;
+  }
+}
+
+void gHyp_function_parseurl ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: parseurl ( string )
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+
+  else {
+
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+    
+    sData
+      *pData,
+      *pResult ;
+    
+    int
+      n,
+      argCount = gHyp_parse_argCount ( pParse ) ;
+    
+    char
+      name[VALUE_SIZE+1],
+      *p,
+      *after_access,
+      *orig,
+      *dest,
+      *pAccess=NULL,
+      *pHost=NULL,
+      *pAbsolute=NULL,
+      *pRelative=NULL,
+      *pArgs=NULL,
+      *pFragment=NULL,
+      *pPort=NULL ;
+
+    /* Assume success */	
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 1 ) gHyp_instance_error ( pAI,STATUS_ARGUMENT,
+	"Invalid arguments. Usage: parseurl ( string )" ) ;
+
+    pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
+    n = gHyp_data_getStr ( pData, 
+			   name, 
+			   VALUE_SIZE, 
+			   gHyp_data_getSubScript(pData),
+			   TRUE ) ;
+
+    pResult = gHyp_data_new ( "_url_" ) ;
+
+    p = after_access = name ;
+
+    /* Look for fragment identifier */
+    if ((p = strchr(name, '#')) != NULL) {
+      *p++ = '\0';
+      pFragment = p;
+    }
+    
+    /* Look for args identifier */
+    if ((p = strchr(name, '?')) != NULL) {
+      *p++ = '\0';
+      pArgs = p;
+    }
+    
+    if ((p = strchr(name, ' ')) != NULL) *p++ = '\0';    
+    
+    for (p=name; *p; p++) {
+
+      /* 
+       * Look for any whitespace. This is very bad for pipelining as it
+       * makes the request invalid
+       */
+      if ( isspace ( (int) *p) ) {
+
+	orig = p ;
+	dest = p+1 ;
+	while ( (*orig++ = *dest++) ) ;
+	p = p-1;
+      }
+
+      if (*p=='/' || *p=='#' || *p=='?') break ;
+
+      if (*p==':') {
+
+	*p = 0;
+	pAccess = after_access; /* Scheme has been specified */
+
+	after_access = p+1;
+
+	gHyp_util_lowerCase ( pAccess, strlen ( pAccess ) ) ;
+	if (0==strcmp("url", pAccess)) {
+
+	  pAccess = NULL;  /* Ignore IETF's URL: pre-prefix */
+	} 
+	else 
+	  break;
+      }
+    }
+    
+    p = after_access;
+    if ( *p == '/' ) {
+
+      if ( p[1] == '/' ) {
+
+	pHost = p+2;		  /* host has been specified 	*/
+	*p = 0;			  /* Terminate access 		*/
+	p = strchr( pHost,'/');	  /* look for end of host name if any */
+
+	if ( p ) {
+
+	  *p=0;			/* Terminate host */
+	  pAbsolute = p+1;		/* Root has been found */
+	}
+
+      } 
+      else {
+	pAbsolute = p+1;		/* Root found but no host */
+      }	    
+    } 
+    else {
+      pRelative = (*after_access) ? after_access : 0; /* zero for "" */
+    }
+
+    /* Look for port identifier */
+    if ( pHost ) {
+      if ((p = strchr(pHost, ':')) != NULL) {
+        *p++ = '\0';
+        pPort = p;
+      }
+    }
+
+    pData = gHyp_data_new ( NULL ) ;
+    gHyp_data_setStr ( pData, pAccess ) ;
+    gHyp_data_append ( pResult, pData ) ;
+
+    pData = gHyp_data_new ( NULL ) ;
+    gHyp_data_setStr ( pData, pHost ) ;
+    gHyp_data_append ( pResult, pData ) ;
+
+    pData = gHyp_data_new ( NULL ) ;
+    gHyp_data_setStr ( pData, pPort ) ;
+    gHyp_data_append ( pResult, pData ) ;
+
+    pData = gHyp_data_new ( NULL ) ;
+    gHyp_data_setStr ( pData, pAbsolute ? pAbsolute : pRelative ) ;
+    gHyp_data_append ( pResult, pData ) ;
+
+    pData = gHyp_data_new ( NULL ) ;
+    gHyp_data_setStr ( pData, pArgs ) ;
+    gHyp_data_append ( pResult, pData ) ;
+
+    pData = gHyp_data_new ( NULL ) ;
+    gHyp_data_setStr ( pData, pFragment ) ;
+    gHyp_data_append ( pResult, pData ) ;
+
+    gHyp_stack_push ( pStack, pResult ) ;
+  }
+}

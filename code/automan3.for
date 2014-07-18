@@ -36,7 +36,7 @@
 ! Modifications:
 !
 !     $Log: automan3.for,v $
-!     Revision 1.3  2005/03/30 04:05:02  bergsma
+!     Revision 1.3  2005-03-30 04:05:02  bergsma
 !     HS needs to externalize backslash, not ignore it.  Thus, AUTOMAN must be
 !     modified to interpret \\s, \\u, and \\g.
 !

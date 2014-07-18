@@ -3,7 +3,13 @@
  * Modifications:
  *
  * $Log: stmt.h,v $
- * Revision 1.2  2002/11/14 01:40:45  bergsma
+ * Revision 1.5  2007-07-09 05:39:00  bergsma
+ * TLOGV3
+ *
+ * Revision 1.3  2007-06-16 17:56:17  bergsma
+ * Placeholder for 'when'
+ *
+ * Revision 1.2  2002-11-14 01:40:45  bergsma
  * Removed ^M occurances and added Modification section.
  *
  */
@@ -23,3 +29,4 @@ extern void 	gHyp_stmt_eos ( sInstance*, sCode*, sLOGICAL ) ;
 extern void 	gHyp_stmt_break ( sInstance*, sCode*, sLOGICAL ) ;
 extern void 	gHyp_stmt_return ( sInstance*, sCode*, sLOGICAL ) ;
 extern void 	gHyp_stmt_continue ( sInstance*, sCode*, sLOGICAL ) ;
+extern void    	gHyp_stmt_when ( sInstance*, sCode*, sLOGICAL ) ;

@@ -10,6 +10,26 @@
 /* Modifications:
  *
  * $Log: env.c,v $
+ * Revision 1.7  2007-07-09 05:39:00  bergsma
+ * TLOGV3
+ *
+ * Revision 1.35  2007-05-02 20:34:01  bergsma
+ * Fix parseurl function.  Improve various print/debug/log statements.
+ * Fix problem with chunked data transfers.
+ *
+ * Revision 1.34  2007-03-21 17:06:53  bergsma
+ * unused variable.
+ *
+ * Revision 1.33  2007-03-15 01:03:44  bergsma
+ * Added smart-join-merge "sjm" function, as an option in mergeData.
+ *
+ * Revision 1.32  2006-09-25 05:03:17  bergsma
+ * Cosmetic.
+ *
+ * Revision 1.31  2006/09/14 17:12:53  bergsma
+ * Typo, "{" was used, should have been "}" in
+ * "Failed to load HyperScript segment '}'"
+ *
  * Revision 1.30  2006/07/17 16:55:48  bergsma
  * The count function needs and Lvalue as well.
  *
@@ -626,7 +646,9 @@ void lHyp_env_instantiate ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE, sLOG
 				  pAI,
 				  instance,
 				  root,
-				  FALSE, FALSE, TRUE ) ;
+				  FALSE,	/* Don't swap the frames */
+				  FALSE,	/* Don't swap the data */
+				  TRUE ) ;	/* Do reset */
     }
     else {    
       
@@ -641,7 +663,9 @@ void lHyp_env_instantiate ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE, sLOG
 					   pAI,
 					   instance,
 					   root,
-					   TRUE, TRUE, FALSE ) ;
+					   TRUE,	/* Swap the frames */
+					   TRUE,	/* Swap the data */
+					   FALSE ) ;	/* Do not reset */
 
       /* The new instance now has the frame once owned by the concept instance and
        * the concept instance now has a new frame.  However, the _main_ methodData of
@@ -1839,7 +1863,87 @@ void gHyp_env_merge ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     }
     pSrcData = gHyp_stack_popRdata ( pStack, pAI ) ;
     pDstData = gHyp_stack_popRdata ( pStack, pAI ) ;
-    pResult = gHyp_env_mergeData ( pDstData, pSrcData, pAI, 0, autoIncrement, FALSE, NULL ) ;
+    pResult = gHyp_env_mergeData ( pDstData, pSrcData, pAI, 0, autoIncrement, FALSE, FALSE, NULL ) ;
+
+    if ( gHyp_parse_exprCount ( pParse ) == 0 ) {
+
+      if ( gHyp_data_tokenType ( pResult ) == TOKEN_VARIABLE ) {
+
+        pVariable = gHyp_frame_findVariable ( pAI, pFrame, gHyp_data_getLabel ( pResult ) ) ;
+	if ( pVariable ) {
+	  /* Variable already exists. Just move the new values into place */
+	  gHyp_data_deleteValues ( pVariable ) ;
+	  gHyp_data_moveValues ( pVariable, pResult ) ;
+	  gHyp_data_delete ( pResult ) ;
+	  pResult = NULL ;
+	}
+	else 
+	  gHyp_data_append( gHyp_frame_getMethodData(pFrame),pResult ) ;
+
+	pResult = NULL ;
+      }
+      else {
+	gHyp_instance_warning ( pAI, STATUS_INVALID, "Cannot create variable from '%s'",
+			      gHyp_data_getLabel ( pResult ) ) ;
+      }
+    }
+    if ( pResult ) 
+      gHyp_stack_push ( pStack, pResult ) ;
+    else
+      gHyp_instance_pushSTATUS ( pAI, pStack ) ;
+  }
+}
+
+void gHyp_env_sjm ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: sjm ( variable, variable )
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   * Modifications:
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+  
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+    
+  else {
+ 
+    sStack 	
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+
+    sData
+      *pSrcData,
+      *pDstData,
+      *pVariable,
+      *pResult ;
+
+    int
+      argCount = gHyp_parse_argCount ( pParse ) ;
+    
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 2 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+	"Invalid arguments. Usage: sjm ( destination, source )" ) ;
+
+    pSrcData = gHyp_stack_popRdata ( pStack, pAI ) ;
+    pDstData = gHyp_stack_popRdata ( pStack, pAI ) ;
+    pResult = gHyp_env_mergeData ( pDstData, pSrcData, pAI, 0, FALSE, FALSE, TRUE, NULL ) ;
 
     if ( gHyp_parse_exprCount ( pParse ) == 0 ) {
 
@@ -1876,6 +1980,7 @@ sData* gHyp_env_mergeData ( sData *pDst,
 			    int counter,
 			    sLOGICAL isDataMerge,
 			    sLOGICAL isMsgMerge,
+			    sLOGICAL isSmartMerge,
 			    sData *pTmp ) {
 
   sData	
@@ -2030,27 +2135,6 @@ sData* gHyp_env_mergeData ( sData *pDst,
      *    the values of the source element.   
      */
 
-    if ( pNextSrcValue ) {
-      /* This is either the start of the scan, or there was a previous value.
-       * Get the next value from the source data.
-       */
-      pNextSrcValue = gHyp_data_nextValue ( pSrc, 
-					    pSrcValue,
-					    &contextSrc,
-					    sss ) ;
-      if ( contextSrc == -2 ) {
-	gHyp_data_delete ( pResult ) ;
-
-	if ( pTmp ) gHyp_data_delete ( pTmp ) ;
-	gHyp_instance_error ( pAI, STATUS_BOUNDS, 
-			      "Source subscript is out of bounds in merge()");
-      }
-      if ( isVectorSrc ) 
-	ssv = contextSrc ;
-      else
-	ssv = 0 ;
-    }
-
     if ( pNextDstValue ) {
       /* This is either the start of the scan, or there was a previous value.
        * Get the next value of the destination.
@@ -2073,11 +2157,44 @@ sData* gHyp_env_mergeData ( sData *pDst,
 	sdv = 0 ;
     }
 
+    /* Get the next destination value. */
+    pDstValue = pNextDstValue ;
+
+    if ( pNextSrcValue ) {
+      /* This is either the start of the scan, or there was a previous value.
+       * Get the next value from the source data.
+       */
+
+      /* If this is a smart merge, then get the source value that
+       * has the same name as the destination value
+       */
+      if ( isSmartMerge && pDstValue ) {
+	pNextSrcValue = gHyp_data_getChildByName ( pSrc, gHyp_data_getLabel ( pDstValue ) ) ;
+	ssv = 0 ;
+      }
+      else {
+	pNextSrcValue = gHyp_data_nextValue ( pSrc, 
+					      pSrcValue,
+					      &contextSrc,
+					      sss ) ;
+	if ( contextSrc == -2 ) {
+	  gHyp_data_delete ( pResult ) ;
+
+	  if ( pTmp ) gHyp_data_delete ( pTmp ) ;
+	  gHyp_instance_error ( pAI, STATUS_BOUNDS, 
+			      "Source subscript is out of bounds in merge()");
+	}
+        if ( isVectorSrc ) 
+  	  ssv = contextSrc ;
+	else
+	  ssv = 0 ;
+      }
+    }
+
+
     /* Get the next source value. */
     pSrcValue = pNextSrcValue ;
     
-    /* Get the next destination value. */
-    pDstValue = pNextDstValue ;
     
     /* Done when all values exhausted */
     if ( !pSrcValue && !pDstValue ) break ;
@@ -2088,6 +2205,7 @@ sData* gHyp_env_mergeData ( sData *pDst,
 
     if ( !pSrcValue ) {
 
+      /*gHyp_util_debug ( "No source value" ) ;*/
       if ( gHyp_data_getTokenType ( pDstValue )  == TOKEN_REFERENCE ) {
               
 	/* Create the result */
@@ -2131,7 +2249,7 @@ sData* gHyp_env_mergeData ( sData *pDst,
   	  if ( pTmp ) gHyp_data_delete ( pTmp ) ;
           gHyp_instance_error ( pAI,
 			    STATUS_UNDEFINED,
-			    "Failed to load HyperScript segment '{'" ) ;
+			    "Failed to load HyperScript segment (merge) '{'" ) ;
 	}
         firstPass = FALSE ;
       }
@@ -2145,7 +2263,7 @@ sData* gHyp_env_mergeData ( sData *pDst,
 	  if ( pTmp ) gHyp_data_delete ( pTmp ) ;
           gHyp_instance_error ( pAI,
 			    STATUS_UNDEFINED,
-			    "Failed to load HyperScript segment 'merge ( '" ) ;
+			    "Failed to load HyperScript segment (merge) 'merge ( '" ) ;
 	}
 	contentLength = 0 ;
         pValue = gHyp_fileio_describeData ( pAI, pDstValue, ' ', FALSE, &contentLength ) ;
@@ -2173,7 +2291,7 @@ sData* gHyp_env_mergeData ( sData *pDst,
   	    if ( pTmp ) gHyp_data_delete ( pTmp ) ;
 	    gHyp_instance_error ( pAI,
 			      STATUS_UNDEFINED,
-			      "Failed to load HyperScript segment '%s'",
+			      "Failed to load HyperScript code segment (merge) '%s'",
 			      pStr ) ;
 	  }
 	}
@@ -2186,7 +2304,7 @@ sData* gHyp_env_mergeData ( sData *pDst,
   	  if ( pTmp ) gHyp_data_delete ( pTmp ) ;
           gHyp_instance_error ( pAI,
 			    STATUS_UNDEFINED,
-			    "Failed to load HyperScript segment ' , '" ) ;
+			    "Failed to load HyperScript segment (merge) ' , '" ) ;
 	}
 
       }
@@ -2199,7 +2317,7 @@ sData* gHyp_env_mergeData ( sData *pDst,
 	if ( pTmp ) gHyp_data_delete ( pTmp ) ;
         gHyp_instance_error ( pAI,
 			    STATUS_UNDEFINED,
-			    "Failed to load HyperScript segment '%s'", pLabel ) ;
+			    "Failed to load HyperScript segment label (merge) '%s'", pLabel ) ;
       }
 
       pToken = NULL ;
@@ -2226,7 +2344,7 @@ sData* gHyp_env_mergeData ( sData *pDst,
   	  if ( pTmp ) gHyp_data_delete ( pTmp ) ;
 	  gHyp_instance_error ( pAI,
 			      STATUS_UNDEFINED,
-			      "Failed to load HyperScript segment '%s'",
+			      "Failed to load HyperScript segment (merge) '%s'",
 			      pStr ) ;
 	}
       }
@@ -2241,7 +2359,7 @@ sData* gHyp_env_mergeData ( sData *pDst,
 	  if ( pTmp ) gHyp_data_delete ( pTmp ) ;
           gHyp_instance_error ( pAI,
 			    STATUS_UNDEFINED,
-			    "Failed to load HyperScript segment ')'" ) ;
+			    "Failed to load HyperScript segment (merge) ')'" ) ;
 	} 
 
       }
@@ -2254,7 +2372,7 @@ sData* gHyp_env_mergeData ( sData *pDst,
 	if ( pTmp ) gHyp_data_delete ( pTmp ) ;
         gHyp_instance_error ( pAI,
 		    STATUS_UNDEFINED,
-			    "Failed to load HyperScript segment ';'" ) ;
+			    "Failed to load HyperScript segment (merge) ';'" ) ;
       } 
 
       continue ;
@@ -2263,6 +2381,7 @@ sData* gHyp_env_mergeData ( sData *pDst,
     
     if ( pDstValue ) {
       
+      /*gHyp_util_debug ( "Dst value %s exists",gHyp_data_getLabel(pDstValue) ) ;*/
       /* Destination and source values exist */
       dstDataType = gHyp_data_getDataType ( pDstValue ) ;
       dstTokenType = gHyp_data_getTokenType ( pDstValue ) ;
@@ -2391,6 +2510,7 @@ sData* gHyp_env_mergeData ( sData *pDst,
 					counter2,
 					isDataMerge,
 					FALSE,
+					FALSE,
 					NULL ) ;
 
 	  if ( dstDataType == TYPE_STRING ) {
@@ -2429,6 +2549,10 @@ sData* gHyp_env_mergeData ( sData *pDst,
     }
     else {
 
+      /*gHyp_util_debug ( "No dest value, smart=%d, but still some source",isSmartMerge ) ;*/
+
+      if ( isSmartMerge ) break ;
+
       /* No more destination values, but still some source values */
       if ( isVectorDst ) {
 
@@ -2461,6 +2585,7 @@ sData* gHyp_env_mergeData ( sData *pDst,
 						   pAI,
 						   counter2,
 						   isDataMerge,
+						   FALSE,
 						   FALSE,
 						   NULL ));
 	}
@@ -2530,7 +2655,7 @@ sData* gHyp_env_mergeData ( sData *pDst,
       if ( pTmp ) gHyp_data_delete ( pTmp ) ;
       gHyp_instance_error ( pAI,
 			    STATUS_UNDEFINED,
-			    "Failed to load HyperScript segment '{'" ) ;
+			    "Failed to load HyperScript segment (merge) '}'" ) ;
     }
     gHyp_frame_setGlobalFlag ( pFrame, FRAME_GLOBAL_MSGARGS ) ;
     /*gHyp_util_debug("Deref from merge");*/

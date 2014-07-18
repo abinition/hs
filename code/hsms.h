@@ -2,7 +2,14 @@
  * Modifications:
  *
  * $Log: hsms.h,v $
- * Revision 1.3  2004/04/29 08:31:33  bergsma
+ * Revision 1.5  2007-07-09 05:39:00  bergsma
+ * TLOGV3
+ *
+ * Revision 1.4  2007-02-26 02:35:01  bergsma
+ * No longer user NULL_DEVICEID placeholder.  PORT and HTTP
+ * autoallocate device ids, HSMS and SECS I are pre-determined.
+ *
+ * Revision 1.3  2004-04-29 08:31:33  bergsma
  * Added SSL support.  Device id is now sWORD, not int.
  *
  * Revision 1.2  2002/11/14 01:40:45  bergsma
@@ -18,7 +25,8 @@ extern sHsms*		gHyp_hsms_new ( short,
 					sInstance* ) ;
 extern void		gHyp_hsms_delete ( sHsms * ) ;
 extern void		gHyp_hsms_close ( sHsms * ) ; 
-extern int		gHyp_hsms_nextMessage ( sHsms *, sConcept*, sInstance* ) ;
+extern sInstance*	gHyp_hsms_assign ( sHsms*, sConcept*, sWORD ) ;
+extern int		gHyp_hsms_nextMessage ( sHsms*, sConcept*, sInstance* ) ;
 extern int		gHyp_hsms_incoming ( sHsms*, sConcept*, sInstance*) ;
 extern int		gHyp_hsms_outgoing ( sHsms*,
 					     sSecs2*,

@@ -3,7 +3,23 @@
  * Modifications:
  *
  * $Log: function.h,v $
- * Revision 1.9  2005/09/06 08:52:05  bergsma
+ * Revision 1.5  2007-07-09 05:39:00  bergsma
+ * TLOGV3
+ *
+ * Revision 1.13  2007-03-26 21:16:18  bergsma
+ * Added parseurl function().
+ *
+ * Revision 1.12  2007-03-21 02:21:31  bergsma
+ * Added round() function.
+ *
+ * Revision 1.11  2007-03-19 05:32:08  bergsma
+ * New functions: min, max, pow, hypot, abs, acos, asin, atan,  ceil, cos,
+ *  floor, log10, logN, sin, sqrt, tan, exp printf, sprintf, fprintf
+ *
+ * Revision 1.10  2007-03-15 01:46:36  bergsma
+ * New functions.
+ *
+ * Revision 1.9  2005-09-06 08:52:05  bergsma
  * Updated vt2html() function.,
  * Added pack() function
  *
@@ -63,3 +79,9 @@ extern void    	gHyp_function_decode ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_function_urlEncode( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_function_urlDecode ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_function_vt2html ( sInstance*, sCode*, sLOGICAL ) ;
+extern void    	gHyp_function_round ( sInstance*, sCode*, sLOGICAL ) ;
+extern void    	gHyp_function_parseurl ( sInstance*, sCode*, sLOGICAL ) ;
+
+
+
+

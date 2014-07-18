@@ -3,7 +3,10 @@
 /* Modifications:
  * 
  * $Log: frame.h,v $
- * Revision 1.4  2003/01/12 10:14:12  bergsma
+ * Revision 1.5  2007-07-09 05:39:00  bergsma
+ * TLOGV3
+ *
+ * Revision 1.4  2003-01-12 10:14:12  bergsma
  * Removed getVariable (moved to data.h).
  * Added testLocalFlag, setLocalFlag, clearLocalFlag
  *

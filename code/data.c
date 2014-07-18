@@ -11,6 +11,18 @@
  * Modifications:
  *
  * $Log: data.c,v $
+ * Revision 1.5  2007-07-09 05:39:00  bergsma
+ * TLOGV3
+ *
+ * Revision 1.30  2007-06-10 05:13:23  bergsma
+ * Check for 0x0x in &p
+ *
+ * Revision 1.29  2006-10-11 16:14:48  bergsma
+ * Needed typedef on pSrcData.
+ *
+ * Revision 1.28  2006/09/16 19:40:46  bergsma
+ * Added gHyp_data_newVectorSrc
+ *
  * Revision 1.27  2005/12/10 00:30:30  bergsma
  * HS 3.6.5
  *
@@ -342,11 +354,12 @@ static void lHyp_data_newVector ( sData *pData,
 				  sBYTE tokenType, 
 				  sBYTE dataType, 
 				  int size,
-				  sLOGICAL isDynamic )
+				  sLOGICAL isDynamic,
+				  void *pSrcData )
 {
   /* Description:
    *
-   *	Create a vector from a variable.
+   *	Create and initialize a vector or a constant from a pData (variable) 
    *
    * Arguments:
    *
@@ -372,40 +385,58 @@ static void lHyp_data_newVector ( sData *pData,
   char
     *pa,
     *psc,
-    *psb ;
+    *psb,
+    *pa_s,
+    *psc_s,
+    *psb_s ;
   
   unsigned char
     *puc,
     *pub,
     *pbo,
-    *pbi ;
+    *pbi,
+    *puc_s,
+    *pub_s,
+    *pbo_s,
+    *pbi_s ;
 
   short
-    *pss ;
+    *pss,
+    *pss_s ;
   
   unsigned short
     *pus,
-    *pu ;
+    *pu,
+    *pus_s,
+    *pu_s ;
   
   int
-    *pi ;
+    *pi,
+    *pi_s ;
   
   long 
-    *psl ;
+    *psl,
+    *psl_s ;
 
   unsigned long
     *pul,
     *px,
-    *po ;
+    *po,
+    *pul_s,
+    *px_s,
+    *po_s ;
   
   float
-    *pf ;
+    *pf,
+    *pf_s ;
   
   double
-    *pd ;
+    *pd,
+    *pd_s ;
   
   void	
-    **ph ;
+    **ph,
+    **ph_s ;
 
   /* First delete any existing variables values */
   gHyp_data_deleteValues ( pData ) ;
@@ -431,116 +462,206 @@ static void lHyp_data_newVector ( sData *pData,
   case TYPE_ATTR :
     pa = pData->p.aValue = (char*) AllocMemory ( sizeof ( char ) * pData->size ) ;
     assert ( pa ) ;
-    for ( i=0; i<pData->size; i++ ) *pa++ = 32 ;
+    if ( pSrcData ) {
+	pa_s = (char*) pSrcData ;
+	for ( i=0; i<pData->size; i++ ) *pa++ = *pa_s++ ;
+    }
+    else
+	for ( i=0; i<pData->size; i++ ) *pa++ = 32 ;
     break ;
 
   case TYPE_CHAR :
     psc = pData->p.scValue = (char*) AllocMemory ( sizeof ( char ) * pData->size ) ;
     assert ( psc ) ;
-    for ( i=0; i<pData->size; i++ ) *psc++ = 32 ;
+    if ( pSrcData ) {
+	psc_s = (char*) pSrcData ;
+	for ( i=0; i<pData->size; i++ ) *psc++ = *psc_s++ ;
+    }
+    else
+	for ( i=0; i<pData->size; i++ ) *psc++ = 32 ;
     break ;
 
   case TYPE_BYTE :
     psb = pData->p.sbValue = (char*) AllocMemory ( sizeof ( char ) * pData->size ) ;
     assert ( psb ) ;
-    for ( i=0; i<pData->size; i++ ) *psb++ = 0 ;
+    if ( pSrcData ) {
+	psb_s = (char*) pSrcData ;
+	for ( i=0; i<pData->size; i++ ) *psb++ = *psb_s++ ;
+    }
+    else
+	for ( i=0; i<pData->size; i++ ) *psb++ = 0 ;
     break ;
     
   case TYPE_UCHAR :
     puc = pData->p.ucValue = (unsigned char*) 
       AllocMemory ( sizeof (unsigned char) * pData->size ) ;
     assert ( puc ) ;
-    for ( i=0; i<pData->size; i++) *puc++ = 32 ;
+    if ( pSrcData ) {
+	puc_s = (unsigned char*) pSrcData ;
+	for ( i=0; i<pData->size; i++ ) *puc++ = *puc_s++ ;
+    }
+    else
+	for ( i=0; i<pData->size; i++) *puc++ = 32 ;
     break ;
 
   case TYPE_UBYTE :
     pub = pData->p.ubValue = (unsigned char*)
       AllocMemory ( sizeof (unsigned char) * pData->size ) ;
     assert ( pub ) ;
-    for ( i=0; i<pData->size; i++) *pub++ = 0 ;
+    if ( pSrcData ) {
+	pub_s = (unsigned char*) pSrcData ;
+	for ( i=0; i<pData->size; i++ ) *pub++ = *pub_s++ ;
+    }
+    else
+	for ( i=0; i<pData->size; i++) *pub++ = 0 ;
     break ;
     
   case TYPE_BOOLEAN :
     pbo = pData->p.boValue = (unsigned char*)
       AllocMemory ( sizeof (unsigned char) * pData->size ) ;
     assert ( pbo ) ;
-    for ( i=0; i<pData->size; i++) *pbo++ = 0 ;
+    if ( pSrcData ) {
+	pbo_s = (unsigned char*) pSrcData ;
+	for ( i=0; i<pData->size; i++ ) *pbo++ = *pbo_s++ ;
+    }
+    else
+	for ( i=0; i<pData->size; i++) *pbo++ = 0 ;
     break ;
     
   case TYPE_BINARY :
     pbi = pData->p.biValue = (unsigned char*)
       AllocMemory ( sizeof (unsigned char) * pData->size ) ;
     assert ( pbi ) ;
-    for ( i=0; i<pData->size; i++) *pbi++ = 0 ;
+    if ( pSrcData ) {
+	pbi_s = (unsigned char*) pSrcData ;
+	for ( i=0; i<pData->size; i++ ) *pbi++ = *pbi_s++ ;
+    }
+    else
+	for ( i=0; i<pData->size; i++) *pbi++ = 0 ;
     break ;
     
   case TYPE_HEX :
     px = pData->p.xValue = (unsigned long*)
       AllocMemory ( sizeof (unsigned long) * pData->size ) ;
     assert ( px ) ;
-    for ( i=0; i<pData->size; i++) *px++ = 0 ;
+    if ( pSrcData ) {
+	px_s = (unsigned long*) pSrcData ;
+	for ( i=0; i<pData->size; i++ ) *px++ = *px_s++ ;
+    }
+    else
+	for ( i=0; i<pData->size; i++) *px++ = 0 ;
     break ;
     
   case TYPE_OCTAL :
     po = pData->p.oValue = (unsigned long*)
       AllocMemory ( sizeof (unsigned long) * pData->size ) ;
     assert ( po ) ;
-    for ( i=0; i<pData->size; i++) *po++ = 0 ;
+    if ( pSrcData ) {
+	po_s = (unsigned long*) pSrcData ;
+	for ( i=0; i<pData->size; i++ ) *po++ = *po_s++ ;
+    }
+    else
+	for ( i=0; i<pData->size; i++) *po++ = 0 ;
     break ;
     
   case TYPE_UNICODE :
     pu = pData->p.uValue = (unsigned short*)
       AllocMemory ( sizeof (unsigned short) * pData->size ) ;
     assert ( pu ) ;
-    for ( i=0; i<pData->size; i++) *pu++ = 0 ;
+    if ( pSrcData ) {
+	pu_s = (unsigned short*) pSrcData ;
+	for ( i=0; i<pData->size; i++ ) *pu++ = *pu_s++ ;
+    }
+    else
+	for ( i=0; i<pData->size; i++) *pu++ = 0 ;
     break ;
     
   case TYPE_SHORT :
     pss = pData->p.ssValue = (short*) AllocMemory ( sizeof (short) * pData->size) ;
     assert ( pss ) ;
-    for ( i=0; i<pData->size; i++) *pss++ = 0 ;
+    if ( pSrcData ) {
+	pss_s = (short*) pSrcData ;
+	for ( i=0; i<pData->size; i++ ) *pss++ = *pss_s++ ;
+    }
+    else
+	for ( i=0; i<pData->size; i++) *pss++ = 0 ;
     break ;
     
   case TYPE_USHORT :
     pus = pData->p.usValue = (unsigned short*) AllocMemory ( sizeof(unsigned short) * pData->size);
     assert ( pus ) ;
-    for ( i=0; i<pData->size; i++) *pus++ = 0 ;
+    if ( pSrcData ) {
+	pus_s = (unsigned short*) pSrcData ;
+	for ( i=0; i<pData->size; i++ ) *pus++ = *pus_s++ ;
+    }
+    else
+	for ( i=0; i<pData->size; i++) *pus++ = 0 ;
     break ;
     
   case TYPE_INTEGER :
     pi = pData->p.iValue = (int*) AllocMemory ( sizeof (int) * pData->size);
     assert ( pi ) ;
-    for ( i=0; i<pData->size; i++) *pi++ = 0 ;
+    if ( pSrcData ) {
+	pi_s = (int*) pSrcData ;
+	for ( i=0; i<pData->size; i++ ) *pi++ = *pi_s++ ;
+    }
+    else
+	for ( i=0; i<pData->size; i++) *pi++ = 0 ;
     break ;
     
   case TYPE_LONG :
     psl = pData->p.slValue = (long*) AllocMemory ( sizeof (long) * pData->size);
     assert ( psl ) ;
-    for ( i=0; i<pData->size; i++) *psl++ = 0 ;
+    if ( pSrcData ) {
+	psl_s = (long*) pSrcData ;
+	for ( i=0; i<pData->size; i++ ) *psl++ = *psl_s++ ;
+    }
+    else
+	for ( i=0; i<pData->size; i++) *psl++ = 0 ;
     break ;
     
   case TYPE_ULONG :
     pul = pData->p.ulValue = (unsigned long*) AllocMemory ( sizeof (unsigned long) * pData->size);
     assert ( pul ) ;
+    if ( pSrcData ) {
+	pul_s = (unsigned long*) pSrcData ;
+	for ( i=0; i<pData->size; i++ ) *pul++ = *pul_s++ ;
+    }
+    else
     for ( i=0; i<pData->size; i++) *pul++ = 0 ;
     break ;
     
   case TYPE_FLOAT :
     pf = pData->p.fValue = (float*) AllocMemory ( sizeof ( float ) * pData->size ) ;
     assert ( pf ) ;
-    for ( i=0; i<pData->size; i++) *pf++ = 0.0 ;
+    if ( pSrcData ) {
+	pf_s = (float*) pSrcData ;
+	for ( i=0; i<pData->size; i++ ) *pf++ = *pf_s++ ;
+    }
+    else
+	for ( i=0; i<pData->size; i++) *pf++ = 0.0 ;
     break ;
     
   case TYPE_DOUBLE :
     pd = pData->p.dValue = (double*) AllocMemory ( sizeof ( double ) * pData->size ) ;
     assert ( pd ) ;
-    for ( i=0; i<pData->size; i++) *pd++ = 0.0 ;
+    if ( pSrcData ) {
+	pd_s = (double*) pSrcData ;
+	for ( i=0; i<pData->size; i++ ) *pd++ = *pd_s++ ;
+    }
+    else
+	for ( i=0; i<pData->size; i++) *pd++ = 0.0 ;
     break ;
     
   case TYPE_HANDLE :
     ph = pData->p.hValue = (void**) AllocMemory ( sizeof ( void* ) * pData->size ) ;
     assert ( ph ) ;
-    for ( i=0; i<pData->size; i++) *ph++ = NULL ;
+    if ( pSrcData ) {
+	ph_s = (void**) pSrcData ;
+	for ( i=0; i<pData->size; i++ ) *ph++ = *ph_s++ ;
+    }
+    else
+	for ( i=0; i<pData->size; i++) *ph++ = NULL ;
     break ;
   }
 
@@ -555,7 +676,23 @@ void gHyp_data_newVector ( sData *pData,
 			TOKEN_VARIABLE, 
 			dataType, 
 			size,
-			isDynamic ) ;
+			isDynamic,
+			NULL ) ;
+}
+
+
+void gHyp_data_newVectorSrc ( sData *pData, 
+			   sBYTE dataType, 
+			   int size,
+			   sLOGICAL isDynamic,
+			   void* pSrcData )
+{
+  lHyp_data_newVector ( pData, 
+			TOKEN_VARIABLE, 
+			dataType, 
+			size,
+			isDynamic,
+			pSrcData ) ;
 }
 
 void gHyp_data_newConstant ( sData *pData, 
@@ -570,7 +707,8 @@ void gHyp_data_newConstant ( sData *pData,
 			TOKEN_CONSTANT, 
 			dataType, 
 			1, 
-			FALSE ) ;
+			FALSE,
+			NULL ) ;
   if ( pSrcData )
     gHyp_data_setVector ( pData, 
 			  pSrcData, 
@@ -580,6 +718,7 @@ void gHyp_data_newConstant ( sData *pData,
   gHyp_data_getStr ( pData, value, VALUE_SIZE, 0, TRUE ) ;
   gHyp_data_setLabel ( pData, value ) ;
 }
+
 
 void gHyp_data_newConstant_raw ( sData *pData, 
 			     sBYTE dataType,
@@ -592,7 +731,8 @@ void gHyp_data_newConstant_raw ( sData *pData,
 			TOKEN_CONSTANT, 
 			dataType, 
 			1, 
-			FALSE ) ;
+			FALSE,
+			NULL ) ;
   if ( pSrcData ) gHyp_data_setVectorRaw ( pData, pSrcData, 0 ) ;
   gHyp_data_getStr ( pData, value, VALUE_SIZE, 0, TRUE ) ;
   gHyp_data_setLabel ( pData, value ) ;
@@ -625,7 +765,8 @@ void gHyp_data_newConstant_scanf (  sData *pData,
 			TOKEN_CONSTANT, 
 			dataType, 
 			1, 
-			FALSE ) ;
+			FALSE,
+			NULL ) ;
  
   strncpy ( value, (char*) pSrcData, n ) ;
   value[n] = '\0' ;
@@ -4351,6 +4492,9 @@ void gHyp_data_setVector ( sData *pVariable,
 			   int sss,
 			   sLOGICAL isValueVector )
 {
+  /* Sets the 'ssd' element of vector pVariable with the long value
+   * extracted from the 'sss' element of the source variable pValue .
+   */
   int i ;
 
   if ( ssd == -1 ) ssd = 0 ;
@@ -4452,7 +4596,9 @@ void gHyp_data_setVector ( sData *pVariable,
 
 void gHyp_data_setVectorRaw ( sData *pVariable, void *pValue, int ssd )
 {
-
+  /* Sets the 'ssd' element of vector pVariable with the raw data from
+   * the source pointed to by pValue
+   */
   switch ( pVariable->dataType ) { 
     
   case TYPE_ATTR :
@@ -4861,7 +5007,10 @@ void gHyp_data_setHandle ( sData *pData, void *handle )
 
   if ( pData->pStrVal != NULLstring ) ReleaseMemory ( pData->pStrVal ) ;
   sprintf ( strVal, "0x%p", handle ) ;
+  if ( strVal[3]=='x' ) sprintf ( strVal, "%p", handle ) ;
+
   n = strlen ( strVal ) ;
+
   pData->pStrVal = (char*) AllocMemory ( n + 1 ) ;
   assert ( pData->pStrVal ) ;
   strcpy ( pData->pStrVal, strVal ) ;

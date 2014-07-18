@@ -10,11 +10,41 @@
 #ifndef __HYPDEF_H_
 #define __HYPDEF_H_
 
-#define 	VERSION_HYPERSCRIPT	"3.7.0"
+#define 	VERSION_HYPERSCRIPT	"3.8.0"
 
 /* Modification history:
  *
  * $Log: hypdef.h,v $
+ * Revision 1.6  2007-07-09 05:39:00  bergsma
+ * TLOGV3
+ *
+ * Revision 1.70  2007-05-26 22:08:43  bergsma
+ * ADD -w "Ward" flag
+ *
+ * Revision 1.69  2007-05-26 01:47:07  bergsma
+ * FRAME DEPTH of 64 is just a little to low.  Make it 128.
+ *
+ * Revision 1.68  2007-05-08 01:27:49  bergsma
+ * Make giMaxFrameDepth variable, tied to -x option.
+ *
+ * Revision 1.67  2007-03-19 05:32:08  bergsma
+ * New functions: min, max, pow, hypot, abs, acos, asin, atan,  ceil, cos,
+ *  floor, log10, logN, sin, sqrt, tan, exp printf, sprintf, fprintf
+ *
+ * Revision 1.66  2007-03-15 01:11:10  bergsma
+ * Increase MAX_SQL_STMT_LENGTH to 16K
+ * Added CRC_BUFLEN
+ * Added SQL_DATETIME_SIZE
+ *
+ * Revision 1.65  2007-02-01 00:29:59  bergsma
+ * Increase size of HSMS buffer and max message size.
+ *
+ * Revision 1.64  2006-10-27 17:23:41  bergsma
+ * HS 3.8.0   Support in UNIX for passing socket descriptors.
+ *
+ * Revision 1.63  2006/09/16 20:07:26  bergsma
+ * HS 3.7.1
+ *
  * Revision 1.62  2006/08/17 05:04:06  bergsma
  * Increase frame depth from 256 to 512
  *
@@ -240,9 +270,10 @@
  *
  */
 
-#define		MAX_FRAME_DEPTH		512 	/* HyperScript call frame  */
-#define		MAX_STACK_DEPTH		256	/* HyperScript stack */
-#define		MAX_EXPRESSION		MAX_STACK_DEPTH * 2 /* Exp length */
+#define		MAX_STACK_DEPTH		128  		    /* HyperScript stack */
+#define		MAX_EXPRESSION		MAX_STACK_DEPTH * 2 /* Twice the expression length */
+#define		MAX_FRAME_DEPTH		MAX_STACK_DEPTH	    /* Same as stack depth */
+
 #define		MAX_JMP_LEVEL		63	/* 0-31 levels for setjmp */
 #define		DEFAULT_TIMEOUT		45	/* 45 seconds */
 #define		MAX_ALARM_SECONDS	60*60*24/* 1 day */
@@ -313,6 +344,8 @@
 #define 	FIELD_SIZE  		20
 #define 	DEFAULT_DELIMITER 	'|'
 #define		OVERFLOW_READ_SIZE	16*1024	
+#define		CRC_BUFLEN (1 << 16)
+
 
 /* Minimum message size, must contain space for TARGET, MODE, METHOD, SENDER,
  * 7 delimiters, and a null terminatror: 
@@ -468,6 +501,29 @@
 #define		TOKEN_DOT		48      /* .    */
 #define		TOKEN_POINTER		49      /* ->   */
                                          
+/* Binary and unary math operators that are not tokens 
+ *
+ */
+#define		BINARY_MAX	      60
+#define		BINARY_MIN	      61
+#define		BINARY_HYPOT	      62
+#define		BINARY_POW	      63
+
+#define		UNARY_ABS	      70
+#define		UNARY_ACOS	      71
+#define		UNARY_ASIN	      72
+#define		UNARY_ATAN	      73
+#define		UNARY_CEIL	      74
+#define		UNARY_COS	      75
+#define		UNARY_FLOOR	      76
+#define		UNARY_LOG10	      77
+#define		UNARY_LOGN	      78
+#define		UNARY_SIN	      79
+#define		UNARY_SQRT	      80
+#define		UNARY_TAN	      81
+#define		UNARY_EXP	      82
+
+
 /* Precedence assignments 
  *
  * Higher precedence tokens are appended to lower precendence tokens
@@ -520,7 +576,7 @@
 #define 	PRECEDENCE_INPUT_UNARY	20	/*	++ -- + - ! * &	fn */
 #define		PRECEDENCE_POST_UNARY	21	/*	++, --		*/
 #define         PRECEDENCE_INPUT_PTR    22      /*      ->              */
-#define         PRECEDENCE_POINTER      23      /*      -> /             */
+#define         PRECEDENCE_POINTER      23      /*      -> (same as DOT)*/
 #define         PRECEDENCE_DOT          23      /*      .               */
 #define		PRECEDENCE_DEREF	24	/*	*               */
 #define		PRECEDENCE_INPUT_DEREF	25	/*	*               */
@@ -714,6 +770,7 @@
 #define		RUN_INTERACTIVE		8
 #define		RUN_ROOT		16
 #define		RUN_PROMIS		32
+#define		RUN_RESTRICTED		64
 
 /* HTTP definitions */
 #define		HTTP_EXPECT_HEADER    0
@@ -815,8 +872,8 @@
 #define		SECS_OUTGOING		1
 #define		SECS_MINIMUM_HSMS_PORT	4000
  
-#define		MAX_HSMS_MESSAGE_SIZE	MAX_MESSAGE_SIZE
-#define		MAX_HSMS_BUFFER_SIZE	MAX_HSMS_MESSAGE_SIZE*2
+#define		MAX_HSMS_MESSAGE_SIZE	32768
+#define		MAX_HSMS_BUFFER_SIZE	MAX_BUFFER_SIZE
 #define		NULL_DEVICEID		0xffff
 
 #define		SECS_HEADER_LENGTH	0
@@ -958,6 +1015,8 @@
 #define		SOCKET_SERIAL		4
 #define		SOCKET_LISTEN		8
 #define		SOCKET_DMBX		16
+#define		SOCKET_UNIX		32
+#define		SOCKET_UNIX_LISTEN	64
 
 /* [B] Socket protocols */
 #define		PROTOCOL_SECS1		1*256
@@ -973,7 +1032,9 @@
 				SOCKET_TCP+\
 				SOCKET_SERIAL+\
 				SOCKET_LISTEN+\
-				SOCKET_DMBX )
+				SOCKET_DMBX+\
+				SOCKET_UNIX+\
+				SOCKET_UNIX_LISTEN )
 
 #define		MASK_PROTOCOL (	PROTOCOL_SECS1+\
 				PROTOCOL_HSMS+\
@@ -1000,13 +1061,14 @@
 
 /* SQL bounds */
 #define         MAX_SQL_ITEMS           128
-#define		MAX_SQL_STMT_LENGTH	MAX_INPUT_LENGTH*2
+#define		MAX_SQL_STMT_LENGTH	MAX_INPUT_LENGTH*4
 #define		MAX_SQL_USERNAME_LENGTH	64
 #define		MAX_SQL_PASSWORD_LENGTH	128
 #define		MAX_SQL_DATABASE_LENGTH	128
 #define		MAX_SQL_SERVER_LENGTH	128
 #define		MAX_SQL_NAME_LENGTH	MAX_SQL_DATABASE_LENGTH	
 #define		MAX_SQL_USER_LENGTH	MAX_SQL_USERNAME_LENGTH
+#define		SQL_DATETIME_SIZE	1+4+1+2+1+2+1+2+1+2+1+2+1
 
 /* Macros */
 

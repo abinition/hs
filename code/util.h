@@ -3,7 +3,24 @@
  * Modifications:
  *
  * $Log: util.h,v $
- * Revision 1.12  2005/05/10 17:38:45  bergsma
+ * Revision 1.5  2007-07-09 05:39:00  bergsma
+ * TLOGV3
+ *
+ * Revision 1.16  2007-06-16 17:55:51  bergsma
+ * Make util_trim and util_trimWhitespace return length of string
+ *
+ * Revision 1.15  2007-03-22 04:28:44  bergsma
+ * Make getclock() function more portable
+ *
+ * Revision 1.14  2007-03-19 05:32:08  bergsma
+ * New functions: min, max, pow, hypot, abs, acos, asin, atan,  ceil, cos,
+ *  floor, log10, logN, sin, sqrt, tan, exp printf, sprintf, fprintf
+ *
+ * Revision 1.13  2007-03-15 01:07:50  bergsma
+ * Bug with parsing &#xx; tokens.
+ * Added getclock function, millisecond timer in debug statements.
+ *
+ * Revision 1.12  2005-05-10 17:38:45  bergsma
  * Names are urlEncode and urlDecode
  *
  * Revision 1.11  2005/05/10 17:32:38  bergsma
@@ -60,6 +77,8 @@ extern void	 	gHyp_util_trace ( char * ) ;
 extern sLOGICAL 	gHyp_util_log ( char * ) ;
 extern sLOGICAL 	gHyp_util_logInfo ( const char *fmt, ... ) ;
 extern sLOGICAL 	gHyp_util_debug ( const char *fmt, ... ) ;
+extern char*	 	gHyp_util_sprintf ( const char *fmt, ... ) ;
+extern int		gHyp_util_getclock();
 extern sLOGICAL 	gHyp_util_logDebug ( int, unsigned short,
 					     const char *fmt, ...);
 extern sLOGICAL 	gHyp_util_logError ( const char *fmt, ... ) ;
@@ -78,8 +97,8 @@ extern int		gHyp_util_parseXML ( char* ) ;
 extern int		gHyp_util_parseString ( char* ) ;
 extern int		gHyp_util_unparseString ( char*, char*, int, int, sLOGICAL, sLOGICAL, sLOGICAL,char* ) ;
 extern void 		gHyp_util_strip ( char *, int ) ;
-extern void 		gHyp_util_trim ( char * ) ;
-extern void 		gHyp_util_trimWhiteSpace ( char * ) ;
+extern int 		gHyp_util_trim ( char * ) ;
+extern int 		gHyp_util_trimWhiteSpace ( char * ) ;
 extern sLOGICAL		gHyp_util_openLog () ;
 extern sLOGICAL		gHyp_util_isLittleEndian() ;
 extern sLOGICAL		gHyp_util_breakTarget ( char *, char *, char*, char*, char*, char* ) ;

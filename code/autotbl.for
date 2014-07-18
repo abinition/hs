@@ -5,7 +5,7 @@
 ! Modifications:
 !
 !    $Log: autotbl.for,v $
-!    Revision 1.3  2005/09/25 20:10:40  bergsma
+!    Revision 1.3  2005-09-25 20:10:40  bergsma
 !    Up to V3.6.3
 !    Add opcert code.
 !    Changes to function VT2HTML

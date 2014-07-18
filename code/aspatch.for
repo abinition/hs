@@ -32,7 +32,7 @@ c
 c Modifications
 c
 c	$Log: aspatch.for,v $
-c	Revision 1.3  2003/02/18 02:01:47  bergsma
+c	Revision 1.3  2003-02-18 02:01:47  bergsma
 c	Misplaced continuation mark.
 c	
 c	Revision 1.2  2002/11/12 20:06:18  bergsma

@@ -3,6 +3,21 @@ $!
 $! Modifications:
 $!
 $! $Log: start.com,v $
+$! Revision 1.15  2006-01-23 17:42:42  bergsma
+$! Uppercase incoming argument P1
+$!
+$! Revision 1.14  2005/12/08 03:06:48  bergsma
+$! UIC of started process is AUTOMGR, not f$user()
+$!
+$! Revision 1.13  2005/08/03 14:00:20  bergsma
+$! no message
+$!
+$! Revision 1.12  2005/03/07 19:55:23  myockey
+$! Increased io_direct and io_buffer
+$!
+$! Revision 1.1  2005/02/06 17:57:50  bergsma
+$! TLOGFEED 3.4.3
+$!
 $! Revision 1.11  2004/12/10 22:39:41  bergsma
 $! Need to add and restore privs when starting automation services.
 $!
@@ -35,13 +50,13 @@ $ if p1 .eqs. "" then -
 $
 $ if p1 .eqs. "" then exit
 $
-$ ! Determine the image name
-$ target = p1
+$ ! Determine the target (image) name, converting to uppercase
+$ target := 'p1
 $ len = f$length ( target )
 $
-$ router = "''f$trnlnm("AUTOROUTER")'"
-$ mbx = "''f$trnlnm("AUTOFIFO")'_"
-$ mbxRouter = "''mbx'''router'"
+$ router := 'f$trnlnm("AUTOROUTER")
+$ mbx    := 'f$trnlnm("AUTOFIFO")
+$ mbxRouter = "''mbx'_''router'"
 $
 $ ! Take off mbxRouter prefix if it exists
 $ prefix = "''mbxRouter'_"
@@ -51,7 +66,7 @@ $   target = target - prefix
 $ endif
 $
 $ ! Establish base I/O
-$ buf_lim = 500000 	! Base
+$ buf_lim = 500000      ! Base
 $ max_msg_size = 5120
 $
 $ ! Determine image name from target
@@ -61,7 +76,8 @@ $   image = "''router'"
 $   ! MBX_ROUTER:   5120 max bytes/message * 16 message capacity = 80K
 $   ! MBX_<client>: 5120 max b/m * 4 msg capacity * average 32 clients = 640K
 $   ! Total of 720K buffer size required, or 144 message.
-$   buf_lim = buf_lim + ( 144 * max_msg_size )
+$   !!!buf_lim = buf_lim + ( 144 * max_msg_size )
+$   buf_lim = buf_lim + ( 300 * max_msg_size )
 $ else
 $   ! MBX_<client>: 5120 max b/m * 4 msg capacity = 20K
 $   ! Total of 20K buffer size required, or 4 messages
@@ -82,10 +98,10 @@ $
 $   if ( procGroup .eq. ourGroup )
 $   then
 $     write sys$output -
-	"   Process ''image' is already running"
+        "   Process ''image' is already running"
 $   else
 $     write sys$output -
-	"   Process ''image' is already running in group ''procGroup'" 
+        "   Process ''image' is already running in group ''procGroup'" 
 $   endif
 $
 $ else 
@@ -100,6 +116,9 @@ $     write sys$output -
 $
 $   endif
 $
+$   automgr = f$trnlnm("AUTOMGR") 
+$   if automgr .eqs. "" then automgr = f$user()
+$   
 $   if f$search( "AUTOLOG:''filespec'.LOG" ) .nes. "" then -
       rename AUTOLOG:'filespec'.LOG .OLD
 $
@@ -110,23 +129,23 @@ $     @cfc:setpriv "NETMBX,TMPMBX,SYSNAM,DETACH,ALTPRI"
 $     define/group/nolog _AR AUTORUN:
 $     define/user sys$output nl:
 $     run sys$system:loginout -
-		/Process_name	= 'image' -
-		/Input		= _AR:'target'.COM -
-		/Output		= AUTOLOG:'target'.LOG -
-		/Uic		= 'f$user()' -
-		/privs		= (NETMBX,TMPMBX,SYSNAM,DETACH) -
-		/noAuthorize -
-		/priority	= 4 -
-		/page_file	= 200000 -
-		/working	= 2048 -
-		/maximum_Working= 4096 -		
-		/extent		= 8192 -		
-		/enqueue_limit  = 500 -
-		/io_direct	= 200 -
-		/io_buffer	= 200 -
-		/queue_limt	= 20 -
-		/ast_limit	= 100 -
-		/buffer_limit	= 'buf_lim'
+                /Process_name   = 'image' -
+                /Input          = _AR:'target'.COM -
+                /Output         = AUTOLOG:'target'.LOG -
+                /Uic            = 'automgr' -
+                /privs          = (NETMBX,TMPMBX,SYSNAM,DETACH) -
+                /noAuthorize -
+                /priority       = 4 -
+                /page_file      = 2000000 -
+                /working        = 2048 -
+                /maximum_Working= 4096 -                
+                /extent         = 8192 -                
+                /enqueue_limit  = 500 -
+                /io_direct      = 500 -
+                /io_buffer      = 500 -
+                /queue_limt     = 20 -
+                /ast_limit      = 100 -
+                /buffer_limit   = 'buf_lim'
 $     set process/privilege=('cfc_oldprivs')
 $   else
 $     write sys$output "   Sending CONNECT message to ''image'"

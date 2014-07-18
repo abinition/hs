@@ -3,7 +3,10 @@
  * Modifications:
  *
  * $Log: branch.h,v $
- * Revision 1.3  2004/04/29 01:55:53  bergsma
+ * Revision 1.5  2007-07-09 05:39:00  bergsma
+ * TLOGV3
+ *
+ * Revision 1.3  2004-04-29 01:55:53  bergsma
  * Added 'on_connect' function.
  *
  * Revision 1.2  2002/11/14 01:40:45  bergsma

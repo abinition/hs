@@ -9,6 +9,70 @@
 /* Modifications: 
  *
  * $Log: concept.c,v $
+ * Revision 1.5  2007-07-09 05:39:00  bergsma
+ * TLOGV3
+ *
+ * Revision 1.54  2007-05-08 01:23:48  bergsma
+ * Fix potential spin condition in deleteSocketObject
+ * Add giMaxStackFrame variable
+ *
+ * Revision 1.53  2007-05-02 20:34:01  bergsma
+ * Fix parseurl function.  Improve various print/debug/log statements.
+ * Fix problem with chunked data transfers.
+ *
+ * Revision 1.52  2007-04-07 18:01:49  bergsma
+ * Whenever a socket is deleted, we must search through
+ * every instance looking for any device assignments made
+ * to that socket.  If the socket was created from a
+ * listen socket (the parent socket), then the assignment goes
+ * back to the parent socket, otherwise the assignment
+ * is deleted (set to NULL_DEVICEID)
+ *
+ * Revision 1.51  2007-03-27 23:38:16  bergsma
+ * When calling updateFd from closed http or raw ports, pSecs2 must be NULL.
+ *
+ * Revision 1.50  2007-03-26 00:17:39  bergsma
+ * Setting timeout=0 (which makes 'select' nonblocking) is ok when the
+ * parent instance is allowed to get more stdin and its not in a QUERY state.
+ *
+ * Revision 1.49  2007-03-15 01:02:50  bergsma
+ * Was not including IDLE state in the section where "The timeout SHOULD BE set to zero
+ * ONLY  if the program would later block on stdin"
+ *
+ * Revision 1.48  2007-02-26 02:35:01  bergsma
+ * No longer user NULL_DEVICEID placeholder.  PORT and HTTP
+ * autoallocate device ids, HSMS and SECS I are pre-determined.
+ *
+ * Revision 1.47  2006-12-09 00:06:44  bergsma
+ * Move gpsAI and gpsAImain to global external status out of hs.c.
+ *
+ * Revision 1.46  2006/11/25 03:07:11  bergsma
+ * Fix bug for reassigning SECS id back to HSMS listen port.
+ *
+ * Revision 1.45  2006/10/27 17:23:04  bergsma
+ * When parent initializes, don't put into IDLE state, keep it in PARSE state.
+ *
+ * Revision 1.44  2006/10/12 23:09:09  bergsma
+ * Fix problems with STATE_SLEEP state.
+ *
+ * Revision 1.43  2006/10/12 00:12:11  bergsma
+ * Little problems with SLEEP. :-)
+ *
+ * Revision 1.42  2006/10/01 16:24:40  bergsma
+ * Was not catching correct value for sock_write in concept_connect
+ *
+ * Revision 1.41  2006/09/25 05:12:19  bergsma
+ * Problem 90% solved for renamed parent concept issues.
+ *
+ * Revision 1.40  2006/09/17 20:08:27  bergsma
+ * When doing a "renameto" when the mailslot will not open, do not change
+ * the location.
+ *
+ * Revision 1.39  2006/09/14 17:11:41  bergsma
+ * When creating a new parent when the mailslot is already in use, do not
+ * delete the old instance, because it ends up freeing memory is shouldn't
+ * (pMethodVariable in pLevel in pFrame).  Someday, fix.
+ *
  * Revision 1.38  2006/08/22 18:44:37  bergsma
  * Resolve Win32 problem with unlink
  *
@@ -177,6 +241,9 @@ char		gzPIDfileSpec[MAX_PATH_SIZE+1] ; /* PID file */
 time_t          gsCurTime ;     /* Current time, updated regularily. */
 sLOGICAL        guTimeStamp ;   /* Integer timeStamp. */
 unsigned short  guRunFlags ;    /* General flags */
+sInstance	*gpAI ;		/* HyperScript instance */
+sInstance	*gpAImain ;	/* Main HyperScript instance */
+
 
 /* Environment variables */
 char            gzAUTOROUTER[OBJECT_SIZE+1];    /* AUTOROUTER name, i.e. "router" */
@@ -201,6 +268,7 @@ sData*		gpsTempData ;	/* If defined, its a leak */
 sData*		gpsTempData2 ;	/* If defined, its a leak */
 int             giMaxExprSize ; /* Heap allocation for expression */
 int             giMaxStackDepth ; /* Heap allocation for stack */
+int             giMaxFrameDepth ; /* Heap allocation for stack */
 sConcept*       gpsConcept ;    /* Global reference to concept */
 unsigned short  guDebugFlags ;  /* Debug flags */
 unsigned        guErrorCount ;  /* HyperScript error count */
@@ -640,6 +708,7 @@ sLOGICAL gHyp_concept_init ( sConcept *pConcept,
   gpsAImsg = gHyp_aimsg_new ( ) ; 
   giMaxExprSize = maxExprSize ;
   giMaxStackDepth = giMaxExprSize * 2 ;
+  giMaxFrameDepth = giMaxExprSize;
   gpsTempData = NULL ;
   gpsTempData2 = NULL ;
 
@@ -727,7 +796,10 @@ sLOGICAL gHyp_concept_init ( sConcept *pConcept,
 				    NULL,  /* Ok if first argument is false */
 				    concept,
 				    gzParent,
-				    FALSE, FALSE, TRUE ) ;
+				    FALSE, 
+				    FALSE, 
+				    FALSE /* Dont' reset. */ 
+				    ) ;
 
   /******************
   pFrame = gHyp_instance_frame ( pAI ) ;
@@ -849,6 +921,7 @@ sLOGICAL gHyp_concept_init ( sConcept *pConcept,
   else
     gHyp_util_logInfo ( "No %s process found for logging.", AUTO_LOGGER ) ;
   */
+  
   gHyp_util_output ( "================================================================\n" ) ;
   gHyp_util_logInfo ( "Initialized new HyperScript concept '%s'", concept ) ;
   
@@ -1145,7 +1218,7 @@ void gHyp_concept_quit ( sConcept *pConcept )
 void gHyp_concept_setReturnToStdIn ( sConcept *pConcept, sLOGICAL returnToStdIn  )
 {
   pConcept->exec.returnToStdIn = returnToStdIn ;
-  /*
+/*  
   if ( returnToStdIn )
     gHyp_util_logInfo("Yes return to get stdin" ) ;
   else
@@ -1205,7 +1278,7 @@ int gHyp_concept_setAlarms ( sConcept *pConcept )
          !gHyp_instance_isEND ( pAI ) ) {
      if ( guDebugFlags & DEBUG_DIAGNOSTICS )
         gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
-                             "Program code for %s to execute",
+                             "Program code ready for %s to execute",
                              gHyp_instance_getTargetId(pAI) ); 
       timeout = 0 ;
     }
@@ -1229,15 +1302,20 @@ int gHyp_concept_setAlarms ( sConcept *pConcept )
     }
 
     if ( pAI == pAImain &&
-         gHyp_instance_getState ( pAImain ) != STATE_QUERY &&
-         gHyp_instance_getState ( pAImain ) != STATE_SLEEP &&
-         gHyp_concept_returnToStdIn ( pConcept ) ) {
-      /*
+         gHyp_concept_returnToStdIn ( pConcept ) &&
+         gHyp_instance_getState ( pAImain ) != STATE_QUERY ) {
+      
+      /*  The timeout SHOULD BE set to zero  
+       *
+       *    **** ONLY ****
+       *
+       *  if the parent program could later block on stdin
+       */
       if ( guDebugFlags & DEBUG_DIAGNOSTICS )
         gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
-                             "stdin for %s, timeout set to 0",
+                             "Parent instance %s is waiting for stdin, timeout on read is set to 0",
                              gHyp_instance_getTargetId(pAI) ) ;
-      */
+      
       timeout = 0 ; 
     }
     
@@ -1261,11 +1339,11 @@ sInstance *gHyp_concept_nextInstance ( sConcept *pConcept )
   gHyp_data_next ( pConcept->exec.pInstances ) ;
 
   strcpy ( gzInstance, gHyp_data_getLabel ( pAIdata ) ) ;
-  /*
+  
     
   gHyp_util_logInfo("Instance is now %s, state=%d",gHyp_instance_getTargetId(pAI),
                     gHyp_instance_getState(pAI) ) ;
-  */
+  
   return pAI ;
 }
 
@@ -1332,6 +1410,7 @@ sLOGICAL gHyp_concept_openReader ( sConcept *pConcept )
 
     while ( 1 ) {
 
+      /*gHyp_util_debug("sock_fifo @ %s",gzInboxPath );*/
       pConcept->link.inbox = gHyp_sock_fifo ( gzInboxPath, 
                                             TRUE,  /* Create */
                                             TRUE, /*  Read-only! */
@@ -1366,11 +1445,14 @@ sLOGICAL gHyp_concept_openReader ( sConcept *pConcept )
 	  giLoopbackType = SOCKET_FIFO ;
 	}
 
+	/* If the second attempt succeeded, we must still return FALSE */
+	if ( !tryAgain ) return FALSE ;
+
 	break ;
       }
       else {
 	if ( tryAgain ) {
-	  sprintf ( target, "%s_%s/%s", gzConcept, gHyp_util_random8(), gzConcept ) ;
+	  sprintf ( target, "%s_%s", gzConcept, gHyp_util_random8() ) ;
 	  gHyp_util_logWarning ("Attempting to reconnect as %s", target ) ;
 	  if ( !gHyp_concept_renameto ( pConcept, target ) ) return FALSE ;
 	  tryAgain = FALSE ;
@@ -1475,7 +1557,7 @@ sLOGICAL gHyp_concept_connect ( sConcept *pConcept )
                          strlen(message),
                          SOCKET_FIFO,
                          (OVERLAPPED*) &pConcept->link.outboxOverlapped,
-			 NULL ) ) {
+			 NULL ) > 0 ) {
 
     for ( i=0; i < MAX_CONNECT_TRIES && pConcept->link.inbox == INVALID_HANDLE_VALUE; i++ ) {
     
@@ -1644,7 +1726,7 @@ sLOGICAL gHyp_concept_moveto ( sConcept *pConcept , char *target )
 sLOGICAL gHyp_concept_renameto ( sConcept *pConcept, char *target )
 {
 
-  /* CONCEPT NAME AND LOCATION CHANGES */
+  /* CONCEPT NAME AND (MAYBE) LOCATION CHANGES */
 
   sInstance
     *pAImain ,
@@ -1675,7 +1757,9 @@ sLOGICAL gHyp_concept_renameto ( sConcept *pConcept, char *target )
 				      pAImain,
 				      instance,
 				      root,
-				      FALSE, TRUE, TRUE ) ;
+				      FALSE,	/* Don't swap frames */ 
+				      TRUE,	/* But do swap the data and methods */
+				      TRUE ) ;	/* Reset as well! */
 
   /*gHyp_util_debug("t=%s,c=%s,path=%s,p=%s, r=%s",
 		    gHyp_instance_getTargetId ( pAInew ),
@@ -1683,12 +1767,17 @@ sLOGICAL gHyp_concept_renameto ( sConcept *pConcept, char *target )
 		    gHyp_instance_getTargetPath ( pAInew ),
 		    gzParent,
 		    gzRoot ) ;
-  */
-		    
+  */	
+
   gHyp_instance_swapDevices ( pAInew, pAImain ) ;
 
-  /* Now delete the old instance */
-  gHyp_data_deleteChildByName ( pConcept->exec.pInstances, oldInstance ) ;
+  gHyp_instance_setgpAImain ( pAInew ) ;
+  gHyp_instance_setgpAI ( pAImain ) ;
+
+  /* This will get done for us.
+   * gHyp_data_deleteChildByName ( pConcept->exec.pInstances, oldInstance ) ;
+   */
+
   return TRUE ;
 }
 
@@ -1883,32 +1972,6 @@ sInstance *gHyp_concept_getInstForFd ( sConcept *pConcept, SOCKET fd )
 
 }
 
-sInstance *gHyp_concept_getInstForPlaceHolderFd ( sConcept *pConcept, SOCKET fd )
-{
-
-  sLOGICAL 
-    f ;
-
-  sData
-    *pFirst,
-    *pData ;
-
-  sInstance
-    *pAI ;
-
-  for ( f=TRUE, pData = pFirst = gHyp_data_getFirst ( pConcept->exec.pInstances ) ;
-        (f && pData) || pData != pFirst;
-        f=FALSE, pData = gHyp_data_getNext ( pData ) ) {
-    
-    pAI = (sInstance*) gHyp_data_getObject ( pData ) ;
-
-    /* The function will only return true if the id is NULL_DEVICEID */ 
-    if ( gHyp_instance_hasNullDeviceId ( pAI, fd ) ) return pAI ;
-  }
-  return NULL ;
-
-}
-
 
 sBYTE gHyp_concept_getSockObjType ( sConcept *pConcept, SOCKET socket )
 {
@@ -2050,61 +2113,123 @@ void gHyp_concept_deleteSocketObject ( sConcept *pConcept, SOCKET socket )
   sWORD
     id=NULL_DEVICEID ;
 
-  /* Get the instance for the socket */
-  pInstance = gHyp_concept_getInstForFd ( pConcept, socket ) ;
-  if ( pInstance ) {
-
-    id = gHyp_instance_getDeviceId ( pInstance, socket ) ;
-    gHyp_instance_deleteFd ( pInstance, socket ) ;
-  }
-
   sprintf ( socketString, "%x", socket ) ;
   pData = gHyp_data_getChildByName ( pConcept->link.pSockets, socketString ) ;
+
   if ( pData ) {
 
     objectType = gHyp_data_getObjectType ( pData ) ;
 
+
+    /*
+        Whenever a socket is deleted, we must search through
+	every instance looking for any device assignments made
+	to that socket.  If the socket was created from a
+	listen socket (the parent socket), then the assignment goes
+	back to the parent socket, otherwise the assignment
+	is deleted (set to NULL_DEVICEID)
+     */
+
+
     switch ( objectType ) {
+
     case DATA_OBJECT_HSMS :
+
       pHsms = (sHsms*) gHyp_data_getObject ( pData ) ;
+
+      /* Reassign all device ids back to the parent */
       parentSocket = gHyp_hsms_parentSocket ( pHsms ) ;
-      if ( parentSocket != INVALID_SOCKET && pInstance != NULL ) { 
-	gHyp_util_logInfo("Reassigning device %d to port %d",id, parentSocket ) ;
-	gHyp_instance_updateFd ( pInstance, 
-				 parentSocket, 
-				 id,
-				 NULL,
-			         FALSE ) ;
+
+      if ( parentSocket != INVALID_SOCKET ) { 
+
+	gHyp_util_logInfo("Reassigning all HSMS device ids back to socket %d", parentSocket ) ;
       }
-    break ;
-    case DATA_OBJECT_SECS1 :
-      pSecs1 = (sSecs1*) gHyp_data_getObject ( pData ) ;
-      parentSocket = gHyp_secs1_parentSocket ( pSecs1 ) ;
-      if ( parentSocket != INVALID_SOCKET && pInstance != NULL ) {
-	gHyp_util_logInfo("Reassigning device %d to port %d",id, parentSocket ) ;
-	pSecs2 = gHyp_secs2_new () ;
-	gHyp_instance_updateFd (  pInstance,
-				  parentSocket, 
-				  id,
-				  pSecs2, 
-				  FALSE ) ;
+
+      while ( 1 ) {
+
+        /* Get the next instance that has used the socket */
+        pInstance = gHyp_concept_getInstForFd ( pConcept, socket ) ;
+	if ( !pInstance ) break ;
+
+ 	/* Get the next id used by the instance */
+	id = gHyp_instance_getDeviceId ( pInstance, socket ) ;
+	if ( id != NULL_DEVICEID && parentSocket != INVALID_SOCKET ) { 
+	  pSecs2 = gHyp_secs2_new () ;
+ 	  gHyp_instance_updateFd ( pInstance, parentSocket, id, pSecs2, FALSE ) ;
+	}
+	else {
+ 	  gHyp_instance_deleteFd ( pInstance, socket ) ;
+	}
       }
+
       break ;
+
+    case DATA_OBJECT_SECS1 :
+
+      pSecs1 = (sSecs1*) gHyp_data_getObject ( pData ) ;
+
+      /* Get the parent socket.  SECS I assigns multiple ids to 
+       * the socket we are losing, so we must reassign them all
+       * back to the parent
+       */
+      /* Reassign all device ids back to the parent */
+      parentSocket = gHyp_secs1_parentSocket ( pSecs1 ) ;
+
+      if ( parentSocket != INVALID_SOCKET ) { 
+
+	gHyp_util_logInfo("Reassigning all SECS I device ids back to socket %d", parentSocket ) ;
+
+      }
+      while ( 1 ) {
+
+        /* Get the next instance that has used the socket */
+        pInstance = gHyp_concept_getInstForFd ( pConcept, socket ) ;
+	if ( !pInstance ) break ;
+
+ 	/* Get the next id used by the instance */
+	id = gHyp_instance_getDeviceId ( pInstance, socket ) ;
+	if ( id != NULL_DEVICEID && parentSocket != INVALID_SOCKET ) {
+	  pSecs2 = gHyp_secs2_new () ;
+ 	  gHyp_instance_updateFd ( pInstance, parentSocket, id, pSecs2, FALSE ) ;
+	}
+	else {
+ 	  gHyp_instance_deleteFd ( pInstance, socket ) ;
+	}
+      }
+
+      break ;
+
     case DATA_OBJECT_PORT :
     case DATA_OBJECT_HTTP :
-      pPort = (sSecs1*) gHyp_data_getObject ( pData ) ;
-      parentSocket = gHyp_secs1_parentSocket ( pPort ) ;
-      if ( parentSocket != INVALID_SOCKET && pInstance != NULL ) {
-        gHyp_util_logInfo("Reassigning device %d to port %d",id, parentSocket ) ;
-	gHyp_instance_updateFd (  pInstance, 
-				    parentSocket, 
-				    id,
-				    NULL,
-				    FALSE ) ;
 
+      pPort = (sSecs1*) gHyp_data_getObject ( pData ) ;
+
+      /* Reassign the device id back to the parent socket it came from */
+      parentSocket = gHyp_secs1_parentSocket ( pPort ) ;
+
+      if ( parentSocket != INVALID_SOCKET ) { 
+
+	gHyp_util_logInfo("Reassigning all port device ids back to port %d", parentSocket ) ;
+      }
+      
+      while ( 1 ) {
+
+        /* Get the next instance that has used the socket */
+        pInstance = gHyp_concept_getInstForFd ( pConcept, socket ) ;
+	if ( !pInstance ) break ;
+
+ 	/* Get the next id used by the instance */
+	id = gHyp_instance_getDeviceId ( pInstance, socket ) ;
+	if ( id != NULL_DEVICEID && parentSocket != INVALID_SOCKET ) { 
+  	  gHyp_instance_updateFd ( pInstance, parentSocket, id, NULL, FALSE ) ;
+	}
+	else {
+ 	  gHyp_instance_deleteFd ( pInstance, socket ) ;
+	}
       }
 
       break ;
+
     }
     gHyp_data_detach ( pData ) ;
     gHyp_data_delete ( pData ) ;

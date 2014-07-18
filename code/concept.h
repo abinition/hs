@@ -3,6 +3,16 @@
  * Modifications:
  *
  * $Log: concept.h,v $
+ * Revision 1.5  2007-07-09 05:39:00  bergsma
+ * TLOGV3
+ *
+ * Revision 1.11  2007-02-26 02:35:01  bergsma
+ * No longer user NULL_DEVICEID placeholder.  PORT and HTTP
+ * autoallocate device ids, HSMS and SECS I are pre-determined.
+ *
+ * Revision 1.10  2006-12-09 00:06:44  bergsma
+ * Move gpsAI and gpsAImain to global external status out of hs.c.
+ *
  * Revision 1.9  2006/01/20 02:55:09  bergsma
  * Fix to reassign port
  *
@@ -61,7 +71,6 @@ extern int gHyp_concept_route ( sConcept* , char * ) ;
 extern sLOGICAL	gHyp_concept_writeParent ( sConcept*, char*, char*, char*, sLOGICAL, sLOGICAL ) ;
 extern sInstance * gHyp_concept_getInstForDeviceId ( sConcept*, sWORD ) ;
 extern sInstance * gHyp_concept_getInstForFd ( sConcept*, SOCKET ) ;
-extern sInstance *gHyp_concept_getInstForPlaceHolderFd ( sConcept *pConcept, SOCKET fd ) ;
 extern sBYTE gHyp_concept_getSockObjType ( sConcept *pConcept, SOCKET socket ) ;
 extern void *gHyp_concept_getSocketObject ( sConcept *, SOCKET, sBYTE ) ;
 extern void gHyp_concept_newSocketObject ( sConcept *pConcept, 

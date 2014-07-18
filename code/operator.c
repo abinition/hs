@@ -10,7 +10,22 @@
  * Modifications:
  *
  *   $Log: operator.c,v $
- *   Revision 1.18  2006/07/17 16:44:53  bergsma
+ *   Revision 1.5  2007-07-09 05:39:00  bergsma
+ *   TLOGV3
+ *
+ *   Revision 1.21  2007-05-02 20:34:01  bergsma
+ *   Fix parseurl function.  Improve various print/debug/log statements.
+ *   Fix problem with chunked data transfers.
+ *
+ *   Revision 1.20  2007-03-21 16:01:23  bergsma
+ *   min/max functions use macro MIN/MAX.
+ *   Correct buf/ubuf pointer discrepency in checksum().
+ *
+ *   Revision 1.19  2007-03-19 05:32:08  bergsma
+ *   New functions: min, max, pow, hypot, abs, acos, asin, atan,  ceil, cos,
+ *    floor, log10, logN, sin, sqrt, tan, exp printf, sprintf, fprintf
+ *
+ *   Revision 1.18  2006-07-17 16:44:53  bergsma
  *   Slightly different error statement.
  *
  *   Revision 1.17  2006/01/16 18:56:36  bergsma
@@ -367,6 +382,7 @@ static sData *lHyp_operator_binaryOp (	sInstance	*pAI,
 	break ;
 	
       case TOKEN_POW:
+      case BINARY_POW:
 	gHyp_data_setBool ( pTmp, FALSE ) ;
 	pValue1 = NULL ;
         pValue2 = NULL ;
@@ -414,6 +430,20 @@ static sData *lHyp_operator_binaryOp (	sInstance	*pAI,
 	gHyp_data_setBool ( pTmp, (sLOGICAL) ( strcmp(pStr1,pStr2) <= 0 ));
 	break ;
 	
+      case BINARY_MAX:
+	if ( strcmp(pStr1,pStr2) >= 0 )
+	  gHyp_data_setStr ( pTmp, pStr1 ) ;
+	else
+	  gHyp_data_setStr ( pTmp, pStr2 ) ;
+	break ;
+
+      case BINARY_MIN:
+	if ( strcmp(pStr1,pStr2) < 0 )
+	  gHyp_data_setStr ( pTmp, pStr1 ) ;
+	else
+	  gHyp_data_setStr ( pTmp, pStr2 ) ;
+	break ;
+
       default :	
 	gHyp_data_setBool ( pTmp, FALSE ) ;
 	pValue1 = NULL ;
@@ -441,6 +471,7 @@ static sData *lHyp_operator_binaryOp (	sInstance	*pAI,
 	break ;
 		
       case TOKEN_POW:
+      case BINARY_POW:
 	gHyp_data_setDouble ( pTmp, pow(double1,double2) ) ;
 	break ;
 
@@ -491,6 +522,18 @@ static sData *lHyp_operator_binaryOp (	sInstance	*pAI,
 	gHyp_data_setBool ( pTmp, (sLOGICAL) (double1 <= double2) ) ;
 	break ;
 	
+      case BINARY_MAX:
+	gHyp_data_setDouble ( pTmp, MAX ( double1, double2 ) ) ;
+	break ;
+
+      case BINARY_MIN:
+	gHyp_data_setDouble ( pTmp, MIN ( double1, double2 ) ) ;
+	break ;
+
+      case BINARY_HYPOT:
+	gHyp_data_setDouble ( pTmp, hypot ( double1, double2 ) ) ;
+	break ;
+
       default :	
 	gHyp_data_setBool ( pTmp, FALSE ) ;
 	pValue1 = NULL ;
@@ -568,6 +611,7 @@ static sData *lHyp_operator_binaryOp (	sInstance	*pAI,
 	}
 	break ;
       case TOKEN_POW:
+      case BINARY_POW:
 	switch ( sign ) {
 	  case BOTH_UNSIGNED :	
 	    gHyp_data_setInt ( pTmp, (int) pow ( ulong1, ulong2 ) ) ;
@@ -704,6 +748,19 @@ static sData *lHyp_operator_binaryOp (	sInstance	*pAI,
 	    break ;
 	}
 	break ;
+	
+     case BINARY_MAX:
+	gHyp_data_setDouble ( pTmp, MAX ( double1, double2 ) ) ;
+	break ;
+
+      case BINARY_MIN:
+	gHyp_data_setDouble ( pTmp, MIN ( double1, double2 ) ) ;
+	break ;
+
+      case BINARY_HYPOT:
+	gHyp_data_setDouble ( pTmp, hypot ( double1, double2 ) ) ;
+	break ;
+
       default :	
 	gHyp_data_setBool ( pTmp, FALSE ) ;
 	pValue1 = NULL ;
@@ -831,7 +888,8 @@ static sData *lHyp_operator_unaryOp (	sInstance	*pAI,
       gHyp_data_append ( pResult, pTmp ) ;	
       break ;
       
-    case TOKEN_POS:	
+    case TOKEN_POS:
+    case UNARY_ABS:
 
       pTmp = gHyp_data_new ( NULL ) ;
       if ( dataType == TYPE_FLOAT || dataType == TYPE_DOUBLE ) {
@@ -921,7 +979,7 @@ static sData *lHyp_operator_unaryOp (	sInstance	*pAI,
 			      pArgStr ) ;
       }
       break ;
-
+    
     case TOKEN_POSTDEC:
 
       if ( pValue != pArg ) {
@@ -943,6 +1001,78 @@ static sData *lHyp_operator_unaryOp (	sInstance	*pAI,
 			      "'%s' is not a valid variable name",
 			      pArgStr ) ;
       }
+      break ;
+    
+    case UNARY_ACOS:
+      pTmp = gHyp_data_new ( NULL ) ;
+      gHyp_data_setDouble ( pTmp, acos ( doubleVal ) ) ;
+      gHyp_data_append ( pResult, pTmp ) ;	
+      break ;
+
+    case UNARY_ASIN:
+      pTmp = gHyp_data_new ( NULL ) ;
+      gHyp_data_setDouble ( pTmp, asin ( doubleVal ) ) ;
+      gHyp_data_append ( pResult, pTmp ) ;	
+      break ;
+
+    case UNARY_ATAN:
+      pTmp = gHyp_data_new ( NULL ) ;
+      gHyp_data_setDouble ( pTmp, atan ( doubleVal ) ) ;
+      gHyp_data_append ( pResult, pTmp ) ;	
+      break ;
+
+    case UNARY_CEIL:
+      pTmp = gHyp_data_new ( NULL ) ;
+      gHyp_data_setDouble ( pTmp, ceil ( doubleVal ) ) ;
+      gHyp_data_append ( pResult, pTmp ) ;	
+      break ;
+
+    case UNARY_COS:
+      pTmp = gHyp_data_new ( NULL ) ;
+      gHyp_data_setDouble ( pTmp, cos ( doubleVal ) ) ;
+      gHyp_data_append ( pResult, pTmp ) ;	
+      break ;
+
+    case UNARY_FLOOR:
+      pTmp = gHyp_data_new ( NULL ) ;
+      gHyp_data_setDouble ( pTmp, floor ( doubleVal ) ) ;
+      gHyp_data_append ( pResult, pTmp ) ;	
+      break ;
+
+    case UNARY_LOG10:
+      pTmp = gHyp_data_new ( NULL ) ;
+      gHyp_data_setDouble ( pTmp, log10 ( doubleVal ) ) ;
+      gHyp_data_append ( pResult, pTmp ) ;	
+      break ;
+
+    case UNARY_LOGN:
+      pTmp = gHyp_data_new ( NULL ) ;
+      gHyp_data_setDouble ( pTmp, log ( doubleVal ) ) ;
+      gHyp_data_append ( pResult, pTmp ) ;	
+      break ;
+
+    case UNARY_SIN:
+      pTmp = gHyp_data_new ( NULL ) ;
+      gHyp_data_setDouble ( pTmp, sin ( doubleVal ) ) ;
+      gHyp_data_append ( pResult, pTmp ) ;	
+      break ;
+
+    case UNARY_SQRT:
+      pTmp = gHyp_data_new ( NULL ) ;
+      gHyp_data_setDouble ( pTmp, sqrt ( doubleVal ) ) ;
+      gHyp_data_append ( pResult, pTmp ) ;	
+      break ;
+
+    case UNARY_TAN:
+      pTmp = gHyp_data_new ( NULL ) ;
+      gHyp_data_setDouble ( pTmp, tan ( doubleVal ) ) ;
+      gHyp_data_append ( pResult, pTmp ) ;	
+      break 
+	;
+    case UNARY_EXP:
+      pTmp = gHyp_data_new ( NULL ) ;
+      gHyp_data_setDouble ( pTmp, exp ( doubleVal ) ) ;
+      gHyp_data_append ( pResult, pTmp ) ;	
       break ;
     }
   }
@@ -1207,7 +1337,7 @@ void gHyp_operator_dereference ( sInstance *pAI,sCode *pCode,sLOGICAL isPARSE )
 	  gHyp_hyp_setHypCount ( pHyp, hypIndex ) ;
 	  gHyp_instance_error ( pAI,
 				STATUS_UNDEFINED,
-				"Failed to load HyperScript segment '{'" ) ;
+				"Failed to load HyperScript segment (deref) '{'" ) ;
 	}
       }
 
@@ -1216,7 +1346,7 @@ void gHyp_operator_dereference ( sInstance *pAI,sCode *pCode,sLOGICAL isPARSE )
 	gHyp_hyp_setHypCount ( pHyp, hypIndex ) ;
 	gHyp_instance_error ( pAI,
 			      STATUS_UNDEFINED,
-			      "Failed to load HyperScript segment *(%s)",
+			      "Failed to load HyperScript segment (dref) *(%s)",
 			      pStr ) ;
       }
 
@@ -1232,7 +1362,7 @@ void gHyp_operator_dereference ( sInstance *pAI,sCode *pCode,sLOGICAL isPARSE )
 	gHyp_hyp_setHypCount ( pHyp, hypIndex ) ;
 	gHyp_instance_error ( pAI,
 			      STATUS_UNDEFINED,
-			      "Failed to load HyperScript segment ';}'" ) ;
+			      "Failed to load HyperScript segment (deref) ';}'" ) ;
       }
       /*gHyp_util_debug("Deref from operator");*/
       gHyp_instance_setDerefHandler ( pAI, 
@@ -1597,5 +1727,980 @@ void gHyp_operator_pointer ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     else
       
       gHyp_operator_dot ( pAI, pCode, FALSE ) ;
+  }
+}
+
+/* ====== NEW HS 3. 8. 0   FUNCTIONS ***************/
+
+void gHyp_operator_max ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: max ( value1, value2 )
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+
+  else {
+
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+    
+    sData
+      *pArg1,
+      *pArg2,
+      *pResult ;
+
+    int
+      argCount = gHyp_parse_argCount ( pParse ) ;
+
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 2  ) 
+      gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+	  "Invalid arguments. Usage: max ( value1, value2 )" ) ;
+
+    /* Get arg2 off the stack */
+    pArg2 = gHyp_stack_popRdata ( pStack, pAI ) ; 
+    
+    /* Get arg1 off the stack */
+    pArg1 = gHyp_stack_popRdata ( pStack, pAI ) ;
+	
+    pResult = lHyp_operator_binaryOp (	pAI, pFrame,
+					(char) BINARY_MAX,
+					pArg1, pArg2 ) ;
+
+    gHyp_stack_push ( pStack, pResult ) ;
+  }
+}
+
+void gHyp_operator_min ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: min ( value1, value2 )
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+
+  else {
+
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+    
+    sData
+      *pArg1,
+      *pArg2,
+      *pResult ;
+
+    int
+      argCount = gHyp_parse_argCount ( pParse ) ;
+
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 2  ) 
+      gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+	  "Invalid arguments. Usage: min ( value1, value2 )" ) ;
+
+    /* Get arg2 off the stack */
+    pArg2 = gHyp_stack_popRdata ( pStack, pAI ) ; 
+    
+    /* Get arg1 off the stack */
+    pArg1 = gHyp_stack_popRdata ( pStack, pAI ) ;
+	
+    pResult = lHyp_operator_binaryOp (	pAI, pFrame,
+					(char) BINARY_MIN,
+					pArg1, pArg2 ) ;
+
+    gHyp_stack_push ( pStack, pResult ) ;
+  }
+}
+
+void gHyp_operator_hypot ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: hypot ( value1, value2 )
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+
+  else {
+
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+    
+    sData
+      *pArg1,
+      *pArg2,
+      *pResult ;
+
+    int
+      argCount = gHyp_parse_argCount ( pParse ) ;
+
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 2  ) 
+      gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+	  "Invalid arguments. Usage: hypot ( value1, value2 )" ) ;
+
+    /* Get arg2 off the stack */
+    pArg2 = gHyp_stack_popRdata ( pStack, pAI ) ; 
+    
+    /* Get arg1 off the stack */
+    pArg1 = gHyp_stack_popRdata ( pStack, pAI ) ;
+	
+    pResult = lHyp_operator_binaryOp (	pAI, pFrame,
+					(char) BINARY_HYPOT,
+					pArg1, pArg2 ) ;
+
+    gHyp_stack_push ( pStack, pResult ) ;
+  }
+}
+
+void gHyp_operator_pow ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: pow ( value1, value2 )
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+
+  else {
+
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+    
+    sData
+      *pArg1,
+      *pArg2,
+      *pResult ;
+
+    int
+      argCount = gHyp_parse_argCount ( pParse ) ;
+
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 2  ) 
+      gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+	  "Invalid arguments. Usage: pow ( value1, value2 )" ) ;
+
+    /* Get arg2 off the stack */
+    pArg2 = gHyp_stack_popRdata ( pStack, pAI ) ; 
+    
+    /* Get arg1 off the stack */
+    pArg1 = gHyp_stack_popRdata ( pStack, pAI ) ;
+	
+    pResult = lHyp_operator_binaryOp (	pAI, pFrame,
+					(char) BINARY_POW,
+					pArg1, pArg2 ) ;
+
+    gHyp_stack_push ( pStack, pResult ) ;
+  }
+}
+
+
+void gHyp_operator_abs ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: abs ( value )
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+
+  else {
+
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+    
+    sData
+      *pArg,
+      *pResult ;
+
+    int
+      argCount = gHyp_parse_argCount ( pParse ) ;
+
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 1  ) 
+      gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+	  "Invalid arguments. Usage: abs ( value )" ) ;
+    
+    /* Get the arg off the stack */
+    pArg = gHyp_stack_popRdata ( pStack, pAI ) ;
+	
+    pResult = lHyp_operator_unaryOp (	pAI, pFrame,
+					(char) UNARY_ABS,
+					pArg ) ;
+
+    gHyp_stack_push ( pStack, pResult ) ;
+  }
+}
+
+
+void gHyp_operator_acos ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: acos ( value )
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+
+  else {
+
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+    
+    sData
+      *pArg,
+      *pResult ;
+
+    int
+      argCount = gHyp_parse_argCount ( pParse ) ;
+
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 1  ) 
+      gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+	  "Invalid arguments. Usage: acos ( value )" ) ;
+    
+    /* Get the arg off the stack */
+    pArg = gHyp_stack_popRdata ( pStack, pAI ) ;
+	
+    pResult = lHyp_operator_unaryOp (	pAI, pFrame,
+					(char) UNARY_ACOS,
+					pArg ) ;
+
+    gHyp_stack_push ( pStack, pResult ) ;
+  }
+}
+
+
+
+void gHyp_operator_asin ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: asin ( value )
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+
+  else {
+
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+    
+    sData
+      *pArg,
+      *pResult ;
+
+    int
+      argCount = gHyp_parse_argCount ( pParse ) ;
+
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 1  ) 
+      gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+	  "Invalid arguments. Usage: asin ( value )" ) ;
+    
+    /* Get the arg off the stack */
+    pArg = gHyp_stack_popRdata ( pStack, pAI ) ;
+	
+    pResult = lHyp_operator_unaryOp (	pAI, pFrame,
+					(char) UNARY_ASIN,
+					pArg ) ;
+
+    gHyp_stack_push ( pStack, pResult ) ;
+  }
+}
+
+
+
+void gHyp_operator_atan ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: atan ( value )
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+
+  else {
+
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+    
+    sData
+      *pArg,
+      *pResult ;
+
+    int
+      argCount = gHyp_parse_argCount ( pParse ) ;
+
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 1  ) 
+      gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+	  "Invalid arguments. Usage: atan ( value )" ) ;
+    
+    /* Get the arg off the stack */
+    pArg = gHyp_stack_popRdata ( pStack, pAI ) ;
+	
+    pResult = lHyp_operator_unaryOp (	pAI, pFrame,
+					(char) UNARY_ATAN,
+					pArg ) ;
+
+    gHyp_stack_push ( pStack, pResult ) ;
+  }
+}
+
+
+
+void gHyp_operator_ceil ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: ceil ( value )
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+
+  else {
+
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+    
+    sData
+      *pArg,
+      *pResult ;
+
+    int
+      argCount = gHyp_parse_argCount ( pParse ) ;
+
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 1  ) 
+      gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+	  "Invalid arguments. Usage: ceil ( value )" ) ;
+    
+    /* Get the arg off the stack */
+    pArg = gHyp_stack_popRdata ( pStack, pAI ) ;
+	
+    pResult = lHyp_operator_unaryOp (	pAI, pFrame,
+					(char) UNARY_CEIL,
+					pArg ) ;
+
+    gHyp_stack_push ( pStack, pResult ) ;
+  }
+}
+
+
+
+void gHyp_operator_cos ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: cos ( value )
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+
+  else {
+
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+    
+    sData
+      *pArg,
+      *pResult ;
+
+    int
+      argCount = gHyp_parse_argCount ( pParse ) ;
+
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 1  ) 
+      gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+	  "Invalid arguments. Usage: cos ( value )" ) ;
+    
+    /* Get the arg off the stack */
+    pArg = gHyp_stack_popRdata ( pStack, pAI ) ;
+	
+    pResult = lHyp_operator_unaryOp (	pAI, pFrame,
+					(char) UNARY_COS,
+					pArg ) ;
+
+    gHyp_stack_push ( pStack, pResult ) ;
+  }
+}
+
+
+
+void gHyp_operator_floor ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: floor ( value )
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+
+  else {
+
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+    
+    sData
+      *pArg,
+      *pResult ;
+
+    int
+      argCount = gHyp_parse_argCount ( pParse ) ;
+
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 1  ) 
+      gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+	  "Invalid arguments. Usage: floor ( value )" ) ;
+    
+    /* Get the arg off the stack */
+    pArg = gHyp_stack_popRdata ( pStack, pAI ) ;
+	
+    pResult = lHyp_operator_unaryOp (	pAI, pFrame,
+					(char) UNARY_FLOOR,
+					pArg ) ;
+
+    gHyp_stack_push ( pStack, pResult ) ;
+  }
+}
+
+
+
+void gHyp_operator_log10 ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: log10 ( value )
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+
+  else {
+
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+    
+    sData
+      *pArg,
+      *pResult ;
+
+    int
+      argCount = gHyp_parse_argCount ( pParse ) ;
+
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 1  ) 
+      gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+	  "Invalid arguments. Usage: log10 ( value )" ) ;
+    
+    /* Get the arg off the stack */
+    pArg = gHyp_stack_popRdata ( pStack, pAI ) ;
+	
+    pResult = lHyp_operator_unaryOp (	pAI, pFrame,
+					(char) UNARY_LOG10,
+					pArg ) ;
+
+    gHyp_stack_push ( pStack, pResult ) ;
+  }
+}
+
+
+
+void gHyp_operator_logN ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: logN ( value )
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+
+  else {
+
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+    
+    sData
+      *pArg,
+      *pResult ;
+
+    int
+      argCount = gHyp_parse_argCount ( pParse ) ;
+
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 1  ) 
+      gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+	  "Invalid arguments. Usage: logN ( value )" ) ;
+    
+    /* Get the arg off the stack */
+    pArg = gHyp_stack_popRdata ( pStack, pAI ) ;
+	
+    pResult = lHyp_operator_unaryOp (	pAI, pFrame,
+					(char) UNARY_LOGN,
+					pArg ) ;
+
+    gHyp_stack_push ( pStack, pResult ) ;
+  }
+}
+
+void gHyp_operator_sin ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: sin ( value )
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+
+  else {
+
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+    
+    sData
+      *pArg,
+      *pResult ;
+
+    int
+      argCount = gHyp_parse_argCount ( pParse ) ;
+
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 1  ) 
+      gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+	  "Invalid arguments. Usage: sin ( value )" ) ;
+    
+    /* Get the arg off the stack */
+    pArg = gHyp_stack_popRdata ( pStack, pAI ) ;
+	
+    pResult = lHyp_operator_unaryOp (	pAI, pFrame,
+					(char) UNARY_SIN,
+					pArg ) ;
+
+    gHyp_stack_push ( pStack, pResult ) ;
+  }
+}
+
+
+
+void gHyp_operator_sqrt ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: sqrt ( value )
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+
+  else {
+
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+    
+    sData
+      *pArg,
+      *pResult ;
+
+    int
+      argCount = gHyp_parse_argCount ( pParse ) ;
+
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 1  ) 
+      gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+	  "Invalid arguments. Usage: sqrt ( value )" ) ;
+    
+    /* Get the arg off the stack */
+    pArg = gHyp_stack_popRdata ( pStack, pAI ) ;
+	
+    pResult = lHyp_operator_unaryOp (	pAI, pFrame,
+					(char) UNARY_SQRT,
+					pArg ) ;
+
+    gHyp_stack_push ( pStack, pResult ) ;
+  }
+}
+
+
+
+void gHyp_operator_tan ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: tan ( value )
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+
+  else {
+
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+    
+    sData
+      *pArg,
+      *pResult ;
+
+    int
+      argCount = gHyp_parse_argCount ( pParse ) ;
+
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 1  ) 
+      gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+	  "Invalid arguments. Usage: tan ( value )" ) ;
+    
+    /* Get the arg off the stack */
+    pArg = gHyp_stack_popRdata ( pStack, pAI ) ;
+	
+    pResult = lHyp_operator_unaryOp (	pAI, pFrame,
+					(char) UNARY_TAN,
+					pArg ) ;
+
+    gHyp_stack_push ( pStack, pResult ) ;
+  }
+}
+
+
+
+void gHyp_operator_exp ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: exp ( value )
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+
+  else {
+
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+    
+    sData
+      *pArg,
+      *pResult ;
+
+    int
+      argCount = gHyp_parse_argCount ( pParse ) ;
+
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 1  ) 
+      gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+	  "Invalid arguments. Usage: exp ( value )" ) ;
+    
+    /* Get the arg off the stack */
+    pArg = gHyp_stack_popRdata ( pStack, pAI ) ;
+	
+    pResult = lHyp_operator_unaryOp (	pAI, pFrame,
+					(char) UNARY_EXP,
+					pArg ) ;
+
+    gHyp_stack_push ( pStack, pResult ) ;
   }
 }

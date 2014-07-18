@@ -11,6 +11,63 @@
  * Modifications:
  *
  *	$Log: fileio.c,v $
+ *	Revision 1.5  2007-07-09 05:39:00  bergsma
+ *	TLOGV3
+ *	
+ *	Revision 1.44  2007-06-20 05:17:34  bergsma
+ *	Fixes for RUN_RESTRICTED, fixes for describe.
+ *	
+ *	Revision 1.43  2007-06-10 05:14:50  bergsma
+ *	When doing sfdescribe, make output lengths shorter
+ *	
+ *	Revision 1.42  2007-05-30 06:24:22  bergsma
+ *	no message
+ *	
+ *	Revision 1.41  2007-05-26 22:08:43  bergsma
+ *	ADD -w "Ward" flag
+ *	
+ *	Revision 1.40  2007-03-26 00:03:19  bergsma
+ *	Was not closing file handle in checksum function
+ *	
+ *	Revision 1.39  2007-03-22 16:33:43  bergsma
+ *	Checksum returns a hex value.
+ *	
+ *	Revision 1.38  2007-03-22 04:45:38  bergsma
+ *	Checksum returns a hex "handle" like value.
+ *	
+ *	Revision 1.37  2007-03-22 04:28:17  bergsma
+ *	Initialize variable insep in checksum
+ *	
+ *	Revision 1.36  2007-03-21 16:01:23  bergsma
+ *	min/max functions use macro MIN/MAX.
+ *	Correct buf/ubuf pointer discrepency in checksum().
+ *	
+ *	Revision 1.35  2007-03-21 02:21:31  bergsma
+ *	Added round() function.
+ *	
+ *	Revision 1.34  2007-03-19 05:32:07  bergsma
+ *	New functions: min, max, pow, hypot, abs, acos, asin, atan,  ceil, cos,
+ *	 floor, log10, logN, sin, sqrt, tan, exp printf, sprintf, fprintf
+ *	
+ *	Revision 1.33  2007-03-15 01:04:39  bergsma
+ *	Added checksum function
+ *	
+ *	Revision 1.32  2006-11-25 03:08:55  bergsma
+ *	Incease size of buffer for getStr to accomodate larger strings.
+ *	
+ *	Revision 1.31  2006/10/01 21:47:58  bergsma
+ *	Dont' call the XML datatype attribute 'type', call it 'datatype' instead, otherwise
+ *	it will conflict with the well known input tag attribute called 'type'
+ *	
+ *	Revision 1.30  2006/09/25 05:08:35  bergsma
+ *	Hideous bug, was subtracting 2 from pOutput and inserting a null. OMG!
+ *	
+ *	Revision 1.29  2006/09/17 21:22:43  bergsma
+ *	Implement data typing for XML conversions
+ *	
+ *	Revision 1.28  2006/09/16 19:41:10  bergsma
+ *	Added gHyp_fileio_dataTypeStr
+ *	
  *	Revision 1.27  2006/08/22 18:45:32  bergsma
  *	Resolve Win32 problem with unlink
  *	
@@ -156,6 +213,63 @@ static char *gzaType[MAX_TYPES] = { "null",	/* 0 */
 			     "raw"	  /* 22 */
 } ;
 
+
+static unsigned long gsCrctab[256] = {
+  0x0,
+  0x04C11DB7, 0x09823B6E, 0x0D4326D9, 0x130476DC, 0x17C56B6B,
+  0x1A864DB2, 0x1E475005, 0x2608EDB8, 0x22C9F00F, 0x2F8AD6D6,
+  0x2B4BCB61, 0x350C9B64, 0x31CD86D3, 0x3C8EA00A, 0x384FBDBD,
+  0x4C11DB70, 0x48D0C6C7, 0x4593E01E, 0x4152FDA9, 0x5F15ADAC,
+  0x5BD4B01B, 0x569796C2, 0x52568B75, 0x6A1936C8, 0x6ED82B7F,
+  0x639B0DA6, 0x675A1011, 0x791D4014, 0x7DDC5DA3, 0x709F7B7A,
+  0x745E66CD, 0x9823B6E0, 0x9CE2AB57, 0x91A18D8E, 0x95609039,
+  0x8B27C03C, 0x8FE6DD8B, 0x82A5FB52, 0x8664E6E5, 0xBE2B5B58,
+  0xBAEA46EF, 0xB7A96036, 0xB3687D81, 0xAD2F2D84, 0xA9EE3033,
+  0xA4AD16EA, 0xA06C0B5D, 0xD4326D90, 0xD0F37027, 0xDDB056FE,
+  0xD9714B49, 0xC7361B4C, 0xC3F706FB, 0xCEB42022, 0xCA753D95,
+  0xF23A8028, 0xF6FB9D9F, 0xFBB8BB46, 0xFF79A6F1, 0xE13EF6F4,
+  0xE5FFEB43, 0xE8BCCD9A, 0xEC7DD02D, 0x34867077, 0x30476DC0,
+  0x3D044B19, 0x39C556AE, 0x278206AB, 0x23431B1C, 0x2E003DC5,
+  0x2AC12072, 0x128E9DCF, 0x164F8078, 0x1B0CA6A1, 0x1FCDBB16,
+  0x018AEB13, 0x054BF6A4, 0x0808D07D, 0x0CC9CDCA, 0x7897AB07,
+  0x7C56B6B0, 0x71159069, 0x75D48DDE, 0x6B93DDDB, 0x6F52C06C,
+  0x6211E6B5, 0x66D0FB02, 0x5E9F46BF, 0x5A5E5B08, 0x571D7DD1,
+  0x53DC6066, 0x4D9B3063, 0x495A2DD4, 0x44190B0D, 0x40D816BA,
+  0xACA5C697, 0xA864DB20, 0xA527FDF9, 0xA1E6E04E, 0xBFA1B04B,
+  0xBB60ADFC, 0xB6238B25, 0xB2E29692, 0x8AAD2B2F, 0x8E6C3698,
+  0x832F1041, 0x87EE0DF6, 0x99A95DF3, 0x9D684044, 0x902B669D,
+  0x94EA7B2A, 0xE0B41DE7, 0xE4750050, 0xE9362689, 0xEDF73B3E,
+  0xF3B06B3B, 0xF771768C, 0xFA325055, 0xFEF34DE2, 0xC6BCF05F,
+  0xC27DEDE8, 0xCF3ECB31, 0xCBFFD686, 0xD5B88683, 0xD1799B34,
+  0xDC3ABDED, 0xD8FBA05A, 0x690CE0EE, 0x6DCDFD59, 0x608EDB80,
+  0x644FC637, 0x7A089632, 0x7EC98B85, 0x738AAD5C, 0x774BB0EB,
+  0x4F040D56, 0x4BC510E1, 0x46863638, 0x42472B8F, 0x5C007B8A,
+  0x58C1663D, 0x558240E4, 0x51435D53, 0x251D3B9E, 0x21DC2629,
+  0x2C9F00F0, 0x285E1D47, 0x36194D42, 0x32D850F5, 0x3F9B762C,
+  0x3B5A6B9B, 0x0315D626, 0x07D4CB91, 0x0A97ED48, 0x0E56F0FF,
+  0x1011A0FA, 0x14D0BD4D, 0x19939B94, 0x1D528623, 0xF12F560E,
+  0xF5EE4BB9, 0xF8AD6D60, 0xFC6C70D7, 0xE22B20D2, 0xE6EA3D65,
+  0xEBA91BBC, 0xEF68060B, 0xD727BBB6, 0xD3E6A601, 0xDEA580D8,
+  0xDA649D6F, 0xC423CD6A, 0xC0E2D0DD, 0xCDA1F604, 0xC960EBB3,
+  0xBD3E8D7E, 0xB9FF90C9, 0xB4BCB610, 0xB07DABA7, 0xAE3AFBA2,
+  0xAAFBE615, 0xA7B8C0CC, 0xA379DD7B, 0x9B3660C6, 0x9FF77D71,
+  0x92B45BA8, 0x9675461F, 0x8832161A, 0x8CF30BAD, 0x81B02D74,
+  0x857130C3, 0x5D8A9099, 0x594B8D2E, 0x5408ABF7, 0x50C9B640,
+  0x4E8EE645, 0x4A4FFBF2, 0x470CDD2B, 0x43CDC09C, 0x7B827D21,
+  0x7F436096, 0x7200464F, 0x76C15BF8, 0x68860BFD, 0x6C47164A,
+  0x61043093, 0x65C52D24, 0x119B4BE9, 0x155A565E, 0x18197087,
+  0x1CD86D30, 0x029F3D35, 0x065E2082, 0x0B1D065B, 0x0FDC1BEC,
+  0x3793A651, 0x3352BBE6, 0x3E119D3F, 0x3AD08088, 0x2497D08D,
+  0x2056CD3A, 0x2D15EBE3, 0x29D4F654, 0xC5A92679, 0xC1683BCE,
+  0xCC2B1D17, 0xC8EA00A0, 0xD6AD50A5, 0xD26C4D12, 0xDF2F6BCB,
+  0xDBEE767C, 0xE3A1CBC1, 0xE760D676, 0xEA23F0AF, 0xEEE2ED18,
+  0xF0A5BD1D, 0xF464A0AA, 0xF9278673, 0xFDE69BC4, 0x89B8FD09,
+  0x8D79E0BE, 0x803AC667, 0x84FBDBD0, 0x9ABC8BD5, 0x9E7D9662,
+  0x933EB0BB, 0x97FFAD0C, 0xAFB010B1, 0xAB710D06, 0xA6322BDF,
+  0xA2F33668, 0xBCB4666D, 0xB8757BDA, 0xB5365D03, 0xB1F740B4
+};
+
+
 /**********************	FUNCTION DEFINITIONS ********************************/
 
 #if defined (AS_VMS) && defined ( __cplusplus )
@@ -175,6 +289,14 @@ sBYTE gHyp_fileio_dataType ( char *dt ) {
     if ( strcmp ( dt, gzaType[i] ) == 0 ) return i ;
   }
   return TYPE_LIST ;
+}
+
+char* gHyp_fileio_dataTypeStr ( int i ) {
+
+  if ( i >= 0 && i < MAX_TYPES ) 
+    return gzaType[i] ;
+  else
+    return NULL ;
 }
 
 static int lHyp_fileio_describe2 ( sData *pParent, 
@@ -365,7 +487,7 @@ static int lHyp_fileio_describe2 ( sData *pParent,
     if ( isXML )
       /*
       newOffset = sprintf ( newOutput,
-			    "<%s type=\"str\">%s", 
+			    "<%s datatype=\"str\">%s", 
 			    gHyp_data_getLabel ( pParent ),
 			    suffixStr ) ;
       */
@@ -530,15 +652,18 @@ static int lHyp_fileio_describe2 ( sData *pParent,
 	    }
 	  }
 
-	  /*
-	  newOffset = sprintf ( newOutput,
-				"<%s type=\"%s\"",
+	  if ( parentDataType > TYPE_STRING && parentTokenType == TOKEN_VARIABLE ) 
+	   
+	    newOffset = sprintf ( newOutput,
+				"<%s datatype=\"%s\"",
 				gHyp_data_getLabel ( pParent ),
 				gzaType[gHyp_data_getDataType( pParent )] ) ;
-	  */
-	  newOffset = sprintf ( newOutput,
+	  else
+	    newOffset = sprintf ( newOutput,
 				"<%s",
 				gHyp_data_getLabel ( pParent ) ) ;
+
+
 	  isAttrOn = TRUE ;
 
 	  if ( isXML ) {
@@ -888,7 +1013,7 @@ static int lHyp_fileio_describe2 ( sData *pParent,
 	      *pContentLength += outLen ;
 	      *pOutput = '\0' ;
 	      if ( !isMSG && !pResult) strcat ( pOutput, prefixStr ) ;
-	      outputLen = strlen ( pOutput ) - 2 ;
+	      outputLen = strlen ( pOutput ) /*- 2 */;
 	      *(pOutput+outputLen) = '\0' ;
 	    }
 	  }
@@ -945,7 +1070,7 @@ static int lHyp_fileio_describe2 ( sData *pParent,
 	  *pContentLength += outLen ;
 	  *pOutput = '\0' ;
 	  if ( !isMSG && !pResult) strcat ( pOutput, prefixStr ) ;
-	  outputLen = strlen ( pOutput ) - 2 ;
+	  outputLen = strlen ( pOutput ) /*- 2 */;
 	  *(pOutput+outputLen) = '\0' ;
 	}
       }
@@ -967,7 +1092,10 @@ static int lHyp_fileio_describe2 ( sData *pParent,
    */
 
   /* Return pOutput */  
-  if ( outputLen + newOffset > MAX_OUTPUT_LENGTH ) {
+
+  if ( ((outputLen + newOffset) > MAX_OUTPUT_LENGTH) ||
+       (pResult && ((outputLen + newOffset) > VALUE_SIZE) ) ) {
+
     pOut = (isPRE || isTXT) ? pOutput+MIN((unsigned int)indent,strspn (pOutput," \t\n")): pOutput ;
     outLen = strlen ( pOut ) ;
     if ( fp )
@@ -1406,7 +1534,7 @@ static void lHyp_fileio_put (	sInstance 	*pAI,
       *pEndMsg,
       putMessage[MAX_OUTPUT_LENGTH+1],
       quote,
-      value[VALUE_SIZE+1] ;
+      value[MAX_INPUT_LENGTH+1] ;
     
     FILE
       *fp = NULL ; 
@@ -1501,7 +1629,7 @@ static void lHyp_fileio_put (	sInstance 	*pAI,
 
 	valueLen = gHyp_data_getStr_nonulls ( pResult, 
 				     value, 
-				     VALUE_SIZE, 
+				     MAX_INPUT_LENGTH, 
 				     context, 
 				     isVector ) ;
 
@@ -1737,18 +1865,19 @@ void gHyp_fileio_fopen ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 			   TRUE ) ;
     pFileSpec = fileSpec ;
         
-#ifndef AS_RESTRICTED
-    pFILE = fopen ( pFileSpec, pMode ) ;
-    if ( !pFILE ) {
-      gHyp_instance_warning ( pAI, STATUS_FILE,
+    if ( !(guRunFlags & RUN_RESTRICTED) ) {
+
+      pFILE = fopen ( pFileSpec, pMode ) ;
+      if ( !pFILE ) {
+        gHyp_instance_warning ( pAI, STATUS_FILE,
 			      "Could not open file '%s'", pFileSpec ) ;
+      }
+      else
+        gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
     }
     else
-      gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+      gHyp_instance_warning ( pAI, STATUS_RESTRICTED, "The fopen() function is RESTRICTED" ) ;
 
-#else
-    gHyp_instance_warning ( pAI, STATUS_RESTRICTED, "The fopen() function is RESTRICTED" ) ;
-#endif
 
     pResult = gHyp_data_new ( NULL ) ;
     gHyp_data_setHandle ( pResult, (void*) pFILE ) ;
@@ -2430,18 +2559,15 @@ void gHyp_fileio_log ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 			     gHyp_data_getSubScript(pFile),
 			     TRUE) ;
       pFileSpec = fileSpec ;
-        
-#ifndef AS_RESTRICTED
 
-      pFILElog = fopen ( pFileSpec, "a+"
+      if ( !(guRunFlags & RUN_RESTRICTED) ) 
+      
+        pFILElog = fopen ( pFileSpec, "a+"
 #ifdef AS_VMS
 			 , "shr=get,put"
 #endif
 			 ) ;
-#else
-    gHyp_instance_warning ( pAI, STATUS_RESTRICTED,"The log() function is RESTRICTED" ) ;
-#endif
-
+    
     }
 
     gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
@@ -2453,7 +2579,10 @@ void gHyp_fileio_log ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     }
     else if ( !pFILElog ) {
     
-      gHyp_instance_warning ( pAI, STATUS_FILE, 
+      if ( (guRunFlags & RUN_RESTRICTED) ) 
+        gHyp_instance_warning ( pAI, STATUS_RESTRICTED,"The log() function is RESTRICTED" ) ;
+      else
+        gHyp_instance_warning ( pAI, STATUS_FILE, 
 			      "Could not open file '%s'", pFileSpec ) ;
     }
     else if ( argCount == 1 ) {
@@ -2650,12 +2779,14 @@ void gHyp_fileio_unlink ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 			   gHyp_data_getSubScript(pData),
 			   TRUE ) ;
     pFileSpec = fileSpec ;
-#ifndef AS_RESTRICTED
-    if ( unlink ( pFileSpec ) == -1 )
-      gHyp_instance_warning ( pAI, STATUS_FILE, "Failed to unlink file %s",pFileSpec ) ;
-#else
-    gHyp_instance_warning ( pAI, STATUS_RESTRICTED, "The fopen() function is RESTRICTED" ) ;
-#endif
+    if ( !(guRunFlags & RUN_RESTRICTED) ) {
+
+      if ( unlink ( pFileSpec ) == -1 ) {
+        gHyp_instance_warning ( pAI, STATUS_FILE, "Failed to unlink file %s",pFileSpec ) ;
+      }
+    }
+    else
+      gHyp_instance_warning ( pAI, STATUS_RESTRICTED, "The fopen() function is RESTRICTED" ) ;
 
     gHyp_instance_pushSTATUS ( pAI, pStack ) ;
   }
@@ -3032,7 +3163,7 @@ void gHyp_fileio_load_binary( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       filePtr = 0 ;
 
       pResult = gHyp_data_new ( NULL ) ;
-      gHyp_data_setVariable ( pResult, "_load_", TYPE_STRING ) ;
+      gHyp_data_setVariable ( pResult, "_load_binary_", TYPE_STRING ) ;
     
       pBuf = buf ;
       while ( 1 ) {
@@ -3071,3 +3202,251 @@ void gHyp_fileio_load_binary( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
   }
 
 }
+
+
+
+void gHyp_fileio_checksum ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: checksum ( fileSpec [,isText] )
+   *	Returns the string that was input.
+   *
+   * Arguments:
+   *
+   *	pAI				[R]
+   *	- pointer to Instance object
+   *
+   *	pCode				[R]
+   *	- pointer to Code object
+   *
+   *	isPARSE				[R]
+   *	- STATE_PARSE if TRUE, STATE_EXECUTE if FALSE
+   * 
+   *
+   * Return value:
+   *
+   *	none
+   */
+
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+
+  else {
+  
+    sStack 	
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+    
+    int
+      n,
+      fileSize,
+      filePtr,
+      argCount = gHyp_parse_argCount ( pParse ) ;
+    
+    sData
+      *pData,
+      *pResult ;
+
+    char
+      *pFileSpec,
+      fileSpec[MAX_PATH_SIZE+1] ;
+
+    FILE
+      *pFILE ;
+
+    sLOGICAL
+      isText = FALSE ;
+
+    struct stat
+      stats ;
+
+    unsigned long 
+      crc = 0;
+    long 
+      length = 0;
+    long 
+      high_bits = 0;
+    long 
+      controls = 0;
+    long 
+      bytes_read;
+    int 
+      insep= 0 ;		/* Are we in a separator sequence? */
+
+    unsigned char 
+      buf[CRC_BUFLEN],
+      c,
+      *cp;
+
+    if ( argCount != 1 && argCount != 2 ) 
+      gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+    	"Invalid arguments. Usage: load_binary ( fileSpec [, isText]  )" ) ;
+
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+  
+    if ( argCount == 2 ) {
+      pData = gHyp_stack_popRvalue ( pStack, pAI ) ; 
+      isText = gHyp_data_getBool ( pData, gHyp_data_getSubScript(pData), TRUE ) ;
+    }
+
+    pData = gHyp_stack_popRvalue ( pStack, pAI ) ; 
+    n = gHyp_data_getStr ( pData, 
+			   fileSpec, 
+			   MAX_PATH_SIZE,
+			   gHyp_data_getSubScript(pData),
+			   TRUE ) ;
+    pFileSpec = fileSpec ;
+
+    if ( isText ) 
+      pFILE = fopen ( pFileSpec, "rb" ) ;
+    else
+      pFILE = fopen ( pFileSpec, "r" ) ;
+
+    if ( !pFILE ) {
+      gHyp_instance_warning ( pAI, STATUS_FILE,
+			      "Could not open file '%s'", pFileSpec ) ;
+      pResult = NULL ;
+    }
+    else {
+
+      if ( stat ( pFileSpec, &stats ) < 0 )
+	gHyp_instance_error ( pAI, STATUS_FILE,
+			      "Could not stat file '%s'", pFileSpec ) ;
+      fileSize = stats.st_size ;
+      filePtr = 0 ;
+
+      pResult = gHyp_data_new ( NULL ) ;
+      gHyp_data_setVariable ( pResult, "_checksum_", TYPE_STRING ) ;
+      
+      if (isText) {
+
+	/* Process implied leading space character */
+
+	length = 1;
+	insep = 1;
+	crc = (crc << 8) ^ gsCrctab[((crc >> 24) ^ (unsigned char) 32) & 0xFF];
+      }
+
+      cp = buf ;
+      while ( 1 ) {
+
+        bytes_read = fread ( buf, 1, CRC_BUFLEN, pFILE );
+        if ( bytes_read < 0 ) {
+	  gHyp_data_delete ( pResult ) ;
+          gHyp_instance_error ( pAI,
+			        STATUS_FILE,
+			        "Failed to read from input stream" ) ;
+	}
+	else if ( bytes_read == 0 || filePtr >= fileSize ) {
+	  break ;
+	}
+        else  {
+
+	  if ( filePtr+bytes_read > fileSize ) {
+            /*gHyp_util_debug ( "Would exceed file size!!!" ) ;*/
+	    bytes_read = fileSize - filePtr ;
+	  }
+	  filePtr += bytes_read ;
+          cp = buf ;
+
+	  if ( isText ) {
+
+  	    while (bytes_read--) {
+
+	      c = *(cp++);
+	      if (c >= 128) {
+		high_bits++;
+	      } 
+	      else if (c < ' ') {
+		switch (c) {
+	          case '\t':
+		  case '\n':
+		  case '\r':
+		  case '\f':
+	  	    break;
+		  default:
+		    controls++;
+		}
+	      }
+	      if (c > ' ') {
+		crc = (crc << 8) ^ gsCrctab[((crc >> 24) ^ c) & 0xFF];
+		length++;
+		insep = 0;
+	      } 
+	      else if (!insep) {
+		crc = (crc << 8) ^ gsCrctab[((crc >> 24) ^ (unsigned char) 32) & 0xFF];
+		length++;
+		insep = 1;
+	      }
+	    }
+        
+	  } 
+          
+	  else {	/* Binary file */
+
+	    length += bytes_read;
+	    while (bytes_read--) {
+	      c = *(cp++);
+	      if (c >= 128) {
+		high_bits++;
+	      } 
+	      else if (c < ' ') {
+	        switch (c) {
+	  	case '\t':
+	  	case '\n':
+		case '\r':
+		case '\f':
+		  break;
+		default:
+		  controls++;
+		}
+	      }
+	      crc = (crc << 8) ^ gsCrctab[((crc >> 24) ^ c) & 0xFF];
+
+	    } 
+	  }
+	}
+      
+      } /* End while */
+	 
+      fclose ( pFILE ) ;
+
+      if ( isText ) {
+
+	/* Add implied trailing space character, if needed */
+	if (!insep) {
+	  crc = (crc << 8) ^ gsCrctab[((crc >> 24) ^ (unsigned char) 32) & 0xFF];
+	  length++;
+	}
+      }
+
+      bytes_read = length;
+      while (bytes_read > 0) {
+        crc = (crc << 8) ^ gsCrctab[((crc >> 24) ^ bytes_read) & 0xFF];
+        bytes_read >>= 8;
+      }
+
+      crc = ~crc & 0xFFFFFFFF;
+      /*gHyp_util_debug("CRC-Checksum: %lu %ld", crc, length);*/
+      
+      pData = gHyp_data_new ( NULL ) ;
+      gHyp_data_newConstant_raw ( pData, TYPE_HEX, &crc ) ;
+      gHyp_data_append ( pResult, pData ) ;
+
+      pData = gHyp_data_new ( NULL ) ;
+      gHyp_data_setInt ( pData, length ) ;
+      gHyp_data_append ( pResult, pData ) ;
+    }
+
+    if ( pResult )
+      gHyp_stack_push ( pStack, pResult ) ;
+    else
+      gHyp_instance_pushSTATUS ( pAI, pStack ) ;
+  }
+
+}
+

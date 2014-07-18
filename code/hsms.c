@@ -11,7 +11,21 @@
  * Modifications:
  *
  * $Log: hsms.c,v $
- * Revision 1.15  2006/01/19 20:37:15  bergsma
+ * Revision 1.5  2007-07-09 05:39:00  bergsma
+ * TLOGV3
+ *
+ * Revision 1.18  2007-05-02 20:34:01  bergsma
+ * Fix parseurl function.  Improve various print/debug/log statements.
+ * Fix problem with chunked data transfers.
+ *
+ * Revision 1.17  2007-02-26 02:35:01  bergsma
+ * No longer user NULL_DEVICEID placeholder.  PORT and HTTP
+ * autoallocate device ids, HSMS and SECS I are pre-determined.
+ *
+ * Revision 1.16  2007-02-01 00:29:59  bergsma
+ * Increase size of HSMS buffer and max message size.
+ *
+ * Revision 1.15  2006-01-19 20:37:15  bergsma
  * no message
  *
  * Revision 1.14  2006/01/16 18:56:36  bergsma
@@ -95,14 +109,14 @@ struct hsms_t
   int			SID ;
   int			TID ;
 
-  sBYTE		inbuf[MAX_HSMS_BUFFER_SIZE+1] ;
+  sBYTE		inbuf[MAX_HSMS_MESSAGE_SIZE] ;
   int		nBytes ;
   sBYTE*	pNextMsg ;
   sBYTE*	pEndOfBuf ;
   OVERLAPPED	overlapped ;
   sSSL*		pSSL ;
 
-  unsigned char		outbuf[MAX_HSMS_BUFFER_SIZE+1] ;
+  unsigned char		outbuf[MAX_HSMS_MESSAGE_SIZE] ;
 
   sSecs2*	save_pSecs2 ;
   int		save_stream ;
@@ -197,7 +211,7 @@ short gHyp_hsms_flags ( sHsms *pHsms )
 int gHyp_hsms_nextMessage ( sHsms *pHsms, sConcept *pConcept, sInstance *pAI ) 
 {
   int
-    i,
+    i,j,
     stream,
     function,
     msglen,
@@ -217,19 +231,23 @@ int gHyp_hsms_nextMessage ( sHsms *pHsms, sConcept *pConcept, sInstance *pAI )
 
   char
     *pStr,
-    blkStr[MAX_HSMS_MESSAGE_SIZE*3] ;
+    blkStr[MAX_LOG_LENGTH+1] ;
 
+  sInstance
+    *pAIassigned = NULL ;
 
   /* Process messages until we get a SECS II data block */
   while ( TRUE ) {
 
     /* Get start of next message. Return 0 if no message is in 
      * the buffer or if the message is not complete.
+     * The first time in this loop, pHsms->pNextMsg ALWAYS
+     * points to the start of the pHsms->inbuf buffer.
      */
     pMsg = pHsms->pNextMsg ;
     if ( !pMsg ) return COND_SILENT ;
     
-    /* How many bytes were read? */
+    /* How many bytes are there left to process in the message buffer? */
     nBytes = pHsms->pEndOfBuf - pMsg ;
     if ( nBytes == 0 ) return COND_SILENT ;
 
@@ -288,10 +306,22 @@ int gHyp_hsms_nextMessage ( sHsms *pHsms, sConcept *pConcept, sInstance *pAI )
     }
     
     if ( guDebugFlags & DEBUG_PROTOCOL ) {
+
       pStr = blkStr ;
+      j = 0 ;
+
       for ( i=0; i<msglen+4; i++ ) {
 	sprintf ( pStr, "%02x ", *(pMsgStart+i) ) ;
 	pStr += 3 ;
+	j += 3 ;
+	if ( j+3 > MAX_LOG_LENGTH ) {
+          gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
+			   "<- [%s]", blkStr ) ;
+	  j = 0 ;
+	  pStr = blkStr ;
+	  *pStr = '\0';
+	}
+	
       }
       gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 			   "<- [%s]", blkStr ) ; 
@@ -313,6 +343,13 @@ int gHyp_hsms_nextMessage ( sHsms *pHsms, sConcept *pConcept, sInstance *pAI )
     /* Grab the header bytes */
     header.deviceId = (*pMsg++ << 8 ) ;
     header.deviceId |= *pMsg++ ;
+
+    /* Check to see if we are enabled */
+    pAIassigned = gHyp_hsms_assign ( pHsms, pConcept, header.deviceId ) ;
+
+    /* Overwrite if found */
+    if ( pAIassigned ) pAI = pAIassigned ;
+
     header.isReplyExpected = *pMsg & 0x80 ;
     header.messageId = ((*pMsg++ & 0x7F) << 8 ) ;
     header.messageId |= *pMsg++ ;
@@ -349,7 +386,7 @@ int gHyp_hsms_nextMessage ( sHsms *pHsms, sConcept *pConcept, sInstance *pAI )
 	    
 	if ( !pSecs2 ) { 
 	  gHyp_instance_warning ( pAI, STATUS_SECS,
-				  "SECS II device id %d is not assigned to port %d", 
+				  "SECS II device id %d is not assigned to socket %d", 
 				  header.deviceId, pHsms->socket ) ;
 	} 
 	else {
@@ -582,12 +619,79 @@ int gHyp_hsms_nextMessage ( sHsms *pHsms, sConcept *pConcept, sInstance *pAI )
   }
 }
 
+sInstance *gHyp_hsms_assign ( sHsms *pHsms, sConcept *pConcept, sWORD id ) 
+{ 
+  /* The purpose of this function is the call gHyp_instance_updateFd
+   * on a id/socket combination.  
+   */
+
+  sHsms
+    *pListenHsms ;
+
+  sInstance
+    *pAIassigned ;
+
+  SOCKET
+    fd ;
+
+  if ( id == NULL_DEVICEID ) return NULL ;
+
+  /* First find the instance that is assigned to the id */
+  pAIassigned = gHyp_concept_getInstForDeviceId ( pConcept, id ) ;
+
+  if ( !pAIassigned ) {
+
+    gHyp_util_logWarning( "No instance has assigned id %d to the socket %d",
+      id, pHsms->socket );
+    return NULL ;
+
+  }
+
+  /* Get the port assigned to the id.
+   * If it is the parent port, it is a new connection 
+   * and we can setup a connect handler 
+   */
+
+  fd = gHyp_instance_getDeviceFd ( pAIassigned, id ) ;
+
+  if ( fd == pHsms->parentSocket ) {
+
+    if ( pHsms->socket != pHsms->parentSocket ) {
+
+      /* This is a newly created channel */
+
+      /* This is a newly created channel */
+      gHyp_util_logInfo ( "Assigning device id %d to socket %d from listen port %d",
+	 		    id, pHsms->socket, pHsms->parentSocket );
+
+      /* Take any SSL structures as well */
+      pListenHsms = (sHsms*) gHyp_concept_getSocketObject ( pConcept, 
+							  (SOCKET) pHsms->parentSocket, 
+							  DATA_OBJECT_NULL ) ;
+							  /*DATA_OBJECT_HSMS ) ;*/
+
+#ifdef AS_SSL
+      if ( pListenHsms->pSSL != NULL ) {
+	pHsms->pSSL = gHyp_sock_copySSL ( pListenHsms->pSSL ) ;
+      }
+#endif
+
+      /* Take this id */
+      gHyp_instance_updateFd ( pAIassigned, pHsms->socket, id, NULL, FALSE ) ;
+
+      gHyp_instance_signalConnect ( pAIassigned, pHsms->socket, pHsms->port, id ) ;
+
+    }
+   
+  }
+  return pAIassigned ;
+
+}
+  
 int gHyp_hsms_incoming ( sHsms *pHsms, 
 			 sConcept *pConcept,
-			 sInstance *pParentAI ) 
+			 sInstance *pAI ) 
 { 
-  sWORD
-    id=NULL_DEVICEID ;
 
   int
     nBytes ;
@@ -595,97 +699,12 @@ int gHyp_hsms_incoming ( sHsms *pHsms,
   sBYTE
     *pMsg ;
 
-  sHsms
-    *pListenHsms ;
-
   sLOGICAL
-    jmpEnabled ;
-  
+    jmpEnabled ;  
+
   sInstance
-    *pAIassigned ;
+    *pAIassigned = gHyp_concept_getInstForFd ( pConcept, pHsms->socket ) ;
 
-  /* The socket pHsms-socket has data in it/
-   * Get the instance for which the data gets assigned to. 
-   */
-  pAIassigned = gHyp_concept_getInstForFd ( pConcept, pHsms->socket ) ;
-
-  if ( pAIassigned ) {
-
-    /* Get id that is assigned to the port */
-    id = gHyp_instance_getDeviceId ( pAIassigned, (SOCKET) pHsms->socket ) ;
-
-    if ( guDebugFlags & DEBUG_DIAGNOSTICS )
-      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
-	"Socket %d is assigned to id %d for target %s",
-	  pHsms->socket, id, gHyp_instance_getTargetId ( pAIassigned ) ) ;
-    
-  }
-  else {
-
-    gHyp_util_logWarning( "No instance has assigned any id to the port.");
-
-    /* No instance has assigned any id to the port.
-     * Check if this is a newly created channel.
-     */
-    if ( pHsms->socket != pHsms->parentSocket ) {
-
-      /* This is a newly created channel */
-
-      /* This is a newly created channel */
-      gHyp_util_logInfo ( "New socket connection %d off of parent socket %d",
-	pHsms->socket, pHsms->parentSocket ) ;
-      
-      pAIassigned = gHyp_concept_getInstForFd ( pConcept, pHsms->parentSocket ) ;
-
-      if ( pAIassigned ) {
-
-	/* Getting device id assigned to the listen port */
-	id = gHyp_instance_getDeviceId ( pAIassigned, pHsms->parentSocket ) ;
- 
-	if ( id == NULL_DEVICEID ) {
-          gHyp_util_logError ( "No device id has been assigned to listen port %d",
-			 pHsms->parentSocket ) ;
-	  /* Close the port */
-	  gHyp_instance_signalHangup ( 
-	    pParentAI, 
-	    (int) pHsms->socket,
-	    pHsms->port,
-	    id ) ;
-	  gHyp_concept_deleteSocketObject ( pConcept, (SOCKET) pHsms->socket ) ;
-	  return COND_SILENT ;
-	}
-	
-  	gHyp_util_logInfo ( "Reassigning device id %d to port %d from listen port %d",
-	 		    id, pHsms->socket, pHsms->parentSocket );
-
-	/* Take any SSL structures as well */
-	pListenHsms = (sHsms*) gHyp_concept_getSocketObject ( pConcept, 
-							  (SOCKET) pHsms->parentSocket, 
-							  DATA_OBJECT_NULL ) ;
-							  /*DATA_OBJECT_HSMS ) ;*/
-
-#ifdef AS_SSL
-	if ( pListenHsms->pSSL != NULL ) {
-	  pHsms->pSSL = gHyp_sock_copySSL ( pListenHsms->pSSL ) ;
-	}
-#endif
-
-	/* Take this id */
-	gHyp_instance_updateFd ( pParentAI, pHsms->socket, id, NULL, FALSE ) ;
-
-	/* Create a placeholder for the parent so that we can reassign the device id. */
-	gHyp_instance_updateFd ( pAIassigned, pHsms->parentSocket, NULL_DEVICEID, NULL, FALSE ) ;
-
-	/* Take and reassign the rest of the id's as well. */
-	while ( 1 ) {
-	  id = gHyp_instance_getDeviceId ( pAIassigned, pHsms->parentSocket ) ;
-	  if ( id == NULL_DEVICEID ) break ;
- 	  gHyp_instance_updateFd ( pParentAI, pHsms->socket, id, NULL, FALSE ) ;
-	} 
-      }
-    }
-  }
-  
   /* What offset should the read start from? */
   pMsg = pHsms->pNextMsg ? pHsms->pNextMsg : pHsms->inbuf ;
 
@@ -705,40 +724,36 @@ int gHyp_hsms_incoming ( sHsms *pHsms,
   giJmpEnabled = jmpEnabled ;
 
   if ( nBytes < 0 ) {
-    if ( pParentAI ) 
+
+    if ( pAIassigned ) 
       gHyp_instance_signalHangup ( 
-        pParentAI, 
+        pAIassigned, 
         (int) pHsms->socket, 
 	pHsms->port,
-        id ) ;
+        gHyp_instance_getDeviceId ( pAIassigned, pHsms->port) ) ;
+
     gHyp_concept_deleteSocketObject ( pConcept, pHsms->socket ) ;
     return COND_SILENT ;
   }
   else if ( nBytes == 0 ) {
     
     /* This can happen when the link as been closed at the other end. */
-    gHyp_util_logError ( "Zero bytes read from SECS node %s, port %d",
+    gHyp_util_logError ( "Zero bytes read from SECS node %s, socket %d",
 			 pHsms->node, pHsms->socket ) ;
 
-    if ( pParentAI ) 
+    if ( pAIassigned ) 
       gHyp_instance_signalHangup ( 
-	pParentAI, 
+	pAIassigned, 
         (int) pHsms->socket, 
         pHsms->port,
-        id ) ;
+        gHyp_instance_getDeviceId ( pAIassigned, pHsms->port) ) ;
+        
     gHyp_concept_deleteSocketObject ( pConcept, pHsms->socket ) ;
 
 
     return COND_SILENT ;
   }
   else {
-
-    if ( !pParentAI ) {
-      gHyp_util_logError ( "No id is assigned to socket %d for device id %u",
-			   pHsms->socket,
-			   id);
-      return COND_SILENT ;
-    }
 
     /* Received some bytes */
     pHsms->pEndOfBuf = pMsg + nBytes ;
@@ -763,13 +778,13 @@ int gHyp_hsms_outgoing ( sHsms *pHsms,
     *pHeader ;
 
   int
-    i,
+    i,j,
     msglen=0,
     nBytes ;
 
   char
     *pStr,
-    blkStr[MAX_HSMS_MESSAGE_SIZE*3] ;
+    blkStr[MAX_LOG_LENGTH+1] ;
 
   /* Initialize a new secs header */
   if ( pSecs2 ) 
@@ -1066,9 +1081,18 @@ int gHyp_hsms_outgoing ( sHsms *pHsms,
 
   if ( guDebugFlags & DEBUG_PROTOCOL ) {
     pStr = blkStr ;
+    j = 0 ;
     for ( i=0; i<msglen+4; i++ ) {
       sprintf ( pStr, "%02x ", pHsms->outbuf[i] ) ;
       pStr += 3 ;
+      j += 3 ;
+      if ( j+3 > MAX_LOG_LENGTH ) {
+        gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
+			   "-> [%s]", blkStr ) ;
+	j = 0 ;
+	pStr = blkStr ;
+	*pStr = '\0';
+      }	
     }
     gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 			 "-> [%s]", blkStr ) ; 

@@ -11,7 +11,13 @@
  * Modifications:
  *
  * $Log: route.c,v $
- * Revision 1.14  2006/01/16 18:56:36  bergsma
+ * Revision 1.5  2007-07-09 05:39:00  bergsma
+ * TLOGV3
+ *
+ * Revision 1.15  2007-03-15 01:09:21  bergsma
+ * Added "reply" function.
+ *
+ * Revision 1.14  2006-01-16 18:56:36  bergsma
  * HS 3.6.6
  * 1. Save query timeout events.  Don't let queries repeat indefinitely.
  * 2. Rework DEBUG_DIAGNOSTIC debugging.  Less overhead.
@@ -303,6 +309,7 @@ static void lHyp_route_QE (	sInstance 	*pAI,
     *pMode,
     *pQUERY = "query",
     *pEVENT = "event",
+    *pREPLY = "reply",
     *pTokenStr;
 		
   sBYTE
@@ -469,11 +476,15 @@ static void lHyp_route_QE (	sInstance 	*pAI,
 
   /* Get Sender and Mode */
   sprintf ( senderPath, gHyp_instance_getTargetPath ( pAI ) ) ;
-  pMode = ( mode == MESSAGE_QUERY ) ? pQUERY : pEVENT ;
+  pMode = ( mode == MESSAGE_QUERY ) ? pQUERY : 
+	  ( mode == MESSAGE_EVENT ) ? pEVENT : pREPLY ;
 
   /* Create message */
   strcpy ( timeStamp, gHyp_util_timeStamp ( gsCurTime ) ) ;
-  strcpy ( transactionID, gHyp_util_random8 () ) ;
+  if ( mode == MESSAGE_REPLY )
+    strcpy ( transactionID, gHyp_aimsg_getTID ( gHyp_instance_currentMsg ( pAI ) ) ) ;
+  else
+    strcpy ( transactionID, gHyp_util_random8 () ) ;
 
 
   pMsg = gHyp_aimsg_initUnparse (	gHyp_instance_outgoingMsg ( pAI ), 
@@ -563,6 +574,55 @@ void gHyp_route_event ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 	"Invalid arguments. Usage: event ( target, method[,argList [,arg1[, arg2[, ...]]]] )" ) ;
 
     lHyp_route_QE ( pAI, pFrame, pStack, pParse, pCode, MESSAGE_EVENT, argCount ) ;
+  
+    /* Result is in status variable */
+    gHyp_instance_pushSTATUS ( pAI, pStack ) ;
+  }
+  return ;
+}
+
+void gHyp_route_reply ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: reply (sender,method,arglist)
+   *	Sets the value of STATUS.
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+  
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+    
+  else {
+ 
+    sStack 	*pStack = gHyp_frame_stack ( pFrame ) ;
+    int	   	argCount = gHyp_parse_argCount ( pParse ) ;
+		
+    /* Assume success 
+     * CANNOT MESS WITH STATUS BECAUSE WE MIGHT WANT TO SEND ITS CURRENT VALUE
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+     */
+
+    if ( argCount < 2  )
+    	gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+	"Invalid arguments. Usage: reply ( target, method[,argList [,arg1[, arg2[, ...]]]] )" ) ;
+
+    lHyp_route_QE ( pAI, pFrame, pStack, pParse, pCode, MESSAGE_REPLY, argCount ) ;
   
     /* Result is in status variable */
     gHyp_instance_pushSTATUS ( pAI, pStack ) ;

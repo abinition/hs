@@ -2,6 +2,15 @@
  * Modifications:
  *
  * $Log: tcp.h,v $
+ * Revision 1.5  2007-07-09 05:39:00  bergsma
+ * TLOGV3
+ *
+ * Revision 1.8  2007-02-17 01:53:13  bergsma
+ * Socket handoff does not work with TRUE64
+ *
+ * Revision 1.7  2006-10-27 17:27:19  bergsma
+ * Added port_sendmsg and port_recvmsg
+ *
  * Revision 1.6  2005/02/25 04:00:51  bergsma
  * HS 3.4.5
  * Make mailslot read/writes non-blocking.
@@ -33,4 +42,10 @@ extern void		gHyp_tcp_deleteAlias ( sAlias* ) ;
 extern sAlias*		gHyp_tcp_createAlias ( char *pHost, char *pAddr ) ;
 extern void		gHyp_tcp_removeAliases ( char* ) ;
 extern void		gHyp_tcp_gethostname ( char *, int  ) ;
-extern sLOGICAL		lHyp_tcp_setup ( SOCKET s ) ;
+extern sLOGICAL		gHyp_tcp_setup ( SOCKET s ) ;
+#if defined (AS_UNIX) && !defined(AS_TRUE64)
+extern sLOGICAL		gHyp_tcp_sendmsg( char *pClient, char *pService, SOCKET sendfd, int port ) ;
+extern SOCKET		gHyp_tcp_recvmsg ( int s, int *pport ) ;
+extern SOCKET		gHyp_tcp_makeUNIX ( char *pService ) ;
+extern SOCKET		gHyp_tcp_checkInboundUNIX ( SOCKET s ) ;
+#endif

@@ -10,7 +10,10 @@
  * Modifications:
  *
  *   $Log: stack.c,v $
- *   Revision 1.6  2005/04/22 19:26:38  bergsma
+ *   Revision 1.5  2007-07-09 05:39:00  bergsma
+ *   TLOGV3
+ *
+ *   Revision 1.6  2005-04-22 19:26:38  bergsma
  *   Uncommented section in gHyp_stack_popRdata that checks for empty
  *   references.  Added routine gHyp_stack_popRdata_nocheck to not check.
  *

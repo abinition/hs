@@ -16,6 +16,15 @@ $!
 $! Modifications:
 $!
 $!   $Log: build_hs.com,v $
+$!   Revision 1.9  2005-05-10 17:29:48  bergsma
+$!   Typo, hs.olb should be hs_non_promis.olb
+$!
+$!   Revision 1.8  2005/04/03 17:36:19  bergsma
+$!   HS 3.54  (FIX OF FLOATING POINT OVERFLOW IN TLOGFEED).
+$!   1. Don't delete LISting files.
+$!   2. PackStart in aeqssp_autofil not being cleared - was causing an
+$!   unpack operation when not required.
+$!
 $!   Revision 1.7  2004/12/06 20:46:53  bergsma
 $!   For newer versions of VMS, the TCP/IP stack is available in the
 $!   default system library.
@@ -43,13 +52,13 @@ $
 $ if ( ccc .eqs. "" )
 $ then
 $   write sys$output "CXX or VAXC or DECC compilers not Found."
-$   if ( f$search ( "hs.olb" ) .nes. "" )
+$   if ( f$search ( "hs_non_promis.olb" ) .nes. "" )
 $   then
 $     ! HS library supplied.
 $     comp automan.for
 $     comp automan4.for
 $     comp autoutil.for
-$     libr hs.olb automan,automan4,autoutil
+$     libr hs_non_promis.olb automan,automan4,autoutil
 $     open/write opt hs.opt
 $       write opt "sys$library:decc$shr.exe/share"
 $       if ( runlib .nes. "" ) then $ write opt "''runlib'"
@@ -97,6 +106,7 @@ $ ccc instance.c
 $ ccc label.c
 $ ccc load.c
 $ ccc method.c
+$ ccc memtrack.c
 $ ccc operand.c
 $ ccc operator.c
 $ ccc parse.c
@@ -150,6 +160,7 @@ instance.obj+-
 label.obj+-
 load.obj+-
 method.obj+-
+memtrack.obj+-
 operand.obj+-
 operator.obj+-
 parse.obj+-
@@ -175,13 +186,13 @@ $!
 $!
 $! Link an image
 $!
-$ 'build'/exec=hss.exe hs.obj+hs_non_promis.olb/lib+hs.opt/opt
+$ 'build'/exec=hss.exe/map hs.obj+hs_non_promis.olb/lib+hs.opt/opt
 $ 'build'/exec=stats.exe stats.obj+hs_non_promis.olb/lib+hs.opt/opt
 $!
 $! Cleanup the directory
 $!
 $ purge *.*
-$ delete *.lis;*
+$ !!delete *.lis;*
 $!
 $DONE:
 $ exit

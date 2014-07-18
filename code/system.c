@@ -11,6 +11,41 @@
  * Modifications:
  *
  *	$Log: system.c,v $
+ *	Revision 1.5  2007-07-09 05:39:00  bergsma
+ *	TLOGV3
+ *	
+ *	Revision 1.29  2007-06-20 21:09:24  bergsma
+ *	Use popRdata, not popRvalue, when subsequently doing a data_getNext
+ *	
+ *	Revision 1.28  2007-05-26 22:08:43  bergsma
+ *	ADD -w "Ward" flag
+ *	
+ *	Revision 1.27  2007-05-02 20:34:01  bergsma
+ *	Fix parseurl function.  Improve various print/debug/log statements.
+ *	Fix problem with chunked data transfers.
+ *	
+ *	Revision 1.26  2007-03-26 00:19:57  bergsma
+ *	Only allow the setting of returnToStdin to TRUE when the instance
+ *	executing the sleep() function is itself the parent instance,
+ *	
+ *	Revision 1.25  2007-03-22 04:28:44  bergsma
+ *	Make getclock() function more portable
+ *	
+ *	Revision 1.24  2007-03-15 01:08:27  bergsma
+ *	Added getclock function
+ *	
+ *	Revision 1.23  2007-02-15 19:27:46  bergsma
+ *	Fix for datatype attribute, truncstrlen adjusments (added mayReturnChildLess)
+ *	
+ *	Revision 1.22  2007-02-13 22:34:19  bergsma
+ *	XML end-of-buffer was not being properly detected
+ *	
+ *	Revision 1.21  2006-10-12 23:09:09  bergsma
+ *	Fix problems with STATE_SLEEP state.
+ *	
+ *	Revision 1.20  2006/10/01 16:25:26  bergsma
+ *	Added support for asctime() function and the means to parse it (in dateparse.c)
+ *	
  *	Revision 1.19  2006/08/17 05:03:30  bergsma
  *	Detect non-XML (HTML) and assume childless tags won't have /> endings
  *	
@@ -267,6 +302,79 @@ void gHyp_system_datetime ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
   }
 }
 
+void gHyp_system_asctime ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: asctime()
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+
+  else {
+
+    sStack 	
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+
+    sData
+      *pData,
+      *pResult ;
+
+    struct tm	*pstm ;	
+
+    char
+      timeStamp[VALUE_SIZE+1] ;
+
+    time_t
+      ts ;
+
+    int
+      argCount = gHyp_parse_argCount ( pParse ) ;
+    
+    /* Assume success */	
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount > 1 ) gHyp_instance_error ( pAI,STATUS_ARGUMENT,
+	"Invalid arguments. Usage: asctime ( [ansitime] )" ) ;
+
+    if ( argCount == 1 ) {
+      pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
+      ts = gHyp_data_getRaw ( pData, gHyp_data_getSubScript(pData), TRUE  ) ;
+    }
+    else
+      ts = gsCurTime = time(NULL) ;
+
+    pstm = localtime ( &ts ) ;
+    if ( !pstm ) gHyp_instance_error ( pAI,STATUS_BOUNDS,
+	"Invalid ansi time value %d", ts ) ;
+
+
+    strcpy ( timeStamp, asctime( pstm ) ) ;
+    gHyp_util_trim ( timeStamp ) ;
+    pResult = gHyp_data_new ( NULL ) ;
+    gHyp_data_setStr ( pResult, timeStamp ) ;
+    gHyp_stack_push ( pStack, pResult ) ;
+  }
+}
+
+
 void gHyp_system_exec ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
 {
   /* Description:
@@ -378,7 +486,8 @@ void gHyp_system_exec ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 			    "Subscript '%d' is out of bounds in exec()",ss) ;
     *pCmd = '\0' ;
 
-#ifndef AS_RESTRICTED
+  if ( !(guRunFlags & RUN_RESTRICTED) ) {
+
 
 #ifndef AS_WINDOWS
     /* Create a pipe for receiving stdout from the child */
@@ -436,10 +545,10 @@ void gHyp_system_exec ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
   /* Windows */
   system ( command ) ;
 #endif
-
-#else
+  }
+else
     gHyp_instance_warning ( pAI, STATUS_RESTRICTED, "The exec() function is RESTRICTED" ) ;
-#endif
+
 
     /* Result is last line received */
     pResult = gHyp_data_new ( NULL ) ;
@@ -506,7 +615,7 @@ void gHyp_system_system ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     	"Invalid arguments. Usage: system ( command )" ) ;
    
     /* Get command to execute */
-    pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
+    pData = gHyp_stack_popRdata ( pStack, pAI ) ;
 
     /* Construct the message to be sent to the shell. */
     pCmd = command ;
@@ -538,11 +647,11 @@ void gHyp_system_system ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 			    "Subscript '%d' is out of bounds in exec()",ss) ;
     *pCmd = '\0' ;	
    
-#ifndef AS_RESTRICTED
+  if ( !(guRunFlags & RUN_RESTRICTED) )
+
     system ( command ) ;
-#else
+  else
     gHyp_instance_warning ( pAI, STATUS_RESTRICTED, "The system() function is RESTRICTED" ) ;
-#endif
 
     gHyp_instance_pushSTATUS ( pAI, pStack ) ;
   }
@@ -723,7 +832,7 @@ void gHyp_system_sleep ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
       if ( guDebugFlags & DEBUG_FRAME )
         gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME, 
-			     "frame: SLEEP(longjmp to 1 from frame %d)",
+			     "frame: SLEEP (longjmp to 1 from frame %d)",
 			     gHyp_frame_depth(pFrame) ) ;
       longjmp ( gsJmpStack[giJmpLevel=1], COND_SILENT ) ;
 
@@ -924,6 +1033,60 @@ void gHyp_system_timestamp ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
   }
 }
 
+void gHyp_system_getclock ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: getclock ()
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+
+  else {
+
+    sStack 	
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+    
+    sData
+      *pResult ;
+    
+    int
+      tickcount,
+      argCount = gHyp_parse_argCount ( pParse ) ;
+
+    /* Assume success */	
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount > 0 ) gHyp_instance_error ( pAI,STATUS_ARGUMENT,
+	"Invalid arguments. Usage: getclock ()" ) ;
+   
+    tickcount = gHyp_util_getclock();
+
+    pResult = gHyp_data_new ( NULL ) ;
+    gHyp_data_setInt ( pResult, tickcount ) ;
+    gHyp_stack_push ( pStack, pResult ) ;
+
+  }
+}
+
+
 void gHyp_system_parsedate ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
 {
   /* Description:
@@ -1049,7 +1212,10 @@ void gHyp_system_parse ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       hypIndex,
       eosIndex,
       argCount = gHyp_parse_argCount ( pParse ) ;
-    
+
+    sInstance
+      *pAImain ;
+
    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
 
    if ( argCount > 1 ) 
@@ -1058,8 +1224,13 @@ void gHyp_system_parse ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     
 
    if ( argCount == 0 ) {
+
       /* Go back to PARSE mode - must not allow return to IDLE */
-      gHyp_concept_setReturnToStdIn ( gHyp_instance_getConcept(pAI), TRUE ) ;
+     pAImain = gHyp_concept_getConceptInstance ( gHyp_instance_getConcept ( pAI ) ) ;
+     if ( pAI == pAImain && !gHyp_instance_isEND ( pAI ) )
+       gHyp_concept_setReturnToStdIn ( gHyp_instance_getConcept(pAI), TRUE ) ;
+     gHyp_instance_setState ( pAI, STATE_PARSE ) ;
+
     }
     else {
       pFile = gHyp_stack_popRvalue ( pStack, pAI ) ; 
@@ -1101,7 +1272,7 @@ void gHyp_system_parse ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 	    gHyp_hyp_setHypCount ( pHyp, eosIndex ) ;
 	    gHyp_instance_error ( pAI,
 				  STATUS_UNDEFINED,
-				  "Failed to load HyperScript segment '{'" ) ;
+				  "Failed to load HyperScript segment (parse) '{'" ) ;
 	  }
 	}
 
@@ -1114,7 +1285,7 @@ void gHyp_system_parse ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 	    gHyp_hyp_setHypCount ( pHyp, eosIndex ) ;
 	    gHyp_instance_error ( pAI,
 				  STATUS_UNDEFINED,
-				  "Failed to load HyperScript segment ';}'" ) ;
+				  "Failed to load HyperScript segment (parse) ';}'" ) ;
 	  }
 	  
 	  /*gHyp_hyp_describe ( pHyp ) ;*/
@@ -1185,6 +1356,7 @@ void gHyp_system_xparse ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
     sLOGICAL
       isPureXML = TRUE,
+      mayReturnChildLess = FALSE,
       isEndTag ;
 
     int
@@ -1240,7 +1412,8 @@ void gHyp_system_xparse ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 				      pp,
 				      pAI,
 				      TYPE_LIST,
-				      isPureXML ) ;
+				      isPureXML,
+				      mayReturnChildLess) ;
 	if ( pStream == NULL ) {
 	  /*
 	  gHyp_instance_warning ( pAI, STATUS_XML, 
@@ -1248,7 +1421,7 @@ void gHyp_system_xparse ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 	  */
 	  break ;
 	}
-	else if ( !*pStream ) 
+	else if ( !*pStream || !pEndOfStream ) 
 	  break ;
 
 	pAnchor = pStream ;

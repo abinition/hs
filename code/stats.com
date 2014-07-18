@@ -3,7 +3,7 @@ $ !
 $ ! Modifications:
 $ ! 
 $ !  $Log: stats.com,v $
-$ !  Revision 1.1  2003/04/04 16:01:15  bergsma
+$ !  Revision 1.1  2003-04-04 16:01:15  bergsma
 $ !  The stats.c and stats.com will get statistics from router.log that can
 $ !  be loaded into excell.
 $ !

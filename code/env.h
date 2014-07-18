@@ -2,7 +2,13 @@
  * Modifications:
  *
  * $Log: env.h,v $
- * Revision 1.10  2005/07/23 22:34:41  bergsma
+ * Revision 1.6  2007-07-09 05:39:00  bergsma
+ * TLOGV3
+ *
+ * Revision 1.11  2007-03-15 01:04:07  bergsma
+ * Added smart-join-merge "sjm" function, as an option in mergeData.
+ *
+ * Revision 1.10  2005-07-23 22:34:41  bergsma
  * Added insertbefore and insertafter
  *
  * Revision 1.9  2005/05/10 17:31:38  bergsma
@@ -54,7 +60,8 @@ extern void	gHyp_env_prev ( sInstance*, sCode*, sLOGICAL ) ;
 extern void	gHyp_env_map ( sInstance*, sCode*, sLOGICAL ) ;
 extern void	gHyp_env_unmap ( sInstance*, sCode*, sLOGICAL ) ;
 extern void	gHyp_env_merge ( sInstance*, sCode*, sLOGICAL ) ;
-extern sData*	gHyp_env_mergeData ( sData*, sData*, sInstance*, int, sLOGICAL, sLOGICAL, sData* ) ;
+extern void	gHyp_env_sjm ( sInstance*, sCode*, sLOGICAL ) ;
+extern sData*	gHyp_env_mergeData ( sData*, sData*, sInstance*, int, sLOGICAL, sLOGICAL, sLOGICAL, sData* ) ;
 extern void	gHyp_env_sort ( sInstance*, sCode*, sLOGICAL ) ;
 extern void	gHyp_env_reverse ( sInstance*, sCode*, sLOGICAL ) ;
 extern void	gHyp_env_insert ( sInstance*, sCode*, sLOGICAL ) ;

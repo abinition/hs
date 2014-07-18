@@ -2,7 +2,13 @@
  * Modifications:
  *
  * $Log: route.h,v $
- * Revision 1.5  2005/10/15 21:42:09  bergsma
+ * Revision 1.5  2007-07-09 05:39:00  bergsma
+ * TLOGV3
+ *
+ * Revision 1.6  2007-03-15 01:09:21  bergsma
+ * Added "reply" function.
+ *
+ * Revision 1.5  2005-10-15 21:42:09  bergsma
  * Added renameto functionality.
  *
  * Revision 1.4  2004/04/29 08:24:33  bergsma
@@ -18,6 +24,7 @@
  */
 extern void 	gHyp_route_enable ( sInstance*, sCode*, sLOGICAL ) ;
 extern void 	gHyp_route_disable ( sInstance*, sCode*, sLOGICAL ) ;
+extern void    	gHyp_route_reply ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_route_event ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_route_query ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_route_requeue ( sInstance*, sCode*, sLOGICAL ) ;

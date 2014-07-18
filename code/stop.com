@@ -3,6 +3,9 @@ $!
 $! Modifications:
 $!
 $! $Log: stop.com,v $
+$! Revision 1.3  2005-08-03 14:00:20  bergsma
+$! no message
+$!
 $! Revision 1.2  2002/09/16 18:04:54  bergsma
 $! When shutting down a detached process service, give it more time (3 seconds)
 $! to shutdown normally before killing it with stop/id
@@ -16,8 +19,9 @@ $ if p1 .eqs. "" then exit
 $
 $ set noon
 $
-$ router = "''f$trnlnm("AUTOROUTER")'"
-$ mbxRouter = "''f$trnlnm("AUTOFIFO")'_''router'"
+$ router := 'f$trnlnm("AUTOROUTER")
+$ mbx    := 'f$trnlnm("AUTOFIFO")
+$ mbxRouter = "''mbx'_''router'"
 $
 $ ! Determine the image name
 $ target = p1

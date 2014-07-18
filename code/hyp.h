@@ -2,7 +2,10 @@
 /* Modifications:
  *
  * $Log: hyp.h,v $
- * Revision 1.3  2006/01/16 18:56:36  bergsma
+ * Revision 1.5  2007-07-09 05:39:00  bergsma
+ * TLOGV3
+ *
+ * Revision 1.3  2006-01-16 18:56:36  bergsma
  * HS 3.6.6
  * 1. Save query timeout events.  Don't let queries repeat indefinitely.
  * 2. Rework DEBUG_DIAGNOSTIC debugging.  Less overhead.

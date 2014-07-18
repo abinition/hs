@@ -10,6 +10,42 @@
  * Modifications:
  *
  *	$Log: util.c,v $
+ *	Revision 1.5  2007-07-09 05:39:00  bergsma
+ *	TLOGV3
+ *	
+ *	Revision 1.52  2007-06-20 05:18:24  bergsma
+ *	util_trim and util_trim_whiitespace need type coversion on return values
+ *	
+ *	Revision 1.51  2007-06-16 18:20:29  bergsma
+ *	Wrong lenght returned for gHyp_util_trim and trimWhitespace
+ *	
+ *	Revision 1.50  2007-06-16 17:55:51  bergsma
+ *	Make util_trim and util_trimWhitespace return length of string
+ *	
+ *	Revision 1.49  2007-04-07 23:25:00  bergsma
+ *	Take modulus 1000 from getclock milliseconds and WIN32 GetTickCount
+ *	already returns milliseconds.
+ *	
+ *	Revision 1.48  2007-04-07 17:49:22  bergsma
+ *	When displaying clock milliseconds, used %03d format.
+ *	
+ *	Revision 1.47  2007-03-26 00:04:03  bergsma
+ *	getclock for windows was not returning milliseconds
+ *	
+ *	Revision 1.46  2007-03-22 04:28:44  bergsma
+ *	Make getclock() function more portable
+ *	
+ *	Revision 1.45  2007-03-19 05:32:08  bergsma
+ *	New functions: min, max, pow, hypot, abs, acos, asin, atan,  ceil, cos,
+ *	 floor, log10, logN, sin, sqrt, tan, exp printf, sprintf, fprintf
+ *	
+ *	Revision 1.44  2007-03-15 01:07:50  bergsma
+ *	Bug with parsing &#xx; tokens.
+ *	Added getclock function, millisecond timer in debug statements.
+ *	
+ *	Revision 1.43  2006-08-28 21:03:35  bergsma
+ *	Added XML &copy;
+ *	
  *	Revision 1.42  2006/07/20 17:46:27  bergsma
  *	Added &laquo; and &raquo;
  *	
@@ -191,6 +227,7 @@
 /********************** INTERNAL GLOBAL VARIABLES ****************************/
 
 static  sLOGICAL        guIsTracing = FALSE ;
+static  char            gzPrintf[MAX_TERMINAL_LENGTH+1] ;
 static  char            gzPreBuf[MAX_TERMINAL_LENGTH+1] ;
 static  char            gzBuf[MAX_TERMINAL_LENGTH+1] ;
 static  char            *gpEndBuf = gzBuf + MAX_TERMINAL_LENGTH-1 ;
@@ -244,6 +281,7 @@ extern void tut_output ( sDescr* ) ;
 #ifndef AS_WINDOWS
 extern uid_t getuid ( void );
 extern struct passwd * getpwuid ( uid_t ) ;          
+/*extern int gettimeofday(struct timeval *tp, struct timezone *tzp);*/
 #endif
 
 #endif
@@ -716,6 +754,21 @@ sLOGICAL gHyp_util_logInfo ( const char *fmt, ... )
   return TRUE ;
 }
 
+
+char* gHyp_util_sprintf ( const char *fmt, ... )
+{
+  /* Description:
+   */
+  va_list
+    ap ;
+
+  va_start ( ap, fmt ) ;
+  vsprintf ( gzPrintf, fmt, ap ) ;
+  va_end ( ap ) ;
+
+  return gzPrintf ;
+}
+
 sLOGICAL gHyp_util_debug ( const char *fmt, ... )
 {
   /* Description:
@@ -730,6 +783,44 @@ sLOGICAL gHyp_util_debug ( const char *fmt, ... )
   gHyp_util_log ( gzPreBuf ) ;
 
   return TRUE ;
+}
+
+int gHyp_util_getclock ()
+{
+  int
+      tickcount ;
+
+#ifndef AS_WINDOWS
+#ifdef AS_TRUE64
+  struct timespec tp ;
+#else
+  struct timeval tval ;
+  struct timezone *tz=NULL ;
+#endif
+#endif
+
+#ifndef AS_WINDOWS
+
+#ifdef AS_TRUE64
+
+  getclock( 1, &tp );
+  tickcount = tp.tv_nsec / 1000000 ;        /* convert to milliseconds */
+
+#else
+
+  memset ( (char*) &tval, 0, sizeof ( struct timeval ) ) ;
+  /*timerclear(&tval);*/
+  gettimeofday(&tval, tz) ; 
+  tickcount = tval.tv_usec/1000 ;
+
+#endif
+
+#else
+  tickcount = GetTickCount() ;	  /* already in milliseconds */
+#endif
+
+  /* Get the remainder from 1000 */
+  return tickcount % 1000 ;
 }
 
 sLOGICAL gHyp_util_logDebug (   int newFrameDepth, 
@@ -801,7 +892,7 @@ sLOGICAL gHyp_util_logDebug (   int newFrameDepth,
     frameDepth = nfd ;
   }
   
-  sprintf ( gzPreBuf, "%%DBG%03d|%.*s", flag, frameDepth+2, frameLevelStr ) ;
+  sprintf ( gzPreBuf, "%%DBG%03d|%03d|%.*s", flag, gHyp_util_getclock(), frameDepth+2, frameLevelStr ) ;
 
   va_start ( ap, fmt ) ;
   vsprintf ( gzPreBuf+strlen(gzPreBuf), fmt, ap ) ;
@@ -1674,8 +1765,8 @@ int gHyp_util_parseXML ( char *pStr )
       }
       
       else if ( strncmp ( pStr, "&#x", 3 ) == 0 ) {
-         i = sscanf ( pStr+2, "%x%n", (unsigned int*) &u, &n ) ;
-	 if ( i == 1 && n > 0 && n < 5 && *(pStr+2+n) == ';' ) {
+         i = sscanf ( pStr+3, "%x%n", (unsigned int*) &u, &n ) ;
+	 if ( i == 1 && n > 0 && n < 5 && *(pStr+3+n) == ';' ) {
             *pAnchor++ = (char) u ;
             pStr += (n+2) ;
 	 }
@@ -2167,7 +2258,7 @@ int gHyp_util_unparseString ( char *pDstStr,
 }
  
 
-void gHyp_util_trim ( char *target )
+int gHyp_util_trim ( char *target )
 {
   /* Description:
    *
@@ -2180,7 +2271,7 @@ void gHyp_util_trim ( char *target )
    *
    * Return value:
    *
-   *    none
+   *    length of string
    *
    */
 
@@ -2193,9 +2284,11 @@ void gHyp_util_trim ( char *target )
   /* Remove whitespace at end of line */
   while ( pStr >= target && (*pStr == ' ' || *pStr == '\t' ) )
     *pStr-- = '\0' ;
+
+  return (int)((pStr - target) + 1);
 }
 
-void gHyp_util_trimWhiteSpace ( char *target )
+int gHyp_util_trimWhiteSpace ( char *target )
 {
   /* Description:
    *
@@ -2208,13 +2301,14 @@ void gHyp_util_trimWhiteSpace ( char *target )
    *
    * Return value:
    *
-   *    none
+   *    length of trimmed string
    *
    */
 
   char *pStr = target + strlen ( target ) - 1 ;
   while ( pStr >= target && *pStr <= ' ' )
     *pStr-- = '\0' ;
+  return (int)((pStr-target)+1);
 }
 
 void gHyp_util_strip ( char *target, int count )

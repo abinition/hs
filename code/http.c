@@ -10,6 +10,32 @@
 /* Modifications:
  * 
  * $Log: http.c,v $
+ * Revision 1.5  2007-07-09 05:39:00  bergsma
+ * TLOGV3
+ *
+ * Revision 1.23  2007-05-08 01:27:12  bergsma
+ * Used deleteFd rather than updateFd when id is reassigned to another
+ * instance.
+ *
+ * Revision 1.22  2007-04-07 17:52:06  bergsma
+ * When a device id has already been assigned to another port, report
+ * the warning and using updateFd instead of deleteFd. (deleteFd removes
+ * all device ids assigned to the port).
+ *
+ * Revision 1.21  2006-11-25 03:09:12  bergsma
+ * Incease size of buffer for getStr to accomodate larger strings.
+ *
+ * Revision 1.20  2006/10/11 16:16:00  bergsma
+ * Make EAGAIN an optional feature that must be turned on.
+ *
+ * Revision 1.19  2006/10/01 16:25:54  bergsma
+ * Changed rawOutgoing to the new Eagain method.
+ *
+ * Revision 1.18  2006/09/25 05:05:31  bergsma
+ * When assigned a device id to a port which was already assigned to
+ * another instance, the previous device assignement must be deleted in
+ * addition to the new assignment made.
+ *
  * Revision 1.17  2006/07/17 16:46:00  bergsma
  * Put default in for Content-Type
  *
@@ -775,15 +801,20 @@ void gHyp_http_assign ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 			      portFd ) ;
     }
     else {
+
       /* Check to see if the port is already assigned */
       pAIassigned = gHyp_concept_getInstForDeviceId ( pConcept, (sWORD) id ) ;
-      if ( pAIassigned )
-        gHyp_util_logWarning ( "Http %d was already assigned to device %d by instance %s",
-			      portFd,
-			      gHyp_instance_getDeviceId ( pAIassigned, portFd ),
+
+      if ( pAIassigned ) {
+        gHyp_util_logWarning ( "Device id %d was previously assigned to port %d by instance %s, deleting old assignment",
+			      (sWORD) id,
+			      gHyp_instance_getDeviceFd ( pAIassigned, (sWORD) id ),
 			      gHyp_instance_getTargetId ( pAIassigned ) ) ;
-      
+	gHyp_instance_deleteFd ( pAIassigned, gHyp_instance_getDeviceFd ( pAIassigned, (sWORD) id ) ) ;
+      }
+        
       gHyp_instance_updateFd ( pAI, (SOCKET) portFd, (sWORD) id, NULL, FALSE ) ;
+
       flags = gHyp_secs1_flags ( pHttp ) ;
       flags = (flags & MASK_SOCKET) | PROTOCOL_HTTP ;
       gHyp_secs1_setFlags ( pHttp, flags ) ;
@@ -920,6 +951,136 @@ void gHyp_http_binary ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     gHyp_instance_pushSTATUS ( pAI, pStack ) ;
   }
 }
+
+void gHyp_http_eagain ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: http_eagain ( )
+   *	Returns 1
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+  
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+    
+  else {
+ 
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+    
+    sData
+      *pData ;
+
+    sLOGICAL
+      status=FALSE,
+      doEagain=FALSE ;
+
+    SOCKET
+      portFd ;
+
+    sSecs1
+      *pHttpPort ;
+
+    sHTTP
+      *pHttp ;
+
+
+    int
+      id ;
+
+    int
+      argCount = gHyp_parse_argCount ( pParse ) ;
+
+    sInstance
+      *pAIassigned ;
+    
+    /* Assume success */	
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 2 )
+      gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+      "Invalid args. Usage: http_eagain ( id, boolean )");
+    
+    /* Get the boolean value */
+    pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
+    doEagain = gHyp_data_getBool ( pData, gHyp_data_getSubScript ( pData ), TRUE );
+
+    /* Get the device id */
+    pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
+    id = gHyp_data_getInt ( pData, gHyp_data_getSubScript ( pData ), TRUE ) ;
+
+    /* Check id */
+    if ( id < 0 || id > 65535 )
+      gHyp_instance_error ( pAI,STATUS_BOUNDS, "Device ID out of range" ) ;
+
+    /* Get the http structure */
+    pAIassigned = gHyp_concept_getInstForDeviceId ( gHyp_instance_getConcept ( pAI ), (sWORD) id ) ;
+
+    if ( !pAIassigned ) {
+      gHyp_instance_warning ( pAI,STATUS_HTTP, 
+			    "Device id %d is not assigned",
+			    id ) ;
+      status = FALSE ;
+    }
+
+    if ( status ) {
+
+      portFd = gHyp_instance_getDeviceFd ( pAIassigned, (sWORD) id ) ;
+      if ( portFd == INVALID_SOCKET ) {
+	gHyp_instance_warning ( pAI,STATUS_HTTP, 
+			    "Socket %d does not exist.",
+			    portFd ) ;
+	status = FALSE ;
+      }
+    }
+
+    if ( status ) {
+      pHttpPort = (sSecs1*) gHyp_concept_getSocketObject ( gHyp_instance_getConcept(pAI), 
+							(SOCKET) portFd, 
+							DATA_OBJECT_NULL ) ;
+      if ( !pHttpPort ) {
+	gHyp_instance_warning ( pAI,STATUS_HTTP, 
+	  		    "Socket %d does not exist.",
+			    portFd ) ;
+	status = FALSE ;
+      }
+    }
+
+    if ( status ) {
+      pHttp = gHyp_secs1_getHttp ( pHttpPort ) ; 
+      if ( !pHttp ) {
+        gHyp_instance_warning ( pAI,
+			      STATUS_HTTP, 
+			      "No http structure. Use http_open to open port " ) ;
+	status = FALSE ;
+      }
+    }
+
+    if ( status ) {
+      gHyp_secs1_setEagain ( pHttpPort, doEagain ) ;
+    }
+
+    gHyp_instance_pushSTATUS ( pAI, pStack ) ;
+  }
+}
+
+
 
 void gHyp_http_enable ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
 {
@@ -1167,6 +1328,7 @@ static void lHyp_http_QE (	sInstance 	*pAI,
 
 
   char
+    buffer[MAX_INPUT_LENGTH+1],
     line[VALUE_SIZE+3],	    /* Extra 2 chars for \r\n */
     value[VALUE_SIZE+1],
     value2[VALUE_SIZE+3],  /* Extra 2 chars for \r\n */
@@ -1411,8 +1573,8 @@ static void lHyp_http_QE (	sInstance 	*pAI,
 					      &context,
 					      ss ))) {
 	n = gHyp_data_getStr ( pValue, 
-			       value, 
-			       VALUE_SIZE, 
+			       buffer, 
+			       MAX_INPUT_LENGTH, 
 			       context, 
 			       isVector ) ;
         contentLength += n ;
@@ -1480,8 +1642,16 @@ static void lHyp_http_QE (	sInstance 	*pAI,
     gHyp_data_setStr_n ( pValue, line, n ) ;
     gHyp_data_insert ( pHttpList, pValue ) ;
 
+    if ( gHyp_secs1_doEagain( pHttpPort ) ) {
+      /* The Eagain way - allows other's to read while we are writing */
+      nBytes = gHyp_secs1_rawOutgoingEagainInit ( pHttpPort, pAI, pHttpList ) ;
+      nBytes = gHyp_secs1_rawOutgoingEagain ( pHttpPort, pAI, 0 ) ;
+    }
+    else {
+      /* Write until complete */
+      nBytes = gHyp_secs1_rawOutgoing( pHttpPort, pAI, pHttpList, id ) ;
+    }
 
-    nBytes = gHyp_secs1_rawOutgoing ( pHttpPort, pAI, pHttpList, id ) ;
     gHyp_secs1_setState ( pHttpPort, mode ) ;
     gHyp_data_delete ( pHttpList ) ;
     if ( nBytes <= 0 ) status = FALSE ;

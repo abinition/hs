@@ -10,6 +10,22 @@
  * Modifications:
  *
  *	$Log: tcp.c,v $
+ *	Revision 1.5  2007-07-09 05:39:00  bergsma
+ *	TLOGV3
+ *	
+ *	Revision 1.25  2007-02-17 01:53:13  bergsma
+ *	Socket handoff does not work with TRUE64
+ *	
+ *	Revision 1.24  2006-11-25 03:10:52  bergsma
+ *	Debug statement removed.
+ *	
+ *	Revision 1.23  2006/10/27 17:27:19  bergsma
+ *	Added port_sendmsg and port_recvmsg
+ *	
+ *	Revision 1.22  2006/09/25 05:07:15  bergsma
+ *	For AI protocol messages, accept any pure IP address, no longer force a
+ *	gethostbyaddr on it.
+ *	
  *	Revision 1.21  2006/08/08 20:50:59  bergsma
  *	In createNetwork, prevent closing of valid socket on another IP channel.
  *	
@@ -121,6 +137,7 @@
 #ifdef AS_UNIX
 #include <sys/ioctl.h>		/* Socket structures and functions */
 #include <sys/time.h>
+#include <sys/un.h>
 #endif
 
 #include "auto.h"	/* System Interface and Function Prototypes */
@@ -480,30 +497,25 @@ sLOGICAL gHyp_tcp_resolveHost ( char* pHost, char *pAddr )
 
     if ( inAddrForm ) {
 
-      /* Don't do it if its a local address */
-      if ( strncmp ( pHost, "127.", 4 ) == 0 )
 
-	doAlias = TRUE ;
-
-      else {
-	
-        hp = gethostbyaddr(  	(char*)&i,
+      hp = gethostbyaddr(  	(char*)&i,
 				sizeof(i),
 				AF_INET ) ;
 
-        if ( !hp )
-  	  gHyp_util_logWarning(	"(%s) for address '%s'",
+      if ( !hp ) {
+  	gHyp_util_logWarning(	"(%s) for address '%s'",
       				lHyp_tcp_herror(), 
 				pHost ) ;
-	else {
-	  h = *hp ;
-	  strcpy ( host, h.h_name ) ;
-	  gHyp_util_lowerCase ( host, strlen(host) ) ;
-	  strcpy ( addr, inet_ntoa ( *(struct in_addr*) h.h_addr ) ) ;
-	  doAlias = TRUE ;
-	  /* gHyp_util_debug("IP %s RESOLVED to %s",host,addr) ;*/
-	}
+	strcpy ( addr, pHost ) ;
       }
+      else {
+	h = *hp ;
+	strcpy ( host, h.h_name ) ;
+	gHyp_util_lowerCase ( host, strlen(host) ) ;
+	strcpy ( addr, inet_ntoa ( *(struct in_addr*) h.h_addr ) ) ;
+	/* gHyp_util_debug("IP %s RESOLVED to %s",host,addr) ;*/
+      }
+      doAlias = TRUE ;
 
     }
     else {
@@ -667,7 +679,7 @@ SOCKET gHyp_tcp_request ( char* pHost, int port )
 
     /* Setup the socket */
     if ( !gHyp_tcp_setup ( giSocket ) ) {
-      gHyp_util_logError (
+      gHyp_util_sysError (
        "Failed to initialize internet socket for host '%s'", pHost ) ;
       gHyp_sock_close ( giSocket, SOCKET_TCP, pHost, "" ) ;
       giSocket = INVALID_SOCKET ;
@@ -794,7 +806,7 @@ SOCKET gHyp_tcp_make ( char *pService, char *pLocalAddr, sLOGICAL bindAll )
     isInteger = FALSE ;
     /* Look up the service entry (in /etc/services) */  
     if ( (sp = getservbyname ( pService, "tcp" ) ) == NULL ) {
-      gHyp_util_logError ( "Could not find %s in /etc/services", pService ) ;
+      gHyp_util_sysError ( "Could not find %s in /etc/services", pService ) ;
       return INVALID_SOCKET ;
     }
     giServicePort = ntohs ( sp->s_port ) ; 
@@ -870,7 +882,7 @@ SOCKET gHyp_tcp_make ( char *pService, char *pLocalAddr, sLOGICAL bindAll )
 
   /* Setup the socket for connection requests */
   if ( !gHyp_tcp_setup ( s ) ) {
-    gHyp_util_logError (
+    gHyp_util_sysError (
   	"Failed to initialize internet socket" ) ;
     gHyp_sock_close ( s, SOCKET_TCP, gzLocalHost, pLocalAddr ) ;
     return INVALID_SOCKET ;		
@@ -998,3 +1010,400 @@ void gHyp_tcp_gethostname ( char *host, int size )
 {
  gethostname ( host, size ) ;
 }
+
+#if defined (AS_UNIX) && !defined(AS_TRUE64)
+
+/* Support for functions port_sendmsg() and port_recvmsg(). */
+
+sLOGICAL gHyp_tcp_sendmsg ( char *pClient, char *pService, SOCKET sendfd, int port )
+{
+  /* To use the special unix sendmsg() function to pass a descriptor
+   * we must do the following steps:
+   *
+   *
+   * 1. Create a command messsage header.
+   *
+   *    This structure has a union with a character array of length defined by
+   *	  the macro CMSG_SPACE(n).
+   *
+   *    The actual header contains the following information:
+   *
+   *	    cmsg_len    <= length of command message (always CMSG_LEN(sizeof(int)))
+   *	    cmsg_level  <= SOL_SOCKET, we are passing a socket
+   *	    cmsg_type   <= SCM_RIGHTS, we are giving rights to give up the descriptor
+   *	    <cmsg_data> <= the socket we are passing, set by *((int *) CMSG_DATA(cmptr))
+   *
+   * 2. Create a set of optional data to send after sendmsg()
+   *
+   *	  The is an io vector. It is a pointer to a array of int that specifies
+   *	  the lengths of the optional data packets to send.
+   *
+   *      iovec[0].iov_base = ptr ;
+   *	  iovec[0].iov_len = len ;
+   *
+   *     .
+   * 3. Create the msghdr structure that goes along with the sendmsg() call
+   *
+   *    This structure contains the following:
+   *
+   *	    msg_control	    <= the character array containing the command message header
+   *	    msg_controllen  <= the length of the control message
+   *	    msg_name	    <= NULL (not sure why, but we don't need this)
+   *	    msg_namelen	    <= 0 of course
+   *	    msg_iov	    <= iov, the optional vector of I/O data to follow
+   *	    msg_iovlen	    <= 1,  the number of elements in the I/O vector
+   *
+   * 4, Call sendmsg() on the socket connection to the process receiving the descriptor.
+   *
+   */
+
+  sSockUNIX
+    sock ;
+
+  int 
+    sockLen ;
+
+  SOCKET
+    fd ;
+
+  struct msghdr  msg;
+  struct iovec   iov[1];
+  char buf[4] ; 
+
+  union {
+    struct    cmsghdr cm;
+    char      control[CMSG_SPACE(sizeof(int))];
+  } control_un;
+  struct cmsghdr *cmptr;
+
+  msg.msg_control = control_un.control;
+  msg.msg_controllen = sizeof(control_un.control);
+
+  cmptr = CMSG_FIRSTHDR(&msg);
+  cmptr->cmsg_len = CMSG_LEN(sizeof(int));
+  cmptr->cmsg_level = SOL_SOCKET;
+  cmptr->cmsg_type = SCM_RIGHTS;
+
+  *((int *) CMSG_DATA(cmptr)) = sendfd;
+
+  msg.msg_name = NULL;
+  msg.msg_namelen = 0;
+
+  iov[0].iov_base = buf ;  /* Data to send along with the socket */
+  iov[0].iov_len = 4 ;	  /* Length of data to send along */
+  msg.msg_iov = iov;
+  msg.msg_iovlen = 1;
+
+  /* What the heck, we'll pass the port as optional data */
+  buf[0] = (unsigned char)((port >> 24) & 0x0ff);
+  buf[1] = (unsigned char)((port >> 16) & 0x0ff);
+  buf[2] = (unsigned char)((port >> 8) & 0x0ff);
+  buf[3] = (unsigned char)((port) & 0x0ff);
+
+  /* Now make a connection down the UNIX domain socket */
+  if ( (fd = socket ( AF_UNIX, SOCK_STREAM, 0)) < 0) {
+    gHyp_util_sysError (
+  	"Failed to initialize unix socket for %s",pService ) ;
+    return FALSE ;    
+  }
+  
+  /* Specify the socket specifics */
+  memset ( &sock, 0, sizeof ( sock ) ) ;
+  sock.sun_family = AF_UNIX;
+  strcpy( sock.sun_path, pClient );
+  sockLen = sizeof(sock.sun_family) + strlen(pClient) + 1 ;
+  
+  /* In case it already exists */
+  unlink ( pClient ) ;
+
+  /* Bind the socket to the UNIX domain */
+  if ( bind ( fd, (sSockGENERIC*)&sock, sockLen ) == SOCKET_ERROR ) {
+    gHyp_util_sysError ( 
+  	"Failed to bind unix socket for %s",pService ) ;
+    gHyp_sock_close ( fd, SOCKET_UNIX, pService, "" ) ;
+    return FALSE ;		
+  }
+
+  if ( chmod ( pClient, S_IRWXU ) < 0 ) {
+    gHyp_util_sysError (
+  	"Failed to change permission on unix socket for %s",pService ) ;
+    return FALSE ;		
+  }
+
+  memset ( &sock, 0, sizeof ( sock ) ) ;
+  sock.sun_family = AF_UNIX;
+  strcpy( sock.sun_path, pService );
+  sockLen = sizeof(sock.sun_family) + strlen(pService) + 1 ;
+
+  /* Connect the socket to the UNIX domain */
+  if ( connect ( fd, (sSockGENERIC*)&sock, sockLen ) == SOCKET_ERROR ) {
+    gHyp_util_sysError ( 
+  	"Failed to connect to unix socket for %s",pService ) ;
+    gHyp_sock_close ( fd, SOCKET_UNIX, pService, "" ) ;
+    return FALSE ;		
+  }
+
+  /* Pass the socket descriptor to the destination. */
+  if ( sendmsg( fd, &msg, 0) < 0 ) {
+    gHyp_util_sysError ( 
+  	"Failed to sendmsg to unix socket for %s",pService ) ;
+    gHyp_sock_close ( fd, SOCKET_UNIX, pService, "" ) ;
+    return FALSE ;		
+  }
+
+  return TRUE ;
+}
+
+SOCKET gHyp_tcp_recvmsg ( int s, int *pport )
+{
+  /*
+   * To use the special unix recvmsg() function to pass a descriptor
+   * we must do the following steps:
+   *
+   * 1. Create a command messsage header that will get filled with some data.
+   *
+   *    This structure has a union with a character array of length defined by
+   *	  the macro CMSG_SPACE(n).
+   *
+   *    The actual header contains the following information:
+   *
+   *	    cmsg_len    <= length of command message (always CMSG_LEN(sizeof(int)))
+   *	    cmsg_level  <= SOL_SOCKET, we are passing a socket
+   *	    cmsg_type   <= SCM_RIGHTS, we are giving rights to give up the descriptor
+   *	    <cmsg_data> <= the socket we are passing, set by *((int *) CMSG_DATA(cmptr))
+   *
+   * 2. Create a set of optional data to send after sendmsg()
+   *
+   *	  The is an io vector. It is a pointer to a array of int that specifies
+   *	  the lengths of the optional data packets to come.
+   *
+   *    iovec[0].iov_base = ptr ;
+   *	  iovec[0].iov_len = len ;
+   *
+   *     .
+   * 3. Create the msghdr structure that goes along with the sendmsg() call
+   *
+   *    This structure contains the following:
+   *
+   *	    msg_control	    <= the character array containing the command message header
+   *	    msg_controllen  <= the length of the control message
+   *	    msg_name	    <= NULL (not sure why, but we don't need this)
+   *	    msg_namelen	    <= 0 of course
+   *	    msg_iov	    <= iov, the optional vector of I/O data to receobv
+   *	    msg_iovlen	    <= 1,  the number of elements in the I/O vector
+   *
+   * 4, Call recvmsg() on the socket connection to the processing receiving the descriptor.
+   *
+     */
+
+  struct msghdr msg;
+  struct iovec  iov[1];
+  int
+    port,
+    n ;
+  char buf[4] ;
+  
+  SOCKET
+    newfd;
+
+  union {
+    struct cmsghdr cm;
+    char           control[CMSG_SPACE(sizeof(int))];
+  } control_un;
+  struct cmsghdr *cmptr;
+
+  msg.msg_control = control_un.control;
+  msg.msg_controllen = sizeof(control_un.control);
+
+  msg.msg_name = NULL;
+  msg.msg_namelen = 0;
+
+  iov[0].iov_base = buf ;
+  iov[0].iov_len = 4 ;
+  msg.msg_iov = iov;
+  msg.msg_iovlen = 1;
+
+  if ( (n = recvmsg( s, &msg, 0)) <= 0) {
+
+    gHyp_util_sysError ( "Failed to recvmsg()" ) ;
+    gHyp_sock_close ( s, SOCKET_UNIX, "", "" ) ;
+    return INVALID_SOCKET ;
+
+  }
+
+  if ( (cmptr=CMSG_FIRSTHDR(&msg)) != NULL &&
+       cmptr->cmsg_len == CMSG_LEN(sizeof(int) ) ) {
+
+    if( cmptr->cmsg_level == SOL_SOCKET &&
+        cmptr->cmsg_type == SCM_RIGHTS ) {
+      
+     newfd = *((int *) CMSG_DATA(cmptr));
+
+     port = (((unsigned int)(buf[0])) & 0x0ff) << 24;
+     port |= (((unsigned int)(buf[1])) & 0x0ff) << 16;
+     port |= (((unsigned int)(buf[2])) & 0x0ff) << 8;
+     port |= (((unsigned int)(buf[3])) & 0x0ff);
+     *pport = port ;
+
+    }
+    else {
+
+      gHyp_util_logError ( "Not SOL_SOCKET with SCM_RIGHTS" ) ;
+      gHyp_sock_close ( s, SOCKET_UNIX, "", "" ) ;
+      newfd = INVALID_SOCKET;
+    }
+  }
+  else {
+    gHyp_util_logError ( "Command structure missing or invalid" ) ;
+    gHyp_sock_close ( s, SOCKET_UNIX, "", "" ) ;
+    newfd = INVALID_SOCKET;
+  }
+
+  return newfd ;
+
+}
+
+SOCKET gHyp_tcp_makeUNIX ( char *pService )
+{
+  SOCKET 
+    s ;
+
+  sSockUNIX
+    sock ;
+
+  int
+    sockLen ;
+
+  if ( ( s = socket ( AF_UNIX, SOCK_STREAM, 0 )) == SOCKET_ERROR ) {
+    gHyp_util_sysError (
+    	"Could not create AF_UNIX socket" );
+     return INVALID_SOCKET ;
+  }
+
+  unlink ( pService ) ; /* in case it already exists */
+
+  /* Fill in socket address structure */
+
+  memset( (char*) &sock, (char)0, sizeof ( sock ) ) ;
+  sock.sun_family 	 = AF_UNIX ;
+  strcpy ( sock.sun_path, pService ) ;
+  sockLen = + sizeof(sock.sun_family) + strlen ( pService ) + 1 ;
+
+  sockLen = strlen ( sock.sun_path ) + sizeof ( sock.sun_family ) ;
+    
+  /* Setup the socket for non-blocking usage */
+  if ( !gHyp_tcp_setup ( s ) ) {
+    gHyp_util_sysError (
+  	"Failed to initialize unix socket" ) ;
+    gHyp_sock_close ( s, SOCKET_UNIX, pService, "" ) ;
+    return INVALID_SOCKET ;		
+  }                                                 
+
+  /* Bind the socket to the UNIX domain */
+  if ( bind ( s, (sSockGENERIC*)&sock, sockLen ) == SOCKET_ERROR ) {
+    gHyp_util_sysError ( 
+  	"Failed to bind unix socket" ) ;
+    gHyp_sock_close ( s, SOCKET_UNIX, pService, "" ) ;
+    return INVALID_SOCKET ;		
+  }
+  
+  if ( ( listen ( s, 5 ) ) == SOCKET_ERROR ) {
+    gHyp_util_sysError ( "Failed to listen on unix socket" ) ;
+    gHyp_sock_close ( s, SOCKET_UNIX, pService, "" ) ;
+    return INVALID_SOCKET ;
+  }
+
+  if ( chmod ( sock.sun_path, S_IRWXU ) < 0 ) {
+    gHyp_util_sysError (
+  	"Failed to change permission on unix socket" ) ;
+    return FALSE ;		
+  }
+  
+  return s ;
+}
+
+SOCKET gHyp_tcp_checkInboundUNIX ( SOCKET s ) 
+{
+  /* Description:
+   *
+   *	Look for an incoming socket connection request over the
+   *	UNIX style listen port.  
+   */
+
+  sSockUNIX
+    sock ;
+
+  struct stat
+    statbuf;
+
+  int
+    stale_time,
+    sockLen = sizeof ( sSockUNIX ) ;
+
+  SOCKET
+    ns=INVALID_SOCKET ;
+
+  /* Accept inbound connection requests over a UNIX fifo */
+  
+  if ( s == INVALID_SOCKET ) return INVALID_SOCKET ;
+     
+  if ( ( ns = accept ( s, (sSockGENERIC*)&sock, &sockLen ) ) == SOCKET_ERROR ) {
+
+    /* The socket has been made non-blocking, so EAGAIN and EWOULDBLOCK are 
+     * expected error codes, but all other errors are bad news.
+     */
+    if ( errno != EAGAIN && errno != EWOULDBLOCK ) {
+      gHyp_util_sysError ( 
+      	"Failed to accept UNIX connection request" ) ;
+      return INVALID_SOCKET ;
+    }
+  }
+  else {
+  
+    /* Received inbound connection request. */  
+
+    /* Obtain the client's uid from its calling address */
+    sockLen -= sizeof ( sock.sun_family ) ;
+    sock.sun_path[sockLen] = 0 ; /* Null terminate */
+
+    if ( stat ( sock.sun_path, &statbuf ) < 0 ) {
+      gHyp_util_sysError ( "Failed to stat UNIX fifo" ) ;
+      return INVALID_SOCKET ;
+    }
+
+    if ( S_ISSOCK ( statbuf.st_mode) == 0) {
+      gHyp_util_sysError ( "UNIX fifo not a socket" ) ;
+      return INVALID_SOCKET ;
+    }
+
+    if ( (statbuf.st_mode & ( S_IRWXG | S_IRWXO ) ) ||
+         (statbuf.st_mode & S_IRWXU ) != S_IRWXU  ) {
+
+      gHyp_util_sysError ( "UNIX fifo not rwx-----" ) ;
+      return INVALID_SOCKET ;
+    }
+
+    gsCurTime = time(NULL) ;
+    stale_time = gsCurTime - 30 ;
+
+    if (statbuf.st_atime < stale_time ||
+        statbuf.st_ctime < stale_time ||
+        statbuf.st_mtime < stale_time) {
+
+      gHyp_util_sysError ( "UNIX socket is stale" ) ;
+      return INVALID_SOCKET ;
+    } 
+
+    if ( !gHyp_tcp_setup ( ns ) ) {
+      gHyp_util_sysError ( "Failed to setup socket for non-blocking" ) ;
+      gHyp_sock_close ( ns, SOCKET_UNIX, "", "" ) ;
+      return INVALID_SOCKET ;
+    }
+  }
+  /* Done with pathname now */
+  unlink ( sock.sun_path ) ;
+
+  return ns ;
+}
+
+#endif
