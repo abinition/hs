@@ -5594,7 +5594,8 @@ sData *gHyp_data_getPrevNode( sData *pData ) {
   return pSibling ;
 }
 
-sData *gHyp_data_getNodeByAttr( sData *pData, char *attrName, char *attrValue, char *pValueBuffer ) {
+sData *gHyp_data_getNodeByAttr( sData *pData, char *attrName, char *attrValue, char *pValueBuffer ) 
+{
   /* Description: 
    *
    *	Traverse a datastructure via depth-first recursion and

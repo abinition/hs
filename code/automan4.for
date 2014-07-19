@@ -26,6 +26,9 @@
 ! Modifications:
 !
 ! $Log: automan4.for,v $
+! Revision 1.20  2009-09-21 05:16:17  bergsma
+! Error with use of aeqSsp_autofil_isFromTLOG
+!
 ! Revision 1.19  2005-05-10 17:29:04  bergsma
 ! Fix algorithm for finding free buffer space.
 !

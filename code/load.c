@@ -585,6 +585,17 @@ void gHyp_load_new ()
   lHyp_load_newKey ( "deg2rad" ,  gHyp_operator_deg2rad, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "rad2deg" ,  gHyp_operator_rad2deg, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
 
+#ifdef AS_OWL
+  lHyp_load_newKey ( "and" , gHyp_operator_binary, TOKEN_AND, PRECEDENCE_B ) ;
+ !gHyp_hyp_load (	pAI,
+				pConcept,
+				pHyp, 
+				"*",
+				TOKEN_MUL, 
+				PRECEDENCE_MULDIVMOD,
+				lineNo,
+				gHyp_operator_binary ) 
+#endif
 }
 
 void gHyp_load_delete()

@@ -11,6 +11,22 @@
  * Modifications:
  *
  *	$Log: instance.c,v $
+ *	Revision 1.67  2009-11-17 16:05:52  bergsma
+ *	Fixes ENQ Contention problem
+ *	
+ *	Revision 1.66  2009-10-30 20:53:53  bergsma
+ *	Fixing re-send on instance_reply after ENQ contention
+ *	
+ *	Revision 1.65  2009-10-22 15:57:54  bergsma
+ *	Solve problem with ENQ contention during SECS 1 Reply.
+ *	This was for the MAP-4 at Siliconix
+ *	
+ *	Revision 1.64  2009-10-09 13:26:03  bergsma
+ *	Germany - October 2009 - Updates
+ *	
+ *	Revision 1.63  2009-09-28 05:26:12  bergsma
+ *	SetGlobalFlag (FRAME_GLOBAL_TRUE) prior to testing for handlers.
+ *	
  *	Revision 1.62  2009-09-21 05:19:07  bergsma
  *	Comments
  *	
@@ -1247,7 +1263,7 @@ void  gHyp_instance_signalConnect ( sInstance *pAI, int sigarg, int sigarg2, int
   }
 }
 
-int gHyp_instance_read ( sInstance * pAI  )
+int gHyp_instance_read ( sInstance * pAI, sLOGICAL queueOnly  )
 {
   /* Description:
    *
@@ -1284,6 +1300,9 @@ int gHyp_instance_read ( sInstance * pAI  )
    *
    *	pConcept						[R]
    *	- pointer to instance
+   *
+   *    queueOnly
+   *    - only from queues, do not block using readSelect
    *
    * Return value:
    *
@@ -1378,30 +1397,33 @@ int gHyp_instance_read ( sInstance * pAI  )
       }
     }
 
-    if ( cond == COND_SILENT ) {
+    if ( !queueOnly ) {
 
-      /* Nothing happening from queue or reply queue, 
-       * So, try reading from the devices, sockets, and ports.
-       *
-       * This function only returns COND_NORMAL when something
-       * has been put in the message queue.
-       *
-       * Otherwise, it returns COND_SILENT or COND_ERROR.
-       *
-       * For incoming connection requests or hangups. a connect 
-       * or hangup signal will be set, but COND_SILENT will be
-       * returned.
-       *
-       * For reads off of a device, socket, or port, the
-       * message may be routed.
-       *
-       */
-      cond = gHyp_concept_readSelect ( pConcept ) ;
+      if ( cond == COND_SILENT ) {
 
-      if ( cond < 0 ) {
-        /* Something bad has happened. See if a signal was generated */
-        gHyp_instance_readSignals ( pAI )  ;
-	break ;
+	/* Nothing happening from queue or reply queue, 
+	 * So, try reading from the devices, sockets, and ports.
+         *
+         * This function only returns COND_NORMAL when something
+         * has been put in the message queue.
+         *
+         * Otherwise, it returns COND_SILENT or COND_ERROR.
+         *
+         * For incoming connection requests or hangups. a connect 
+         * or hangup signal will be set, but COND_SILENT will be
+         * returned.
+         *
+         * For reads off of a device, socket, or port, the
+         * message may be routed.
+         *
+         */
+        cond = gHyp_concept_readSelect ( pConcept ) ;
+
+        if ( cond < 0 ) {
+          /* Something bad has happened. See if a signal was generated */
+          gHyp_instance_readSignals ( pAI )  ;
+  	  break ;
+        }
       }
     }
 
@@ -1468,7 +1490,8 @@ int gHyp_instance_readReply ( sInstance *pAI )
     gHyp_instance_cancelTimeOut ( pAI ) ;
     
     /* Result is in status variable */
-    gHyp_instance_pushSTATUS ( pAI, gHyp_frame_stack ( pAI->exec.pFrame ) ) ;
+    /* Create a local copy of STATUS.  Put that on the stack. */
+    gHyp_instance_pushLocalSTATUS ( pAI, gHyp_frame_stack ( pAI->exec.pFrame ) ) ;
     
     /* RETURN 1, SATISFYING THE QUERY */
     return COND_NORMAL ;
@@ -2356,18 +2379,30 @@ sLOGICAL gHyp_instance_replyMessage ( sInstance *pAI, sData *pMethodData )
 	      return gHyp_util_logWarning("Failed to send SECS reply message");
 	    }
 	    else if ( nBytes == 0 ) {
-	      
+
 	      /* ENQ contention:  execute all pending conditions. */
-	      gHyp_frame_setGlobalFlag ( pAI->exec.pFrame, FRAME_GLOBAL_TRUE ) ;
+
+	      /* We didn't send the reply, restore outgoing depth */
+	      gHyp_instance_incOutgoingDepth ( pAI ) ;
+	      outgoingDepth =  pAI->msg.outgoingDepth ;
+
+	      /* Queue up the interrupted message.  TRUE means don't block. */
+	      gHyp_instance_read ( pAI, TRUE ) ;
+
 	      do {
 		/* Setting STATE_QUERY here let's us execute the 
 		 * handler for the incoming message, which is
-		 * the gHyp_instance_handleMessageCall() function.
+		 * the Hyp_instance_handleMessageCall() function.
+		 * Setting FRAME_GLOBAL_TRUE let's us execute handlers.
 		 */
+		gHyp_frame_setGlobalFlag ( pAI->exec.pFrame, FRAME_GLOBAL_TRUE ) ;
 		gHyp_instance_setState ( pAI, STATE_QUERY ) ;
 	      }
 	      while ( gHyp_instance_parse ( pAI ) == COND_NORMAL ) ;
 	      
+	      gHyp_instance_decOutgoingDepth ( pAI ) ;
+	      outgoingDepth =  pAI->msg.outgoingDepth ;
+
 	      /* If the STATUS variable is TRUE, then resend the SECS reply
 	       * message that was interrupted by the ENQ contention.
 	       */
@@ -4629,7 +4664,7 @@ int  gHyp_instance_run ( sInstance * pAIarg )
 	  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
 			       "%s returning to SLEEP state",pAI->msg.targetId ) ;
       }
-      cond = gHyp_instance_read ( pAI ) ;
+      cond = gHyp_instance_read ( pAI, FALSE ) ;
       if ( cond <= 0 ) break ;
     } 
     else if ( pAI->exec.state == STATE_DEREFERENCE ) {
@@ -4704,6 +4739,33 @@ int  gHyp_instance_run ( sInstance * pAIarg )
 
   return cond ;
 
+}
+
+void gHyp_instance_pushLocalSTATUS ( sInstance *pAI, sStack *pStack )
+{
+  sData 
+    *pRootStatus,
+    *pValue ;
+
+  char 
+    value[VALUE_SIZE+1] ;
+
+  int
+    n ;
+
+  pRootStatus = gHyp_frame_findRootVariable ( pAI->exec.pFrame, "STATUS" ) ; 
+  if ( pRootStatus ) 
+    n = gHyp_data_getStr ( pRootStatus,
+			 value,
+			 VALUE_SIZE,
+			 0,
+			 TRUE ) ;
+  else
+    strcpy ( value, "%NOSTATUS" ) ;
+
+  pValue = gHyp_data_new ( NULL ) ;
+  gHyp_data_setToken ( pValue, value ) ;
+  gHyp_stack_push ( pStack, pValue ) ;
 }
 
 void gHyp_instance_pushSTATUS ( sInstance *pAI, sStack *pStack )

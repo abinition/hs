@@ -14,6 +14,13 @@
  * Modified:
  *
  * $Log: sql.c,v $
+ * Revision 1.68  2009-09-28 05:28:33  bergsma
+ * Misplaced bracket
+ *
+ * Revision 1.67  2009-09-28 05:23:31  bergsma
+ * Free ORACLE stmt handle memory leak causing
+ * ORA-01000: maximum open cursors exceeded
+ *
  * Revision 1.66  2009-09-21 05:20:38  bergsma
  * Better detection of NULL sql_datetime values
  *
@@ -276,6 +283,8 @@ typedef char * LPCSTR;
 
 #ifdef AS_ORACLE
 #include <oci.h>
+
+/*#define AS_ORACLE_DO_PREPARE2 */
 
 struct oracle_t {
   OCISvcCtx  *svchp;
@@ -548,12 +557,14 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
      sword	rc ; 
      OCIStmt    *stmthp;
      OCIParam   *mypard;
+     OraText	*key = "mykey" ;
 
      void*	dataBuffer[MAX_SQL_ITEMS] ;
 
      ub4	dataBufferLen[MAX_SQL_ITEMS] ;
      ub4	amount ;
      ub4	offset ;
+     ub4	keylen = strlen (key) ;
      ub2	dataLen[MAX_SQL_ITEMS] ;
      /*dvoid*	dataBufferPtr[MAX_SQL_ITEMS] ;*/
      OCIDefine*	defnp[MAX_SQL_ITEMS] ;
@@ -694,7 +705,12 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
 #elif AS_ORACLE
 
-  /* Create handle for the statement */
+#ifndef AS_ORACLE_DO_PREPARE2
+
+  /* Use OCIHandleAlloc/OCIStmtPrepare/OCIHandleFree  */
+   
+  /* Create handle for the statement */ 
+  /*gHyp_util_debug("Creating first stmt handle.");*/
   rc = OCIHandleAlloc(	(dvoid *) dbproc->envhp, 
 			(dvoid **) &stmthp, 
 			OCI_HTYPE_STMT,
@@ -702,7 +718,9 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 			(dvoid **) 0);
 
   lHyp_sql_checkErr ( dbproc->errhp, rc ) ;
-
+  
+  /* Prepare the statement */
+  /*gHyp_util_debug("Preparing first stmt.");*/
   if ( rc == OCI_SUCCESS ) 
     rc = OCIStmtPrepare(stmthp, 
 			dbproc->errhp, 
@@ -710,9 +728,27 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
                         (ub4) strlen(sql_stmt),
 			(ub4) OCI_NTV_SYNTAX, 
 			(ub4) OCI_DEFAULT);
+
+#else
+
+  /* Use OCIStmtPrepare2/OCIStmtRelease */
+
+  /*gHyp_util_debug("Preparing first stmt.");*/
+  rc = OCIStmtPrepare2 ( dbproc->svchp,
+			 &stmthp,
+			 dbproc->errhp,
+                         sql_stmt,
+			 (ub4) strlen(sql_stmt),
+			 NULL,  /* First prepare, do not use a tag */
+  			 (ub4) 0, 
+			 (ub4) OCI_NTV_SYNTAX, 
+			 (ub4) OCI_DEFAULT);
   lHyp_sql_checkErr (	dbproc->errhp, rc ) ;
 
+#endif
+
   orientation = isSelect ? OCI_DESCRIBE_ONLY : OCI_DEFAULT ;
+  /*gHyp_util_debug("Executing first stmt");*/
   if ( rc == OCI_SUCCESS )
     rc = OCIStmtExecute(
 			dbproc->svchp, 
@@ -725,7 +761,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 			orientation ) ;
 
   lHyp_sql_checkErr (	dbproc->errhp, rc ) ;
-
+  
   results = rc ;
 
   if ( !isSelect ) rc = OCI_NO_DATA ;
@@ -912,6 +948,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
 		  if ( dataType == SQLT_CLOB ||
 		       dataType == SQLT_BLOB ) {
+
 		    dataBufferLen[i] = MAX_SQL_BUFFER_SIZE ;
 		    /* Allocate a buffer to receive the data for column i+1 */
 		    dataBuffer[i] = (void*) AllocMemory ( dataBufferLen[i] ) ;
@@ -1602,9 +1639,15 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 		    }
 		}
 
+#ifndef AS_ORACLE_DO_PREPARE2
+
+		/* Use OCIHandleAlloc/OCIStmtPrepare/OCIHandleFree */
+
+		/*gHyp_util_debug("Freeing first stmt handle");*/
                 if ( stmthp )
 		  OCIHandleFree( (dvoid *)stmthp, (ub4) OCI_HTYPE_STMT);
-
+	
+	        /*gHyp_util_debug("Creating second stmt handle.");*/
 		rc = OCIHandleAlloc(	
 			(dvoid *) dbproc->envhp, 
 			(dvoid **) &stmthp, 
@@ -1614,6 +1657,8 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
 		lHyp_sql_checkErr ( dbproc->errhp, rc ) ;
 
+	        /*gHyp_util_debug("Preparing second stmt.");*/
+
 		rc = OCIStmtPrepare(
 			stmthp, 
 			dbproc->errhp, 
@@ -1622,6 +1667,33 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 			(ub4) OCI_NTV_SYNTAX, 
 			(ub4) OCI_DEFAULT);
 		lHyp_sql_checkErr ( dbproc->errhp, rc ) ;
+
+#else
+		/* Use OCIStmtPrepare2/OCIStmtRelease */
+	        /*gHyp_util_debug("First stmt released, key = %s",key );*/
+		rc = OCIStmtRelease ( 
+		      stmthp,  
+                      dbproc->errhp,
+                      key,  /* Release into cache the stmt tagged as key */
+                      (ub4) keylen,
+                      (ub4) OCI_DEFAULT );  
+		lHyp_sql_checkErr (	dbproc->errhp, rc ) ;
+
+	        /*gHyp_util_debug("Preparing second stmt");*/
+		if ( rc == OCI_SUCCESS ) 
+		  rc = OCIStmtPrepare2 ( 
+			 dbproc->svchp,
+			 &stmthp,
+			 dbproc->errhp,
+                         NULL,	 /* Second stmt, sql_stmt is NULL */
+			 (ub4) 0,  
+			 key,	 /* But fetch first stmt from cache */
+			 (ub4) keylen,
+			 (ub4) OCI_NTV_SYNTAX, 
+			 (ub4) OCI_PREP2_CACHE_SEARCHONLY );  
+		lHyp_sql_checkErr ( dbproc->errhp, rc ) ;
+		if ( stmthp == NULL ) break ;
+#endif
 
 		if ( rc == OCI_SUCCESS ) {
 
@@ -1663,6 +1735,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 		}
 
                 /*  Process ORACLE rows  */
+	        /*gHyp_util_debug("Executing second stmt.");*/
 		rc = OCIStmtExecute(
 			dbproc->svchp, 
 			stmthp,
@@ -1679,6 +1752,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
                 rows = 0 ;
 
 		/*orientation = OCI_FETCH_NEXT ;*/
+
 		orientation = OCI_DEFAULT ;
 
                 while ( (results = OCIStmtFetch2(
@@ -1923,8 +1997,24 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 		  }
 		}
 
-		if ( stmthp )
+		if ( stmthp ) {
+#ifndef AS_ORACLE_DO_PREPARE2
+	      
+		  /*gHyp_util_debug("Releasing second stmt handle.");*/
 		  OCIHandleFree( (dvoid *)stmthp, (ub4) OCI_HTYPE_STMT);
+
+#else
+		  /* Use OCIStmtPrepare2/OCIStmtRelease */
+		  /*gHyp_util_debug("Releasing second stmt.");*/
+		  rc = OCIStmtRelease ( 
+		      stmthp,  
+                      dbproc->errhp,
+                      key,
+                      (ub4) keylen,
+                      (ub4) OCI_STRLS_CACHE_DELETE /*OCI_STMTCACHE_DELETE*/ ); 
+		  lHyp_sql_checkErr ( dbproc->errhp, rc ) ;
+#endif
+		}
 #endif
 		for ( i=0; i<numCols; i++ )
 		  ReleaseMemory ( colNames[i] ) ;
@@ -1939,7 +2029,6 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
             } /* End if ( results ) */
  	    
           } /* end while ( get (results ) ) */
-
 
     } /* if ( query != NULL ) */ 
     else {
@@ -1992,6 +2081,30 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       }
 
 #endif
+
+#ifdef AS_ORACLE
+      if ( stmthp ) { 
+
+#ifndef AS_ORACLE_DO_PREPARE2
+
+	/*gHyp_util_debug("No Data: Releasing first stmt handle.");*/
+	OCIHandleFree( (dvoid *)stmthp, (ub4) OCI_HTYPE_STMT);
+	
+#else
+	/*gHyp_util_debug("No Data: first stmt released");*/
+	rc = OCIStmtRelease ( 
+		      stmthp,  
+                      dbproc->errhp,
+                      NULL,
+                      (ub4) 0,
+                      (ub4) OCI_STRLS_CACHE_DELETE ); 
+	lHyp_sql_checkErr ( dbproc->errhp, rc ) ;
+#endif
+      }
+#endif
+
+
+
 
     }
 
@@ -2371,11 +2484,11 @@ void gHyp_sql_open ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
   lHyp_sql_checkErr ( dbproc->errhp, rc ) ;
 
   if ( rc == OCI_SUCCESS )
-    rc = OCISessionBegin (	dbproc->svchp,  
+    rc = OCISessionBegin  (	dbproc->svchp,  
 				dbproc->errhp, 
 				dbproc->authp, 
 				OCI_CRED_RDBMS,
-				(ub4) OCI_DEFAULT );
+				(ub4) /*OCI_DEFAULT*/ OCI_STMT_CACHE );
   lHyp_sql_checkErr ( dbproc->errhp, rc ) ;
 
   /* set the user session attribute in the service context handle*/

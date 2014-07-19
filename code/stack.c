@@ -10,8 +10,13 @@
  * Modifications:
  *
  *   $Log: stack.c,v $
+ *   Revision 1.8  2009-10-22 15:57:54  bergsma
+ *   Solve problem with ENQ contention during SECS 1 Reply.
+ *   This was for the MAP-4 at Siliconix
+ *
  *   Revision 1.7  2007-07-11 18:53:35  mhohimer
- *   updated gHyp_stack_popLvalue() to check for identically named nodes and appendthe appropriate tag index ( '{index}' ) to the return value if needed.
+ *   updated gHyp_stack_popLvalue() to check for identically named nodes and append
+the appropriate tag index ( '{index}' ) to the return value if needed.
  *
  *   Revision 1.6  2005-04-22 19:26:38  bergsma
  *   Uncommented section in gHyp_stack_popRdata that checks for empty

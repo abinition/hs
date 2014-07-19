@@ -11,6 +11,9 @@
  * Modifications:
  *
  * $Log: hsms.c,v $
+ * Revision 1.20  2009-11-17 16:07:31  bergsma
+ * New call arguments to gHyp_instance_read
+ *
  * Revision 1.19  2008-02-12 23:11:05  bergsma
  * VS 2008 Update
  *
@@ -1128,7 +1131,7 @@ int gHyp_hsms_outgoing ( sHsms *pHsms,
 
     gHyp_instance_setWakeTime ( pAI, (int)gsCurTime+(int)pHsms->t6) ;
 
-    return gHyp_instance_read ( pAI ) ;
+    return gHyp_instance_read ( pAI, FALSE ) ;
   }
   return COND_SILENT ;
 }

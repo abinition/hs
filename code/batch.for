@@ -35,6 +35,14 @@
 ! Modifications:
 !
 !    $Log: batch.for,v $
+!    Revision 1.11  2009-10-22 15:56:40  bergsma
+!    3.8.9-091021 for BATCH function change (again) for corrupted WIP
+!    tables.
+!
+!    Revision 1.9  2009-09-29 19:52:22  bergsma
+!    Replaced calls to Vms specific Mdl_DynMem routines with
+!     Operating System tolerant declaration of AUTOMATIC array
+!
 !    Revision 1.8  2005-01-12 23:13:50  bergsma
 !    Redundant definition of "accept' variable.
 !
@@ -122,9 +130,10 @@
 !   Include files:
 
         include 'FIL:TYPDEF'
+	include 'WCT:WCTDEF'
         include 'FIL:FILDEF'
         include 'PAR:LOTSTDEF'
-        include 'WCT:WIPBUFCOM'
+        include 'WCT:WIPLOTCOM'
 
 ! Arguments:
 
@@ -133,17 +142,25 @@
 
 ! Routines used:
 
-        external        Wct_WipAccess_NumLotsInList 
-        external        Mdl_Dynmem_Real4Vector
-        external        Mdl_Dynmem_CharVector
-        external        Mdl_Dynmem_ByteVector
-        external        aeqSsp_batch_main
+        !!!external        Wct_WipAccess_NumLotsInList
+ 	external	   Wct_WipAccess_MaxIndexUsed 
+       
+        ! Cannot use Mdl_Dynmem_*, can cause corruption
+        !external        Mdl_Dynmem_Real4Vector
+        !external        Mdl_Dynmem_CharVector
+        !external        Mdl_Dynmem_ByteVector
+        !external        aeqSsp_batch_main
         
 
 ! Author:       Mike Bergsma            9/93
 !               Ab Initio Software
 
 ! Modifications:
+!
+!	Mike Bergsma	10/21/2009
+!	- include WIPLOTCOM instead of WIPBUFCOM and use
+!	  numLotsInList directly to get totalWipCount
+!
 !       Paul R. Neveu   2/13/2001
 !       Add Advanced Equipment functionality for
 !       Capabilities and Constraints Checking
@@ -151,21 +168,61 @@
 
 ! Local Variables:
 
-        integer*4       wipCount
+        integer*4       totalWipCount
 
-        call Wct_WipAccess_numLotsInList ( wipCount )
+	character*(TYP__LOTIDSZ)	wipLotid (WCT__MAXWIPLOT)	  
+	character*(TYP__RECPIDSZ)	wipRecpid (WCT__MAXWIPLOT)
+	character*(TYP__EQPTYPSZ)	wipEqpType (WCT__MAXWIPLOT)
+	character*(TYP__EQPIDSZ)	wipEqpId (WCT__MAXWIPLOT)
+	character*(TYP__CAPABILITYSZ)	wipCapability (WCT__MAXWIPLOT)
+	real*4				wipCurMainQty (WCT__MAXWIPLOT)
+	byte				wipState (WCT__MAXWIPLOT)
+	byte				wipFlag (WCT__MAXWIPLOT)
+		
+        automatic wipLotid	
+        automatic wipRecpid
+        automatic wipEqpType
+        automatic wipEqpId
+        automatic wipCapability
+        automatic wipCurMainQty
+        automatic wipState
+        automatic wipFlag	
 
-        ! Dynamically allocate memory for WIP information, then call
-        ! aeqSsp_batch_main to construct and execute batch.
-        call Mdl_DynMem_CharVector ( TYP__LOTIDSZ, wipCount,    ! wipLotid
-     &       Mdl_DynMem_CharVector, TYP__RECPIDSZ, wipCount,    ! wipRecpid
-     &       Mdl_DynMem_CharVector, TYP__EQPTYPSZ, wipCount,    ! wipEqpType
-     &       Mdl_DynMem_CharVector, TYP__EQPIDSZ, wipCount,     ! wipEqpId
-     &       Mdl_DynMem_CharVector, TYP__CAPABILITYSZ, wipCount,     ! wipCapability !Add for Advanced Equipment
-     &       Mdl_DynMem_Real4Vector, wipCount,                  ! wipMainQty
-     &       Mdl_DynMem_ByteVector, wipCount,                   ! wipState
-     &       Mdl_DynMem_ByteVector, wipCount,			! wipFlag
-     &       aeqSsp_batch_main, curLocation )                   ! target
+        !!!call Wct_WipAccess_numLotsInList ( totalWipCount )
+	!!! - don't use because subroutine is obsolete
+
+	!!!call Wct_WipAccess_MaxIndexUsed ( totalWipCount ) 
+	!!! - don't use because maxIndexUsed does not always equal numLotsInList
+
+	!!! Best solution.  Include WIPLOTCOM common area and get value directly
+	totalWipCount = wct_wipLotCom_numLotsInList
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!      
+! Cannot use Mdl_DynMem_* functions, it can cause corruption of global sections
+!
+!        ! Dynamically allocate memory for WIP information, then call
+!        ! aeqSsp_batch_main to construct and execute batch.
+!       call Mdl_DynMem_CharVector ( TYP__LOTIDSZ, wipCount,    ! wipLotid
+!     &       Mdl_DynMem_CharVector, TYP__RECPIDSZ, wipCount,    ! wipRecpid
+!     &       Mdl_DynMem_CharVector, TYP__EQPTYPSZ, wipCount,    ! wipEqpType
+!     &       Mdl_DynMem_CharVector, TYP__EQPIDSZ, wipCount,     ! wipEqpId
+!     &       Mdl_DynMem_CharVector, TYP__CAPABILITYSZ, wipCount,     ! wipCapability !Add for Advanced Equipment
+!     &       Mdl_DynMem_Real4Vector, wipCount,                  ! wipMainQty
+!     &       Mdl_DynMem_ByteVector, wipCount,                   ! wipState
+!     &       Mdl_DynMem_ByteVector, wipCount,				! wipFlag
+!     &       aeqSsp_batch_main, curLocation )                   ! target
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+        call aeqSsp_batch_main ( curLocation, 
+     &                           totalWipCount,
+     &		 		 wipLotid,
+     &                           wipRecpid,
+     &                           wipEqpType,
+     &                           wipEqpId,
+     &                           wipCapability,		! Added for Advanced Equipment
+     &                           wipCurMainQty,
+     &                           wipState,
+     &                           wipFlag )
 
         return
 
@@ -174,6 +231,7 @@
 !++ AEQSSP_BATCH_MAIN
 
         subroutine aeqSsp_Batch_main(   curLocation,
+     &					totalWipCount,
      &                                  wipLotid,
      &                                  wipRecpid,
      &                                  wipEqpType,
@@ -244,28 +302,31 @@
         character*(*)           curLocation                             ! [R]
         ! - current workcenter location
 
-        character*(*)           wipLotid(*)                             ! [R]
+	integer*4				totalWipCount								! [R]
+	! - number of Wip lots
+		
+        character*(*)           wipLotid(totalWipCount)                             ! [R]
         ! - dynamic array of lot ids from WCT global section
 
-        character*(*)           wipRecpid(*)                            ! [R]
+        character*(*)           wipRecpid(totalWipCount)                            ! [R]
         ! - dynamic array of lot recipes from WCT global section
 
-        character*(*)           wipEqpType(*)                           ! [R]
+        character*(*)           wipEqpType(totalWipCount)                           ! [R]
         ! - dynamic array of lot equipment types from WCT global section
 
-        character*(*)           wipEqpId(*)                             ! [R]
+        character*(*)           wipEqpId(totalWipCount)                             ! [R]
         ! - dynamic array of lot equipment ids from WCT global section
 
-        character*(*)           wipCapability(*)                        ! [R]  ! Added for Advanced Equipment
+        character*(*)           wipCapability(totalWipCount)                        ! [R]  ! Added for Advanced Equipment
         ! - dynamic array of lot Capability Requirements from WCT global section
 
-        real*4                  wipCurMainQty(*)                        ! [R]
+        real*4                  wipCurMainQty(totalWipCount)                        ! [R]
         ! - dynamic array of lot sizes
 
-        byte                    wipState(*)                             ! [R]
+        byte                    wipState(totalWipCount)                             ! [R]
         ! - dynamic array of lot state (RUNNING, WAITING)
 
-        byte                    wipFlag(*) 				! [R]
+        byte                    wipFlag(totalWipCount) 				! [R]
         ! - dynamic array of flags used later for sorting
 
 ! Routines used:
@@ -366,12 +427,13 @@
         call fil_check ( fil_open ( FIL__PIAR, FIL__READONLY ) )
         call fil_check ( fil_open ( FIL__SCHD, FIL__READONLY ) )
         call fil_check ( fil_open ( FIL__FUTA, FIL__READONLY ) )
-	    call fil_check ( fil_open ( FIL__OPER, FIL__READONLY ) )
+	call fil_check ( fil_open ( FIL__OPER, FIL__READONLY ) )
         call fil_check ( fil_open ( FIL__TEST, FIL__READONLY ) )
 
         ! Get list of all lots waiting and running at current location
         ! The waiting and running lots are not sorted in the list.
         wipCount = aeqSsp_batch_getWip  (       curLocation,
+     &						totalWipCount,
      &                                          wipLotid,
      &                                          wipRecpid,
      &                                          wipEqpType,
@@ -759,6 +821,7 @@
 !++ AEQSSP_BATCH_GETWIP
 !
         integer*4 function aeqSsp_batch_getWip( curLocation,
+     &											totalWipCount,
      &                                          wipLotid,
      &                                          wipRecpid,
      &                                          wipEqpType,
@@ -793,25 +856,28 @@
         character*(*)           curLocation                             ! [R]
         ! - current workcenter location
 
-        character*(*)           wipLotid(*)                             ! [W]
+		integer*4				totalWipCount								! [R]
+		! - number of Wip lots
+		
+        character*(*)           wipLotid(totalWipCount)                             ! [W]
         ! - dynamic array of lot ids from WCT global section
 
-        character*(*)           wipRecpid(*)                            ! [W]
+        character*(*)           wipRecpid(totalWipCount)                            ! [W]
         ! - dynamic array of lot recipes from WCT global section
 
-        character*(*)           wipEqpType(*)                           ! [W]
+        character*(*)           wipEqpType(totalWipCount)                           ! [W]
         ! - dynamic array of lot equipment types from WCT global section
 
-        character*(*)           wipEqpId(*)                             ! [W]
+        character*(*)           wipEqpId(totalWipCount)                             ! [W]
         ! - dynamic array of lot equipment ids from WCT global section
 
-        character*(*)           wipCapability(*)                        ! [W]   ! Added for Advanced Equipment Capability
+        character*(*)           wipCapability(totalWipCount)                        ! [W]   ! Added for Advanced Equipment Capability
         ! - dynamic array of lot equipment ids from WCT global section
 
         real*4                  wipCurMainQty(*)                        ! [W]
         ! - dynamic array of lot sizes from WCT global section
 
-        byte                    wipState(*)                             ! [W]
+        byte                    wipState(totalWipCount)                             ! [W]
         ! - dynamic array of lot state (RUNNING, WAITING)
 
         byte                    wipFlag(*)                              ! [W]

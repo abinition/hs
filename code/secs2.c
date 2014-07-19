@@ -10,6 +10,13 @@
  * Modifications:
  *
  * $Log: secs2.c,v $
+ * Revision 1.16  2009-10-22 15:57:54  bergsma
+ * Solve problem with ENQ contention during SECS 1 Reply.
+ * This was for the MAP-4 at Siliconix
+ *
+ * Revision 1.15  2009-10-09 13:26:03  bergsma
+ * Germany - October 2009 - Updates
+ *
  * Revision 1.14  2009-09-21 05:21:05  bergsma
  * Comments
  *
@@ -922,7 +929,7 @@ int gHyp_secs2_parseSecs ( sSecs2 *pSecs2,
      * (initialState == SECS_EXPECT_SEND_EOT)
      */
     if ( isReply ) return COND_SILENT ;
- 
+
     /* If the ENQ contention event or query message is a S9 or F0 and 
      * has the same TID as the reply message we are trying to re-send,
      * then do not continue resending.

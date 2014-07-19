@@ -11,6 +11,9 @@
  * Modifications:
  *
  *   $Log: secs1.c,v $
+ *   Revision 1.81  2009-09-28 05:25:09  bergsma
+ *   ENQ Contention issues
+ *
  *   Revision 1.80  2009-09-21 05:22:52  bergsma
  *   Better handling of ENQ contention
  *

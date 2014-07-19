@@ -2,11 +2,17 @@
 !
 !	Include file for AUTOSERVER.FOR, AUTOCLIENT.FOR, AUTOUTIL.FOR
 ! 
-	parameter	AUTOMAN_VERSION = 'AM V3.8-7'
+	parameter	AUTOMAN_VERSION = 'AM V3.8-9'
 !
 ! Modifications:
 !
 !	$Log: autodef.for,v $
+!	Revision 1.56  2009-10-09 13:26:03  bergsma
+!	Germany - October 2009 - Updates
+!	
+!	Revision 1.55  2009-09-21 05:15:13  bergsma
+!	Version 3.8.8
+!	
 !	Revision 1.54  2009-06-23 23:21:12  bergsma
 !	HS 3.8.6 PF Milestone
 !	

@@ -11,6 +11,12 @@
  * Modifications:
  *
  *	$Log: fileio.c,v $
+ *	Revision 1.56  2009-11-17 15:57:58  bergsma
+ *	Added AS_XML_NON_STANDARD to preserve an old feature
+ *	that does not put \n after the last value in an XML tag's values.
+ *	It is better to keep the \n as this helps in conversion to and from HS data
+ *	structures
+ *	
  *	Revision 1.55  2009-09-21 05:18:03  bergsma
  *	sdescribe and xsdescribe have a "doIndent" second argument
  *	
@@ -507,7 +513,8 @@ static int lHyp_fileio_describe2 ( sData *pParent,
 
     if ( isXML ) {
       if ( pResult ) {
-	/* Add \n if not the last value */
+#ifdef AS_XML_NON_STANDARD
+	/* Leave out \n if the last value */
 	pData = gHyp_data_getParent ( pParent ) ;
 	if ( pData && gHyp_data_getLast ( pData ) == pParent )
 	  /* Last value - no newline */
@@ -515,10 +522,13 @@ static int lHyp_fileio_describe2 ( sData *pParent,
 			    "%s",
 			    pValue ) ;
 	else
+#endif
           newOffset = sprintf ( newOutput,
 			    "%s\n",
 			    pValue ) ;
+
       }
+
       else 
         newOffset = sprintf ( newOutput,
 			    "%s",

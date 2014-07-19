@@ -4946,7 +4946,8 @@ void gHyp_env_node_prevlastcousin ( sInstance *pAI, sCode *pCode, sLOGICAL isPAR
 
 void gHyp_env_node_getnodebyattr ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
 {
-	/* Description:
+
+  /* Description:
    *
    *  PARSE or EXECUTE the built-in function: node_getnodebyattr ( node, name, value )
    *  Returns the label of the first child of node that contains an attribute

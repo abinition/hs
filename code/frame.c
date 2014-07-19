@@ -10,6 +10,12 @@
 /* Modifications: 
  *
  * $Log: frame.c,v $
+ * Revision 1.27  2009-10-09 13:26:03  bergsma
+ * Germany - October 2009 - Updates
+ *
+ * Revision 1.26  2009-09-28 05:26:12  bergsma
+ * SetGlobalFlag (FRAME_GLOBAL_TRUE) prior to testing for handlers.
+ *
  * Revision 1.25  2009-07-23 16:15:37  bergsma
  * Fixed dereference result when coming back from deferenced method call.
  *
@@ -1966,8 +1972,8 @@ static void lHyp_frame_return ( sFrame *pFrame,
 
     /* A incoming message.  Check for replies */ 
     /* Execute all pending conditions */
-    gHyp_frame_setGlobalFlag ( pFrame, FRAME_GLOBAL_TRUE ) ;
     do {
+      gHyp_frame_setGlobalFlag ( pFrame, FRAME_GLOBAL_TRUE ) ;
       gHyp_instance_setState ( pAI, STATE_EXECUTE ) ;
     }
     while ( gHyp_instance_parse ( pAI ) == COND_NORMAL ) ;

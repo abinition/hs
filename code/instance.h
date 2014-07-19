@@ -3,6 +3,9 @@
  * Modifications:
  *
  * $Log: instance.h,v $
+ * Revision 1.15  2009-11-17 16:05:52  bergsma
+ * Fixes ENQ Contention problem
+ *
  * Revision 1.14  2008-02-17 02:10:17  bergsma
  * Added secs_xml() function
  *
@@ -69,7 +72,7 @@ extern void  gHyp_instance_signalTerm ( sInstance *pAI ) ;
 extern sLOGICAL gHyp_instance_isSignal ( sInstance *pAI ) ;
 extern void  gHyp_instance_signalMsg ( sInstance *pAI ) ;
 extern int gHyp_instance_nextEvent ( sInstance *pAI ) ;
-extern int gHyp_instance_read ( sInstance* ) ;
+extern int gHyp_instance_read ( sInstance*, sLOGICAL ) ;
 extern int gHyp_instance_readReply ( sInstance *pAI ) ;
 extern int gHyp_instance_readQueue ( sInstance* pAI ) ;
 extern int gHyp_instance_readProcess ( sInstance *pAI ) ;
@@ -141,6 +144,7 @@ extern void    	gHyp_instance_clearError ( sInstance* ) ;
 extern sLOGICAL	gHyp_instance_handleCondition ( sInstance * pAI ) ;
 extern int	gHyp_instance_parse ( sInstance * ) ;
 extern int     	gHyp_instance_run ( sInstance * ) ;
+extern void	gHyp_instance_pushLocalSTATUS ( sInstance *pAI, sStack *pStack ) ;
 extern void     gHyp_instance_pushSTATUS ( sInstance *pAI, sStack *pStack ) ;
 extern void     gHyp_instance_setgpAI( sInstance *pAI ) ;
 extern void     gHyp_instance_setgpAImain ( sInstance *pAI ) ;

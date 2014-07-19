@@ -10,13 +10,30 @@
 #ifndef __HYPDEF_H_
 #define __HYPDEF_H_
 
-#define 	VERSION_HYPERSCRIPT	    "3.8.8"
-#define 	VERSION_BUILD		    "090920"
-#define 	VERSION_HYPERSCRIPT_BUILD   "3.8.8-090920"
+#define 	VERSION_HYPERSCRIPT	    "3.8.9"
+#define 	VERSION_BUILD		    "091204"
+#define 	VERSION_HYPERSCRIPT_BUILD   "3.8.9-091204"
 
 /* Modification history:
  *
  * $Log: hypdef.h,v $
+ * Revision 1.97  2009-11-17 16:05:30  bergsma
+ * Build on 11/17/09, contains XML<-->HS conversion fixes,
+ * plus also fixes ENQ Contention
+ *
+ * Revision 1.96  2009-10-30 21:03:13  bergsma
+ * Upgraded.
+ *
+ * Revision 1.95  2009-10-22 15:57:13  bergsma
+ * Increase TOKEN_SIZE to 256
+ *
+ * Revision 1.94  2009-10-20 16:31:38  bergsma
+ * 3.8.9-091005 for BATCH function change (again) for corrupted WIP
+ * tables.
+ *
+ * Revision 1.93  2009-10-09 13:26:03  bergsma
+ * Germany - October 2009 - Updates
+ *
  * Revision 1.92  2009-09-21 05:18:33  bergsma
  * HS 3.8.8
  *
@@ -342,7 +359,7 @@
  *
  */
 
-#define		MAX_STACK_DEPTH		256  		    /* HyperScript stack */
+#define		MAX_STACK_DEPTH		128  		    /* HyperScript stack */
 #define		MAX_EXPRESSION		MAX_STACK_DEPTH * 2 /* Twice the expression length */
 #define		MAX_FRAME_DEPTH		MAX_STACK_DEPTH	    /* Same as stack depth */
 
@@ -408,7 +425,7 @@
 #define 	MODE_SIZE   		10
 #define 	METHOD_SIZE 		32
 #define 	SENDER_SIZE 		TARGET_SIZE
-#define 	TOKEN_SIZE  		128
+#define 	TOKEN_SIZE  		256
 #define 	VALUE_SIZE  		512
 #define		INTERNAL_VALUE_SIZE	VALUE_SIZE/4
 
@@ -644,6 +661,7 @@
 #define 	PRECEDENCE_INPUT_ASSIGN	7	/* 	=		*/
 #define 	PRECEDENCE_CONDITION	8	/* 	?		*/
 #define 	PRECEDENCE_EVAL		9	/* 	:		*/
+/*#define 	PRECEDENCE_ANDOR_OWL	10	/* 	and or		*/
 #define 	PRECEDENCE_ANDOR	10	/* 	&& ||		*/
 #define 	PRECEDENCE_BITOR	11	/* 	| 		*/
 #define 	PRECEDENCE_BITXOR	12	/* 	^ 		*/
@@ -653,8 +671,8 @@
 #define 	PRECEDENCE_ADDSUB	16	/* 	+ - 		*/
 #define 	PRECEDENCE_MULDIVMOD	17	/* 	* / %		*/
 #define 	PRECEDENCE_POW		18	/* 	**		*/
-#define 	PRECEDENCE_UNARY	19	/* 	++ -- + - ! * & fn */
-#define 	PRECEDENCE_INPUT_UNARY	20	/*	++ -- + - ! * &	fn */
+#define 	PRECEDENCE_UNARY	19	/* 	++ -- + - ! * & fn ~ (not some only) */
+#define 	PRECEDENCE_INPUT_UNARY	20	/*	++ -- + - ! * &	fn ~ (not some only) */
 #define		PRECEDENCE_POST_UNARY	21	/*	++, --		*/
 #define         PRECEDENCE_INPUT_PTR    22      /*      ->              */
 #define         PRECEDENCE_POINTER      23      /*      -> (same as DOT)*/

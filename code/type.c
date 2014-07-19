@@ -11,6 +11,9 @@
  * Modifications:
  *
  *	$Log: type.c,v $
+ *	Revision 1.21  2009-11-20 19:24:11  bergsma
+ *	Must stick to using popLvalue for typeof.  There is workaround.
+ *	
  *	Revision 1.19  2009-03-07 21:27:32  bergsma
  *	gHyp_data_getAll needs additional handle argument
  *	
@@ -2891,10 +2894,29 @@ void gHyp_type_typeof ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     if ( argCount != 1 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
 	"Invalid arguments. Usage: typeof ( variable )" ) ;
 
-    /*pData = gHyp_stack_popRdata ( pStack, pAI ) ;*/
+    /* Don't use popRdata !!!!
+     * i.e.  pData = gHyp_stack_popRdata ( pStack, pAI ) ;
+     * if 
+     *	list A = { "string", 1, 1.2, 
+     *              list a = { "nested literal", 1, 1.2 }
+     * If we use Rdata, then  
+     *	  typeof ( (*node)[ii] ) 
+     * will not work - it will not do sub-scripting...
+     * it will return 
+     *	  "list".
+     * but...
+     *	   typeof 1.2 
+     * would return "float" as expected, but when we
+     * use popLvalue, we get an error!!
+     *	   %IDENTIFIER:  '1.2' is not a variable....
+     * So, we use Lvalue, then
+     *	  typeof valueof "1.2" will create an ERROR.
+     * To get around Lvalue error, do this:
+     *	  typeof ( ( list tmp={valueof "1.2"} )[0] )
+     *	
+     */
     pData = gHyp_stack_popLvalue ( pStack, pAI ) ;
 
-    
     /* Although we expect an lValue, if we get a LITERAL
      * instead, then report the correct data type
      */

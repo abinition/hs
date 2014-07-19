@@ -11,6 +11,9 @@
  * Modifications:
  *
  * $Log: secs.c,v $
+ * Revision 1.28  2009-09-28 05:24:40  bergsma
+ * secs_query_raw and secs_event_raw were not working
+ *
  * Revision 1.27  2009-09-21 05:23:12  bergsma
  * Better handling of ENQ contention
  *

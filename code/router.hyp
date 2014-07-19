@@ -1,3 +1,20 @@
+/* ROUTER.HYP
+ *
+ * $Log: router.hyp,v $
+ * Revision 1.5  2009-10-30 20:54:22  bergsma
+ * Upgraded.
+ *
+ * Revision 1.4  2008-05-05 04:39:05  bergsma
+ * Automatically start heartbeat
+ *
+ * Revision 1.3  2008-05-02 06:48:13  bergsma
+ * no message
+ *
+ *
+ */
+
+parse ( (getenv("AUTORUN") + (  (env=="UNIX") ? "/" : ( (env=="WINDOWS") ? "\\" : "" ) ) + "env.hyp") ) ;
+
 connect()
 {
   puts "Connecting" ;
@@ -13,6 +30,11 @@ init()
 
   poll ;
 
+  //quiet 1 ;
+
+  puts "Setting heap multiplier to 2 for all children, (-xx)" ;
+  setheap 2 ;
+
   /* Establish the error handlers */
   on_message return MESSAGE_HANDLER() ;
   on_alarm return ALARM_HANDLER() ;
@@ -25,25 +47,22 @@ init()
 
   /* Establish death timer for start of a new day */
   ansi_now = timestamp() ;
-  ansi_newDay = parsedate( date()+":000000" ) + (24*60*60) + 2 ;
+  ansi_newDay = parsedate( date()+":235959" ) + 2 ;
 
   secondsToDeath = ansi_newDay - ansi_now ;
   lifetime ( secondsToDeath ) ;
 
   /* Start new log file for current date */
-  logFileSpec = "\\local\\log\\router_" + date() + ".log" ;
+  logFileSpec = AUTOLOG + SEPARATOR + "router_" + date() + ".log" ;
+
   puts { "Creating new logfile", logFileSpec } ;
   puts { "------------ END OF LOG -------------------" } ;
-  //log ( logFileSpec ) ;
+  log ( logFileSpec ) ;
   puts { "------------ START OF LOG -----------------" } ; 
   
-  
-  /* Startup hyperscript archiver */
-  //timeout 60 ;
-  //ret = query ( "archiver", "CONNECT" ) ;
+  /* Start the heartbeart server */
+  event ( "heartbeat", "CONNECT" ) ;
 
-  //if ( !ret )
-    //puts { "Failed to startup archiver, reason = ",ret } ;
   return ;
 }
 
@@ -58,6 +77,7 @@ enable disconnect ;
 LIST()
 {
   puts "listing" ;
+  describe children() ;
 }
 'list'() { return LIST() ; }
 enable LIST ; 
@@ -74,6 +94,8 @@ enable abort ;
 TERMINATE ()
 {
   puts "terminating" ;
+  LIST() ;
+  sleep 3
   DONE() ;
 }
 enable TERMINATE ;
@@ -143,17 +165,16 @@ DEATH_HANDLER()
   text = { "%DEATH: signal received." } ;
   puts text ;
 
-  on_death return DEATH_HANDLER() ;
-
   /* Establish death timer for start of a new day */
   ansi_now = timestamp ;
-  ansi_newDay = parsedate ( date()+":000000" ) + (24*60*60) + 2 ;
+  ansi_newDay = parsedate ( date()+":235959" ) + 2 ;
 
   secondsToDeath = ansi_newDay - ansi_now ;
   lifetime ( secondsToDeath ) ;
+  on_death return DEATH_HANDLER() ;
 
   /* Start new log file for current date */
-  logFileSpec = "\\local\\log\\router_" + date() + ".log" ;
+  logFileSpec = AUTOLOG + SEPARATOR + "router_" + date() + ".log" ;
 
   puts { "Creating new logfile", logFileSpec } ;
   puts { "------------ END OF LOG -------------------" } ;
@@ -163,16 +184,17 @@ DEATH_HANDLER()
   return ;
 }
 
-SENDMAIL( str reason )
+
+list SENDMAIL( str reason )
 {
   subject = self(2) + " : router error" ;
-  filespec = "\\local\\log\\router_" + self(2) + ".txt" ;
-  h = fopen (filespec,"w");       
+  filespec = AUTOLOG + "router_" + self(2) + ".txt" ;
+  h = fopen (filespec,"w");
   fputs ( reason, h ) ;
   /*fputs ( {"OPERATOR = ",USERID}, h ) ;*/
   fclose ( h ) ;
-  exec ( "mailx -s \"" + subject + "\" automation < " + filespec ) ;   
-}
+  exec ( "mail -s \"" + subject + "\" automation < " + filespec ) ;
+};
 
 init();
 

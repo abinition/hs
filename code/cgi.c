@@ -10,6 +10,18 @@
 /* Modifications: 
  *
  * $Log: cgi.c,v $
+ * Revision 1.47  2009-11-20 18:52:20  bergsma
+ * Unused variable space
+ *
+ * Revision 1.46  2009-11-17 15:57:58  bergsma
+ * Added AS_XML_NON_STANDARD to preserve an old feature
+ * that does not put \n after the last value in an XML tag's values.
+ * It is better to keep the \n as this helps in conversion to and from HS data
+ * structures
+ *
+ * Revision 1.45  2009-10-09 13:26:03  bergsma
+ * Germany - October 2009 - Updates
+ *
  * Revision 1.44  2009-07-23 16:14:40  bergsma
  * Removed debug statement
  *
@@ -401,6 +413,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
     *pResult;
   
   char
+    /*space[20],*/
     c,
     quote,
     *pTag,
@@ -410,7 +423,6 @@ char *gHyp_cgi_parseXML ( char *pStream,
     *pStr2,
     *pStr3,
     *pSearch,
-    /*value[VALUE_SIZE+1],*/
     buffer[MAX_INPUT_LENGTH+1],
     attr[TOKEN_SIZE+1],
     tag[TOKEN_SIZE+1],
@@ -447,6 +459,10 @@ char *gHyp_cgi_parseXML ( char *pStream,
     inDefinition,
     allowAttributes,
     isEndTag,
+    hasNL=FALSE,
+    hasWS=FALSE,
+    isFirstLine,
+    isLastLine,
     isChildLess,
     maybeReturnChildLess=FALSE,
     skipAttr,
@@ -491,9 +507,12 @@ char *gHyp_cgi_parseXML ( char *pStream,
        */
       if ( pParentTag ) {
         
+	/*gHyp_util_debug("process %s",pTag);*/
+	isFirstLine = TRUE ;
 	while ( pStream < pTag ) {
 
-	  /* Back up to start of tag */
+	  /* When 'tagged' is TRUE, the pStream pointer is at the token of the next tag,
+	   * i.e. <token> or </token>.  We want to back it up to point properly. */
 	  if ( tagged ) { pStream-- ; if ( isEndTag ) pStream-- ; tagged = FALSE ; }
 
 	  span = 0 ;
@@ -503,11 +522,21 @@ char *gHyp_cgi_parseXML ( char *pStream,
 	     * or the next line, whichever comes first.
 	     * (otherwise whitespace is kept LITERALLY).
 	     */
-	    /* First span over newline  */
-	    span = strspn ( pStream, "\r\n" ) ;
+	    /* First span over newline  Just ONE!   */
+	    if ( *pStream == '\n' )
+	      span = ( *(pStream+1) == '\r' ) ? 2 : 1 ;
+	    else if ( *pStream == '\r' )
+	      span = ( *(pStream+1) == '\n' ) ? 2 : 1 ;
+	    else
+	      span = 0 ;
+
+	    /*span = strspn ( pStream, "\r\n" ) ;*/
+	    hasNL = (span > 0 ) ;
 
 	    /* Then over whitespace */
 	    wspan = strspn ( pStream+span, " \t" ) ;
+	    hasWS = ( wspan > 0 ) ;
+
 	    span += wspan ;
 
 	    /* Stop there */
@@ -516,18 +545,58 @@ char *gHyp_cgi_parseXML ( char *pStream,
 
 	  /* Find the end of each line or take the entire section up to the '<' */
 	  strLen = strcspn ( pStream, "\n\r" ) ;
-	  /*if ( strLen == 0 ) strLen = pTag - pStream ;*/
-	  if ( strLen > (pTag-pStream) ) strLen = pTag - pStream ;
+
+	  /* Don't go past the "<" */
+	  if ( strLen > (pTag-pStream) ) strLen = pTag - pStream ; 
+
+	  isLastLine = ( pTag == pStream ) ;
 
 	  if ( strLen == 0 ) {
-	    /* Empty line */
-	    if ( isPRE || wspan > 0 ) {
-	      /* Add a space */
-	      pStrData = gHyp_data_new ( NULL ) ;
-	      gHyp_data_setStr ( pStrData, " " ) ;
-	      gHyp_data_append ( pParentTag, pStrData ) ;
+
+	    /* Seemingly an empty line */
+	    if ( isPRE || hasNL || hasWS ) {
+
+	      /*
+
+	      sprintf ( space, "%d %d %d %d",hasNL,hasWS,isFirstLine,isLastLine);
+
+	      * 
+	      * 
+	      NL WS F  L  Space Required
+	      0  0  0  0  not possible
+	      0  0  0  1  not possible
+	      0  0  1  0  not possible
+	      0  0  1  1  not possible
+	      0  1  0  0  not possible
+	      0  1  0  1  not possible
+	      0  1  1  0  yes
+	      0  1  1  1  yes
+	      1  0  0  0  yes
+	      1  0  0  1  no
+	      1  0  1  0  no
+	      1  0  1  1  no
+	      1  1  0  0  yes
+	      1  1  0  1  yes (no #ifndef AS_XML_NON_STANDARD)
+	      1  1  1  0  no
+	      1  1  1  1  no
+	      */
+
+	      if (   ( !hasNL && hasWS && isFirstLine && isLastLine ) ||
+#ifdef AS_XML_NON_STANDARD
+		/* NL and whitespace before last line */
+		     ( hasNL && hasWS && !isFirstLine && isLastLine ) ||
+#endif
+		     ( !hasNL && hasWS && isFirstLine && !isLastLine ) ||
+		     ( hasNL && hasWS && !isFirstLine && !isLastLine ) ||
+		     ( hasNL && !hasWS && !isFirstLine && !isLastLine )
+		  ) {
+		 
+	        /* Add a space */
+  	        pStrData = gHyp_data_new ( NULL ) ;
+	        gHyp_data_setStr ( pStrData, " " ) ;
+	        gHyp_data_append ( pParentTag, pStrData ) ;
+	      }   
 	    }
-	    while ( *pStream == '\n' || *pStream == '\r' ) pStream++ ; 
 	  }
 	  else {
 	    strLen3 = strLen ;
@@ -540,8 +609,8 @@ char *gHyp_cgi_parseXML ( char *pStream,
 
 		if ( truncStrLen == INTERNAL_VALUE_SIZE && strLen3 > INTERNAL_VALUE_SIZE ) {
 
-		  /* Let's not cut words in half if we can help
-		   * it. Make the string a little shorter if we find a space
+		  /* Let's not cut words in half if we can help it.
+		   * Make the string a little shorter if we find a space
 		   * between non-spaces.
 		   * Start at the end of the string, search backwards over
 		   * non-spaces until we find a space.  If so, and its
@@ -624,8 +693,10 @@ char *gHyp_cgi_parseXML ( char *pStream,
 					    pp ) ;
 	    pTag = pStream + i ;
 
-	    while ( *pStream == '\n' || *pStream == '\r' ) pStream++ ; 
+	    /*while ( *pStream == '\n' || *pStream == '\r' ) pStream++ ; */
+
 	  }
+	  isFirstLine = FALSE ;
 	}
       }
 
@@ -752,6 +823,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
 
           if ( isSCR || isTXT ) {
 
+	    /*gHyp_util_debug("processing %s",pTag);*/
 	    while ( pStr < pStream ) {
 
 	      /* Find the end of each line or take the entire section. */
@@ -827,7 +899,13 @@ char *gHyp_cgi_parseXML ( char *pStream,
 		pStr3 += truncStrLen ;
 	      }
 	      pStr += strLen ;
-	      while ( *pStr == '\n' || *pStr == '\r' ) pStr++ ; 
+/*
+	      if ( *pStr == '\n' )
+	        pStr += ( *(pStr+1) == '\r' ) ? 2 : 1 ;
+	      else if ( *pStream == '\r' )
+	        pStr += ( *(pStr+1) == '\n' ) ? 2 : 1 ;
+*/
+	      /*while ( *pStr == '\n' || *pStr == '\r' ) pStr++ ;*/ 
 	    }
 	  }
 

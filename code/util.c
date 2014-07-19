@@ -10,6 +10,12 @@
  * Modifications:
  *
  *	$Log: util.c,v $
+ *	Revision 1.67  2009-09-28 05:24:00  bergsma
+ *	For ORACLE, like SQLSERVER, uses double quotes for escaping a quote.
+ *	
+ *	Revision 1.66  2009-09-21 05:14:24  bergsma
+ *	Fix conversion of XML escape sequences
+ *	
  *	Revision 1.65  2009-04-09 19:57:21  bergsma
  *	Fixing issues with HTTP and buffer sizing
  *	
@@ -2242,9 +2248,9 @@ int gHyp_util_unparseString ( char *pDstStr,
 
 #ifdef AS_SQL
         if ( pDst+2 > pEndDst ) break ;
-#ifdef AS_SQLSERVER
+#if defined ( AS_SQLSERVER ) || defined ( AS_ORACLE )
 	*pDst++ = '\'' ;
-#else /* ORACLE, MYSQL, PGSQL */
+#else /* MYSQL, PGSQL */
 	*pDst++ = '\\' ;
 #endif
 	*pDst++ = '\'' ;
