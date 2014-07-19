@@ -5,6 +5,9 @@ $ !
 $ ! Modifications:
 $ !
 $ ! 	$Log: config_template.com,v $
+$ ! 	Revision 1.15  2009-11-17 16:07:01  bergsma
+$ ! 	Better integration with AUTOSQLSERVER2
+$ ! 	
 $ ! 	Revision 1.14  2009-10-09 13:26:03  bergsma
 $ ! 	Germany - October 2009 - Updates
 $ ! 	
@@ -109,7 +112,11 @@ $ list_Port     = "/''defaultPort'/''defaultPort'/''defaultPort'/"
 $
 $ ! 14. AutoSqlServer .
 $ defaultSQLserver   = "sql_server"  
+$ defaultSQLserver2   = "sql_server"  
+$ defaultSQLserver3   = "sql_server"  
 $ list_SQLserver     = "/''defaultSQLserver'/''defaultSQLserver'/''defaultSQLserver'/"
+$ list_SQLserver2     = "/''defaultSQLserver2'/''defaultSQLserver2'/''defaultSQLserver2'/"
+$ list_SQLserver3     = "/''defaultSQLserver3'/''defaultSQLserver3'/''defaultSQLserver3'/"
 $
 $ ! 15. Auto DCOP directory for DCOP/prompt mapping
 $ defaultDCOP = "''f$trnlnm(""AEQ_SSP"")'" - "]" + ".DCOPS]"
@@ -130,7 +137,7 @@ $ nodename  == f$getsyi("NODENAME")
 $ username  == f$edit(f$getjpi("","USERNAME"),"TRIM")
 $ promiswhere == f$logical ( "PROMIS_WHERE" )
 $ if promiswhere .eqs. "" then promiswhere == "PRIMARY"
-$ promissystemname == f$extract( 0, 4, f$logical("PROMIS_SYSTEMNAME") )
+$ promissystemname == f$logical("PROMIS_SYSTEMNAME")
 $ if promissystemname .eqs. "" then promissystemname == "PROMIS"
 $
 $ ! Determine whether AutoRouter is ok to run or not
@@ -149,15 +156,17 @@ $ where   = f$element(i,"/",list_where)
 $ system  = f$element(i,"/",list_system)
 $ automan = f$element(i,"/",list_auto)
 $ 
-$ write sys$output "''user' == ''username'?"
-$ write sys$output "''where' == ''promiswhere'?"
-$ write sys$output "''node' == ''nodename'?"
-$ write sys$output "''system' == ''promissystemname'?"
+$ !write sys$output "''user' == ''username'?"
+$ !write sys$output "''where' == ''promiswhere'?"
+$ !write sys$output "''node' == ''nodename'?"
+$ !write sys$output "''system' == ''promissystemname'?"
 $
 $ if (	user .eqs. username .and. -
 	( where .eqs. "*" .or. where .eqs. promiswhere ) .and. -
-	( node .eqs. "*" .or. node .eqs. nodename ) ) 
+	( node .eqs. "*" .or. node .eqs. nodename ) .and. -
+        ( system .eqs. "*" .or. system .eqs. promissystemname ) ) 
 $ then 
+$   allowAutoRouter == 1
 $   goto END_LOOP
 $ else
 $   i = i + 1
@@ -166,14 +175,12 @@ $ goto LOOP
 $
 $END_LOOP:
 $
-$ ! Define whether automation can start up or not.
-$ allowAutoRouter == ( system .eqs. "*" .or. system .eqs. promissystemname )
-$
 $ if allowAutoRouter 
 $ then
 $   write sys$output "AutoRouter is allowed to run"
 $ else
 $   write sys$output "AutoRouter is not allowed to run"
+$   exit
 $ endif
 $
 $ if ( automan .eqs. "YES" ) 
@@ -194,6 +201,8 @@ $ define/group/nolog AUTOROUTER 	"''f$element(i,"/",list_router)'"
 $ define/group/nolog AUTODET 		"''f$element(i,"/",list_det)'"
 $ define/group/nolog AUTOPORT 		"''f$element(i,"/",list_port)'"
 $ define/group/nolog AUTOSQLSERVER 	"''f$element(i,"/",list_SQLserver)'"
+$ define/group/nolog AUTOSQLSERVER2 	"''f$element(i,"/",list_SQLserver2)'"
+$ define/group/nolog AUTOSQLSERVER3 	"''f$element(i,"/",list_SQLserver3)'"
 $ define/group/nolog AUTOSTAT         	"''f$element(i,"/",list_stat)'"
 $ define/group/nolog AUTODCOP         	"''f$element(i,"/",list_dcop)'"
 $ define/group/nolog AUTOMGR          	"''f$element(i,"/",list_mgr)'"

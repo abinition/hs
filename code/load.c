@@ -10,6 +10,9 @@
  * Modifications:
  *
  *   $Log: load.c,v $
+ *   Revision 1.57  2009-12-08 20:49:02  bergsma
+ *   placeholder for owl constructs
+ *
  *   Revision 1.56  2009-06-23 23:21:12  bergsma
  *   HS 3.8.6 PF Milestone
  *
@@ -806,15 +809,15 @@ char *gHyp_load_fromStream (	sInstance *pAI,
       stringLen = strlen ( pStream ) ;
       /***stringLen = gHyp_util_parseString ( pStream ) ;***/
       
-      /* Extract string - maximum of VALUE_SIZE characters. */
-      tokenLen = MIN ( VALUE_SIZE, stringLen ) ;
+      /* Extract string - maximum of MAX_INPUT_LENGTH characters. */
+      tokenLen = MIN ( MAX_INPUT_LENGTH, stringLen ) ;
       pToken = (char*) AllocMemory ( tokenLen + 1 ) ;
       assert ( pToken ) ;
       if ( tokenLen > 0 ) strncpy ( pToken, pStream, tokenLen ) ;
       pToken[tokenLen] = '\0' ;
-      if ( stringLen > VALUE_SIZE ) {
+      if ( stringLen > MAX_INPUT_LENGTH ) {
 	gHyp_util_logError ( "%c%s...%c was truncated at %d characters", 
-	  ch, pToken, ch, VALUE_SIZE ) ;
+	  ch, pToken, ch, MAX_INPUT_LENGTH ) ;
 	guErrorCount++ ;
       }
       

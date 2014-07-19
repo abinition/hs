@@ -11,6 +11,9 @@
  * Modifications:
  *
  *	$Log: type.c,v $
+ *	Revision 1.22  2009-12-08 21:00:15  bergsma
+ *	Comments added
+ *	
  *	Revision 1.21  2009-11-20 19:24:11  bergsma
  *	Must stick to using popLvalue for typeof.  There is workaround.
  *	

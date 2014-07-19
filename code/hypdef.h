@@ -10,13 +10,19 @@
 #ifndef __HYPDEF_H_
 #define __HYPDEF_H_
 
-#define 	VERSION_HYPERSCRIPT	    "3.8.9"
-#define 	VERSION_BUILD		    "091204"
-#define 	VERSION_HYPERSCRIPT_BUILD   "3.8.9-091204"
+#define 	VERSION_HYPERSCRIPT	    "3.9.0"
+#define 	VERSION_BUILD		    "091214"
+#define 	VERSION_HYPERSCRIPT_BUILD   "3.9.0-091214"
 
 /* Modification history:
  *
  * $Log: hypdef.h,v $
+ * Revision 1.99  2009-12-14 16:16:25  bergsma
+ * V 3.9.0  Build 091214 : WWW Production Version.  XML <--> HS
+ *
+ * Revision 1.98  2009-12-08 20:47:14  bergsma
+ * Increment build number.
+ *
  * Revision 1.97  2009-11-17 16:05:30  bergsma
  * Build on 11/17/09, contains XML<-->HS conversion fixes,
  * plus also fixes ENQ Contention
@@ -381,7 +387,7 @@
 #define		MAX_HASH_TABLE_SIZE	257
 #define		HEARTBEAT_INTERVAL	60 * 10   /* 10 minutes */
 #define		IDLE_INTERVAL		180	  /* 3 min */
-#define		CONNECT_TIMEOUT		5	  /* 5 seconds */
+#define		CONNECT_TIMEOUT		10	  /* 10 seconds */
 
 
 #ifdef AS_UNIX
@@ -661,7 +667,6 @@
 #define 	PRECEDENCE_INPUT_ASSIGN	7	/* 	=		*/
 #define 	PRECEDENCE_CONDITION	8	/* 	?		*/
 #define 	PRECEDENCE_EVAL		9	/* 	:		*/
-/*#define 	PRECEDENCE_ANDOR_OWL	10	/* 	and or		*/
 #define 	PRECEDENCE_ANDOR	10	/* 	&& ||		*/
 #define 	PRECEDENCE_BITOR	11	/* 	| 		*/
 #define 	PRECEDENCE_BITXOR	12	/* 	^ 		*/

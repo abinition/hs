@@ -11,6 +11,12 @@
  * Modifications:
  *
  *	$Log: instance.c,v $
+ *	Revision 1.68  2009-12-08 20:46:21  bergsma
+ *	When saving the STATUS value of a reply msg, put its value on the stack
+ *	directly and do not use a reference to root STATUS.
+ *	This allows a dereference can occur with the reply arguments and we
+ *	won't lose the value of STATUS.
+ *	
  *	Revision 1.67  2009-11-17 16:05:52  bergsma
  *	Fixes ENQ Contention problem
  *	
@@ -4745,26 +4751,62 @@ void gHyp_instance_pushLocalSTATUS ( sInstance *pAI, sStack *pStack )
 {
   sData 
     *pRootStatus,
+    *pResult,
     *pValue ;
 
-  char 
-    value[VALUE_SIZE+1] ;
+  char
+      value[VALUE_SIZE+1],
+      strBuf[MAX_INPUT_LENGTH+1],
+      *pStr,
+      *pBuf,
+      *pBufEnd ;    
 
   int
-    n ;
+      valueLen,
+      ss,
+      context ;
+    
+  sLOGICAL
+      isVector ;
 
   pRootStatus = gHyp_frame_findRootVariable ( pAI->exec.pFrame, "STATUS" ) ; 
-  if ( pRootStatus ) 
-    n = gHyp_data_getStr ( pRootStatus,
-			 value,
-			 VALUE_SIZE,
-			 0,
-			 TRUE ) ;
+  if ( pRootStatus ) {
+
+    /* Construct the string from the elements of the list */
+    pBuf = strBuf ;
+    pBufEnd = pBuf + MAX_INPUT_LENGTH ;    
+    pResult = NULL ;
+    isVector = (gHyp_data_getDataType(pRootStatus) > TYPE_STRING ) ;
+    ss = gHyp_data_getSubScript ( pRootStatus ) ; 
+    context = -1 ;
+    while ( (pResult = gHyp_data_nextValue ( pRootStatus, 
+					     pResult,
+					     &context,
+					     ss ))) {
+      valueLen = gHyp_data_getStr ( pResult, 
+				    value, 
+				    VALUE_SIZE, 
+				    context, 
+				    isVector ) ;
+      pStr = value ;
+      
+      if ( (pBuf + valueLen) > pBufEnd ) 
+	gHyp_instance_error ( pAI, STATUS_IO,
+			      "Input string longer than %d characters \n",
+			      MAX_INPUT_LENGTH ) ;
+      sprintf ( pBuf, "%s", pStr ) ;
+      pBuf += valueLen ;   
+    }
+    if ( context== -2 && ss != -1 ) 
+      gHyp_instance_error ( pAI, STATUS_BOUNDS, 
+			    "Subscript '%d' is out of bounds in strtok()",ss);
+    *pBuf = '\0' ;
+  }
   else
-    strcpy ( value, "%NOSTATUS" ) ;
+    strcpy ( strBuf, "%NOSTATUS" ) ;
 
   pValue = gHyp_data_new ( NULL ) ;
-  gHyp_data_setToken ( pValue, value ) ;
+  gHyp_data_setToken ( pValue, strBuf ) ;
   gHyp_stack_push ( pStack, pValue ) ;
 }
 

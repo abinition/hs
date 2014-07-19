@@ -3,6 +3,9 @@
  * Modifications:
  *
  * $Log: instance.h,v $
+ * Revision 1.16  2009-12-08 20:48:20  bergsma
+ * Add pushLocalSTATUS method
+ *
  * Revision 1.15  2009-11-17 16:05:52  bergsma
  * Fixes ENQ Contention problem
  *

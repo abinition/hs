@@ -16,6 +16,9 @@ $!
 $! Modifications:
 $!
 $!   $Log: compile_hs.com,v $
+$!   Revision 1.8  2009-12-08 21:01:50  bergsma
+$!   Differentiate between hsp and hss
+$!
 $!   Revision 1.7  2009-03-01 22:24:51  bergsma
 $!   no message
 $!
@@ -59,7 +62,7 @@ $     comp autoutil
 $	  comp batch
 $     libr hs_promis automan,automan2,automan3,automan4,autoutil,batch
 $     ! Pull out 'main()' for building hs.exe
-$     libr hs_promis/extract=(hs)/output=hs.obj
+$     libr hs_promis/extract=(hs)/output=hsp.obj
 $     ! Pull out the rest in one chunk, then library to promis.olb
 $     libr hs_promis/extract=(*)/output=hs_promis.obj
 $     libr prom:promis hs_promis.obj
@@ -76,7 +79,7 @@ $!
 $!
 $! 1. contains main() for hs.exe
 $!
-$ ccc HS.c
+$ ccc HS.c /obj=HSP.obj
 $!
 $! 2. HyperScript modules
 $!
@@ -211,7 +214,7 @@ frame.obj+-
 function.obj+-
 gd.obj+-
 hash.obj+-
-hs.obj+-
+hsp.obj+-
 hsms.obj+-
 hyp.obj+-
 http.obj+-

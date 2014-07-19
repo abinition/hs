@@ -1210,31 +1210,12 @@ void gHyp_gd_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 	  }
 
 	  else if ( strcmp ( functionStr, "gdImageJpeg" ) == 0 ) {
-	
-	    gdImageJpeg ( 
-	      im,  /* GD Image Ptr */
-	      (FILE*) arg1_handle, /* FILE NAME */
-	      arg2_int /* QUALITY */
-	      ) ;
 	    boolean_result = TRUE ;
 	  }
 
 	  else if ( strcmp ( functionStr, "gdImageJpegPtr" ) == 0 ) {
 	
-	    imagePtr = gdImageJpegPtr ( 
-	      im,  /* GD Image Ptr */
-	      &n, /* Pointer to size */
-	      arg1_int /* QUALITY */
-	      ) ;
-
-	    /* Create a HS data structure and copy the results */
-	    gHyp_data_setVariable ( pResult, "_data_", TYPE_STRING ) ;
-	    gHyp_util_breakStream ( (char*) imagePtr, n, pResult, FALSE ) ;
-
-	    /* Get rid of the memory allocated by GD */
-	    gdFree ( imagePtr ) ;
-
-	    list_result = TRUE ;
+	    list_result = FALSE ;
 	  }
 
 	  else if ( strcmp ( functionStr, "gdImageLine" ) == 0 ) {
@@ -1757,8 +1738,6 @@ void gHyp_gd_open ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 #ifdef AS_GD
       if ( strstr ( value, "png" ) || strstr ( value, "PNG" ) )
         im = gdImageCreateFromPng( fp ) ;
-      else if ( strstr ( value, "jpg" ) || strstr ( value, "JPG" ) )
-        im = gdImageCreateFromJpeg( fp ) ;
 #else
       im = NULL ;
 #endif

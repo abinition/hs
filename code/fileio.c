@@ -11,6 +11,14 @@
  * Modifications:
  *
  *	$Log: fileio.c,v $
+ *	Revision 1.58  2009-12-13 04:00:16  bergsma
+ *	Back to correcting XML parsing and unparsing.
+ *	With AS_XML_NON_STANDARD not set, elements could be missed
+ *	when parsing XML.  So, AS_XML_NON_STANDARD was made standard.
+ *	
+ *	Revision 1.57  2009-12-08 21:00:15  bergsma
+ *	Comments added
+ *	
  *	Revision 1.56  2009-11-17 15:57:58  bergsma
  *	Added AS_XML_NON_STANDARD to preserve an old feature
  *	that does not put \n after the last value in an XML tag's values.
@@ -513,17 +521,17 @@ static int lHyp_fileio_describe2 ( sData *pParent,
 
     if ( isXML ) {
       if ( pResult ) {
-#ifdef AS_XML_NON_STANDARD
-	/* Leave out \n if the last value */
+	/* Leave out \n if there is only one value */
 	pData = gHyp_data_getParent ( pParent ) ;
-	if ( pData && gHyp_data_getLast ( pData ) == pParent )
-	  /* Last value - no newline */
+	if ( pData && 
+	     gHyp_data_getLast  ( pData ) == pParent && 
+	     gHyp_data_getFirst ( pData ) == pParent)
           newOffset = sprintf ( newOutput,
 			    "%s",
 			    pValue ) ;
 	else
-#endif
-          newOffset = sprintf ( newOutput,
+	  
+	  newOffset = sprintf ( newOutput,
 			    "%s\n",
 			    pValue ) ;
 

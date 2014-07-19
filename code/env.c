@@ -10,6 +10,9 @@
 /* Modifications:
  *
  * $Log: env.c,v $
+ * Revision 1.41  2009-12-08 21:00:15  bergsma
+ * Comments added
+ *
  * Revision 1.40  2009-04-09 19:57:21  bergsma
  * Fixing issues with HTTP and buffer sizing
  *

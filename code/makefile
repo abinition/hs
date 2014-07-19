@@ -50,7 +50,7 @@
 #
 # include file dependancies
 INCLUDES = auto.h hypdef.h 
-OBJECTS = aimsg.o data.o dateparse.o hash.o channel.o signal.o tcp.o util.o hs.o branch.o cgi.o env.o fileio.o frame.o function.o hsms.o http.o hyp.o concept.o instance.o label.o load.o memtrack.o method.o operand.o operator.o parse.o port.o promis.o route.o router.o secs.o secs1.o secs2.o sock.o sort.o ssl.o stack.o stmt.o system.o type.o sql.o
+OBJECTS = aimsg.o data.o dateparse.o hash.o channel.o signal.o tcp.o util.o hs.o branch.o cgi.o env.o fileio.o frame.o function.o hsms.o http.o hyp.o gd.o concept.o instance.o label.o load.o memtrack.o method.o operand.o operator.o parse.o port.o promis.o route.o router.o secs.o secs1.o secs2.o sock.o sort.o ssl.o stack.o stmt.o system.o type.o sql.o
 PROC_FLAGS = sqlcheck=full define=AS_UNIX define=AS_HS
 
 # SOLARIS
@@ -73,9 +73,9 @@ PROC_FLAGS = sqlcheck=full define=AS_UNIX define=AS_HS
 
 # DEC UNIX
 CC = cc
-CFLAGS =  -g3 -O -Wall -I.
-CDEFS = -DAS_SQL -DAS_MYSQL -DAS_TRUE64
-LIBS  = -lm -L/usr/lib/mysql -lmysqlclient 
+CFLAGS =  -g3 -O -Wall -I. -I/usr/include -I/local/packages/gd-2.0.35 
+CDEFS = -DAS_GD -DAS_SQL -DAS_MYSQL -DAS_TRUE64
+LIBS  = -lm -L/usr/lib/mysql -lmysqlclient -lz -lgd 
 #LIBS  = -L $(CELLworks)/FASTech/SDT/lib -lCw
 #LIBS = -L$(ORACLE_HOME)/lib -lclntsh 
 
@@ -151,6 +151,9 @@ cgi.o : cgi.c  $(INCLUDES) cgi.h
 	$(CC) $(CFLAGS) $(CDEFS) -c $*.c -o $@
 
 concept.o : concept.c  $(INCLUDES) concept.h
+	$(CC) $(CFLAGS) $(CDEFS) -c $*.c -o $@
+
+gd.o : gd.c  $(INCLUDES) gd.h
 	$(CC) $(CFLAGS) $(CDEFS) -c $*.c -o $@
 
 fileio.o : fileio.c  $(INCLUDES) fileio.h

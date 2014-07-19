@@ -11,6 +11,9 @@
  * Modifications:
  *
  *   $Log: secs1.c,v $
+ *   Revision 1.82  2009-12-08 20:47:33  bergsma
+ *   Remove debug statement
+ *
  *   Revision 1.81  2009-09-28 05:25:09  bergsma
  *   ENQ Contention issues
  *
@@ -1642,7 +1645,8 @@ int gHyp_secs1_outgoing ( sSecs1 *pSecs1,
     mt4,
     mt1u,
     retry=0,
-    cond=COND_SILENT ;
+    cond=COND_SILENT ,
+    cond2=COND_SILENT ;
 
   unsigned short
     checksum ;
@@ -1855,7 +1859,7 @@ int gHyp_secs1_outgoing ( sSecs1 *pSecs1,
 		gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 				   "ENQ contention. Relinquishing..." ) ;
 	      pSecs1->state = SECS_EXPECT_SEND_EOT ;
-	      cond = lHyp_secs1_incoming ( pSecs1, 
+	      cond2 = lHyp_secs1_incoming ( pSecs1, 
 					   gHyp_instance_getConcept(pAI),
 					   pAI,
 					   mode,
@@ -1865,7 +1869,7 @@ int gHyp_secs1_outgoing ( sSecs1 *pSecs1,
 					   stream,
 					   function ) ;
 	      pSecs1->state = SECS_EXPECT_RECV_ENQ ;
-	      if ( cond < 0 ) return cond ;
+	      if ( cond2 < 0 ) return cond ;
 	      break ;
 	    }
 	    else {
@@ -2116,7 +2120,7 @@ int gHyp_secs1_outgoing ( sSecs1 *pSecs1,
 	   * Accept the incoming message.
 	   */
 	  pSecs1->state = SECS_EXPECT_SEND_EOT2 ;
-	  cond = lHyp_secs1_incoming ( pSecs1, 
+	  cond2 = lHyp_secs1_incoming ( pSecs1, 
 					 gHyp_instance_getConcept(pAI),
 					 pAI,
 					 mode,
@@ -2127,7 +2131,7 @@ int gHyp_secs1_outgoing ( sSecs1 *pSecs1,
 					 function ) ;
 
 	  pSecs1->state = SECS_EXPECT_RECV_ENQ ;
-	  if ( cond < 0 ) return cond ;
+	  if ( cond2 < 0 ) return cond ;
 	}
 	else {
 	  /* Not in a reply state or not got an ENQ */
@@ -3604,7 +3608,7 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
 	  /* Look for end of value section */
 	  pChar = strchr ( pTokenValue, '&' ) ;
 	  if ( !pChar ) {
-    	    gHyp_util_debug("Last value %s",pTokenValue);
+    	    /*gHyp_util_debug("Last value %s",pTokenValue);*/
 	    pChar = pTokenValue + strlen ( pTokenValue ) ;
 	    *pChar = '\0' ;
 	  }

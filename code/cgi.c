@@ -10,6 +10,14 @@
 /* Modifications: 
  *
  * $Log: cgi.c,v $
+ * Revision 1.49  2009-12-13 04:00:16  bergsma
+ * Back to correcting XML parsing and unparsing.
+ * With AS_XML_NON_STANDARD not set, elements could be missed
+ * when parsing XML.  So, AS_XML_NON_STANDARD was made standard.
+ *
+ * Revision 1.48  2009-12-08 20:56:45  bergsma
+ * Init variables
+ *
  * Revision 1.47  2009-11-20 18:52:20  bergsma
  * Unused variable space
  *
@@ -413,7 +421,9 @@ char *gHyp_cgi_parseXML ( char *pStream,
     *pResult;
   
   char
-    /*space[20],*/
+#ifdef AS_TEST_XML_PARSING
+    space[20],
+#endif
     c,
     quote,
     *pTag,
@@ -556,9 +566,11 @@ char *gHyp_cgi_parseXML ( char *pStream,
 	    /* Seemingly an empty line */
 	    if ( isPRE || hasNL || hasWS ) {
 
+#ifdef AS_TEST_XML_PARSING
+	      sprintf ( space, "%d %d %d %d",hasNL,hasWS,isFirstLine,isLastLine);
+#endif
 	      /*
 
-	      sprintf ( space, "%d %d %d %d",hasNL,hasWS,isFirstLine,isLastLine);
 
 	      * 
 	      * 
@@ -576,16 +588,13 @@ char *gHyp_cgi_parseXML ( char *pStream,
 	      1  0  1  0  no
 	      1  0  1  1  no
 	      1  1  0  0  yes
-	      1  1  0  1  yes (no #ifndef AS_XML_NON_STANDARD)
+	      1  1  0  1  yes 
 	      1  1  1  0  no
 	      1  1  1  1  no
 	      */
 
 	      if (   ( !hasNL && hasWS && isFirstLine && isLastLine ) ||
-#ifdef AS_XML_NON_STANDARD
-		/* NL and whitespace before last line */
 		     ( hasNL && hasWS && !isFirstLine && isLastLine ) ||
-#endif
 		     ( !hasNL && hasWS && isFirstLine && !isLastLine ) ||
 		     ( hasNL && hasWS && !isFirstLine && !isLastLine ) ||
 		     ( hasNL && !hasWS && !isFirstLine && !isLastLine )
@@ -593,7 +602,11 @@ char *gHyp_cgi_parseXML ( char *pStream,
 		 
 	        /* Add a space */
   	        pStrData = gHyp_data_new ( NULL ) ;
-	        gHyp_data_setStr ( pStrData, " " ) ;
+#ifdef AS_TEST_XML_PARSING
+		gHyp_data_setStr ( pStrData, space ) ;
+#else
+		gHyp_data_setStr ( pStrData, " " ) ;
+#endif
 	        gHyp_data_append ( pParentTag, pStrData ) ;
 	      }   
 	    }

@@ -11,6 +11,9 @@ $!
 $! Modifications:
 $!
 $!   $Log: link_hs.com,v $
+$!   Revision 1.5  2009-12-08 21:01:50  bergsma
+$!   Differentiate between hsp and hss
+$!
 $!   Revision 1.4  2009-08-24 20:41:39  bergsma
 $!   Make sure FILTABLES is defined
 $!
@@ -35,7 +38,8 @@ $ if ( f$trnlnm ( "FILTABLES" ) .eqs. "" ) then @PDB:GLOBAL INSTALL
 $!
 $! Link the standalone image
 $!
-$ 'build'/exec=hsp.exe/map hs.obj+hs_promis/lib+hs.opt/opt+prom:promis/lib+bld:image/opt
+$ library hs_promis.olb/extract=(HS)/out=hsp.obj
+$ 'build'/exec=hsp.exe/map hsp.obj+hs_promis/lib+hs.opt/opt+prom:promis/lib+bld:image/opt
 $
 $ ! HS.EXE will be the one with the PROMIS hooks.
 $ copy hsp.exe hs.exe
