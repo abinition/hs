@@ -11,6 +11,9 @@
  * Modifications:
  *
  *	$Log: promis.c,v $
+ *	Revision 1.30  2009-09-21 05:19:29  bergsma
+ *	Comments
+ *	
  *	Revision 1.29  2009-08-11 21:19:07  bergsma
  *	Fixed for ANSI C compatibility - some function names were too long....
  *	

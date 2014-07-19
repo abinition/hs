@@ -11,6 +11,9 @@
  * Modifications:
  *
  *	$Log: fileio.c,v $
+ *	Revision 1.55  2009-09-21 05:18:03  bergsma
+ *	sdescribe and xsdescribe have a "doIndent" second argument
+ *	
  *	Revision 1.54  2009-03-13 07:48:16  bergsma
  *	GD refinements.
  *	Added BUILD_VERSION

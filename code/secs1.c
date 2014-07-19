@@ -11,6 +11,9 @@
  * Modifications:
  *
  *   $Log: secs1.c,v $
+ *   Revision 1.80  2009-09-21 05:22:52  bergsma
+ *   Better handling of ENQ contention
+ *
  *   Revision 1.79  2009-08-11 21:19:07  bergsma
  *   Fixed for ANSI C compatibility - some function names were too long....
  *
@@ -1674,6 +1677,11 @@ int gHyp_secs1_outgoing ( sSecs1 *pSecs1,
   pHeader->deviceId = id ;
   pHeader->messageId = (stream << 8) ;
   pHeader->messageId |= function ;
+
+  /* For debugging ENQ contention
+   *if ( stream == 6 && function == 5 && mode == MESSAGE_EVENT ) mode = MESSAGE_QUERY ;
+   */
+
   pHeader->isReplyExpected = ( mode == MESSAGE_QUERY ) ;
 
   pHeader->blockNum = 1 ;
@@ -2099,9 +2107,9 @@ int gHyp_secs1_outgoing ( sSecs1 *pSecs1,
 
 	}
 
-	if ( !pHeader->rBit && pHeader->isReplyExpected && gotENQ ) {
+	if ( pHeader->isReplyExpected && gotENQ ) {
 	  
-	  /* We are the slave, sending a reply message, and we got an interrupt.
+	  /* We were expecting a reply and now we can get it.
 	   * Accept the incoming message.
 	   */
 	  pSecs1->state = SECS_EXPECT_SEND_EOT2 ;
@@ -2119,12 +2127,13 @@ int gHyp_secs1_outgoing ( sSecs1 *pSecs1,
 	  if ( cond < 0 ) return cond ;
 	}
 	else {
-	  /* Not a slave or Not in a reply state or not got an ENQ */
-	  if ( gotENQ ) 
-	    pSecs1->state = SECS_EXPECT_SEND_EOT2 ;
-	  else
+	  /* Not in a reply state or not got an ENQ */
+	  if ( gotENQ )
+	    pSecs1->state = SECS_EXPECT_SEND_EOT2 ; 
+	  else 
 	    pSecs1->state = SECS_EXPECT_RECV_ENQ ;
 	  cond = COND_NORMAL ;
+	 
 	}
 
 	lastBlockSent = TRUE ;

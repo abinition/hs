@@ -11,6 +11,9 @@
  * Modifications:
  *
  *	$Log: dateparse.c,v $
+ *	Revision 1.9  2009-09-21 05:17:12  bergsma
+ *	Comments
+ *	
  *	Revision 1.8  2008-02-12 23:07:31  bergsma
  *	V3.8.2 (compiled with VS C 2008)
  *	

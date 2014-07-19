@@ -11,6 +11,9 @@
  * Modifications:
  *
  *	$Log: instance.c,v $
+ *	Revision 1.62  2009-09-21 05:19:07  bergsma
+ *	Comments
+ *	
  *	Revision 1.61  2008-05-03 21:43:55  bergsma
  *	Use giLineCount and giProgram count together to better determine the
  *	location of a program token code.
@@ -1850,9 +1853,11 @@ int gHyp_instance_readProcess ( sInstance *pAI )
     }
  
     if ( !matchedReply ) {
-      if ( !isS9 ) 
+      if ( !isS9 ) {
 	gHyp_util_logWarning ( "Reply '%s' message ignored, no match",
 				pMethodStr ) ;
+	/* To do: Send S9F3 (stream mismatch) or S9F5 (function mismatch) */
+      }
       else
 	isReplyMsg = FALSE ;
     }
@@ -2353,7 +2358,7 @@ sLOGICAL gHyp_instance_replyMessage ( sInstance *pAI, sData *pMethodData )
 	    else if ( nBytes == 0 ) {
 	      
 	      /* ENQ contention:  execute all pending conditions. */
-	      gHyp_frame_setGlobalFlag( pAI->exec.pFrame, FRAME_GLOBAL_TRUE);
+	      gHyp_frame_setGlobalFlag ( pAI->exec.pFrame, FRAME_GLOBAL_TRUE ) ;
 	      do {
 		/* Setting STATE_QUERY here let's us execute the 
 		 * handler for the incoming message, which is

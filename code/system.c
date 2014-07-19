@@ -11,6 +11,9 @@
  * Modifications:
  *
  *	$Log: system.c,v $
+ *	Revision 1.36  2009-09-21 05:19:57  bergsma
+ *	Comments
+ *	
  *	Revision 1.35  2009-06-17 22:49:02  bergsma
  *	For sql_datetime and datetime, reject erroreous dates, SPECIFICALLY from
  *	PROMIS, a NULL date is -1200798848

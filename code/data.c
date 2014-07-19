@@ -11,6 +11,9 @@
  * Modifications:
  *
  * $Log: data.c,v $
+ * Revision 1.38  2009-09-21 05:16:42  bergsma
+ * Typo
+ *
  * Revision 1.37  2009-06-12 05:05:53  bergsma
  * Comment
  *

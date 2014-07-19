@@ -10,6 +10,9 @@
  * Modifications:
  *
  * $Log: secs2.c,v $
+ * Revision 1.14  2009-09-21 05:21:05  bergsma
+ * Comments
+ *
  * Revision 1.13  2008-02-17 02:10:17  bergsma
  * Added secs_xml() function
  *

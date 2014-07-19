@@ -11,6 +11,9 @@
  * Modifications:
  *
  * $Log: secs.c,v $
+ * Revision 1.27  2009-09-21 05:23:12  bergsma
+ * Better handling of ENQ contention
+ *
  * Revision 1.26  2008-05-06 02:15:23  bergsma
  * Comment typo
  *
@@ -1368,6 +1371,7 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
    */
   sData
     *pData,
+    *pData2,
     *pSecsIIdata ;
 
   char
@@ -1518,12 +1522,16 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
 
   if ( status ) {
 
-    /* Just in case we don't return, pPortData needs to be deleted */
+    /* Just in case we don't return, pSecsIIdata needs to be deleted */
     gpsTempData = pSecsIIdata ; 
 
     /* Initialize the secs structures. */
-    if ( isRaw ) 
+    if ( isRaw ) {
+      /* To do:  get the variable of the reference to pSecsIIdata */
+      pData2 = gHyp_data_getVariable ( pSecsIIdata ) ;
+      if ( pData2 ) pSecsIIdata = pData2 ;
       gHyp_secs2_unParseSecsRaw ( pSecs2, pSecsIIdata ) ;
+    }
     else
       gHyp_secs2_unParseSecs ( pSecs2, pSecsIIdata, pAI, stream, function ) ;
 
@@ -1561,6 +1569,7 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
 	else if ( nBytes == 0 ) {
 
 	  /* Some condition occurred, execute all pending conditions. */
+	  gHyp_frame_setGlobalFlag ( pFrame, FRAME_GLOBAL_TRUE ) ;
 	  do {
 	    /* Setting STATE_QUERY here let's us execute the 
 	     * handler for the incoming message, which is

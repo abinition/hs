@@ -10,13 +10,16 @@
 #ifndef __HYPDEF_H_
 #define __HYPDEF_H_
 
-#define 	VERSION_HYPERSCRIPT	    "3.8.7"
-#define 	VERSION_BUILD		    "090911"
-#define 	VERSION_HYPERSCRIPT_BUILD   "3.8.7-090911"
+#define 	VERSION_HYPERSCRIPT	    "3.8.8"
+#define 	VERSION_BUILD		    "090920"
+#define 	VERSION_HYPERSCRIPT_BUILD   "3.8.8-090920"
 
 /* Modification history:
  *
  * $Log: hypdef.h,v $
+ * Revision 1.92  2009-09-21 05:18:33  bergsma
+ * HS 3.8.8
+ *
  * Revision 1.91  2009-06-23 23:21:12  bergsma
  * HS 3.8.6 PF Milestone
  *

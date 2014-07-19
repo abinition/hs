@@ -1966,6 +1966,7 @@ static void lHyp_frame_return ( sFrame *pFrame,
 
     /* A incoming message.  Check for replies */ 
     /* Execute all pending conditions */
+    gHyp_frame_setGlobalFlag ( pFrame, FRAME_GLOBAL_TRUE ) ;
     do {
       gHyp_instance_setState ( pAI, STATE_EXECUTE ) ;
     }
