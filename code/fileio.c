@@ -333,6 +333,7 @@ static int lHyp_fileio_describe2 ( sData *pParent,
 				   sLOGICAL firstValue,
 				   sLOGICAL lastValue,
 				   int indent,
+				   sLOGICAL doIndent,
 				   char *pOutput,
 				   FILE *fp,
 				   sLOGICAL isXML,
@@ -434,7 +435,7 @@ static int lHyp_fileio_describe2 ( sData *pParent,
 	  gHyp_util_log ( pOut ) ;
 	*pContentLength += outLen ;
         *pOutput = '\0' ;
-        if ( !isMSG && !pResult ) strcat ( pOutput, prefixStr ) ;
+        if ( doIndent || (!isMSG && !pResult) ) strcat ( pOutput, prefixStr ) ;
         outputLen = strlen ( pOutput ) ;
       }
     }
@@ -658,7 +659,7 @@ static int lHyp_fileio_describe2 ( sData *pParent,
 	      gHyp_util_log ( pOut ) ;
 	    *pContentLength += outLen ;
 	    *pOutput = '\0' ;
-	    if ( !isMSG && !pResult) strcat ( pOutput, prefixStr ) ;
+	    if ( doIndent || (!isMSG && !pResult)) strcat ( pOutput, prefixStr ) ;
 	    outputLen = strlen ( pOutput ) ;
 	  }
 
@@ -692,7 +693,7 @@ static int lHyp_fileio_describe2 ( sData *pParent,
 	        gHyp_util_log ( pOut ) ;
 	      *pContentLength += outLen ;
 	      *pOutput = '\0' ;
-	      if ( !isMSG && !pResult) strcat ( pOutput, prefixStr ) ;
+	      if ( doIndent || (!isMSG && !pResult)) strcat ( pOutput, prefixStr ) ;
 	      outputLen = strlen ( pOutput ) ;
 	    }
 	  }
@@ -748,7 +749,7 @@ static int lHyp_fileio_describe2 ( sData *pParent,
 	    gHyp_util_log ( pOut ) ;
 	  *pContentLength += outLen ;
 	  *pOutput = '\0' ;
-	  if ( !isMSG && !pResult) strcat ( pOutput, prefixStr ) ;
+	  if ( doIndent || (!isMSG && !pResult)) strcat ( pOutput, prefixStr ) ;
 	  outputLen = strlen ( pOutput ) ;
 	}
 
@@ -855,7 +856,7 @@ static int lHyp_fileio_describe2 ( sData *pParent,
 		*pContentLength += outLen ;
 	        newOutput[0] = '\0' ;
 		newOffset = 0 ;
-	        if ( !isMSG && !pResult) strcat ( newOutput, prefixStr ) ;
+	        if ( doIndent || (!isMSG && !pResult)) strcat ( newOutput, prefixStr ) ;
 	        newOffset = strlen ( newOutput ) ;
 	      }
 
@@ -947,6 +948,7 @@ static int lHyp_fileio_describe2 ( sData *pParent,
 						firstVal,
 						lastVal,
 						indent+2,
+						doIndent,
 						pOutput,
 						fp,
 						isXML,
@@ -985,6 +987,7 @@ static int lHyp_fileio_describe2 ( sData *pParent,
 						     firstVal,
 						     lastVal,
 						     indent+2,
+						     doIndent,
 						     pOutput,
 						     fp,
 						     isXML,
@@ -1030,7 +1033,7 @@ static int lHyp_fileio_describe2 ( sData *pParent,
 		  gHyp_util_log ( pOut ) ;
 		*pContentLength += outLen ;
 	        *pOutput = '\0' ;
-	        if ( !isMSG && !pResult) strcat ( pOutput, prefixStr ) ;
+	        if ( doIndent || (!isMSG && !pResult)) strcat ( pOutput, prefixStr ) ;
 	        outputLen = strlen ( pOutput ) ;
 	      }
 	    }
@@ -1065,7 +1068,7 @@ static int lHyp_fileio_describe2 ( sData *pParent,
 
 	      *pContentLength += outLen ;
 	      *pOutput = '\0' ;
-	      if ( !isMSG && !pResult) strcat ( pOutput, prefixStr ) ;
+	      if ( doIndent || (!isMSG && !pResult)) strcat ( pOutput, prefixStr ) ;
 	      outputLen = strlen ( pOutput ) /*- 2 */;
 	      *(pOutput+outputLen) = '\0' ;
 	    }
@@ -1094,7 +1097,7 @@ static int lHyp_fileio_describe2 ( sData *pParent,
 	    gHyp_util_log ( pOut ) ;
 	  *pContentLength += outLen ;
 	  *pOutput = '\0' ;
-	  if ( !isMSG && !pResult) strcat ( pOutput, prefixStr ) ;
+	  if ( doIndent || (!isMSG && !pResult)) strcat ( pOutput, prefixStr ) ;
 	  outputLen = strlen ( pOutput ) ;
 	}
 	
@@ -1122,7 +1125,7 @@ static int lHyp_fileio_describe2 ( sData *pParent,
 	    gHyp_util_log ( pOut ) ;
 	  *pContentLength += outLen ;
 	  *pOutput = '\0' ;
-	  if ( !isMSG && !pResult) strcat ( pOutput, prefixStr ) ;
+	  if ( doIndent || (!isMSG && !pResult)) strcat ( pOutput, prefixStr ) ;
 	  outputLen = strlen ( pOutput ) /*- 2 */;
 	  *(pOutput+outputLen) = '\0' ;
 	}
@@ -1207,6 +1210,7 @@ void lHyp_fileio_describe ( sInstance *pAI,
       isSCR=FALSE,
       isAttrOn=FALSE,
       isMRK=FALSE,
+      doIndent=FALSE,
       firstValue,
       lastValue ;
 
@@ -1245,18 +1249,25 @@ void lHyp_fileio_describe ( sInstance *pAI,
     				"Invalid file handle" ) ;
     }
     else if ( isString ) { 
-      if ( argCount != 1 ) {
+
+      if ( argCount > 2 ) {
 	if ( isXML )
 	  gHyp_instance_error ( 
             pAI, STATUS_ARGUMENT,
-	    "Invalid arguments. Usage: result = xsdescribe ( variable )" ) ;      
+	    "Invalid arguments. Usage: result = xsdescribe ( variable [,indent] )" ) ;      
 	else
 	  gHyp_instance_error ( 
             pAI, STATUS_ARGUMENT,
-	    "Invalid arguments. Usage: result = sdescribe ( variable )" ) ;      
+	    "Invalid arguments. Usage: result = sdescribe ( variable [,indent] )" ) ;      
+      }
+
+      if ( argCount == 2 ) {
+        pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
+        doIndent  = gHyp_data_getBool ( pData,gHyp_data_getSubScript ( pData  ), TRUE ) ;
       }
     }
     else {
+
       if ( argCount != 1 ) {
 	if ( isXML ) 
 	  gHyp_instance_error ( 
@@ -1284,7 +1295,7 @@ void lHyp_fileio_describe ( sInstance *pAI,
       strcpy ( tag, gHyp_data_getLabel(pData) ) ;
       gHyp_util_lowerCase ( tag, strlen ( tag ) ) ;
       isPRE = ( strcmp ("pre", tag ) == 0 ) ;
-      isTXT = ( strcmp ( "textarea", tag ) == 0 ) ;
+      isTXT = ( strcmp ("textarea", tag ) == 0 ) ;
       isSCR = ( strcmp ("script", tag ) == 0 || strcmp ("style",tag) == 0 ) ;
       isMRK = ( strcmp ("b", tag ) == 0  || 
 		strcmp ("big",tag) == 0 ||
@@ -1308,6 +1319,7 @@ void lHyp_fileio_describe ( sInstance *pAI,
 			    firstValue,
 			    lastValue,
 			    indent, 
+			    doIndent,
 			    output, 
 			    fp,
 			    isXML,
@@ -1368,6 +1380,7 @@ sData *gHyp_fileio_describeData ( sInstance *pAI, sData *pData, char ending, sLO
 			    firstValue,
 			    lastValue,
 			    indent, 
+			    FALSE,  /* doIndent */
 			    output, 
 			    NULL,
 			    isXML,  /* isXML */

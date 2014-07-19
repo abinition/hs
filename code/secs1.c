@@ -337,7 +337,7 @@ struct secs1_t
   sLOGICAL		doEagain ;	  /* If eagain processing is enabled - default = no */
   sData*		pEagain ;	  /* Write pending data */  
   sData*		pEagainPartial ;  /* Write partial data */  
-  int			nextEagainTime1 ; /* Ansitime until next try */ 
+  int			nextEagainTime1 ; /* utc until next try */ 
   int			nextEagainTime2 ; /* Plus so many millseconds */
   int			nextEagainInc ;   /* Milliseconds to wait before trying again */
   int			nBytes ;
@@ -716,9 +716,9 @@ static int lHyp_secs1_incoming ( sSecs1 *pSecs1,
    *
    * Called from:
    * 1. Waiting for reply message or unsolicited message.
-   *    - called from gHyp_msgio_select<-gHyp_instance_read
+   *    - called from gHyp_sock_select<-gHyp_instance_read
    *    - a return value of -1 is required to trigger handlers
-   *	- a return value of 0 re-invokes msgio_select to read again
+   *	- a return value of 0 re-invokes sock_select to read again
    *	- a return value > 0 satisfies the read.
    * 2. ENQ contention.
    *    - called from gHyp_secs1_outgoing, which in turn is called from
@@ -812,7 +812,7 @@ static int lHyp_secs1_incoming ( sSecs1 *pSecs1,
 
       /* If we're nested too deep in handlers, then forget it */
       if ( giJmpLevel == MAX_JMP_LEVEL ) {
-	gHyp_util_logError ( "SECS1 RECV NEQ jump level overflow at %d", MAX_JMP_LEVEL ) ;
+	gHyp_util_logError ( "SECS1 RECV ENQ jump level overflow at %d", MAX_JMP_LEVEL ) ;
 	longjmp ( gsJmpStack[0], COND_FATAL ) ;
       }
 
@@ -1003,7 +1003,13 @@ static int lHyp_secs1_incoming ( sSecs1 *pSecs1,
 
 	  blkSize = pSecs1->inbuf[0] ;
 
+	  /* We need to ignore block sizes that are not possible.
+	   * Or, we need to recognize that they are not block sizes
+	   * at all but control characters 
+	   */
+
 	  while ( blkSize < 10 || blkSize > MAX_SECS1_BLKSIZE ) {
+
 
 	    /* Check to see if its an ENQ or EOT, 
 	     * which could be as a result of the following cases.
@@ -1023,12 +1029,15 @@ static int lHyp_secs1_incoming ( sSecs1 *pSecs1,
 	      /* Remove the ENQ, shift all bytes down */
 	      if ( guDebugFlags & DEBUG_PROTOCOL )
 		gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
-				     "<-ENQ(2)", blkStr ) ;
+				     "<-ENQ(BLK)", blkStr ) ;
 	      if ( nBytes > 1 )
 		for (i=0; i<nBytes; i++) pSecs1->inbuf[i] = pSecs1->inbuf[i+1];
 	      nBytes-- ;
-	      if ( nBytes == 0 ) {
-		/* There was just the ENQ.  Send back an EOT */
+
+	      if ( nBytes == 0 && !gHyp_instance_isRbitSet ( pAI, id )) {
+		/* There was just the ENQ and we are a slave.  
+		 * Forget the block we were waiting for.  Send back an EOT 
+		 */
 		pSecs1->state = SECS_EXPECT_SEND_EOT ;
 	        break ;
 	      }
@@ -1044,12 +1053,20 @@ static int lHyp_secs1_incoming ( sSecs1 *pSecs1,
 	      if ( nBytes > 1 )
 		for (i=0; i<nBytes; i++) pSecs1->inbuf[i] = pSecs1->inbuf[i+1];
 	      nBytes-- ;
-	      if ( nBytes == 0 ) {
+
+	      if ( nBytes == 0 && !gHyp_instance_isRbitSet ( pAI, id ) ) {
+		/* There was just the EOT, as if we were supposed to now send
+		 * a block.  We are a slave, but we don't have a block to send 
+		 * but we can try to reset the protocol by sending a NAK.
+		 * So, then forget about the block we were waiting for. 
+		 */
 		pSecs1->state = SECS_EXPECT_SEND_NAK ;
 		break ;
 	      }
 	      
-	      /* Otherwise, keep processing the characters in the buffer */
+	      /* Otherwise, keep processing the characters in the buffer,
+	       * perhaps we will get a good block of data and can proceed
+	       */
 	      blkSize = pSecs1->inbuf[0] ;
 	    }
 	    else {
@@ -1718,7 +1735,7 @@ int gHyp_secs1_outgoing ( sSecs1 *pSecs1,
       
     case SECS_EXPECT_SEND_ENQ :
 
-      /* Send <EOT>.  Then wait for the message block. */
+      /* Send <ENQ>.  Then wait for <EOT> */
       pSecs1->outbuf[0] = SECS_CHAR_ENQ ;
       nBytes = gHyp_sock_write ( (SOCKET) pSecs1->fd, 
 				 (char*) pSecs1->outbuf,
@@ -1809,16 +1826,18 @@ int gHyp_secs1_outgoing ( sSecs1 *pSecs1,
 	/* Got some data. We hope its an <EOT> */
 	if ( pSecs1->inbuf[0] != SECS_CHAR_EOT ) {
 
+	  /* Not what we expected */
+
 	  if ( pSecs1->inbuf[0] == SECS_CHAR_ENQ ) {
 	    
 	    if ( guDebugFlags & DEBUG_PROTOCOL )
 	      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
-				   "<-ENQ" ) ;
+				   "<-ENQ(EOT)" ) ;
 
 	    /* ENQ Contention.  Relinquish if device is not a slave, 
 	     * that is, not the host.
 	    */
-	    if ( !gHyp_instance_isRbitSet ( pAI, (sWORD) id ) ) {
+	    if ( !pHeader->rBit ) {
 	      
 	      /* We are the slave and we are getting an interrupt */
 	      if ( guDebugFlags & DEBUG_PROTOCOL )
@@ -1852,7 +1871,7 @@ int gHyp_secs1_outgoing ( sSecs1 *pSecs1,
 	      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 				   "<-NAK", pSecs1->inbuf[0] ) ;
 	    /* If we are a slave, exit with an error. */
-	    if ( !gHyp_instance_isRbitSet ( pAI, (sWORD) id ) ) {
+	    if ( !pHeader->rBit ) {
 	      pSecs1->state = SECS_EXPECT_RECV_ENQ ;
 	      return COND_ERROR ;
             }
@@ -2044,15 +2063,47 @@ int gHyp_secs1_outgoing ( sSecs1 *pSecs1,
 	gotENQ = (nBytes > 1 && pSecs1->inbuf[1] == SECS_CHAR_ENQ ) ;
 
 	if ( gotENQ ) {
-	  /* ENQ came back FAST from the sender */
-  	  if ( guDebugFlags & DEBUG_PROTOCOL )
+
+	  /* ENQ came back FAST from the sender.
+	   * In this case, we are reading <ACK><ENQ> in the input buffer.
+	   * Which means we have just sent out a message and the other side
+	   * is sending us the <ACK>, but also it is sending an <ENQ> to 
+	   * tell us it wants to send us a message now.   
+	   *
+	   * This 2-byte combination often causes a bug that is 
+	   * largely undetected in the industry (imo), because the reader
+	   * fails to see this <ENQ>, and thus it fails to send an <EOT>, and
+	   * thus a T2 timeout occurs.
+	   *
+	   * HS is fast and even though it does a separate write for
+	   * the <ACK> and the subsequent <ENQ>, the TCP stack will
+	   * put these characters together and the destination may
+	   * read them together.  If the equipment side does not see
+	   * our first ENQ, then we will issue a T2 timeout waiting for
+	   * the EOT.  This is common in HS logs, and the solution would
+	   * be to put a usleep() call before any secs_event or secs_query
+	   * call.  Perhaps 100ms would be a good time.
+	   * 
+	   * In any case, this bug is evidenced by a proliferation of 
+	   * T2 errors in secs log files.
+	   * 
+	   */
+	  if ( guDebugFlags & DEBUG_PROTOCOL ) {
 	    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
-				 "<-ENQ(*)" ) ;
+				 "<-ENQ(ACK)" ) ;
+
+	    if ( !pHeader->rBit )
+	      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
+				   "ENQ contention. Relinquishing..." ) ;
+	  }
+
 	}
 
-	if ( pHeader->isReplyExpected && gotENQ ) {
+	if ( !pHeader->rBit && pHeader->isReplyExpected && gotENQ ) {
 	  
-	  /* Just get the reply now */
+	  /* We are the slave, sending a reply message, and we got an interrupt.
+	   * Accept the incoming message.
+	   */
 	  pSecs1->state = SECS_EXPECT_SEND_EOT2 ;
 	  cond = lHyp_secs1_incoming ( pSecs1, 
 					 gHyp_instance_getConcept(pAI),
@@ -2063,8 +2114,12 @@ int gHyp_secs1_outgoing ( sSecs1 *pSecs1,
 					 id,
 					 stream,
 					 function ) ;
+
+	  pSecs1->state = SECS_EXPECT_RECV_ENQ ;
+	  if ( cond < 0 ) return cond ;
 	}
 	else {
+	  /* Not a slave or Not in a reply state or not got an ENQ */
 	  if ( gotENQ ) 
 	    pSecs1->state = SECS_EXPECT_SEND_EOT2 ;
 	  else
@@ -2297,7 +2352,7 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
    * < 0  = fatal error, hangup signal
    *
    * Called from waiting for reply message or unsolicited message.
-   *    - called from gHyp_msgio_select<-gHyp_instance_read
+   *    - called from gHyp_sock_select<-gHyp_instance_read
    *    - a return value of -1 is required to trigger handlers
    *	- a return value of 0 re-invokes msgio_select to read again
    *	- a return value > 0 satisfies the read.

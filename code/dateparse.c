@@ -1200,12 +1200,12 @@ time_t gHyp_dateparse_parse( char* str )
   else if ( tm.tm_year < 70 )
     tm.tm_year += 100;
   
-  /* Determine the ansi time from our input. */
+  /* Determine the UTC value from our input. */
   t = lHyp_dateparse_tmToTime( &tm, gmtoff );
 
   /* If a zone was not specified (as is often the case), then it is implied that the zone is the
    * same as the localtime.   If daylight savings was in effect during the time just parsed, then
-   * it will change the value of 't', the true ansi time.  
+   * it will change the value of 't', the true UTC value.  
    *
    * We assume that 't' is correct.  We check for a DST adjustment by calling localtime( &t ) and 
    * then checking the 'tm struct' against what we just used to determine 't'.  If the check amount 
@@ -1217,7 +1217,7 @@ time_t gHyp_dateparse_parse( char* str )
 
     check_tmP = localtime( &t ) ;
 
-    /* Determine the ansi time from our input. */
+    /* Determine the UTC value from our input. */
     check_t = lHyp_dateparse_tmToTime( check_tmP, gmtoff ) ;
 
     /*gHyp_util_debug( "(%d) %d %d %d %d %d %d %d %d %d",

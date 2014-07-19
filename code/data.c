@@ -2138,7 +2138,7 @@ unsigned long gHyp_data_getRaw ( sData *pData, int ss, sLOGICAL recurse )
    *	- pointer to data object
    *
    *	ss				[R]
-   *	- subscriptpToken
+   *	- subscript
    *
    *	recurse			[R]
    *	- if TRUE, get value recursively

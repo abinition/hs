@@ -223,7 +223,7 @@ void gHyp_system_date ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
 
     if ( argCount > 1 ) gHyp_instance_error ( pAI,STATUS_ARGUMENT,
-	"Invalid arguments. Usage: date ( [ansitime] )" ) ;
+	"Invalid arguments. Usage: date ( [utc] )" ) ;
 
     if ( argCount == 1 ) {
       pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
@@ -233,12 +233,16 @@ void gHyp_system_date ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       ts = gsCurTime = time(NULL) ;
 
     pstm = localtime ( &ts ) ;
-    if ( !pstm ) gHyp_instance_error ( pAI,STATUS_BOUNDS,
-	"Invalid ansi time value %d", ts ) ;
+    if ( !pstm || pstm->tm_year > 138 ) {
+      gHyp_instance_warning ( pAI,STATUS_BOUNDS, "Invalid UTC value value %d", ts ) ;
+      strcpy ( dateStamp, "" ) ;
+    }
+    else {
 
-    sprintf (	dateStamp, 
+      sprintf (	dateStamp, 
 		"%04d%02d%02d", 
 		pstm->tm_year+1900, pstm->tm_mon+1, pstm->tm_mday ) ;
+    }
     pResult = gHyp_data_new ( NULL ) ;
     gHyp_data_setStr ( pResult, dateStamp ) ;
     gHyp_stack_push ( pStack, pResult ) ;
@@ -296,7 +300,7 @@ void gHyp_system_datetime ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
 
     if ( argCount > 1 ) gHyp_instance_error ( pAI,STATUS_ARGUMENT,
-	"Invalid arguments. Usage: datetime ( [ansitime] )" ) ;
+	"Invalid arguments. Usage: datetime ( [utc] )" ) ;
 
     if ( argCount == 1 ) {
       pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
@@ -306,14 +310,16 @@ void gHyp_system_datetime ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       ts = gsCurTime = time(NULL) ;
 
     pstm = localtime ( &ts ) ;
-    if ( !pstm || pstm->tm_year == 168 ) gHyp_instance_error ( pAI,STATUS_BOUNDS,
-	"Invalid ansi time value %d", ts ) ;
-
-
-    sprintf (	timeStamp, 
+    if ( !pstm || pstm->tm_year > 138 ) {
+      gHyp_instance_warning ( pAI,STATUS_BOUNDS,"Invalid UTC value value %d", ts ) ;
+      strcpy ( timeStamp, "" ) ;
+    }
+    else {
+      sprintf (	timeStamp, 
 		"%04d%02d%02d:%02d%02d%02d", 
 		pstm->tm_year+1900, pstm->tm_mon+1, pstm->tm_mday,
 		pstm->tm_hour, pstm->tm_min, pstm->tm_sec ) ;
+    }
     pResult = gHyp_data_new ( NULL ) ;
     gHyp_data_setStr ( pResult, timeStamp ) ;
     gHyp_stack_push ( pStack, pResult ) ;
@@ -370,7 +376,7 @@ void gHyp_system_asctime ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
 
     if ( argCount > 1 ) gHyp_instance_error ( pAI,STATUS_ARGUMENT,
-	"Invalid arguments. Usage: asctime ( [ansitime] )" ) ;
+	"Invalid arguments. Usage: asctime ( [utc] )" ) ;
 
     if ( argCount == 1 ) {
       pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
@@ -381,7 +387,7 @@ void gHyp_system_asctime ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
     pstm = localtime ( &ts ) ;
     if ( !pstm ) gHyp_instance_error ( pAI,STATUS_BOUNDS,
-	"Invalid ansi time value %d", ts ) ;
+	"Invalid UTC value value %d", ts ) ;
 
 
     strcpy ( timeStamp, asctime( pstm ) ) ;
@@ -984,7 +990,7 @@ void gHyp_system_time ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
 
     if ( argCount > 1 ) gHyp_instance_error ( pAI,STATUS_ARGUMENT,
-	"Invalid arguments. Usage: time ( [ansitime] )" ) ;
+	"Invalid arguments. Usage: time ( [utc] )" ) ;
 
     if ( argCount == 1 ) {
       pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
@@ -995,7 +1001,7 @@ void gHyp_system_time ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
     pstm = localtime ( &ts ) ;
     if ( !pstm ) gHyp_instance_error ( pAI,STATUS_BOUNDS,
-	"Invalid ansi time value %d", ts ) ;
+	"Invalid UTC value value %d", ts ) ;
 
     sprintf (	timeStamp, 
 		"%02d%02d%02d", 

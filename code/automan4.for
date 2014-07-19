@@ -1466,7 +1466,7 @@
 
 	file.string = fileName 
 
-	! Make sure its a valid dile
+	! Make sure its a valid file
 	if ( fil_tbl_validFile ( file.Id ) .ne. FIL__NORMAL ) then
 
 	  statusText = '% File "'//fileName//'" is not a valid file'
@@ -1495,8 +1495,12 @@
 	  select = 1
 	  do while ( .not. found .and. select .le. MAX_AUTO_FILES )
 
-	    if ( aeqSsp_autoFil_fileId(select) .eq. 0 .or.
-     &		 aeqSsp_autoFil_isFromTLOG(select) ) then
+		! We are allowed to re-use a previously used TLOG slot 
+		! because otherwise we'd run out.
+        if ( aeqSsp_autoFil_fileId(select) .eq. 0 .or.
+     &		 aeqSsp_autoFil_isFromTLOG(select) .eq. .true. ) then
+
+
 	      found = .true.
 	    else
 	      select = select + 1
@@ -1521,6 +1525,7 @@
 
 	  if ( status .ne. FIL__NORMAL ) then
 
+		 ! Re-initialize the slot so it can be used again.
 	     aeqSsp_autoFil_fileId(select) = file.id
 	     aeqSsp_autoFil_isFresh(select) = .false.
 	     aeqSsp_autoFil_isFromTLOG(select) = .false.
@@ -1544,6 +1549,7 @@
 
 	endif
 
+	! Initialize the slot.
 	aeqSsp_autoFil_fileId(select) = file.id
 	aeqSsp_autoFil_isFresh(select) = .false.
 	aeqSsp_autoFil_isFromTLOG(select) = .false.
@@ -1636,7 +1642,10 @@
 	  select = 1
 	  do while ( .not. found .and. select .le. MAX_AUTO_FILES )
 
-	    if ( aeqSsp_autoFil_fileId(select) .eq. 0 ) then
+		! We are allowed to re-use a previously used TLOG slot 
+		! because otherwise we'd run out.
+        if ( aeqSsp_autoFil_fileId(select) .eq. 0 .or.
+     &		 aeqSsp_autoFil_isFromTLOG(select) .eq. .true. ) then
 	      found = .true.
 	    else
 	      select = select + 1
@@ -1663,6 +1672,7 @@
      	  call fil_check ( fil_close ( file.id ) )
 	endif
 
+	! Clear the slot
 	aeqSsp_autoFil_fileId(select) = 0
 	aeqSsp_autoFil_isFresh(select) = .false.
 	aeqSsp_autoFil_isFromTLOG(select) = .false.
@@ -2287,9 +2297,13 @@
 
 	  if ( aeqSsp_autoFil_isFresh(select) ) then
 
+		! Fresh means the buffer contents are recent and valid
+		
 	    if ( aeqSsp_autoFil_packStart(select) .gt. 0 ) then
 
 	      ! Record has not been upacked yet. Have to do it now.
+	      ! Only TLOG records are packed.
+	      
 	      ! Move to another location.
               newSelect = 1
               found = .false.
@@ -2304,7 +2318,7 @@
 
  	      if ( found ) then
 
-	        ! Unpack
+	        ! On-demand "Unpack".  This is for TLOG records only
 		!call tut_output('DELAYED UNPACK')
 
  	        addr = %loc ( aeqSsp_autoFil_file(select).cbuffer )
@@ -2319,8 +2333,9 @@
 
 		aeqSsp_autoFil_fileId(newselect) = file.Id
 		aeqSsp_autoFil_isOpen(newselect) = .true.
-		aeqSsp_autoFil_isFromTLOG(newselect) = .true.
+		aeqSsp_autoFil_isFromTLOG(newselect) = .false.
 
+		! Clear the old slot for re-use
 		aeqSsp_autoFil_packStart(select) = 0 
 		aeqSsp_autoFil_packSize(select) = 0
 		aeqSsp_autoFil_isOpen(select) = .false.
@@ -2716,6 +2731,8 @@
           do while (	.not. found .and.
      &			 select .le. MAX_AUTO_FILES )
 
+			! We are allowed to re-use a previously used TLOG slot 
+			! because otherwise we'd run out.
             if ( aeqSsp_autoFil_fileId(select) .eq. 0 .or.
      &		 aeqSsp_autoFil_isFromTLOG(select) .eq. .true. ) then
               found = .true.
@@ -2739,7 +2756,8 @@
         aeqSsp_autoFil_packSize(select) = bufflen 
 
 	! Actually unpacking is delayed, see aeqSsp_automan_getDBrecord
-	! Move the buffer. 
+	! Just move the buffer for now, unpacking will be done when we actually
+	! need the record.  It saves a lot of CPU time when reading TLOG 
 	call gut_movebuff (	bufflen, 
      &				buffer,
      &				aeqSsp_autoFil_file(select).buffer ) 
@@ -2751,7 +2769,17 @@
 	! Update 
 	aeqSsp_autoFil_fileId(select) = recid
 	aeqSsp_autoFil_isFresh(select) = .true.
+	
+	! Mark the record as being a TLOG source.  All TLOG records
+	! are packed and we must unpack them 'on demand' to a new
+	! slot.  These temporary 'unpacked' slots must be marked
+	! as also being from tlog, because we could otherwise run
+	! out of slots if we were reading the tlog file and we 
+	! skipped past a lot of different file id's we were not
+	! interested in, but they still get a slot and would never
+	! be unpacked. 
 	aeqSsp_autoFil_isFromTLOG(select) = .true.
+	
 	aeqSsp_autoFil_isOpen(select) = .false.
 
 	return

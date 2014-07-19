@@ -2279,11 +2279,16 @@ sLOGICAL gHyp_instance_replyMessage ( sInstance *pAI, sData *pMethodData )
 					    value ) ;
 
 
-      /* Save this code:  when user undefs secondary reply, send back
-       * a SxF0.  New code: do not send anything. Instead use S9 functions.   
+      /* Old code saved here:  
+       *
+       * - when user undefs secondary reply, send back a SxF0.
+       *     
        function = 0 ;
        sprintf ( value, "S%dF0", stream ) ; 
        pVariable = gHyp_frame_createVariable ( pAI->exec.pFrame, value ) ;
+       *
+       *
+       * New code: do not send anything. Instead use S9 functions. 
       */
 
       if ( pVariable ) {
@@ -2348,11 +2353,19 @@ sLOGICAL gHyp_instance_replyMessage ( sInstance *pAI, sData *pMethodData )
 	    else if ( nBytes == 0 ) {
 	      
 	      /* ENQ contention:  execute all pending conditions. */
+	      gHyp_frame_setGlobalFlag( pAI->exec.pFrame, FRAME_GLOBAL_TRUE);
 	      do {
+		/* Setting STATE_QUERY here let's us execute the 
+		 * handler for the incoming message, which is
+		 * the gHyp_instance_handleMessageCall() function.
+		 */
 		gHyp_instance_setState ( pAI, STATE_QUERY ) ;
 	      }
 	      while ( gHyp_instance_parse ( pAI ) == COND_NORMAL ) ;
 	      
+	      /* If the STATUS variable is TRUE, then resend the SECS reply
+	       * message that was interrupted by the ENQ contention.
+	       */
 	      pData = gHyp_frame_findRootVariable(pAI->exec.pFrame,"STATUS") ;
 	      
 	      if ( guDebugFlags & DEBUG_PROTOCOL )
@@ -2379,6 +2392,7 @@ sLOGICAL gHyp_instance_replyMessage ( sInstance *pAI, sData *pMethodData )
       }
     }
     else {
+      /* Not a secs reply message */
       gHyp_concept_route ( 
 	pAI->exec.pConcept, 
 	gHyp_aimsg_unparse(pAI->msg.outgoingReply[outgoingDepth]->msg) );

@@ -864,7 +864,7 @@ int gHyp_secs2_parseSecs ( sSecs2 *pSecs2,
      *
      * CASE: initialState == SECS_EXPECT_SEND_EOT2
      *
-     *   We had just sent a message when another message another came in, 
+     *   We (a slace) had just sent a message when another message another came in, 
      *   and ENQ was in the same buffer as the final ACK. (ENQ*)
      *
      *   1. mode == MESSAGE_REPLY
@@ -875,12 +875,12 @@ int gHyp_secs2_parseSecs ( sSecs2 *pSecs2,
      *
      *      If the message is not a reply message.
      *      
-     *	    It could be a S9 or other alarm.
-     *	    SERVICE IT IMMEDIATELY.
+     *	        It could be a S9 or other alarm.
+     *	        SERVICE IT IMMEDIATELY.
      *
-     *	  else if the message is a reply message.
+     *	    else if the message is a reply message.
      *
-     *      QUEUE IT.
+     *          QUEUE IT.
      *
      * CASE: initialState == SECS_EXPECT_SEND_EOT:
      *
@@ -888,29 +888,33 @@ int gHyp_secs2_parseSecs ( sSecs2 *pSecs2,
      *   occurred and an unsolicted message arrived.
      *
      *   1. mode == MESSAGE_REPLY
+     *
      *      If sending a reply message, we must always re-send it, so
      *      we queue up the incoming messages. 
      *      (gHyp_secs1_outgoing called from gHyp_instance_replyMessage).
-     *      QUEUE IT.
+     *
+     *      QUEUE IT (return COND_NORMAL)
      *
      *   2. mode == MESSAGE_QUERY, MESSAGE_EVENT 
      * 
      *      If the message is not a reply message.
      *      
-     *	    We must not re-send the query / reply until we first service 
-     *        the incoming primary message. 
-     *        (gHyp_secs1_outgoing called from lHyp_secs_QE)
-     *        SERVICE IT IMMEDIATELY.
+     *	       We must not re-send the query / reply until we first service 
+     *         the incoming primary message. 
+     *         (gHyp_secs1_outgoing called from lHyp_secs_QE)
+     8
+     *         SERVICE IT IMMEDIATELY.
      *
-     *	  else if the message is a reply message.
+     *	    else if the message is a reply message.
      *
-     *	    QUEUE IT.
+     *	        QUEUE IT (return COND_NORMAL)
      */
 
     /* If the mssage has already been sent, complete the function */
     if ( initialState == SECS_EXPECT_SEND_EOT2 ) return COND_NORMAL ;
 
-    /* If the ENQ contention incoming message was a reply, 
+    /* If the ENQ contention incoming message interrupted a reply message
+     * before it was sent,
      * then return COND_SILENT so that the message will be re-sent.
      * (initialState == SECS_EXPECT_SEND_EOT)
      */

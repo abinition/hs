@@ -10,9 +10,9 @@
 #ifndef __HYPDEF_H_
 #define __HYPDEF_H_
 
-#define 	VERSION_HYPERSCRIPT	    "3.8.6"
-#define 	VERSION_BUILD		    "090901"
-#define 	VERSION_HYPERSCRIPT_BUILD   "3.8.6-090901"
+#define 	VERSION_HYPERSCRIPT	    "3.8.7"
+#define 	VERSION_BUILD		    "090911"
+#define 	VERSION_HYPERSCRIPT_BUILD   "3.8.7-090911"
 
 /* Modification history:
  *

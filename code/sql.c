@@ -2758,19 +2758,21 @@ void gHyp_sql_datetime ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
 
     if ( argCount > 1 ) gHyp_instance_error ( pAI,STATUS_ARGUMENT,
-	"Invalid arguments. Usage: sql_datetime ( [ansitime] )" ) ;
+	"Invalid arguments. Usage: sql_datetime ( [utc] )" ) ;
 
     if ( argCount == 0 ) {
 
       ts = gsCurTime = time(NULL) ;
       pstm = localtime ( &ts ) ;
-      if ( !pstm ) 
+      if ( !pstm || pstm->tm_year > 138 ) {
 	strcpy ( timeStamp, "NULL" ) ;
-      else
+      }
+      else {
         sprintf (timeStamp, 
 		"'%04d-%02d-%02d %02d:%02d:%02d'", 
 		pstm->tm_year+1900, pstm->tm_mon+1, pstm->tm_mday,
 		pstm->tm_hour, pstm->tm_min, pstm->tm_sec ) ;
+      }
       pResult = gHyp_data_new ( NULL ) ;
       gHyp_data_setStr ( pResult, timeStamp ) ;
       gHyp_stack_push ( pStack, pResult ) ;
@@ -2792,14 +2794,16 @@ void gHyp_sql_datetime ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       
         ts = gHyp_data_getRaw ( pValue, context, TRUE  ) ;
         pstm = localtime ( &ts ) ;
-	if ( !pstm || pstm->tm_year == 168 )
+	if ( !pstm || pstm->tm_year > 138 ) {
   	  strcpy ( timeStamp, "NULL" ) ;
-	else
+	}
+	else {
           sprintf ( timeStamp, 
 	  	  "'%04d-%02d-%02d %02d:%02d:%02d'", 
 		  pstm->tm_year+1900, pstm->tm_mon+1, pstm->tm_mday,
 		  pstm->tm_hour, pstm->tm_min, pstm->tm_sec ) ;
-        pValue2 = gHyp_data_new ( NULL ) ;
+	}
+	pValue2 = gHyp_data_new ( NULL ) ;
         gHyp_data_setStr ( pValue2, timeStamp ) ;
         gHyp_data_append ( pResult, pValue2 ) ;
       }

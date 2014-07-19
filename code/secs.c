@@ -1562,6 +1562,10 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
 
 	  /* Some condition occurred, execute all pending conditions. */
 	  do {
+	    /* Setting STATE_QUERY here let's us execute the 
+	     * handler for the incoming message, which is
+	     * the gHyp_instance_handleMessageCall() function.
+  	     */
 	    gHyp_instance_setState ( pAI, STATE_QUERY ) ;
 	  }
 	  while ( gHyp_instance_parse ( pAI ) == COND_NORMAL ) ;

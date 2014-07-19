@@ -713,7 +713,7 @@ static int lHyp_promis_parseRecord ( sData *pTV,
         else
           for ( j=0; j<fieldSize; j++ ) endian.x.b[j] = *pBuf++ ;
 	
-	/* Ansi time for year 2000 == PROMIS "0" time */
+	/* UTC value for year 2000 == PROMIS "0" time */
 	ts = endian.x.sl + PROMIS_DATE_OFFSET ;
 	pstm = localtime ( &ts ) ;
 	ts = ts - pstm->tm_gmtoff ;

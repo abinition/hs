@@ -474,6 +474,7 @@ char* gHyp_util_timeStamp ( time_t timeStamp )
   gettimeofday ( &tv, &tz ) ;
   */ 
   pstm = localtime ( &timeStamp ) ;
+
   sprintf (     gzTimeStamp, 
                 "%04d%02d%02d:%02d%02d%02d", 
                 pstm->tm_year+1900, pstm->tm_mon+1, pstm->tm_mday,
@@ -2256,29 +2257,29 @@ int gHyp_util_unparseString ( char *pDstStr,
 
       /* Check for specialChars */
       if ( c != '\0' && strchr ( specialChars, c ) != NULL ) {
-        if ( pDst+2 > pEndDst ) break ;
+	if ( pDst+2 > pEndDst ) break ;
         *pDst++ = '\\' ;
         *pDst++ = c ;
       } 
       else if ( c <= 0 || (!isprint ( c ) && !isspace ( c )) ) {
 
-        if ( pDst+1 > pEndDst ) break ;
-        *pDst++ = '\\' ;
-
-        if ( isForSQL && c < 0 ) {
+        if ( isForSQL ) {
 
 #ifdef AS_SQL
 
 #ifdef AS_PGSQL
 
           /* DEC MCS to Unicode */
+          if ( pDst+1 > pEndDst ) break ;
+          *pDst++ = '\\' ;
+
           uc = c ;
           if ( uc >= 128 )
             uc &= ~64 ;
           else
             uc = 191 ;
-          if ( pDst+7 > pEndDst ) break ;
 
+          if ( pDst+7 > pEndDst ) break ;
           pDst += sprintf ( pDst, "%03o", 195 ) ;
           *pDst++ = '\\' ;
           pDst += sprintf ( pDst, "%03o", uc ) ;
@@ -2295,7 +2296,8 @@ int gHyp_util_unparseString ( char *pDstStr,
 	else {
 
 	  /* Not for SQL or ordinary control chars */
-	  if ( pDst+3 > pEndDst ) break ;
+          if ( pDst+4 > pEndDst ) break ;
+          *pDst++ = '\\' ;
 	  uc = c ;
 	  pDst += sprintf ( pDst, "%03o", uc ) ;
 
