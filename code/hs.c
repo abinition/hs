@@ -15,6 +15,9 @@
  * Modifications:
  *
  * $Log: hs.c,v $
+ * Revision 1.48  2010-03-05 06:09:28  bergsma
+ * Add -u option and AUTOHOST environment variable.
+ *
  * Revision 1.47  2009-08-19 14:29:56  bergsma
  * Need TM after Abintion
  *
@@ -424,6 +427,7 @@ JNIEXPORT jstring JNICALL Java_HyperScript2_hs(JNIEnv *env, jobject obj, jstring
     if ( !gHyp_concept_init ( gpsConcept,
 			      self,
 			      "", // No router "service"
+			      NULL, // Default hostname
 			      debugMask,
 			      MAX_EXPRESSION )) {
 
@@ -776,7 +780,7 @@ int main ( int argc, char * argv[] )
    *    0
    */
 
-#define NUM_OPTIONS 18
+#define NUM_OPTIONS 19
 
   char *usage[NUM_OPTIONS] =
   {
@@ -793,6 +797,7 @@ int main ( int argc, char * argv[] )
     "       -r                     (ROOT mode)\n",
     "       -s stream              (input from 'stream' instead of stdin)\n",
     "       -t [instance#]object   (set target name of program)\n",
+    "       -u hostname            (set hostname)\n",
     "       -v                     (echo input stream)\n",
     "       -w                     (ward fileio functions\n",
     "       -x                     (double expression size)\n",
@@ -843,7 +848,8 @@ int main ( int argc, char * argv[] )
     service[OBJECT_SIZE+1],
     method[10][METHOD_SIZE+1],
     program[MAX_PATH_SIZE+1],
-    stream[MAX_INPUT_LENGTH+1] ;
+    stream[MAX_INPUT_LENGTH+1],
+    localHost[MAX_PATH_SIZE+1] ;
 
 #ifndef _WINDOWS_
   char
@@ -866,13 +872,14 @@ int main ( int argc, char * argv[] )
   m = 0 ;       /* Index into method array */
   program[0] = '\0' ;
   service[0] = '\0' ;
+  localHost[0] = '\0' ;
   gzLogName[0] = '\0' ;
   stream[0] = '\0' ;
   debugMask = 0 ;
   runFlags = 0 ;
      
   /* Get command line arguments and set flags, options */
-  while ((c = gHyp_util_getopt ( argc, argv,"cd:e:f:ghil:n:qrs:t:vwxy")) != EOF) {
+  while ((c = gHyp_util_getopt ( argc, argv,"cd:e:f:ghil:n:qrs:t:u:vwxy")) != EOF) {
   
     switch ( c ) {
       
@@ -978,6 +985,12 @@ int main ( int argc, char * argv[] )
       target[n] = '\0' ;
       break ;   
 
+    case 'u' :
+      n = MIN ( strlen ( gzOptarg ), TARGET_SIZE ) ;
+      strncpy ( localHost, gzOptarg, n ) ;
+      localHost[n] = '\0' ;
+      break ;   
+
     case 'v' :
       verify = TRUE ;
       runFlags |= RUN_VERIFY ;
@@ -1017,7 +1030,7 @@ int main ( int argc, char * argv[] )
 
   if ( debugCGI ) {
 
-    gHyp_util_output("Content-type: text/plain\n\n");
+    gHyp_util_output("Content-Type: text/plain\n\n");
 
     for ( i=0; i<argc; i++ ) 
       gHyp_util_logInfo ( "argv[%d] = %s", i, argv[i] ) ;
@@ -1081,6 +1094,7 @@ int main ( int argc, char * argv[] )
   if ( !gHyp_concept_init ( gpsConcept, 
                             target,
                             service,
+			    localHost,
                             debugMask,
                             maxExprSize )) return 1 ;
 

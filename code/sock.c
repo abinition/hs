@@ -11,6 +11,23 @@
  * Modifications:
  *
  *	$Log: sock.c,v $
+ *	Revision 1.104  2010-07-05 16:04:55  bergsma
+ *	Comment
+ *	
+ *	Revision 1.103  2010-03-28 04:21:59  bergsma
+ *	Change the way gHyp_instance_handleCondition handles signals.
+ *	
+ *	Revision 1.102  2010-01-08 02:44:57  bergsma
+ *	Added ssl_md5(), enhanced ssl_digest.
+ *	Fixed urldecode, missing ":"
+ *	Enabled object calls, ie:  text.strtok( ) and the like...
+ *	
+ *	Revision 1.101  2009-12-24 15:56:55  bergsma
+ *	More fixes for handling form data via HTTP
+ *	
+ *	Revision 1.100  2009-12-19 20:41:23  bergsma
+ *	Fix problem where OVERLAPPED I/O uses different buffers.....
+ *	
  *	Revision 1.99  2009-07-23 16:16:47  bergsma
  *	Comments
  *	
@@ -466,6 +483,7 @@ typedef long    fd_set ;
 #include <openssl/evp.h>
 #include <openssl/x509.h>
 #include <openssl/pem.h>
+#include <openssl/md5.h>
 
 
 #endif
@@ -851,7 +869,8 @@ static int lHyp_sock_intHandler ( int signo )
   }
 
   if ( giJmpEnabled && giJmpLevel >= 0 ) {
-    gHyp_util_debug("Longjump outa here to %p",gsJmpStack[giJmpLevel] );
+    gHyp_util_debug("Longjump outa here to level: %d, addr: %p",
+	giJmpLevel, gsJmpStack[giJmpLevel] );
     longjmp ( gsJmpStack[giJmpLevel], COND_NORMAL ) ;
   }
 #endif
@@ -3022,7 +3041,7 @@ sLOGICAL gHyp_sock_setSSLstate ( sSSL *pSSL, sData *pSSLdata, sSSL *pSSLORIG)
   return TRUE ;
 }
 
-void gHyp_sock_digest ( char *text, char *text2, char *digest ) 
+void gHyp_sock_digest ( char *text, char *text2, char *digest, char* digestType ) 
 {
   
   EVP_MD_CTX 
@@ -3040,10 +3059,11 @@ void gHyp_sock_digest ( char *text, char *text2, char *digest )
 
   OpenSSL_add_all_digests();
 
-  md = EVP_get_digestbyname("SHA1");
+  /* By default, the digest will be "SHA1" */
+  md = EVP_get_digestbyname(digestType);
 
   if(!md) {
-    gHyp_util_logError ( "Unknown message digest SHA1");
+    gHyp_util_logError ( "Unknown message digest %s",digestType);
     return ;     
   }
 
@@ -3064,7 +3084,24 @@ void gHyp_sock_digest ( char *text, char *text2, char *digest )
   return ;
 }
 
+void gHyp_sock_md5( char *text, int len, char *digest )
+{
+  EVP_MD_CTX mdctx;
+  unsigned char md_value[EVP_MAX_MD_SIZE];
+  unsigned int md_len;
+  int i;
 
+  EVP_DigestInit(&mdctx, EVP_md5());
+  EVP_DigestUpdate(&mdctx, text, (size_t) len);
+  EVP_DigestFinal_ex(&mdctx, md_value, &md_len);
+  EVP_MD_CTX_cleanup(&mdctx);
+
+  for(i = 0; i < (int)md_len; i++){
+    sprintf ( digest+i*2, "%02x", md_value[i] );
+  }
+  digest[md_len*2] = '\0' ;
+
+}
 
 
 sLOGICAL gHyp_sock_ctxCApath ( void *ctx, char *CApath ) 
@@ -3261,7 +3298,7 @@ static int lHyp_sock_read ( SOCKET s,
 
     switch ( channelType ) {
 
-#if defined ( AS_WINDOWS ) 
+#if defined ( AS_WINDOWS )
 
     case SOCKET_TCP :
 
@@ -3311,12 +3348,12 @@ static int lHyp_sock_read ( SOCKET s,
       
       if ( channelType == SOCKET_SERIAL && timeout != 0 ) {
 
-        /*gHyp_util_logInfo("Setting comm timeouts for socket %d at %d msecs",s,abs(timeout));*/
+        /*gHyp_util_debug("Setting comm timeouts for socket %d at %d msecs",s,abs(timeout));*/
 
         /* Retrieve the time-out parameters for all read/write operations on the port. */ 
         GetCommTimeouts ( (HANDLE)s, &CommTimeouts);
     
-        /* Change the COMMTIMEOUTS structure settings.*/
+        /* Change the COMMTIMEOUTS structure settings */
         CommTimeouts.ReadIntervalTimeout = 100 ;  
         CommTimeouts.ReadTotalTimeoutMultiplier = 0 ;  
         CommTimeouts.ReadTotalTimeoutConstant = abs ( timeout ) ;    
@@ -3330,7 +3367,7 @@ static int lHyp_sock_read ( SOCKET s,
         }
       }
 
-      /*gHyp_util_debug("Reading from socket %d, timeout=%d",s,timeout) ;*/
+      /*gHyp_util_debug("Reading from socket %d, address %x, timeout=%d",s,pMsgOff,timeout) ;*/
       status = ReadFile( (HANDLE) s, 
                          pMsgOff, 
                          maxBytes, 
@@ -3582,7 +3619,7 @@ static int lHyp_sock_read ( SOCKET s,
 
         if ( GetOverlappedResult( (HANDLE) s, (LPOVERLAPPED) pOverlapped, pNbytes, FALSE ) ) {
           nBytes = *pNbytes ;
-          /*gHyp_util_debug("Got %d bytes from overlapped I/O on socket %d",nBytes,s);*/
+          /*gHyp_util_debug("Got %d bytes from overlapped I/O on socket %d at %x",nBytes,s,pMsgOff);*/
 	  ResetEvent ( pOverlapped->hEvent ) ;
  	  pOverlapped->Internal = STATUS_READY ;
         }
@@ -3724,6 +3761,7 @@ static int lHyp_sock_read ( SOCKET s,
   
   /* Data received, null terminate the message. */
   pMsgOff[nBytes] = '\0' ;
+  /*gHyp_util_debug("[%s]",pMsgOff);*/
   return nBytes ;
 }
 
@@ -4843,7 +4881,7 @@ static sChannel* lHyp_sock_getMBOXchannel ( char *object,
 			      alreadyExists ) ) != INVALID_HANDLE_VALUE ) {	
   
     pChannel = gHyp_channel_new ( object,
-                                  targetId,
+                                  path,
                                   (SOCKET_FIFO | PROTOCOL_AI),
                                   s ) ;
 
@@ -4901,7 +4939,7 @@ static sChannel* lHyp_sock_getFIFOchannel ( char *object,
 			      alreadyExists ) ) != INVALID_HANDLE_VALUE ) {
   
     pChannel = gHyp_channel_new ( object,
-                                  targetId,
+                                  path,
                                   (SOCKET_FIFO | PROTOCOL_AI),
                                   s ) ;
 
@@ -4967,7 +5005,7 @@ static sChannel* lHyp_sock_getMSLOTchannel ( char *object,
                              alreadyExists ) ) != INVALID_HANDLE_VALUE ) {
   
     pChannel = gHyp_channel_new ( object,
-                                  targetId,
+                                  path,
                                   (SOCKET_FIFO | PROTOCOL_AI),
                                   (SOCKET) s ) ;
 
@@ -6636,7 +6674,7 @@ static void lHyp_sock_select_checkLog()
 HANDLE gHyp_sock_createEvent ( )
 {
 #ifdef AS_WINDOWS
-  return CreateEvent ( 0, TRUE, FALSE, 0 ) ;
+  return CreateEvent ( NULL, TRUE, FALSE, NULL ) ;
 #else
   return INVALID_HANDLE_VALUE ;
 #endif
@@ -7174,7 +7212,7 @@ static int lHyp_sock_select_read_objects ( sConcept *pConcept, sData *pSockets )
 
         if ( newSocket == INVALID_SOCKET ) return COND_SILENT ; /*COND_ERROR ;*/
 
-	/* NOTE HERE. the socket that is assigned as the "parent" is
+	/* NOTE HERE. the socket that is assigned as the "parent" in gHyp_secs1_new is
 	 * not the UNIX socket we just got the recvmsg() from, rather it is
 	 * the original UNIX listen socket. (We don't care about the intermediary, its just a means
 	 * to get the passed socket via sendmsg/recvmsg)..

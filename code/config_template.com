@@ -5,6 +5,9 @@ $ !
 $ ! Modifications:
 $ !
 $ ! 	$Log: config_template.com,v $
+$ ! 	Revision 1.16  2010-03-05 06:12:25  bergsma
+$ ! 	Typo on list_spool
+$ ! 	
 $ ! 	Revision 1.15  2009-11-17 16:07:01  bergsma
 $ ! 	Better integration with AUTOSQLSERVER2
 $ ! 	
@@ -100,7 +103,7 @@ $ list_router   = "/''defaultRouter'/''defaultRouter'/''defaultRouter'/"
 $
 $ ! 11. AutoSpool directory.
 $ defaultSpool   = "''f$trnlnm(""AEQ_SSP"")'" - "]" + ".SPOOL]"  
-$ list_Spool     = "/''defaultSpool'/''defaultSpool'/''defaultSpool'/"
+$ list_spool     = "/''defaultSpool'/''defaultSpool'/''defaultSpool'/"
 $
 $ ! 12. AutoBin directory.
 $ defaultBin   = "''f$trnlnm(""AEQ_SSP"")'" 

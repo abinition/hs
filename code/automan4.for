@@ -26,6 +26,21 @@
 ! Modifications:
 !
 ! $Log: automan4.for,v $
+! Revision 1.25  2010-05-26 22:38:52  bergsma
+! Typo
+!
+! Revision 1.24  2010-05-26 21:24:26  bergsma
+! Must initialize special "D" tlog records that have no buffer.
+!
+! Revision 1.23  2010-04-08 21:49:15  bergsma
+! Args reversed in gut_movebuff
+!
+! Revision 1.22  2010-04-08 16:34:08  bergsma
+! Remove debug statements
+!
+! Revision 1.21  2010-04-08 16:24:31  bergsma
+! Recordid == "D" special handling, fix 2, initialize buffer to clear garbage.
+!
 ! Revision 1.20  2009-09-21 05:16:17  bergsma
 ! Error with use of aeqSsp_autofil_isFromTLOG
 !
@@ -2320,22 +2335,40 @@
 	      enddo
 
  	      if ( found ) then
-
+ 	      
 	        ! On-demand "Unpack".  This is for TLOG records only
-		!call tut_output('DELAYED UNPACK')
+		!!!call tut_output('DELAYED UNPACK')
+		
+		if ( aeqSsp_autoFil_packSize(select) .le. aeqSsp_autoFil_packStart(select) ) then
 
- 	        addr = %loc ( aeqSsp_autoFil_file(select).cbuffer )
-
-                call Fil_PckUnp_UnPack( 
+                  ! There's nothing to unpack.  
+                  ! Simply initialize the buffer and move in the contents.
+                  call Fil_BufInit( file.Id , aeqSsp_autoFil_file(newselect).buffer )
+		  !!call tut_output('Buffer initialized')              
+		  call gut_movebuff (	aeqSsp_autoFil_packSize(select), 
+     &				        aeqSsp_autoFil_file(select).buffer,
+     &				        aeqSsp_autoFil_file(newselect).buffer )
+		
+		
+ 	        else 
+ 	        
+ 	          addr = %loc ( aeqSsp_autoFil_file(select).cbuffer )
+ 	        
+		  !!!call tut_output('Unpacking TLOG buffer')
+		 	        
+                  ! Unpack only up to bufLen
+                  call Fil_PckUnp_UnPack( 
      &			%val(addr),
      &			aeqSsp_autoFil_packSize(select),
      &			aeqSsp_autoFil_packStart(select),
      &			aeqSsp_autoFil_file(newSelect).buffer,
      &			MAX_RECORDSIZE,
      &			aeqSsp_autoFil_packSize(select) )
-
+     
+                endif
+                
 		aeqSsp_autoFil_fileId(newselect) = file.Id
-		aeqSsp_autoFil_isOpen(newselect) = .true.
+		aeqSsp_autoFil_isOpen(newselect) = .false.
 		aeqSsp_autoFil_isFromTLOG(newselect) = .false.
 
 		! Clear the old slot for re-use
@@ -2761,14 +2794,22 @@
 	! Actually unpacking is delayed, see aeqSsp_automan_getDBrecord
 	! Just move the buffer for now, unpacking will be done when we actually
 	! need the record.  It saves a lot of CPU time when reading TLOG 
-	call gut_movebuff (	bufflen, 
+
+	if ( packStart .eq. 0 ) then
+	   ! Record is not packed.
+	   ! If this is a special re-constructed "D" record from tlog,
+	   ! then we should initialize the buffer now.
+	   ! Otherwise, it is initialized later.
+           call Fil_BufInit( file.Id , aeqSsp_autoFil_file(select).buffer )
+        endif
+        
+        ! Move in the buffer.
+        call gut_movebuff (	bufflen, 
      &				buffer,
      &				aeqSsp_autoFil_file(select).buffer ) 
 
-	!if ( packStart .gt. 0 ) then
-	!  call tut_output('RECORD is PACKED')
-	!endif
 
+        
 	! Update 
 	aeqSsp_autoFil_fileId(select) = recid
 	aeqSsp_autoFil_isFresh(select) = .true.

@@ -10,6 +10,14 @@
 /* Modifications:
  *
  * $Log: env.c,v $
+ * Revision 1.43  2010-01-28 04:25:48  bergsma
+ * Bug with data_detach, detach first, prevent accidental erasure of value
+ *
+ * Revision 1.42  2010-01-08 02:44:57  bergsma
+ * Added ssl_md5(), enhanced ssl_digest.
+ * Fixed urldecode, missing ":"
+ * Enabled object calls, ie:  text.strtok( ) and the like...
+ *
  * Revision 1.41  2009-12-08 21:00:15  bergsma
  * Comments added
  *
@@ -3225,8 +3233,8 @@ void gHyp_env_remove ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
  	  if ( pVariable ) {
 
 	    /* Variable already exists. */
- 	    gHyp_data_deleteValues ( pVariable ) ;
 	    gHyp_data_detach ( pResult ) ;
+ 	    gHyp_data_deleteValues ( pVariable ) ;
 	    gHyp_data_moveValues ( pVariable, pResult ) ;
 	    gHyp_data_delete ( pResult ) ;
 	    pResult = NULL ;
@@ -3241,6 +3249,7 @@ void gHyp_env_remove ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 	    gHyp_instance_warning ( pAI, STATUS_INVALID, 
 				   "Cannot create variable from '%s'",
 				    gHyp_data_getLabel ( pResult ) ) ;
+	    gHyp_data_detach ( pResult ) ;
 	  }
 	}
         else {
@@ -3340,8 +3349,8 @@ void gHyp_env_chop ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
  	  if ( pVariable ) {
 
 	    /* Variable already exists. */
-	    gHyp_data_deleteValues ( pVariable ) ;
 	    gHyp_data_detach ( pResult ) ;
+	    gHyp_data_deleteValues ( pVariable ) ;
 	    gHyp_data_moveValues ( pVariable, pResult ) ;
 	    gHyp_data_delete ( pResult ) ;
 	    pResult = NULL ;
@@ -3353,6 +3362,7 @@ void gHyp_env_chop ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 	    pResult = NULL ;
  	  }
 	  else {
+	    gHyp_data_detach ( pResult ) ;
 	    gHyp_instance_warning ( pAI, STATUS_INVALID, 
 				   "Cannot create variable from '%s'",
 				    gHyp_data_getLabel ( pResult ) ) ;
@@ -3470,8 +3480,8 @@ void gHyp_env_detach ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 	    }
 	    else {
 	      /* Move new values into existing variable */
-	      gHyp_data_deleteValues ( pVariable ) ;
 	      gHyp_data_detach ( pResult ) ;
+	      gHyp_data_deleteValues ( pVariable ) ;
 	      gHyp_data_moveValues ( pVariable, pResult ) ;
 	      gHyp_data_delete ( pResult ) ;
 	      pResult = NULL ;
@@ -3485,6 +3495,7 @@ void gHyp_env_detach ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 	  }
 	}
       	else {
+	  gHyp_data_detach ( pResult ) ;
 	  gHyp_instance_warning ( pAI, STATUS_INVALID, "Cannot create variable from '%s'",
 			      gHyp_data_getLabel ( pResult ) ) ;
 	}

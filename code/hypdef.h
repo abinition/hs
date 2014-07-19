@@ -10,13 +10,60 @@
 #ifndef __HYPDEF_H_
 #define __HYPDEF_H_
 
-#define 	VERSION_HYPERSCRIPT	    "3.9.0"
-#define 	VERSION_BUILD		    "091214"
-#define 	VERSION_HYPERSCRIPT_BUILD   "3.9.0-091214"
+#define 	VERSION_HYPERSCRIPT	    "3.9.1g"
+#define 	VERSION_BUILD		    "100701"
+#define 	VERSION_HYPERSCRIPT_BUILD   "3.9.1g-100701"
 
 /* Modification history:
  *
  * $Log: hypdef.h,v $
+ * Revision 1.114  2010-07-05 16:01:01  bergsma
+ * Build rev
+ *
+ * Revision 1.113  2010-06-26 06:36:42  bergsma
+ * Build rev,
+ *
+ * Revision 1.112  2010-05-27 03:58:46  bergsma
+ * New build.
+ *
+ * Revision 1.111  2010-04-13 21:09:05  bergsma
+ * New Build 100413
+ *
+ * Revision 1.110  2010-04-08 16:24:31  bergsma
+ * Recordid == "D" special handling, fix 2, initialize buffer to clear garbage.
+ *
+ * Revision 1.109  2010-04-06 14:10:44  bergsma
+ * Handle PROMIS TLOG "D" records.
+ *
+ * Revision 1.108  2010-03-17 08:18:28  bergsma
+ * Version increase to 3.9.1
+ *
+ * Revision 1.107  2010-03-05 06:18:00  bergsma
+ * New Build 100223
+ *
+ * Revision 1.106  2010-02-01 22:27:18  bergsma
+ * Builld 100130, HS 3.9.0
+ *
+ * Revision 1.105  2010-01-28 04:26:34  bergsma
+ * Build 3.9 1/25/2010
+ *
+ * Revision 1.104  2010-01-16 18:34:11  bergsma
+ * Increase input stream for XML.
+ *
+ * Revision 1.103  2010-01-15 08:31:32  bergsma
+ * Increase XML input buffers for parsing
+ *
+ * Revision 1.102  2010-01-15 08:30:42  bergsma
+ * Increase XML input buffers for parsing
+ *
+ * Revision 1.101  2010-01-08 02:44:57  bergsma
+ * Added ssl_md5(), enhanced ssl_digest.
+ * Fixed urldecode, missing ":"
+ * Enabled object calls, ie:  text.strtok( ) and the like...
+ *
+ * Revision 1.100  2009-12-24 15:56:55  bergsma
+ * More fixes for handling form data via HTTP
+ *
  * Revision 1.99  2009-12-14 16:16:25  bergsma
  * V 3.9.0  Build 091214 : WWW Production Version.  XML <--> HS
  *
@@ -382,12 +429,12 @@
 #define		FRAME_DEPTH_NULL	MAX_FRAME_DEPTH+1
 #define		MAX_SIGNALS		8
 #define		MAX_PROMIS_RESULT_SIZE	256
-#define		MAX_REPLY_DEPTH		32
-#define		MAX_QUEUE_DEPTH		32 
+#define		MAX_REPLY_DEPTH		64
+#define		MAX_QUEUE_DEPTH		64 
 #define		MAX_HASH_TABLE_SIZE	257
 #define		HEARTBEAT_INTERVAL	60 * 10   /* 10 minutes */
 #define		IDLE_INTERVAL		180	  /* 3 min */
-#define		CONNECT_TIMEOUT		10	  /* 10 seconds */
+#define		CONNECT_TIMEOUT		5	  /* 5 seconds */
 
 
 #ifdef AS_UNIX
@@ -406,7 +453,7 @@
 #define		MAX_BUFFER_FIFO		5120
 
 /* MAX_MESSAGE_SIZE is the maximum allowed number of bytes that can
- * be read from the network socket, fifo, or mailbox channel.
+ * be read at any time from the network socket, fifo, or mailbox channel.
  */
 #define		MAX_MESSAGE_SIZE	5120
 
@@ -444,7 +491,22 @@
 
 #define 	FIELD_SIZE  		20
 #define 	DEFAULT_DELIMITER 	'|'
-#define		OVERFLOW_READ_SIZE	16*1024	
+
+// OVERFLOW READ SIZE is used for SSL, somewhere it is written
+// that an SSL operation needs at least 16K in overflow for the
+// engines I/O buffers.
+#define		OVERFLOW_READ_SIZE	16*1024
+
+// STREAM READ SIZE is used for parsing XML streams or other
+// places where the entire chuck of data that must be assimulated
+// comes from a buffer that is with the compiler value for SIZE_MAX,
+// which doesn't have to be over 64K.  Therefore, wince STREAM_READ_SIZE
+// is often specified as STREAM_READ_SIZE*4, that is 16*1K=64K
+
+// that an SSL operation needs at least 16K in overflow for the
+// engines I/O buffers.
+#define		STREAM_READ_SIZE	16*1024
+
 #define		CRC_BUFLEN (1 << 16)
 #define     MAX_TAG_INDEX_SIZE 65535 /* a.k.a. curly-bracket-index size */
 #define     TAG_INDEX_BUFLEN 5+2 /* length of MAX_TAG_INDEX_SIZE plus '{' and '}' */ 
@@ -667,6 +729,7 @@
 #define 	PRECEDENCE_INPUT_ASSIGN	7	/* 	=		*/
 #define 	PRECEDENCE_CONDITION	8	/* 	?		*/
 #define 	PRECEDENCE_EVAL		9	/* 	:		*/
+/*#define 	PRECEDENCE_ANDOR_OWL	10	* 	and or		*/
 #define 	PRECEDENCE_ANDOR	10	/* 	&& ||		*/
 #define 	PRECEDENCE_BITOR	11	/* 	| 		*/
 #define 	PRECEDENCE_BITXOR	12	/* 	^ 		*/
@@ -694,15 +757,17 @@
 #define 	STATEMENT_LOOP		2
 #define 	STATEMENT_DEREFERENCE	3
 
-/* Frame global and loop-control flags */
+/* Frame global, local, and loop-control flags */
 #define		FRAME_GLOBAL_TRUE	1
 #define		FRAME_GLOBAL_HANDLER	2
 #define		FRAME_GLOBAL_DEREFERENCE 4
 #define		FRAME_GLOBAL_DOTCREATE	8
 #define		FRAME_GLOBAL_MESSAGE	16
 #define		FRAME_GLOBAL_MSGARGS	32
+
 #define		FRAME_LOCAL_DATA	1
 #define		FRAME_LOCAL_GLOBAL	2
+
 #define		FRAME_LOOP_WHILE	1
 #define		FRAME_LOOP_DO		2
 #define		FRAME_LOOP_FOR		4
@@ -721,6 +786,7 @@
 #define		PARSE_METHOD_DEPRECATED	128
 #define		PARSE_SUBVARIABLE	256
 #define		PARSE_LIST_CALL		512
+#define         PARSE_OBJECT_CALL	1024
 
 /* State transition parameters for Hyperscript grammer */
 #define		G_PROGRAM_STMT		0
@@ -976,7 +1042,7 @@
 #define		SECS_OUTGOING		1
 #define		SECS_MINIMUM_HSMS_PORT	4000
  
-#define		MAX_HSMS_MESSAGE_SIZE	32768
+#define		MAX_HSMS_MESSAGE_SIZE	40000 /*32768*/
 #define		MAX_HSMS_BUFFER_SIZE	MAX_BUFFER_SIZE
 #define		NULL_DEVICEID		0xffff
 

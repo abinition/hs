@@ -3,6 +3,9 @@
  * Modifications:
  *
  * $Log: auto.h,v $
+ * Revision 1.28  2010-03-05 06:08:46  bergsma
+ * Add -u option and AUTOHOST environment variable.
+ *
  * Revision 1.27  2009-06-12 05:00:49  bergsma
  * HS 385 Final Checkin and TAG
  *
@@ -196,6 +199,7 @@ extern sInstance *gpAImain  ;	/* Main HyperScript instance */
 
 /* Environment variables */
 extern char    		gzAUTOROUTER[OBJECT_SIZE+1];	/* AUTOROUTER root name "router" */
+extern char    		gzAUTOHOST[OBJECT_SIZE+1];	/* AUTOHOST root name "hostname" */
 extern char    		gzAUTOFIFO[MAX_PATH_SIZE+1];	/* AUTOFIFO path */
 extern char    		gzAUTOBIN[MAX_PATH_SIZE+1];	/* AUTOBIN path */
 extern char    		gzAUTORUN[MAX_PATH_SIZE+1];	/* AUTORUN path */

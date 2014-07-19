@@ -11,6 +11,15 @@
  * Modifications:
  *
  *	$Log: instance.c,v $
+ *	Revision 1.71  2010-07-05 16:01:51  bergsma
+ *	no message
+ *	
+ *	Revision 1.70  2010-03-28 04:21:59  bergsma
+ *	Change the way gHyp_instance_handleCondition handles signals.
+ *	
+ *	Revision 1.69  2010-03-05 06:15:03  bergsma
+ *	When consuming reply message, STATUS variable was not properly set.
+ *	
  *	Revision 1.68  2009-12-08 20:46:21  bergsma
  *	When saving the STATUS value of a reply msg, put its value on the stack
  *	directly and do not use a reference to root STATUS.
@@ -1262,7 +1271,7 @@ void  gHyp_instance_signalConnect ( sInstance *pAI, int sigarg, int sigarg2, int
   int n = pAI->signal.numCon ;
   if ( n < MAX_SIGNALS ) {
     pAI->signal.uCONNECT = 1 ;
-    pAI->signal.conArg[n] = sigarg ;
+    pAI->signal.conArg[n]  = sigarg ;
     pAI->signal.conArg2[n] = sigarg2 ;
     pAI->signal.conArg3[n] = sigarg3 ;
     pAI->signal.numCon++ ;
@@ -4521,8 +4530,10 @@ int gHyp_instance_parse ( sInstance * pAI )
   int
     condition = COND_SILENT ;
   
-  while ( ( pAI->exec.state == STATE_PARSE && !gHyp_instance_isEND (pAI) ) ||
-	  gHyp_instance_handleCondition(pAI) ) {
+  while ( ( pAI->exec.state == STATE_PARSE && 
+	    !gHyp_instance_isEND (pAI) ) ||
+	  ( gHyp_frame_testGlobalFlag ( pAI->exec.pFrame, FRAME_GLOBAL_TRUE ) && 
+	    gHyp_instance_handleCondition(pAI) ) ) {
 
     /* Get next instruction index and code */
     hypIndex = gHyp_frame_getHypIndex ( pAI->exec.pFrame ) ;
@@ -4577,10 +4588,11 @@ sLOGICAL gHyp_instance_isEND ( sInstance *pAI )
 
 sLOGICAL gHyp_instance_handleCondition ( sInstance * pAI )
 {
-  if ( ! gHyp_frame_testGlobalFlag ( pAI->exec.pFrame, FRAME_GLOBAL_TRUE ) )
+  /*if ( ! gHyp_frame_testGlobalFlag ( pAI->exec.pFrame, FRAME_GLOBAL_TRUE ) )
     return FALSE ;
-  else 
-    return (   	lHyp_instance_handleMessageInt  ( pAI ) ||
+  else
+  */
+  return (   	lHyp_instance_handleMessageInt  ( pAI ) ||
 		lHyp_instance_handleMethod      ( pAI ) ||
 		lHyp_instance_handleMessageCall ( pAI ) ||
 		lHyp_instance_handleError       ( pAI ) ||

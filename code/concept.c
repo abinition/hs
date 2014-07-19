@@ -9,6 +9,18 @@
 /* Modifications: 
  *
  * $Log: concept.c,v $
+ * Revision 1.71  2010-07-05 16:01:31  bergsma
+ * Close reader/writer after moveto and renameto
+ *
+ * Revision 1.70  2010-06-26 06:35:35  bergsma
+ * Add PID to startup line
+ *
+ * Revision 1.69  2010-03-05 06:08:46  bergsma
+ * Add -u option and AUTOHOST environment variable.
+ *
+ * Revision 1.68  2010-01-28 04:26:34  bergsma
+ * Build 3.9 1/25/2010
+ *
  * Revision 1.67  2009-08-24 20:41:52  bergsma
  * _DEBUG
  *
@@ -287,6 +299,7 @@ sInstance	*gpAImain ;	/* Main HyperScript instance */
 char            gzAUTOROUTER[OBJECT_SIZE+1];    /* AUTOROUTER name, i.e. "router" */
 char            gzHOME[MAX_PATH_SIZE+1];  /* DOCUMENT_ROOT path */
 char            gzAUTOFIFO[MAX_PATH_SIZE+1];    /* AUTOFIFO path */
+char            gzAUTOHOST[MAX_PATH_SIZE+1];     /* AUTOHOST name */
 char            gzAUTORUN[MAX_PATH_SIZE+1];     /* AUTORUN path */
 char            gzAUTOBIN[MAX_PATH_SIZE+1];     /* AUTOBIN path */
 char            gzAUTOLOG[MAX_PATH_SIZE+1];     /* AUTOLOG path */
@@ -523,7 +536,7 @@ static sLOGICAL lHyp_concept_initVariables ()
     strcpy ( gzHOME, pVar ) ;
   }
   else {
-    gHyp_util_logWarning ( "Environment variable or HOME or DOCUMENT_ROOT was not defined" ) ;
+    gHyp_util_logWarning ( "Environment variable HOME or DOCUMENT_ROOT was not defined" ) ;
     gHyp_util_logInfo ( "Defaulting to ''" ) ;
   }
 
@@ -550,6 +563,23 @@ static sLOGICAL lHyp_concept_initVariables ()
     gHyp_util_logWarning ( "Environment variable AUTOROUTER was not defined" ) ;
     gHyp_util_logInfo ( "Defaulting to router" ) ;
     strcpy ( gzAUTOROUTER, "router" ) ;
+  }
+
+  /* Determine the ROOT mailbox or fifo name  */
+  gzAUTOHOST[0] = '\0' ;
+  if ( ( pVar = getenv ( "AUTOHOST" ) ) != NULL ) {
+    strcpy ( gzAUTOHOST, pVar ) ;
+    gHyp_util_lowerCase ( gzAUTOHOST, strlen ( gzAUTOHOST ) ) ; 
+  }
+  else {
+    gHyp_util_logWarning ( "Environment variable AUTOHOST was not defined" ) ;
+    gHyp_util_logInfo ( "Defaulting to %s",gzLocalHost ) ;
+    strcpy ( gzAUTOHOST, gzLocalHost ) ;
+  }
+  /* An environment variable AUTOHOST overrides the switch -u hostname */
+  if ( strcmp ( gzLocalHost, gzAUTOHOST ) != 0 ) {
+    gHyp_util_logInfo ( "Local host name changed from %s to %s",gzLocalHost,gzAUTOHOST ) ;
+    strcpy ( gzLocalHost, gzAUTOHOST ) ;
   }
 
   /* Determine the FIFO area */
@@ -718,6 +748,7 @@ SOCKET gHyp_concept_createService( sConcept *pConcept, char *pService )
 sLOGICAL gHyp_concept_init ( sConcept *pConcept, 
                              char *target,
                              char *service,
+			     char *localHost,
                              unsigned debugFlags,
                              int maxExprSize )
 {
@@ -776,9 +807,18 @@ sLOGICAL gHyp_concept_init ( sConcept *pConcept,
   /* For dynamic associated array of alias names and their ip addresses */ 
   gHyp_tcp_createAliasTable() ;
 
-  /* Get current host name */
-  gHyp_util_gethostname ( gzLocalHost ) ;
-  gHyp_util_lowerCase ( gzLocalHost, strlen ( gzLocalHost ) ) ;
+  if ( localHost && *localHost  ) {
+    /* Passed as argument */
+    strcpy ( gzLocalHost, localHost ) ;
+  }
+  else {
+    /* Get current host name */
+    gHyp_util_gethostname ( gzLocalHost ) ;
+    gHyp_util_lowerCase ( gzLocalHost, strlen ( gzLocalHost ) ) ;
+  }
+
+  /* HyperScript Initialization */
+  if ( !lHyp_concept_initVariables () ) return FALSE ;
 
   /* Resolve it (get ip address) - and put it in the Alias table. */
   gHyp_tcp_resolveHost ( gzLocalHost, gzLocalAddr ) ;
@@ -786,9 +826,6 @@ sLOGICAL gHyp_concept_init ( sConcept *pConcept,
   /* Remove anything past the first "." 
   gzLocalHost = strtok ( gzLocalHost, "." ) ;
   */
-
-  /* HyperScript Initialization */
-  if ( !lHyp_concept_initVariables () ) return FALSE ;
 
   /* Break up the target */
   gHyp_util_lowerCase ( target, strlen ( target ) ) ;
@@ -967,7 +1004,7 @@ sLOGICAL gHyp_concept_init ( sConcept *pConcept,
   */
   
   gHyp_util_output ( "================================================================\n" ) ;
-  gHyp_util_logInfo ( "Initialized new HyperScript concept '%s'", concept ) ;
+  gHyp_util_logInfo ( "Initialized new HyperScript concept '%s', pid %u", concept, giPID ) ;
   
   return TRUE ;
 }
@@ -1255,6 +1292,12 @@ void gHyp_concept_quit ( sConcept *pConcept )
 
   /* Close files */
   if ( gzLogName[0] && gsLog && gsLog != stdout ) fclose ( gsLog ) ;
+
+/*
+#ifdef SIGINT
+  kill( giPID, SIGINT );
+#endif
+*/
 
   return ;
 }
@@ -1738,7 +1781,7 @@ sLOGICAL gHyp_concept_moveto ( sConcept *pConcept , char *target )
       host[HOST_SIZE+1],    
       targetPath[OBJECT_SIZE+1] ;
   
-  /* Not ok to move if we hav already aconnected */
+  /* Not ok to move if we hav already connected */
   if ( pConcept->link.hasRegistered )  return FALSE ;
 
   gHyp_util_breakTarget ( target, instance, concept, parent, root, host ) ;
@@ -1750,6 +1793,9 @@ sLOGICAL gHyp_concept_moveto ( sConcept *pConcept , char *target )
     /*sprintf ( newRoot, "/%s%s", concept, parent ) ;*/
   else
     sprintf ( newRoot, "/%s#%s%s", instance, concept, root ) ;
+
+  gHyp_concept_closeReader( pConcept ) ;
+  gHyp_concept_closeWriter( pConcept ) ;
 
   if ( !gHyp_concept_setParent ( pConcept, newParent, newRoot ) ) return FALSE ;
 

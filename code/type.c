@@ -11,6 +11,20 @@
  * Modifications:
  *
  *	$Log: type.c,v $
+ *	Revision 1.26  2010-06-26 06:35:09  bergsma
+ *	Better recognition of identifiers.  Pre-JASON support
+ *	
+ *	Revision 1.25  2010-04-23 05:16:52  bergsma
+ *	Backed out fix whereby global subvariable types could not be changed while in local mode.
+ *	
+ *	Revision 1.24  2010-03-05 06:16:55  bergsma
+ *	Cannot re-type variable if in local scope.
+ *	
+ *	Revision 1.23  2010-01-08 02:44:57  bergsma
+ *	Added ssl_md5(), enhanced ssl_digest.
+ *	Fixed urldecode, missing ":"
+ *	Enabled object calls, ie:  text.strtok( ) and the like...
+ *	
  *	Revision 1.22  2009-12-08 21:00:15  bergsma
  *	Comments added
  *	
@@ -164,7 +178,7 @@ sData *gHyp_type_assign ( sInstance *pAI,
     *pStream,
     *pStreamEnd,
     buffer[MAX_INPUT_LENGTH+1],
-    value[VALUE_SIZE+1] ;
+    value[MAX_INPUT_LENGTH+1] ;
 
   sData
     *pSourceData=NULL,
@@ -258,7 +272,7 @@ sData *gHyp_type_assign ( sInstance *pAI,
 	  pValue2 = gHyp_data_new ( NULL ) ;
           n = gHyp_data_getStr ( pValue,
 				 value,
-				 VALUE_SIZE,
+				 MAX_INPUT_LENGTH,
 				 context,
 				 isVectorSrc ) ;
 	  gHyp_data_setToken ( pValue2, value ) ;
@@ -312,6 +326,7 @@ sData *gHyp_type_assign ( sInstance *pAI,
 	  }
 	  if ( context == -2 && sss != -1 ) {
 	    gHyp_data_delete( pResult ) ;
+	    pResult = NULL ;
 	    strcpy ( variable, gHyp_data_getLabel(pSrcData) ) ;
     	    if ( freeSrcDataOnError && pSrcData ) gHyp_data_delete ( pSrcData ) ;
 	    gHyp_instance_error ( pAI, STATUS_BOUNDS, 
@@ -347,6 +362,7 @@ sData *gHyp_type_assign ( sInstance *pAI,
 	}
 	if ( context== -2 && sss != -1 ) {
 	  gHyp_data_delete ( pResult ) ;
+	  pResult = NULL ;
 	  strcpy ( variable, gHyp_data_getLabel(pSrcData) ) ;
 	  if ( freeSrcDataOnError && pSrcData ) gHyp_data_delete ( pSrcData ) ;
 	  gHyp_instance_error ( pAI, STATUS_BOUNDS, 
@@ -398,7 +414,7 @@ sData *gHyp_type_assign ( sInstance *pAI,
 			     &handle1,
 			     value,
 			     &i,
-			     VALUE_SIZE,
+			     MAX_INPUT_LENGTH,
 			     context,
 			     isVectorSrc ) ;
 	  
@@ -455,6 +471,7 @@ sData *gHyp_type_assign ( sInstance *pAI,
 	}
 	if ( context== -2 && sss != -1 ) {
 	  gHyp_data_delete ( pResult ) ;
+	  pResult = NULL ;
 	  ReleaseMemory ( pStream ) ;
   	  strcpy ( variable, gHyp_data_getLabel(pSrcData) ) ;
 	  if ( freeSrcDataOnError && pSrcData ) gHyp_data_delete ( pSrcData ) ;
@@ -497,6 +514,7 @@ sData *gHyp_type_assign ( sInstance *pAI,
 	}
 	if ( context== -2 && sss != -1 ) {
 	  gHyp_data_delete ( pResult ) ;
+	  pResult = NULL ;
 	  strcpy ( variable, gHyp_data_getLabel(pSrcData) ) ;
 	  if ( freeSrcDataOnError && pSrcData ) gHyp_data_delete ( pSrcData ) ;
 	  gHyp_instance_error ( pAI, STATUS_BOUNDS, 
@@ -576,7 +594,18 @@ sData *gHyp_type_assign ( sInstance *pAI,
       if ( tokenType == TOKEN_UNIDENTIFIED ||
 	   tokenType == TOKEN_VARIABLE ||
 	   ( tokenType == TOKEN_REFERENCE &&
-	     gHyp_util_isIdentifier ( variable ) ) ) {
+             ( gHyp_data_getReference(pDstData) ||
+	       gHyp_util_isIdentifier ( variable ) 
+             ) 
+
+             /*
+             ( (pValue = gHyp_data_getValue ( pDstData, ss, TRUE )) != NULL && 
+                gHyp_data_getReference ( pDstData ) != pValue &&
+                gHyp_data_tokenType ( pValue ) != TOKEN_VARIABLE 
+             )
+             */
+           ) 
+          ) {
 	
 	/* Result will be a variable contained in a temp variable */
 	pResult = gHyp_data_new ( "_sub_" ) ;
@@ -603,7 +632,16 @@ sData *gHyp_type_assign ( sInstance *pAI,
 	 */
 	pVariable = gHyp_frame_findLocalVariable ( pFrame, 
 						   variable ) ;
-       
+
+        /*
+        * When commented out, you cannot change the 'type' of a global sub-variable
+        * when running in local mode.  You need to be in global mode.
+        * When uncommented, you can not change the 'type' of glocal variables, but it
+        * has the undesirable effect of overwriting a global variable when you wish to
+        * create a new local variable.
+        *
+        if ( !pVariable && !pSrcData ) pVariable = gHyp_data_getVariable ( pDstData ) ;
+        */
       }
       else {
 
@@ -617,7 +655,23 @@ sData *gHyp_type_assign ( sInstance *pAI,
       if ( !pVariable && 
 	   ( tokenType == TOKEN_UNIDENTIFIED ||
 	     ( tokenType == TOKEN_REFERENCE &&
-	       gHyp_util_isIdentifier ( variable )))) {
+               ( gHyp_data_getReference(pDstData) ||
+	         gHyp_util_isIdentifier ( variable ) 
+               ) 
+
+               /*
+               ( (pValue = gHyp_data_getValue ( pDstData, ss, TRUE )) != NULL && 
+                  gHyp_data_getReference ( pDstData ) != pValue &&
+                  gHyp_data_tokenType ( pValue ) != TOKEN_VARIABLE 
+               )
+               */
+             ) 
+           )
+         ) {
+
+
+
+             
 
 	pVariable = gHyp_frame_createVariable ( pFrame, variable ) ;	
       }
@@ -1015,7 +1069,7 @@ sData *gHyp_type_assign ( sInstance *pAI,
 			       &handle1,
 			       value, 
 			       &i,
-			       VALUE_SIZE,
+			       MAX_INPUT_LENGTH,
 			       context,
 			       isVectorSrc ) ;
 	    
@@ -1167,7 +1221,7 @@ sData *gHyp_type_assign ( sInstance *pAI,
 	else {
 	  n = gHyp_data_getStr ( pSrcData, 
 				 value, 
-				 VALUE_SIZE,
+				 MAX_INPUT_LENGTH,
 				 sss,
 				 TRUE ) ;
 	  gHyp_data_setToken ( pValue, value ) ;
@@ -3061,7 +3115,7 @@ void gHyp_type_valueof(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       argCount = gHyp_parse_argCount ( pParse ) ;
     
     char
-      strVal[VALUE_SIZE+1] ;
+      strVal[MAX_INPUT_LENGTH+1] ;
     
 
     /* Assume success */	
@@ -3073,7 +3127,7 @@ void gHyp_type_valueof(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
     n = gHyp_data_getStr ( pData, 
 			   strVal, 
-			   VALUE_SIZE, 
+			   MAX_INPUT_LENGTH, 
 			   gHyp_data_getSubScript(pData),
 			   TRUE ) ;
     pResult = gHyp_data_new ( "_valueof_" ) ;

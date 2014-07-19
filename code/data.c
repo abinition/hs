@@ -11,6 +11,12 @@
  * Modifications:
  *
  * $Log: data.c,v $
+ * Revision 1.41  2010-05-27 03:57:06  bergsma
+ * Handle references for data_buffer and data_bufferLen
+ *
+ * Revision 1.40  2010-03-05 06:17:28  bergsma
+ * Typedef return values for getAll
+ *
  * Revision 1.39  2009-12-08 20:47:55  bergsma
  * no change
  *
@@ -2125,7 +2131,7 @@ int gHyp_data_getInt ( sData *pData, int ss, sLOGICAL recurse )
     break ;
 
   default:
-    i = 0 ;
+    i = (int) 0 ;
     break ;
   }
   return i ;
@@ -2467,7 +2473,7 @@ double gHyp_data_getDouble ( sData *pData, int ss, sLOGICAL recurse )
     break ;
 
   default:
-    d = 0.0 ;
+    d = (double) 0.0 ;
     break ;
   }
   return d ;
@@ -3070,23 +3076,23 @@ sData* gHyp_data_getAll ( sData 	*pData,
     }
     else if ( j == 1 ) {
       /* Single character strings are taken as chars */
-      i = *(pValue->pStrVal) ;
-      u = i ;
-      d = i ;
-      h = (void*) i ;
+      i = (int) *(pValue->pStrVal) ;
+      u = (unsigned long) i ;
+      d = (double) i ;
+      h = (void*)(int) i ;
     }
     else if ( j != 0 && *pValue->pStrVal != '%' ) {
       /* Non-null that do not start with '%' are equal to 1 */
-      i = 1 ;
-      u = 1 ;
-      d = 1.0 ;
-      h = (void*) 1 ;
+      i = (int) 1 ;
+      u = (unsigned long) 1 ;
+      d = (double) 1.0 ;
+      h = (void*)(int) 1 ;
     }
     else {
-      i = 0 ;
-      u = 0 ;
-      d = 0.0 ;
-      h = NULL ;
+      i = (int) 0 ;
+      u = (unsigned long) 0 ;
+      d = (double) 0.0 ;
+      h = (void*) (int) 0 /*NULL*/ ;
     }
     strLen = MIN ( pValue->strlen, maxlen ) ;
     memcpy ( pStr, pValue->pStrVal, strLen ) ;
@@ -3474,6 +3480,10 @@ sBYTE *gHyp_data_buffer ( sData *pData, int ss )
   sBYTE 
     *pBuf ;
 
+  /* For references, recursively find the variable */
+  if ( pData->tokenType == TOKEN_REFERENCE && pData->p.rValue != NULL ) 
+    return gHyp_data_buffer ( *pData->p.rValue, ss ) ;
+  
   if ( ss < 0 ) ss = 0 ;
 
   if ( pData->p.value )
@@ -3489,6 +3499,10 @@ int gHyp_data_bufferLen ( sData *pData, int ss )
   int
     dataLen,
     bufLen ;
+
+  /* For references, recursively find the variable */
+  if ( pData->tokenType == TOKEN_REFERENCE && pData->p.rValue != NULL ) 
+    return gHyp_data_bufferLen ( *pData->p.rValue, ss ) ;
 
   if ( pData->size < 1 ) return 0 ;
   if ( ss < 0 ) ss = 0 ;

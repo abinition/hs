@@ -3,6 +3,11 @@
  * Modifications:
  *
  * $Log: parse.h,v $
+ * Revision 1.6  2010-01-08 02:44:57  bergsma
+ * Added ssl_md5(), enhanced ssl_digest.
+ * Fixed urldecode, missing ":"
+ * Enabled object calls, ie:  text.strtok( ) and the like...
+ *
  * Revision 1.5  2005-01-10 20:12:43  bergsma
  * Added function isListCall
  *
@@ -24,12 +29,17 @@ extern void		gHyp_parse_restoreExprRank ( sParse * ) ;
 extern int	 	gHyp_parse_expDepth ( sParse * ) ;
 extern int	 	gHyp_parse_exprCount ( sParse * ) ;
 extern int	 	gHyp_parse_argCount ( sParse * ) ;
+extern sBYTE		gHyp_parse_inputPrecedence ( sParse *pParse ) ;
+extern int		gHyp_parse_inputIndex ( sParse *pParse ) ;
+extern char*		gHyp_parse_inputToken ( sParse *pParse ) ;
+extern sBYTE		gHyp_parse_inputTokenType ( sParse *pParse ) ;
 extern sCode*		gHyp_parse_methodCode ( sParse * ) ;
 extern sLOGICAL		gHyp_parse_isSubVariable ( sParse* ) ; 
 extern sLOGICAL		gHyp_parse_isVariableDef ( sParse* ) ; 
 extern sLOGICAL		gHyp_parse_isMethodArgs ( sParse* ) ; 
 extern sLOGICAL		gHyp_parse_isFunctionCall ( sParse * ) ;
 extern sLOGICAL		gHyp_parse_isPointerDeref ( sParse * ) ;
+extern sLOGICAL		gHyp_parse_isObjectCall ( sParse * ) ;
 extern sLOGICAL		gHyp_parse_isMethodCall ( sParse * ) ;
 extern sLOGICAL gHyp_parse_isListCall ( sParse *pParse ) ;
 extern sLOGICAL         gHyp_parse_isMethodDef ( sParse *pParse ) ;

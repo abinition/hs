@@ -11,6 +11,11 @@
  * Modifications:
  *
  *   $Log: operator.c,v $
+ *   Revision 1.26  2010-01-08 02:44:57  bergsma
+ *   Added ssl_md5(), enhanced ssl_digest.
+ *   Fixed urldecode, missing ":"
+ *   Enabled object calls, ie:  text.strtok( ) and the like...
+ *
  *   Revision 1.25  2009-03-22 19:21:39  bergsma
  *   no message
  *
@@ -1557,6 +1562,7 @@ void gHyp_operator_dot ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       ssVariable ;
 
     /* Check to see if this is a function being called in an object sense, ie: a.toupper */
+    if ( gHyp_parse_isObjectCall( pParse ) ) return ;
 
     /* Check to see if this is a method call as well */
     pData = gHyp_stack_peek ( pStack ) ;

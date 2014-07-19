@@ -10,6 +10,11 @@
  * Modifications:
  *
  *   $Log: parse.c,v $
+ *   Revision 1.11  2010-01-08 02:44:57  bergsma
+ *   Added ssl_md5(), enhanced ssl_digest.
+ *   Fixed urldecode, missing ":"
+ *   Enabled object calls, ie:  text.strtok( ) and the like...
+ *
  *   Revision 1.10  2004-11-19 03:48:04  bergsma
  *   HS 3.4.0.   Added list indexing with {}.
  *
@@ -67,6 +72,7 @@ struct parse_t
   int		prevExprRank ;			/* Previous expression rank */
   int		exprRank ;			/* Expression rank */
   int		argCount ;			/* Argument counter */
+  sBYTE		objArg ;			/* Object argument counter incrementer */
   int		listDepth ;			/* Depth of {} */
   int		expDepth ;			/* Depth of () */
   sLOGICAL	isMethodArgs ;			/* Definition of method args*/
@@ -75,7 +81,7 @@ struct parse_t
   sHyp*		pMethodHyp ;
   int       	methodIndex ;
   sBYTE		inputPrecedence ;
-  char		inputToken ;
+  char*		inputToken ;
   sBYTE		inputTokenType ;
   int		inputIndex ;
   char		saveCurrentState ;
@@ -110,6 +116,7 @@ void gHyp_parse_reset ( sParse* pParse )
   pParse->exprView[0] = '\0' ;
   pParse->exprRank = 0 ;
   pParse->argCount = 0 ;
+  pParse->objArg = 0 ;
   pParse->listDepth = 0 ;
   pParse->expDepth = 0 ;
   pParse->isMethodArgs = FALSE ;
@@ -117,6 +124,10 @@ void gHyp_parse_reset ( sParse* pParse )
   pParse->flag = 0 ;
   pParse->pMethodHyp = NULL ;
   pParse->methodIndex = -1 ;
+  pParse->inputPrecedence = PRECEDENCE_EMPTY ;
+  pParse->inputToken = NULL ;
+  pParse->inputTokenType = TOKEN_NULL ;
+  pParse->inputIndex = 0 ;
 }
 
 int gHyp_parse_exprCount ( sParse *pParse ) 
@@ -146,8 +157,10 @@ int gHyp_parse_expDepth ( sParse *pParse )
 
 int gHyp_parse_argCount ( sParse *pParse ) 
 {
-  int argCount =  pParse->argCount ;
+  int argCount = pParse->argCount + pParse->objArg ; 
   pParse->argCount = 1 ;
+  pParse->objArg = 0 ;
+
   if ( guDebugFlags & DEBUG_STACK )
     gHyp_util_logDebug ( FRAME_DEPTH_NULL,
 			 DEBUG_STACK, 
@@ -156,6 +169,25 @@ int gHyp_parse_argCount ( sParse *pParse )
   return argCount ;
 }
 
+sBYTE gHyp_parse_inputPrecedence ( sParse *pParse )
+{
+  return pParse->inputPrecedence ;
+}
+
+int gHyp_parse_inputIndex ( sParse *pParse )
+{
+  return pParse->inputIndex ;
+}
+
+char *gHyp_parse_inputToken ( sParse *pParse )
+{
+  return pParse->inputToken ;
+}
+
+sBYTE gHyp_parse_inputTokenType ( sParse *pParse )
+{
+  return pParse->inputTokenType ;
+}
 
 sLOGICAL gHyp_parse_isSubVariable ( sParse *pParse ) 
 {
@@ -188,6 +220,11 @@ sLOGICAL gHyp_parse_isIndexCall ( sParse *pParse )
 sLOGICAL gHyp_parse_isListCall ( sParse *pParse ) 
 {
   return (pParse->flag & PARSE_LIST_CALL) ? TRUE:FALSE ;
+}
+
+sLOGICAL gHyp_parse_isObjectCall ( sParse *pParse ) 
+{
+  return (pParse->flag & PARSE_OBJECT_CALL) ? TRUE:FALSE ;
 }
 
 
@@ -555,6 +592,12 @@ void gHyp_parse_expression (	sParse 		*pParse,
   sLOGICAL
     matchedLEFT = FALSE,
     trueValue ;
+
+  /* Set current parse object's token input, index, and type */
+    
+  pParse->inputIndex = gHyp_hyp_index ( pInputCode ) ;
+  pParse->inputToken = gHyp_hyp_token ( pInputCode ) ;
+  pParse->inputTokenType = gHyp_hyp_tokenType ( pInputCode ) ;
 
   if ( pParse->exprCount > 0 ) { 
     /* Get expression information for token on end of expression */
@@ -1329,8 +1372,17 @@ void gHyp_parse_loop (	sParse *pParse,
 	if (	inputTokenType == TOKEN_POINTER )
 		pParse->flag |= PARSE_POINTER_DEREF ;
 
+	/* 9.	If the input token is a function and the expression token
+	 *	is a "dot", then set a flag
+	 *	thar will be detected when the function is executed.
+	 */
+	if (	inputTokenType == TOKEN_FUNCTION &&
+	  exprTokenType == TOKEN_DOT )  {
+	  pParse->objArg = 1 ;
+	  pParse->flag |= PARSE_OBJECT_CALL ;
+	}
 
-        /* 9.  If debug is set, then print out the expression */
+        /* 10.  If debug is set, then print out the expression */
 	if ( guDebugFlags & DEBUG_INFIX_EXPR ) {
 
 	  if ( pParse->exprCount < pParse->maxExprCount ) {
@@ -1359,7 +1411,7 @@ void gHyp_parse_loop (	sParse *pParse,
         }	
 
 
-        /* 10.	If the statement frame is currently truthful, then execute
+        /* 11.	If the statement frame is currently truthful, then execute
 	 *	the expression token.
 	 *	- If the token is a variable, constant, or literal 
 	 *	  (an operand), its value will be pushed on the stack.
@@ -1404,7 +1456,7 @@ void gHyp_parse_loop (	sParse *pParse,
 	isNormal = TRUE ;
 	pParse->saveInputCode = NULL ;
 
-	/* 11.	If the expression token was a ||, a &&, or a ":", then cancel
+	/* 12.	If the expression token was a ||, a &&, or a ":", then cancel
 	 *	the short circuit marker that may have been previously set when
 	 *	the || or && was the input token.
 	 */
@@ -1422,12 +1474,12 @@ void gHyp_parse_loop (	sParse *pParse,
 	  if ( pParse->argCount > 1 ) pParse->argCount-- ;
 	}
 
-	/* 12.  If the expr token is a "{" then decrement the list depth 
+	/* 13.  If the expr token is a "{" then decrement the list depth 
 	 */
 	if ( exprTokenType == TOKEN_BLIST && pParse->listDepth > 0 ) 
 	  pParse->listDepth-- ;
 
-	/* 13.  If the expr token is a "(" then decrement the expression depth 
+	/* 14.  If the expr token is a "(" then decrement the expression depth 
 	 */
 	if ( exprTokenType == TOKEN_BEXP && pParse->expDepth > 0 ) 
 	  pParse->expDepth-- ;

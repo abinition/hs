@@ -2,6 +2,15 @@
  * Modifications:
  *
  * $Log: http.h,v $
+ * Revision 1.9  2010-05-05 04:55:41  bergsma
+ * Added http_asctime
+ *
+ * Revision 1.8  2009-12-24 15:56:55  bergsma
+ * More fixes for handling form data via HTTP
+ *
+ * Revision 1.7  2009-12-19 05:54:21  bergsma
+ * Handle upload of form data
+ *
  * Revision 1.6  2009-03-02 00:34:35  bergsma
  * Improved handling of zero-length content buffers
  *
@@ -37,6 +46,8 @@ extern void	gHyp_http_updateContent ( sHTTP* pHTTP, int contentlength, int actua
 extern int	gHyp_http_getContentLength( sHTTP* pHTTP ) ;
 extern sLOGICAL	gHyp_http_isChunkedTransferEnc( sHTTP* pHTTP ) ;
 extern void	gHyp_http_setChunkedTransferEnc( sHTTP* pHTTP ) ;
+extern char*	gHyp_http_getFormDataBoundary( sHTTP* pHTTP ) ;
+extern void	gHyp_http_setFormDataBoundary( sHTTP* pHTTP, char* ) ;
 extern sLOGICAL	gHyp_http_isXMLEncoded( sHTTP* pHTTP ) ;
 extern void	gHyp_http_setXMLEncoded( sHTTP* pHTTP ) ;
 extern sLOGICAL	gHyp_http_isURLEncoded( sHTTP* pHTTP ) ;
@@ -61,3 +72,5 @@ extern void	gHyp_http_event ( sInstance *, sCode *, sLOGICAL  ) ;
 extern void	gHyp_http_query ( sInstance *, sCode *, sLOGICAL  ) ;
 extern void	gHyp_http_reply ( sInstance *, sCode *, sLOGICAL  ) ;
 extern void	gHyp_http_handle ( sInstance *, sCode *, sLOGICAL  ) ;
+extern void     gHyp_http_asctime ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) ;
+

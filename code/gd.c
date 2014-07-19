@@ -14,6 +14,18 @@
  * Modified:
  *
  * $Log: gd.c,v $
+ * Revision 1.17  2010-06-26 06:33:48  bergsma
+ * Init
+ *
+ * Revision 1.16  2010-05-27 03:57:38  bergsma
+ * Various fixes
+ *
+ * Revision 1.15  2010-05-05 04:56:35  bergsma
+ * Added CGI form-data support
+ *
+ * Revision 1.14  2010-03-05 06:12:58  bergsma
+ * Variables defined outside of AS_GD section
+ *
  * Revision 1.13  2009-08-11 21:18:20  bergsma
  * Expanded functionality of gd_open
  *
@@ -98,6 +110,102 @@ void gHyp_gd_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
    *    PARSE or EXECUTE the built-in function: gd_query ()
    *    Returns TRUE or FALSE
    *
+   	  
+	     gdFree
+	     gdFTUseFontConfig
+	     gdFontCacheSetup
+	     gdFontCacheShutdown
+	     gdFontGetLarge
+	     gdFontGetMediumBold
+	     gdFontGetSmall
+	     gdFontGetTiny
+	     gdFontGetW
+	     gdFontGetH
+	     gdFontGiant
+	     gdFontCacheSetup
+	     gdFontCacheShutdown
+	   
+	      gdImageAlpha
+	      gdImageAlphaBlending
+	      gdImageArc
+	      gdImageBlue
+	      gdImageBoundsSafe
+	      gdImageChar
+	      gdImageCharUp
+
+	    gdImageColorAllocate
+	    gdImageColorAllocateAlpha
+	    gdImageColorClosest
+	    gdImageColorClosestAlpha
+	    gdImageColorClosestHWB
+	    gdImageColorDeallocate
+	    gdImageColorExact
+	    gdImageColorResolve
+	    gdImageColorResolveAlpha
+	    gdImageColorTransparent
+	    gdImageColorsTotal
+
+	    gdImageCompare
+	    gdImageCopy
+	    gdImageCopyMerge
+	    gdImageCopyMergeGray
+	    gdImageCopyResampled
+	    gdImageCopyResized
+	    gdImageCopyRotated
+	    gdImageDashedLine  
+
+
+	    gdImageFill
+	    gdImageFillToBorder
+	    gdImageFilledArc
+	    gdImageFilledEllipse
+	    gdImageFilledPolygon
+	    gdImageFilledRectangle
+	    gdImageGetClip
+	    gdImageGetInterlaced
+	    gdImageGetPixel
+	    gdImageGetTransparent
+	    gdImageGifPtr
+
+	    gdImageGreen
+	    gdImageInterlace
+	    gdImageJpeg
+	    gdImageJpegPtr
+	    gdImageLine
+	    gdImageOpenPolygon
+	    gdImagePaletteCopy
+	    gdImagePng
+	    gdImagePngPtr
+	    gdImagePolygon
+	    gdImageRectangle
+	    gdImageRed
+	    gdImageSX
+	    gdImageSY
+	    gdImageSaveAlpha
+
+	  gdImageSetAntiAliased
+	  gdImageSetAntiAliasedDontBlend
+	  gdImageSetBrush
+	  gdImageSetClip
+	  gdImageSetPixel
+	  gdImageSetStyle
+	  gdImageSetThickness
+	  gdImageSetTile
+	  gdImageSharpen
+	  gdImageSquareToCircle
+
+	    gdImageString
+	    gdImageString16
+	    gdImageStringFT
+	    gdImageStringFTCircle
+	    gdImageStringFTEx
+	    gdImageStringTTF
+	    gdImageStringUp
+	    gdImageStringUp16
+	    gdImageTrueColor
+	    gdTrueColor
+	    gdTrueColorAlpha
+   *
    * Arguments:
    *
    *    pAI                                                     [R]
@@ -138,7 +246,6 @@ void gHyp_gd_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
     sLOGICAL
       result_boolean=TRUE,
-      list_result=FALSE,
       boolean_result=FALSE,
       int_result=FALSE,
       string_result=FALSE,
@@ -146,6 +253,9 @@ void gHyp_gd_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
 
 #ifdef AS_GD
+
+    sLOGICAL
+      list_result=FALSE ;
 
     sData
       *pData,
@@ -228,6 +338,7 @@ void gHyp_gd_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
     char
       functionStr[VALUE_SIZE+1],
+      *err,
       arg1_string[VALUE_SIZE+1],
       arg2_string[VALUE_SIZE+1],
       arg3_string[VALUE_SIZE+1],
@@ -1210,12 +1321,31 @@ void gHyp_gd_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 	  }
 
 	  else if ( strcmp ( functionStr, "gdImageJpeg" ) == 0 ) {
+	
+	    gdImageJpeg ( 
+	      im,  /* GD Image Ptr */
+	      (FILE*) arg1_handle, /* FILE NAME */
+	      arg2_int /* QUALITY */
+	      ) ;
 	    boolean_result = TRUE ;
 	  }
 
 	  else if ( strcmp ( functionStr, "gdImageJpegPtr" ) == 0 ) {
 	
-	    list_result = FALSE ;
+	    imagePtr = gdImageJpegPtr ( 
+	      im,  /* GD Image Ptr */
+	      &n, /* Pointer to size */
+	      arg1_int /* QUALITY */
+	      ) ;
+
+	    /* Create a HS data structure and copy the results */
+	    gHyp_data_setVariable ( pResult, "_data_", TYPE_STRING ) ;
+	    gHyp_util_breakStream ( (char*) imagePtr, n, pResult, FALSE ) ;
+
+	    /* Get rid of the memory allocated by GD */
+	    gdFree ( imagePtr ) ;
+
+	    list_result = TRUE ;
 	  }
 
 	  else if ( strcmp ( functionStr, "gdImageLine" ) == 0 ) {
@@ -1535,18 +1665,23 @@ void gHyp_gd_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
 	  else if ( strcmp ( functionStr, "gdImageStringFT" ) == 0 ) {
      
-	    strcpy ( result_str, 
-	      gdImageStringFT ( 
+            /*gHyp_util_debug("gdImageStringFT");*/
+	    err = gdImageStringFT ( 
 	        im,  /* GD Image Ptr */ 
-		(int*) gHyp_data_buffer(pData2,0), /* BRECT */
-		arg3_int,	/* FG */
-		arg4_string, /* FONTNAME */
-		arg5_double, /* PTSIZE */
-		arg6_double, /* ANGLE */
-		arg7_int, /* X */
-		arg8_int, /* Y */
-		arg9_string /* TEXT */
-	      )) ;
+		(int*) gHyp_data_buffer(pData1,0), /* BRECT */
+		arg2_int,	/* FG */
+		arg3_string, /* FONTNAME */
+		arg4_double, /* PTSIZE */
+		arg5_double, /* ANGLE */
+		arg6_int, /* X */
+		arg7_int, /* Y */
+		arg8_string /* TEXT */
+                ) ;
+            if ( err )
+  	      strcpy ( result_str, err ) ;
+            else
+              strcpy ( result_str, "$ACK" ) ;
+
 	    string_result = TRUE ;
 	  }
 	  else if ( strcmp ( functionStr, "gdImageStringFTEx" ) == 0 ) {
@@ -1557,28 +1692,31 @@ void gHyp_gd_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 	  }
 	  else if ( strcmp ( functionStr, "gdImageStringFTCircle" ) == 0 ) {
 
-	    strcpy ( result_str, 
-	      gdImageStringFTCircle ( 
+	    err = gdImageStringFTCircle ( 
 	      im,  /* GD Image Ptr */ 
-	      arg2_int, /* CX */
-	      arg3_int,	/* CY */
-	      arg4_double, /* RADIUS */
-	      arg5_double, /* TEXTRADIUS */
-	      arg6_double, /* FILLPORTION */
-	      arg7_string, /* FONT */
-	      arg8_double, /* POINTS */
-	      arg9_string, /* TOP */
-	      arg10_string, /* BOTTOM */
-	      arg11_int	    /* FGCOLOR */
-	      )  ) ;
+	      arg1_int, /* CX */
+	      arg2_int,	/* CY */
+	      arg3_double, /* RADIUS */
+	      arg4_double, /* TEXTRADIUS */
+	      arg5_double, /* FILLPORTION */
+	      arg6_string, /* FONT */
+	      arg7_double, /* POINTS */
+	      arg8_string, /* TOP */
+	      arg9_string, /* BOTTOM */
+	      arg10_int	    /* FGCOLOR */
+	      ) ;
+            if ( err )
+  	      strcpy ( result_str, err ) ;
+            else
+              strcpy ( result_str, "$ACK" ) ;
+
 	    string_result = TRUE ;
 	  }
 	  else if ( strcmp ( functionStr, "gdImageStringTTF" ) == 0 ) {
 
-	    strcpy ( result_str, 
-	      gdImageStringTTF ( 
+	    err = gdImageStringTTF ( 
 	        im,  /* GD Image Ptr */ 
-		(int*) gHyp_data_buffer(pData2,0), /* BRECT */ 
+		(int*) gHyp_data_buffer(pData1,0), /* BRECT */ 
 		arg2_int,	/* FG */
 		arg3_string, /* FONTNAME */
 		arg4_double, /* PTSIZE */
@@ -1586,17 +1724,14 @@ void gHyp_gd_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 		arg6_int, /* X */
 		arg7_int, /* Y */
 		arg8_string /* TEXT */ 
-	      ) ) ;
+	      ) ;
+            if ( err )
+  	      strcpy ( result_str, err ) ;
+            else
+              strcpy ( result_str, "$ACK" ) ;
 
 	     string_result = TRUE ;
 	  }
-	  /*****
-	  else if ( strcmp ( functionStr, "gdImageStringTTF" ) == 0 ) {
-	
-	    Deprecated
-	    gHyp_instance_logWarning ( pAI, "GD function %s is not supported",functionStr);
-	  }
-	  **/
 	  else if ( strcmp ( functionStr, "gdTrueColor" ) == 0 ) {
 
 	    result_int = gdTrueColor ( 
@@ -1707,7 +1842,7 @@ void gHyp_gd_open ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       *fp ;
 
 #ifdef AS_GD
-    gdImagePtr  im;
+    gdImagePtr  im = NULL;
 
 #else
     void *im = NULL ;
@@ -1738,6 +1873,8 @@ void gHyp_gd_open ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 #ifdef AS_GD
       if ( strstr ( value, "png" ) || strstr ( value, "PNG" ) )
         im = gdImageCreateFromPng( fp ) ;
+      else if ( strstr ( value, "jpg" ) || strstr ( value, "JPG" ) )
+        im = gdImageCreateFromJpeg( fp ) ;
 #else
       im = NULL ;
 #endif
@@ -1808,8 +1945,6 @@ void gHyp_gd_close ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
 #ifdef AS_GD
     gdImagePtr   im;
-#else
-    void *im = NULL ;
 #endif
 
     /* Assume success */

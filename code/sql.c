@@ -14,6 +14,20 @@
  * Modified:
  *
  * $Log: sql.c,v $
+ * Revision 1.72  2010-05-28 18:08:43  bergsma
+ * Fix for sql_datetime not entirely correct.
+ *
+ * Revision 1.71  2010-04-13 21:07:24  bergsma
+ * sql_datetime fixed
+ *
+ * Revision 1.70  2010-03-17 08:17:37  bergsma
+ * Fix memory leak for sql_external and meaning of second argument.
+ *
+ * Revision 1.69  2010-03-05 06:05:24  bergsma
+ * SJM Changes
+ * 1. ORACLE_COMMIT_ON_SUCCESS for non-SELECT statements
+ * 2, sql_toexternal with DoNotTrim==1 now trims, but never returns NULL
+ *
  * Revision 1.68  2009-09-28 05:28:33  bergsma
  * Misplaced bracket
  *
@@ -558,13 +572,13 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
      OCIStmt    *stmthp;
      OCIParam   *mypard;
      OraText	*key = "mykey" ;
-
      void*	dataBuffer[MAX_SQL_ITEMS] ;
-
      ub4	dataBufferLen[MAX_SQL_ITEMS] ;
      ub4	amount ;
      ub4	offset ;
+#ifdef AS_ORACLE_DO_PREPARE2
      ub4	keylen = strlen (key) ;
+#endif
      ub2	dataLen[MAX_SQL_ITEMS] ;
      /*dvoid*	dataBufferPtr[MAX_SQL_ITEMS] ;*/
      OCIDefine*	defnp[MAX_SQL_ITEMS] ;
@@ -747,7 +761,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
 #endif
 
-  orientation = isSelect ? OCI_DESCRIBE_ONLY : OCI_DEFAULT ;
+  orientation = isSelect ? OCI_DESCRIBE_ONLY : OCI_COMMIT_ON_SUCCESS /*OCI_DEFAULT */ ;
   /*gHyp_util_debug("Executing first stmt");*/
   if ( rc == OCI_SUCCESS )
     rc = OCIStmtExecute(
@@ -2735,6 +2749,7 @@ void gHyp_sql_toexternal(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       *pStr ;
     
     sLOGICAL
+      noNULL=FALSE,
       doTrim=TRUE,
       isEmpty,
       isVector ;
@@ -2743,13 +2758,14 @@ void gHyp_sql_toexternal(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
 
     if ( argCount > 2 ) gHyp_instance_error ( pAI,STATUS_ARGUMENT,
-	"Invalid arguments. Usage: sql_toexternal ( string [, notrim] )" ) ;
+	"Invalid arguments. Usage: sql_toexternal ( string [, noNULL] )" ) ;
 
     if ( argCount == 2 ) {
       pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
-      doTrim  = ! ( gHyp_data_getBool ( pData,
+      noNULL  = gHyp_data_getBool ( pData,
 				    gHyp_data_getSubScript ( pData  ),
-				    TRUE ) ) ;
+				    TRUE ) ;
+      doTrim = !noNULL ;
     }
 
     pData = gHyp_stack_popRdata ( pStack, pAI ) ;
@@ -2780,11 +2796,12 @@ void gHyp_sql_toexternal(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 			     context, 
 			     isVector ) ;
         pStr = strVal ;
-        pValue2 = gHyp_data_new ( NULL ) ;
-	if ( doTrim ) n = gHyp_util_trim ( strVal ) ;
-        n = gHyp_util_unparseString ( strVal2, pStr, n, VALUE_SIZE*4, FALSE, FALSE, TRUE,"" ) ;
-        gHyp_data_setStr_n ( pValue2, strVal2, n ) ;
+	n = gHyp_util_trimWhiteSpace ( strVal ) ;
+	if ( noNULL && n == 0 ) n = sprintf ( strVal, "%s", " " ) ;
 	if ( n > 0 ) {
+	  n = gHyp_util_unparseString ( strVal2, pStr, n, VALUE_SIZE*4, FALSE, FALSE, TRUE,"" ) ;
+          pValue2 = gHyp_data_new ( NULL ) ;
+          gHyp_data_setStr_n ( pValue2, strVal2, n ) ;
 	  isEmpty = FALSE ;
           gHyp_data_append ( pResult, pValue2 ) ;
         }
@@ -2881,11 +2898,11 @@ void gHyp_sql_datetime ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       ts = gsCurTime = time(NULL) ;
       pstm = localtime ( &ts ) ;
       if ( !pstm || pstm->tm_year > 138 ) {
-	strcpy ( timeStamp, "NULL" ) ;
+  	  strcpy ( timeStamp, " " ) ;
       }
       else {
         sprintf (timeStamp, 
-		"'%04d-%02d-%02d %02d:%02d:%02d'", 
+		"%04d-%02d-%02d %02d:%02d:%02d", 
 		pstm->tm_year+1900, pstm->tm_mon+1, pstm->tm_mday,
 		pstm->tm_hour, pstm->tm_min, pstm->tm_sec ) ;
       }
@@ -2911,11 +2928,11 @@ void gHyp_sql_datetime ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
         ts = gHyp_data_getRaw ( pValue, context, TRUE  ) ;
         pstm = localtime ( &ts ) ;
 	if ( !pstm || pstm->tm_year > 138 ) {
-  	  strcpy ( timeStamp, "NULL" ) ;
+  	  strcpy ( timeStamp, " " ) ;
 	}
 	else {
           sprintf ( timeStamp, 
-	  	  "'%04d-%02d-%02d %02d:%02d:%02d'", 
+	  	  "%04d-%02d-%02d %02d:%02d:%02d", 
 		  pstm->tm_year+1900, pstm->tm_mon+1, pstm->tm_mday,
 		  pstm->tm_hour, pstm->tm_min, pstm->tm_sec ) ;
 	}

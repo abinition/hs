@@ -11,6 +11,24 @@
  * Modifications:
  *
  *	$Log: promis.c,v $
+ *	Revision 1.36  2010-05-26 21:26:06  bergsma
+ *	Must initialize special "D" tlog records that have no buffer.
+ *	
+ *	Revision 1.35  2010-05-24 18:37:16  bergsma
+ *	Calculated invalid length (1 char too long) for 'D' tlog rec with no buffer.
+ *	
+ *	Revision 1.34  2010-04-08 21:49:15  bergsma
+ *	Args reversed in gut_movebuff
+ *	
+ *	Revision 1.33  2010-04-08 16:24:31  bergsma
+ *	Recordid == "D" special handling, fix 2, initialize buffer to clear garbage.
+ *	
+ *	Revision 1.32  2010-04-06 14:10:02  bergsma
+ *	Handle PROMIS TLOG "D" records.
+ *	
+ *	Revision 1.31  2010-03-05 06:10:01  bergsma
+ *	Add -u option and AUTOHOST environment variable.
+ *	
  *	Revision 1.30  2009-09-21 05:19:29  bergsma
  *	Comments
  *	
@@ -944,7 +962,9 @@ static int lHyp_promis_tresData ( sInstance *pAI,
   numDims   = gHyp_data_getInt ( pTRES_NUMDIMS, -1, TRUE ) ;
 
   numFields = numDims + numTestDi - 1 ;
-
+  if ( numFields <= 0 ) return 0 ;
+  if ( numDims  > 4 ) return 0 ;
+  
   /* numDims Field 0  Field 1  Field 2  Field 3  ...Field (numTestDi+numDims-1)
    * -----------------------------------------------------------------------
    *    3    compId   siteId   item[0]  item[1]  ...item[numTestDi-1]
@@ -1307,7 +1327,7 @@ static sLOGICAL lHyp_promis_addTBLS ( long fileId,
   sData
     *pTABLE,
     *pTBLS_TABLENAME,
-    *pRecord,
+    *pData,
     *pValue ;
 
   char
@@ -1382,11 +1402,11 @@ static sLOGICAL lHyp_promis_addTBLS ( long fileId,
   gHyp_data_setHashed ( pTABLE, TRUE ) ;
 
   /* Add the name of it to the end of the pTBLS data structure */
-  pRecord = gHyp_data_new ( "record" ) ;
+  pData = gHyp_data_new ( "record" ) ;
   pValue = gHyp_data_new ( NULL ) ;
   gHyp_data_setStr ( pValue, tableName ) ;
-  gHyp_data_append ( pRecord, pValue ) ;
-  gHyp_data_append ( pTBLS, pRecord ) ;
+  gHyp_data_append ( pData, pValue ) ;
+  gHyp_data_append ( pTBLS, pData ) ;
 
   /* Set the fileIndex of tables offset to the main PROMIS files */
   fileIndex = MAX_PROMIS_FILES + recId ;
@@ -1435,13 +1455,14 @@ static sLOGICAL lHyp_promis_addTLOG (	long fileId,
     *pTLOG_RECID,
     *pTLOG_FLAGS,
     *pTLOG_LENGTH,
-    *pRecord,
+    *pData,
     *pValue ;
 
   char
     *pStr,
     recid[1+1],
-    tableName[4+1] ;
+    tableName[4+1],
+    ukeyvalue[MAX_PROMIS_KEY_SIZE+1];
    
   sBYTE
     flags ;
@@ -1453,6 +1474,7 @@ static sLOGICAL lHyp_promis_addTLOG (	long fileId,
   long
     stat,
     recId,
+    fileId2,
     length,
     bufSize,
     numFields,
@@ -1460,12 +1482,14 @@ static sLOGICAL lHyp_promis_addTLOG (	long fileId,
     firstFieldId,
     fieldType,
     fieldOffset,
+    fieldOffset2,
     fieldSize,
     fieldCount,
     fileIndex,
     fieldId ;
 
   int
+    n,
     offset ;
   
   sField 
@@ -1476,6 +1500,9 @@ static sLOGICAL lHyp_promis_addTLOG (	long fileId,
     long id ;
     char name[5] ;
   } rec ;
+
+  char		keyField[VALUE_SIZE+1] ;
+  makeDSCs	( keyField_d, keyField );
 
   makeDSCz	( fieldName_d, fieldName ) ;
 
@@ -1496,11 +1523,14 @@ static sLOGICAL lHyp_promis_addTLOG (	long fileId,
    *  "Update",
    *  "Journal",
    *  "Delete" records where TLOG_M_JOURNAL = 4 (Delete record contains a before image)
-   */
+   *
   if ( recid[0] != 'P' && 
        recid[0] != 'U' &&
        recid[0] != 'J' &&
-       (recid[0] != 'D' || !(flags & 4) ) ) return TRUE ;
+    (recid[0] != 'D' || !(flags & 4) ) ) return TRUE ;
+  *
+  *
+  */
 
   /* Get the field 'BUFFERA' */
   recId = 0 ;
@@ -1514,45 +1544,145 @@ static sLOGICAL lHyp_promis_addTLOG (	long fileId,
 				&fieldId ) ;
   if ( !(stat & 1) ) return FALSE ;
 
-  strncpy ( tableName, (const char*) pBuf+fieldOffset-1, 4 ) ; 
-  tableName[4] = '\0' ;
+  if (  recid[0] == 'P' || 
+        recid[0] == 'U' ||
+        recid[0] == 'J' ||
+        recid[0] == 'D' ) {
 
-  /* Find the PROMIS file name info */
-  strcpy ( rec.name, tableName ) ;
-  recId = 0 ;
-  stat = Fil_Tbl_FileIndex ( &rec.id, &fileIndex ) ; 
-  if ( !(stat & 1) ) return FALSE ;
-  stat = Fil_Tbl_FileInfo(	&rec.id,	   
+    strncpy ( tableName, (const char*) pBuf+fieldOffset-1, 4 ) ; 
+    tableName[4] = '\0' ;
+
+    /* Find the PROMIS file name info */
+    strcpy ( rec.name, tableName ) ;
+    recId = 0 ;
+    stat = Fil_Tbl_FileIndex ( &rec.id, &fileIndex ) ; 
+    if ( !(stat & 1) ) return FALSE ;
+    stat = Fil_Tbl_FileInfo(	&rec.id,	   
 			     	0,
 			     	&fileType,
 			     	&bufSize,
 			     	&numFields,
 			     	&firstFieldId ) ;
-  if ( !(stat & 1) ) return FALSE ;
+    if ( !(stat & 1) ) return FALSE ;
 
-  /* Save the filename */
-  strcpy ( fileName, tableName ) ;
-  fileName_d.dsc_w_length = 4 ;
+    /* Save the filename */
+    strcpy ( fileName, tableName ) ;
+    fileName_d.dsc_w_length = 4 ;
 
-  /* Add the name of the file to the end of the pTLOG data structure */
-  pRecord = gHyp_data_new ( "record" ) ;
-  pValue = gHyp_data_new ( NULL ) ;
-  gHyp_util_lowerCase ( tableName, 4 ) ;
-  gHyp_data_setStr ( pValue, tableName ) ;
-  gHyp_data_append ( pRecord, pValue ) ;
-  gHyp_data_append ( pTLOG, pRecord ) ;
+    /* Add the name of the file to the end of the pTLOG data structure */
+    pData = gHyp_data_new ( "record" ) ;
+    pValue = gHyp_data_new ( NULL ) ;
+    gHyp_util_lowerCase ( tableName, 4 ) ;
+    gHyp_data_setStr ( pValue, tableName ) ;
+    gHyp_data_append ( pData, pValue ) ;
+    gHyp_data_append ( pTLOG, pData ) ;
 
-  /* Get the beginning of the record */
-  fieldOffset += 4 ;  /* Skip past filename */
-  if ( recid[0] != 'P' ) fieldOffset += MAX_PROMIS_KEY_SIZE ; /* Skip past maxkeysize */
+    /* Get the beginning of the record */
+    fieldOffset += 4 ;  /* Skip past filename */
 
-  /* Unpack the intername record */
-  length = length - fieldOffset + 1; 
-  stat = aeqSsp_automan_unpack ( &fileId, &rec.id, &length, 
-				 pBuf+fieldOffset-1 ) ;
-  if ( !(stat & 1) ) return FALSE ;
+    if ( recid[0] != 'P' ) {
 
-  return TRUE ;
+      strncpy ( ukeyvalue, (const char*) pBuf+fieldOffset-1, MAX_PROMIS_KEY_SIZE ) ; 
+      ukeyvalue[MAX_PROMIS_KEY_SIZE] = '\0' ;
+
+      fileId2 = rec.id ;
+      stat = Fil_Tbl_FieldName ( &fileId2, &firstFieldId, &keyField_d ) ;
+      recId = 0 ;
+      stat = Fil_Tbl_RecFieldInfo (	
+                                &fileId2, 
+				&recId,
+				&keyField_d, 
+				&fieldType,
+     				&fieldOffset2, 
+				&fieldSize,
+     				&fieldCount, 
+				&fieldId ) ;
+  
+      /* Add the key */
+      pData = gHyp_data_new ( "ukeyvalue" ) ;
+      pValue = gHyp_data_new ( NULL ) ;
+      gHyp_data_setStr_n ( pValue, ukeyvalue, fieldSize ) ;
+      gHyp_data_append ( pData, pValue ) ;
+      gHyp_data_append ( pTLOG, pData ) ;
+
+      if ( recid[0] == 'D' && !(flags&4) ) {
+         /* A DELETE record with no buffer.  
+          * Make the ukeyvalue the buffer. 
+          * It will cause the record to have at least the first 
+          * few fields that make up the key.
+          * The rest of the buffer will have to be initialized
+          * using Fil_BufInit( file.Id , aeqSsp_autoFil_file(newselect).buffer )
+
+          */
+        length = fieldOffset + fieldSize - 1 ;
+      }
+      else 
+        fieldOffset += MAX_PROMIS_KEY_SIZE ; /* Skip past maxkeysize */
+    }
+
+    /* Unpack the internal record */
+    length = length - fieldOffset + 1; 
+    
+    /*
+    gHyp_util_debug("Unpacking %d bytes at %d for %s", 
+      length,fieldOffset,tableName);
+    */
+
+    stat = aeqSsp_automan_unpack (  &fileId, &rec.id, &length, 
+				      pBuf+fieldOffset-1 ) ;
+    if ( !(stat & 1) ) return FALSE ;
+   
+    return TRUE ;
+
+  }
+  else if (recid[0] == 'G' || 
+          recid[0] == 'S' ||
+          recid[0] == 'T' ||
+          recid[0] == 'M' ||
+          recid[0] == 'V' ) {
+
+    strncpy ( rec.name, (const char*) pBuf+fieldOffset-1, 4 ) ; 
+    rec.name[4] = '\0' ;
+    pData = gHyp_data_new ( "logtime" ) ;
+    pValue = gHyp_data_new ( NULL ) ;
+    gHyp_data_setInt ( pValue, rec.id ) ;
+    gHyp_data_append ( pData, pValue ) ;
+    gHyp_data_append ( pTLOG, pData ) ;
+
+    fieldOffset += 4 ;
+  }
+  else if ( recid[0] == 'H' ) {
+
+    strncpy ( rec.name, (const char*) pBuf+fieldOffset-1, 4 ) ; 
+    rec.name[4] = '\0' ;
+    pData = gHyp_data_new ( "primwritetime" ) ;
+    pValue = gHyp_data_new ( NULL ) ;
+    gHyp_data_setInt ( pValue, rec.id ) ;
+    gHyp_data_append ( pData, pValue ) ;
+    gHyp_data_append ( pTLOG, pData ) ;
+
+    fieldOffset += 4 ;
+
+    strncpy ( rec.name, (const char*) pBuf+fieldOffset-1, 4 ) ; 
+    rec.name[4] = '\0' ;
+    pData = gHyp_data_new ( "secreceivetime" ) ;
+    pValue = gHyp_data_new ( NULL ) ;
+    gHyp_data_setInt ( pValue, rec.id ) ;
+    gHyp_data_append ( pData, pValue ) ;
+    gHyp_data_append ( pTLOG, pData ) ;
+
+    fieldOffset += 4 ;
+
+    strncpy ( rec.name, (const char*) pBuf+fieldOffset-1, 4 ) ; 
+    rec.name[4] = '\0' ;
+    pData = gHyp_data_new ( "secapplytime" ) ;
+    pValue = gHyp_data_new ( NULL ) ;
+    gHyp_data_setInt ( pValue, rec.id ) ;
+    gHyp_data_append ( pData, pValue ) ;
+    gHyp_data_append ( pTLOG, pData ) ;
+
+    fieldOffset += 4 ;
+  }
 }
 
 sLOGICAL gHyp_promis_hs (	sDescr*		token_d,
@@ -1709,6 +1839,7 @@ sLOGICAL gHyp_promis_hs (	sDescr*		token_d,
 	if ( !gHyp_concept_init ( gpsConcept, 
 				  self,
 				  "",
+				  NULL,
 				  0,
 				  MAX_EXPRESSION )) return 1 ;
         gpAI = gpAImain = gHyp_concept_getConceptInstance ( gpsConcept ) ;

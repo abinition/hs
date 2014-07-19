@@ -2,6 +2,11 @@
  * Modifications:
  *
  * $Log: ssl.h,v $
+ * Revision 1.7  2010-01-08 02:44:57  bergsma
+ * Added ssl_md5(), enhanced ssl_digest.
+ * Fixed urldecode, missing ":"
+ * Enabled object calls, ie:  text.strtok( ) and the like...
+ *
  * Revision 1.6  2007-07-09 05:36:56  bergsma
  * Add ssl_digest
  *
@@ -30,6 +35,8 @@ extern void gHyp_ssl_certFile ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 extern void gHyp_ssl_CAfile ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) ;
 extern void gHyp_ssl_CApath ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) ;
 extern void gHyp_ssl_digest ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) ;
+extern void gHyp_ssl_md5 ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) ;
+extern void gHyp_ssl_ssl ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) ;
 extern void gHyp_ssl_auth ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) ;
 extern void gHyp_ssl_authClient ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) ;
 extern void gHyp_ssl_assign ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) ;

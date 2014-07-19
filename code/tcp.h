@@ -40,7 +40,7 @@ extern sAlias*		gHyp_tcp_createAlias ( char *pHost, char *pAddr ) ;
 extern void		gHyp_tcp_removeAliases ( char* ) ;
 extern void		gHyp_tcp_gethostname ( char *, int  ) ;
 extern sLOGICAL		gHyp_tcp_setup ( SOCKET s ) ;
-#if defined (AS_UNIX) && !defined(AS_TRUE64)
+#if defined (AS_UNIX) 
 extern sLOGICAL		gHyp_tcp_sendmsg( char *pClient, char *pService, SOCKET sendfd, int port ) ;
 extern SOCKET		gHyp_tcp_recvmsg ( int s, int *pport ) ;
 extern SOCKET		gHyp_tcp_makeUNIX ( char *pService ) ;

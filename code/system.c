@@ -11,6 +11,15 @@
  * Modifications:
  *
  *	$Log: system.c,v $
+ *	Revision 1.39  2010-03-05 06:08:46  bergsma
+ *	Add -u option and AUTOHOST environment variable.
+ *	
+ *	Revision 1.38  2010-01-16 18:34:11  bergsma
+ *	Increase input stream for XML.
+ *	
+ *	Revision 1.37  2010-01-15 08:30:42  bergsma
+ *	Increase XML input buffers for parsing
+ *	
  *	Revision 1.36  2009-09-21 05:19:57  bergsma
  *	Comments
  *	
@@ -150,7 +159,7 @@
 
 /**********************	INTERNAL GLOBAL VARIABLES ****************************/
 
-static char gzStream[MAX_INPUT_LENGTH*4+1] ;
+static char gzStream[STREAM_READ_SIZE*4+1] ;
 
 /********************** INTERNAL OBJECT STRUCTURES ************************/
 
@@ -1547,6 +1556,8 @@ void gHyp_system_getenv ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
       if (      strcmp ( token, "AUTOROUTER" ) == 0 )
 	strcpy ( value, gzAUTOROUTER ) ;
+      else if ( strcmp ( token, "AUTOHOST"   ) == 0 )
+	strcpy ( value, gzAUTOHOST ) ;
       else if ( strcmp ( token, "AUTOFIFO"   ) == 0 )
 	strcpy ( value, gzAUTOFIFO ) ;
       else if ( strcmp ( token, "AUTOBIN"    ) == 0 )

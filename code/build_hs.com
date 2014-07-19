@@ -16,6 +16,9 @@ $!
 $! Modifications:
 $!
 $!   $Log: build_hs.com,v $
+$!   Revision 1.12  2010-02-01 22:27:18  bergsma
+$!   Builld 100130, HS 3.9.0
+$!
 $!   Revision 1.11  2009-12-08 21:01:50  bergsma
 $!   Differentiate between hsp and hss
 $!
@@ -72,7 +75,7 @@ $     close opt
 $     ! Pull out 'main()' for building hs.exe
 $     libr hs_non_promis/extract=(hs)/output=hss.obj
 $     ! Pull out 'main()' for building stats.exe
-$     libr hs_non_promis/extract=(stats)/output=stats.obj
+$     !!!DEPRECATED!!!  libr hs_non_promis/extract=(stats)/output=stats.obj
 $     goto LINK_HS
 $   else
 $     write sys$output "HyperScript could not be compiled"
@@ -88,7 +91,7 @@ $!
 $! 1. contains main() for hs.exe (and stats.exe)
 $!
 $ ccc HS.c /obj=hss.obj
-$ ccc stats.c
+$ !!!DEPRECATED!!! ccc stats.c
 $!
 $! 2. HyperScript modules
 $!
@@ -199,7 +202,7 @@ $!
 $! Link an image
 $!
 $ 'build'/exec=hss.exe/map hss.obj+hs_non_promis.olb/lib+hs.opt/opt
-$ 'build'/exec=stats.exe stats.obj+hs_non_promis.olb/lib+hs.opt/opt
+$ !!!DEPRECATED!!! 'build'/exec=stats.exe stats.obj+hs_non_promis.olb/lib+hs.opt/opt
 $!
 $! Cleanup the directory
 $!

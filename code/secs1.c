@@ -11,6 +11,39 @@
  * Modifications:
  *
  *   $Log: secs1.c,v $
+ *   Revision 1.93  2010-07-05 16:04:37  bergsma
+ *   Erase post and get args before each http message
+ *
+ *   Revision 1.92  2010-05-05 04:56:19  bergsma
+ *   Added CGI form-data support
+ *
+ *   Revision 1.91  2010-04-23 05:16:07  bergsma
+ *   Added _http_uri_.  Fixed parsing of POST url encoded data.
+ *
+ *   Revision 1.90  2010-04-15 07:38:29  bergsma
+ *   Add _http_uri_
+ *
+ *   Revision 1.89  2010-04-13 21:08:42  bergsma
+ *   Added _http_get_args_ and _http_post_args_
+ *
+ *   Revision 1.88  2010-03-05 06:15:33  bergsma
+ *   Remove unused variables.
+ *
+ *   Revision 1.87  2010-02-01 22:27:18  bergsma
+ *   Builld 100130, HS 3.9.0
+ *
+ *   Revision 1.86  2010-01-16 18:34:11  bergsma
+ *   Increase input stream for XML.
+ *
+ *   Revision 1.85  2009-12-24 15:56:55  bergsma
+ *   More fixes for handling form data via HTTP
+ *
+ *   Revision 1.84  2009-12-19 20:41:23  bergsma
+ *   Fix problem where OVERLAPPED I/O uses different buffers.....
+ *
+ *   Revision 1.83  2009-12-19 05:54:21  bergsma
+ *   Handle upload of form data
+ *
  *   Revision 1.82  2009-12-08 20:47:33  bergsma
  *   Remove debug statement
  *
@@ -316,8 +349,8 @@
  * OS happier, plus we can handle guSIGMSG with it here
  */
 
-static char gzOutBuffer[MAX_INPUT_LENGTH+1] ;
-static char gzInputBuffer[OVERFLOW_READ_SIZE+1] ;
+static char gzOutBuffer[(MAX_INPUT_LENGTH*4)+1] ;
+static char gzInputBuffer[STREAM_READ_SIZE*4+1] ;
 static int  giNbytes ;
 
 #include "secshead.h"
@@ -1645,8 +1678,7 @@ int gHyp_secs1_outgoing ( sSecs1 *pSecs1,
     mt4,
     mt1u,
     retry=0,
-    cond=COND_SILENT ,
-    cond2=COND_SILENT ;
+    cond=COND_SILENT ;
 
   unsigned short
     checksum ;
@@ -1859,7 +1891,7 @@ int gHyp_secs1_outgoing ( sSecs1 *pSecs1,
 		gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 				   "ENQ contention. Relinquishing..." ) ;
 	      pSecs1->state = SECS_EXPECT_SEND_EOT ;
-	      cond2 = lHyp_secs1_incoming ( pSecs1, 
+	      cond = lHyp_secs1_incoming ( pSecs1, 
 					   gHyp_instance_getConcept(pAI),
 					   pAI,
 					   mode,
@@ -1869,7 +1901,7 @@ int gHyp_secs1_outgoing ( sSecs1 *pSecs1,
 					   stream,
 					   function ) ;
 	      pSecs1->state = SECS_EXPECT_RECV_ENQ ;
-	      if ( cond2 < 0 ) return cond ;
+	      if ( cond < 0 ) return cond ;
 	      break ;
 	    }
 	    else {
@@ -2120,7 +2152,7 @@ int gHyp_secs1_outgoing ( sSecs1 *pSecs1,
 	   * Accept the incoming message.
 	   */
 	  pSecs1->state = SECS_EXPECT_SEND_EOT2 ;
-	  cond2 = lHyp_secs1_incoming ( pSecs1, 
+	  cond = lHyp_secs1_incoming ( pSecs1, 
 					 gHyp_instance_getConcept(pAI),
 					 pAI,
 					 mode,
@@ -2131,7 +2163,7 @@ int gHyp_secs1_outgoing ( sSecs1 *pSecs1,
 					 function ) ;
 
 	  pSecs1->state = SECS_EXPECT_RECV_ENQ ;
-	  if ( cond2 < 0 ) return cond ;
+	  if ( cond < 0 ) return cond ;
 	}
 	else {
 	  /* Not in a reply state or not got an ENQ */
@@ -2245,7 +2277,99 @@ unsigned gHyp_secs1_SID ( sSecs1 *pSecs1 )
   return pSecs1->SID ;
 }
 
-static void lHyp_secs1_httpHeaders ( char *pLine, 
+static void lHyp_secs1_URLdecode ( sData *pContentData, 
+                                   sData *pTV, 
+                                   sFrame *pFrame,
+                                   sLOGICAL isPOSTdata ) 
+{
+
+  sData
+    *pPOSTargs=NULL,
+    *pGETargs=NULL,
+    *pArgs=NULL,
+    *pValue = NULL,
+    *pVariable = NULL ;
+
+  sLOGICAL
+    isVector = FALSE ;
+
+  int
+    streamLen,
+    ss = -1,
+    context = -1 ;
+
+  char
+    *pChar,
+    *pTokenName,
+    *pTokenValue,
+    *pStream = gzOutBuffer,
+    *pAnchor = pStream,
+    *pEndOfStream = pStream ;
+
+  /* Create arguments like "cgiargs" */
+  pPOSTargs = gHyp_frame_createVariable ( pFrame, "_http_post_args_" ) ;
+  gHyp_data_deleteValues ( pPOSTargs ) ;
+
+  pGETargs = gHyp_frame_createVariable ( pFrame, "_http_post_args_" ) ;
+  gHyp_data_deleteValues ( pGETargs ) ;
+
+  if ( isPOSTdata )
+    pArgs = pPOSTargs ;
+  else
+    pArgs = pGETargs ;
+
+  streamLen = 0 ;
+  while (
+   (pStream = gHyp_util_readStream (	pStream, pAnchor, &pEndOfStream,
+					&streamLen, pContentData, 
+					&pValue, &context, ss, isVector, 
+					NULL ) ) ) {
+
+    /* The token name is first */
+    pTokenName = pStream ;
+
+    /* Look for '=' */
+    pTokenValue = strchr ( pTokenName, '=' ) ;
+    if ( !pTokenValue ) break ;
+
+    /* Make sure there is both a token and a value */
+    *pTokenValue = '\0' ;
+    gHyp_util_trim ( pTokenName ) ;
+    if ( strlen ( pTokenName ) == 0 ) break ;
+
+    /*gHyp_util_debug("Adding tokenname %s",pTokenName);*/
+    /* Get the token value */
+    pTokenValue++ ;
+		  
+    pChar = strchr ( pTokenValue, '&' ) ;
+    if ( pChar ) *pChar++ = '\0' ;
+    else pChar = pTokenValue + strlen ( pTokenValue ) ;
+
+    gHyp_util_trim ( pTokenValue ) ;
+
+    /*gHyp_util_debug("Adding tokenvalue %s",pTokenValue);*/
+    pVariable = gHyp_data_new ( pTokenName ) ;
+    pValue = gHyp_data_new ( NULL ) ;
+    if ( strlen ( pTokenValue ) > 0 ) {
+      gHyp_cgi_plusToSpace( pTokenValue );
+      gHyp_cgi_unescapeUrl( pTokenValue );
+      gHyp_data_setStr ( pValue, pTokenValue ) ;
+    }
+    gHyp_data_append ( pVariable, pValue ) ;
+    gHyp_data_append ( pTV, pVariable ) ;
+
+    pVariable = gHyp_data_new ( NULL ) ;
+    gHyp_data_setReference ( pVariable, pTokenName, NULL ) ;
+    gHyp_data_append ( pArgs, pVariable ) ;
+
+    pTokenName = pChar ;
+    pStream = pTokenName ;
+  }
+
+}
+
+
+static void lHyp_secs1_httpAttributes ( char *pLine, 
 				     char *pEndBuf, 
 				     sData* pAttributeData )
 {
@@ -2261,31 +2385,49 @@ static void lHyp_secs1_httpHeaders ( char *pLine,
     *pAttr,
     *pValue ;
 
+  /* We have a completely filled character buffer.
+   * We are looking for the following pattern:
+   *
+   * \r\n 
+   * <attributeName1>:<attributeValue11>,<attributeValue12>
+   * \r\n
+   * <attributeName2>:<attributeValue21>
+   * \r\n
+   * <attributeName3>:<attributeValue31>,
+   * \r\n
+   * <attributeValue32>
+   * \r\n
+   */
+
   while ( pLine < pEndBuf ) {
 
-    /* Advamnce past newline */
+    /* Advance past newline */
     pLine += strspn ( pLine, "\r\n" ) ;
 
     /* Search for the end of the attribute value section.
      * This is the first  "\r\n" that isn't preceeded by a ','
+     *
+     * Q:  Where is the occurance of a comma in an HTTP header?
      */
     pChar = pLine ;
+    if ( pChar >= pEndBuf ) break ;
     while ( pChar < pEndBuf ) {
       width = strcspn ( pChar, "\r\n" ) ;
       if ( width > 2 ) {
 	if ( *(pLine+width-1) == ',' && *(pLine+width-2) != '\\' ) {
-	  /* Search for next end-of-line */
+	  /* found a line ending with ",", keeping searching for one that is not. */
 	  pChar = pLine+width ;
 	  pChar += strspn ( pChar, "\r\n" ) ;
 	  continue ;
 	}
       }
-      /* Mark the end of the attribute section */
+      /* Mark the end of that particular attribute section */
       pChar += width ;
       *pChar = '\0' ;
       break ;
     }
-    if ( pChar >= pEndBuf ) break ;
+
+
     /* Where's the colon separating attribute name from value */
     pChar = strchr ( pLine, ':' ) ;
     if ( pChar ) {
@@ -2360,6 +2502,196 @@ static void lHyp_secs1_httpHeaders ( char *pLine,
   }
 }
 
+void gHyp_secs1_httpFormData ( sData *pHttpData,
+			       char *pBoundary,
+			       sData *pFormData ) 
+{
+				       
+ /* We call this when there is POST data and the 
+  * Content-Type has "multipart/form-data". 
+  *
+  * The sequence is:
+  *   [ "--" + [nl + <attribute>] + nlnl + <content> + nl + "--" ] + nl
+  * 
+  * Example, an incoming form with a png file, "--" is the boundary.
+
+  --
+  \r\n
+  Content-Disposition: form-data; name=\"sb_username\"
+  \r\n\r\n
+  \r\n
+  --
+  \r\n
+  Content-Disposition: form-data; name=\"sb_file\"; filename=\"pfp.png\"
+  \r\n
+  Content-Type: image/png
+  \r\n\r\n
+  \211PNG\r\n\032\n\000\000\000\rIHDR\000\000\003C\000\000\002\257\b\002\000\000\000'S\203\365
+  \r\n
+  --
+  \r\n
+
+  *
+  * We will make a data structure as follows:
+  *
+      list _http_form_ = {
+     	list _http_data_ = {
+     	  str 'Content-Disposition' = "form-data; name=\"sb_file\"; filename=\"pfp.png\"",
+          str 'Content-Type' = "image/png",
+          str 'Content-Data' = { "the raw data" } 
+       },
+       list _http_data_ = {
+         str....
+       } ;
+     
+  */
+  sData
+    *pContentData,
+    *pData = NULL,
+    *pValue = NULL ;
+
+  sLOGICAL
+    isLineBased = FALSE,
+    isVector = FALSE ;
+
+  int
+    hops,
+    contentLen,
+    streamLen,
+    width,
+    boundaryLen = strlen(pBoundary),
+    ss = -1,
+    context = -1 ;
+
+  char
+    *pContent,
+    *pContent2,
+    *pChar,
+    *pStream = gzOutBuffer,
+    *pAnchor = pStream,
+    *pEndOfStream=pStream,
+    *pEos,
+    value[VALUE_SIZE+1];
+
+  while (
+   (pStream = gHyp_util_readStream (	pStream, pAnchor, &pEndOfStream,
+					&streamLen, pHttpData, 
+					&pValue, &context, ss, isVector, 
+					NULL ) ) ) {
+    /* Since pEndOfSteam becomes NULL after the last load, we use pEos */
+    pEos = pStream + streamLen ;
+
+    /* Look for first boundary */
+    pStream = gHyp_util_memmem ( pStream, pBoundary, streamLen, boundaryLen ) ;
+
+    /* No boundary?  Then we abandon */
+    if ( !pStream ) break ;
+
+    /* Found a START boundary. Scan past the boundary to the beginning */
+    pStream += strlen ( pBoundary ) ;
+    pStream += strspn ( pStream, "\r\n" ) ; 
+
+    /* We are definitely going to find the start of the Contents,
+     * that's the double newline.
+     */
+    pContent = strstr ( pStream, "\r\n\r\n" ) ;
+    pContent2 = strstr ( pStream, "\n\n" ) ;
+
+    hops = 4 ;
+    if ( !pContent && pContent2 ) { pContent = pContent2 ; hops = 2; }
+    if ( !pContent ) break ;
+
+    /* Null terminate the header */
+    *pContent = '\0' ;
+
+    /* Find out if the content is line based or binary */
+    isLineBased = FALSE ;
+    pChar = strstr ( pStream, "Content-type" ) ;
+    if ( pChar != NULL ) {
+      /* Scan for end of line */
+      width = strcspn ( pChar, "\r\n" ) ;
+      if ( width > 0 && width < VALUE_SIZE ) {
+	strncpy ( value, pChar, width ) ;
+	value[width]='\0' ;
+	pChar = strchr ( value, ':' ) ;
+	if ( pChar ) {
+	  pChar++ ;
+	  if ( *pChar ) {
+	    pChar += strspn ( pChar, " \t" ) ;
+	    gHyp_util_trim ( pChar ) ;
+	    if ( strstr ( pChar, "text/xml" ) != NULL ||
+	       strstr ( pChar, "text/html" ) != NULL ||
+	       strstr ( pChar, "text/plain" ) != NULL ||
+	       strstr ( pChar, "application/soap" ) != NULL )
+	      isLineBased = TRUE ;
+	  }
+        }
+      }
+    }
+
+    /* Suck in the attributes, like _http_attr_ */
+    pData = gHyp_data_new ( "_http_data_" ) ;
+    lHyp_secs1_httpAttributes ( pStream, 
+				pContent, 
+				pData ) ;
+
+    gHyp_data_append ( pFormData, pData ) ;
+
+    /* Point to the real start of the content */
+    pContent += hops ;
+
+    pContentData = gHyp_data_new ( "Content-Data" ) ;
+
+    /* Get all the content data uploaded - we must locate the boundary */
+    pChar = NULL ;
+    pStream = pContent ;
+    while ( !pChar ) {
+
+      /* Look for boundary to end of Content */
+      streamLen = pEos - pStream ;
+      pChar = gHyp_util_memmem ( pStream, pBoundary, streamLen, boundaryLen ) ;
+
+      if ( pChar ) { 
+
+	/* Found it, back up 4 characters to end-of-stream */
+	pContent = pChar - 4 ;
+	contentLen = pContent - pStream ;
+
+	/* Capture all the lines */
+	gHyp_util_breakStream ( pStream, contentLen, pContentData, isLineBased ) ;
+
+	/* Move pStream forwards to pChar */
+	pStream = pChar ;
+	streamLen = pEos - pStream ;
+      }
+      else {
+
+        /* Not found, take everything in the buffer and refill it. */
+	contentLen = pEos - pStream ;
+	gHyp_util_breakStream ( pStream, contentLen, pContentData, isLineBased ) ;
+
+	/* To refill the buffer */
+	pStream = gzOutBuffer ;
+	pAnchor = pStream ;
+	pEndOfStream=pStream ;
+	streamLen = 0 ;
+        pStream = gHyp_util_readStream (pStream, pAnchor, &pEndOfStream,
+					&streamLen, pHttpData, 
+					&pValue, &context, ss, isVector, 
+	 				NULL ) ;
+	/* Set the start of the content to the new pStream */
+	pContent = pStream ;
+	pEos = pStream + streamLen ;
+      }
+    }
+    gHyp_data_append ( pData, pContentData ) ;
+
+    /* Backup so we'll find the next boundary and get another form element */
+    pStream-- ;
+ 
+  }
+}
+
 int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, sBYTE objectType ) 
 {
   /* Three return values:
@@ -2377,7 +2709,6 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
     f,
     deleteForwardPort,
     isReply,
-    isVector,
     isChunkedTransferEncoded=FALSE,
     isEndOfMessage=FALSE,
     isEndOfBuffer=FALSE,
@@ -2399,8 +2730,6 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
   int
     i,
     n=0,
-    ss,
-    context,
     lineLen=0,
     width,width2,width3,
     forwardCount,
@@ -2419,6 +2748,7 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
     *pBuf,
     *pEndBuf,
     *pChar,
+    *pBoundary=NULL,
     *pTokenName,
     *pTokenValue,
     *pMsg,
@@ -2431,7 +2761,7 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
     method[METHOD_SIZE+1],
     mode[MODE_SIZE+1],
     tid[FIELD_SIZE+1],
-    value[VALUE_SIZE+2+1] ; /* Room for 2 extra characters.*/
+    value[(VALUE_SIZE*2)+2+1] ; /* Room for 2 extra characters.*/
 
   sData
     *pAttributeData=NULL,
@@ -2443,6 +2773,8 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
     *pNext,
     *pValue,
     *pTV,
+    *pGETargs,
+    *pPOSTargs,
     *pVariable ;
 
   sHTTP
@@ -2552,7 +2884,7 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
   }
   else {
     if ( pPort->savebuflen > 0 ) {
-      gHyp_util_debug("Short HTTP Message save previously is restored, inserting %d bytes to buffer start",pPort->savebuflen); 
+      gHyp_util_debug("Short HTTP Message saved previously is now restored (inserted %d bytes to buffer start",pPort->savebuflen); 
       memmove ( gzInputBuffer, pPort->savebuf, pPort->savebuflen ) ;
       pBuf += pPort->savebuflen ;
     }
@@ -2726,6 +3058,7 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
       isChunkedTransferEncoded = gHyp_http_isChunkedTransferEnc(pHTTP);
       isXMLEncoded = gHyp_http_isXMLEncoded(pHTTP);
       isURLEncoded = gHyp_http_isURLEncoded(pHTTP);
+      pBoundary = gHyp_http_getFormDataBoundary(pHTTP);
       isPlainText = gHyp_http_isPlainText(pHTTP);
       isBinary = gHyp_http_isBinary(pHTTP);
       isZeroLength = gHyp_http_isZeroLength(pHTTP);
@@ -2749,7 +3082,7 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
 
 	/* If we didnt' get enough of the header, then abandon now */
 	if ( !pContent2 && !pContent3 ) {
-	  gHyp_util_debug("HTTP Message too short, saving %d bytes.",giNbytes); 
+	  /*gHyp_util_debug("HTTP Message too short, saving %d bytes.",giNbytes);*/ 
 	  memmove ( pPort->savebuf, gzInputBuffer, giNbytes ) ;
 	  pPort->savebuflen = giNbytes ;
 	  return COND_SILENT ;
@@ -2765,6 +3098,7 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
 	  actualContentLength = giNbytes - (pContent-gzInputBuffer) ;
   	  gHyp_http_updateContent ( pHTTP,  contentLength, actualContentLength ) ;
 	}
+
 
 	/* Now look for "Content-Length" and get value */
 	pChar = strstr ( pBuf, "Content-Length" ) ;
@@ -2830,7 +3164,7 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
 	  }
 	}
 
-	/* Look for "Content-Type" and see if it is "text/xml or text/html" */
+	/* Look for "Content-Type" and see if it is "text/xml or text/html" or form data */
 	pChar = strstr ( pBuf, "Content-Type" ) ;
 	if ( !pChar ) pChar = strstr ( pBuf, "Content-type" ) ;
 	if ( pChar ) {
@@ -2866,6 +3200,13 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
 		else if ( strstr ( pChar, "application/binary" ) != NULL ) {
 		  isBinary = TRUE ;
 		  gHyp_http_setBinary ( pHTTP, TRUE ) ;
+		}
+		else if ( strstr ( pChar, "multipart/form-data" ) != NULL ) {
+		  if ( (pChar = strstr ( pChar, "boundary=" )) != NULL ) {
+		    /* Get the boundary= string, 9 chars */
+		    gHyp_http_setFormDataBoundary ( pHTTP, pChar+9 ) ;
+		    pBoundary = gHyp_http_getFormDataBoundary( pHTTP ) ;
+		  }
 		}
 	      }
 	    }
@@ -2949,7 +3290,7 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
 	  /* For each subsequent line, up to pContent, extract the attributes */
 	  pLine = pBuf + lineLen + 1 ;
 
-	  lHyp_secs1_httpHeaders ( pLine, pContent, pAttributeData ) ;
+	  lHyp_secs1_httpAttributes ( pLine, pContent, pAttributeData ) ;
 
 	  /* Finished attribute section */
 	  httpState = HTTP_EXPECT_CONTENT ;
@@ -3040,7 +3381,7 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
 		/*gHyp_util_debug("Chunked transfer complete");*/
   	        gHyp_http_updateContent ( pHTTP,  contentLength, actualContentLength ) ;
 		isEndOfMessage = TRUE ;
-		lHyp_secs1_httpHeaders ( pBuf, pEndBuf, pAttributeData ) ;
+		lHyp_secs1_httpAttributes ( pBuf, pEndBuf, pAttributeData ) ;
 		isEndOfBuffer = TRUE ;
 	      } 
 	      else { /* if ( contentLength > 0 ) { */
@@ -3475,14 +3816,27 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
 	gHyp_data_append ( pData, pValue ) ;
   	gHyp_data_append ( pTV, pData ) ;
 
+	pArg2 = gHyp_http_getArg2(pHTTP) ;
+
+ 	pData = gHyp_data_new ( NULL ) ;
+  	gHyp_data_setVariable ( pData, "_http_uri_", TYPE_STRING ) ;
+	gHyp_util_breakStream ( (char*) pArg2, strlen(pArg2), pData, TRUE ) ;        
+  	gHyp_data_append ( pTV, pData ) ;
+
 	/* Check the target URL.  It could contain CGI args. */
-	pTokenName = strchr ( gHyp_http_getArg2 ( pHTTP ), '?' ) ;
+	pTokenName = strchr ( pArg2, '?' ) ;
 	if ( pTokenName ) {
 
 	  /* Create arguments like "cgiargs" */
-	  *pTokenName = '\0' ;
+          pGETargs = gHyp_frame_createVariable ( gHyp_instance_frame(pAI), "_http_get_args_" ) ;
+          gHyp_data_deleteValues ( pGETargs ) ;
+
+          pPOSTargs = gHyp_frame_createVariable ( gHyp_instance_frame(pAI), "_http_post_args_" ) ;
+          gHyp_data_deleteValues ( pPOSTargs ) ;
+
+          *pTokenName = '\0' ;
 	  pTokenName++ ;
-	  n = MIN ( strlen ( pTokenName), VALUE_SIZE ) ;
+	  n = MIN ( strlen ( pTokenName), (VALUE_SIZE*2) ) ;
 	  strncpy ( value,  pTokenName, n  ) ;
 	  value[n] = '\0' ;
 	  pTokenName = value ;
@@ -3517,9 +3871,16 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
 	    }
 	    gHyp_data_append ( pVariable, pValue ) ;
 	    gHyp_data_append ( pTV, pVariable ) ;
+
+            pVariable = gHyp_data_new ( NULL ) ;
+            gHyp_data_setReference ( pVariable, pTokenName, NULL ) ;
+            gHyp_data_append ( pGETargs, pVariable ) ;
+
 	    pTokenName = pChar ;
 	  }
 	}
+
+
 
 	pData = gHyp_data_new ( "_http_target_" ) ;
   	pValue = gHyp_data_new ( NULL ) ;
@@ -3560,77 +3921,22 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
       else if ( contentLength > 0 && isPOSTdata && !isBinary ) {
 	
 	/* Process the POST data */
-	pVariable = NULL ;
-	isVector = FALSE ;
-	ss = -1 ; 
-	context = -1 ;
-	pData = NULL ;
-	pChar = gzOutBuffer ;
-	/* First put all the contentData in a big buffer */
-	while ( (pData = gHyp_data_nextValue ( pContentData, 
-  					       pData,
-					       &context,
-					       ss ))) {
 
-	  n = gHyp_data_getStr ( pData, 
-				 pChar, 
-				 VALUE_SIZE, 
-				 context, 
-				 isVector ) ;
-	  pChar += n ;
-	  if ( pChar-gzOutBuffer > (MAX_INPUT_LENGTH-VALUE_SIZE) ) break ;
-
+	if ( pBoundary ) {
+	  
+	  pData = gHyp_data_new ( "_http_form_" ) ;
+	  gHyp_secs1_httpFormData ( pContentData,
+				    pBoundary,
+				    pData ) ;
+	  gHyp_data_append ( pTV, pData ) ;
 	}
-	*pChar++ = '\0' ;
+	else if ( isURLEncoded ) {
 
-	/*gHyp_util_debug("Appended %d bytes of post data in %d buffer",(pChar-gzOutBuffer),MAX_INPUT_LENGTH );*/
+	  lHyp_secs1_URLdecode ( pContentData, pTV, gHyp_instance_frame(pAI), 1)  ;
 
-	/* Now parse the long string */
-	pTokenName = gzOutBuffer ;
-	while ( *pTokenName ) {
-
-	  /* Look for '=' */
-	  pTokenValue = strchr ( pTokenName, '=' ) ;
-	  if ( !pTokenValue ) break ;
-
-	  /* Make sure there is both a token and a value */
-	  *pTokenValue = '\0' ;
-	  gHyp_util_trim ( pTokenName ) ;
-	  if ( strlen ( pTokenName ) == 0 ) break ;
-	  pVariable = gHyp_data_new ( pTokenName ) ;
-	  gHyp_data_append ( pTV, pVariable ) ;
-
-  	  /*gHyp_util_debug("New token %s",pTokenName);*/
-
-	  /* Get the token value */
-	  pTokenValue++ ;
-
-	  /* Look for end of value section */
-	  pChar = strchr ( pTokenValue, '&' ) ;
-	  if ( !pChar ) {
-    	    /*gHyp_util_debug("Last value %s",pTokenValue);*/
-	    pChar = pTokenValue + strlen ( pTokenValue ) ;
-	    *pChar = '\0' ;
-	  }
-	  else
-	    /* Mark end of value */
-	    *pChar++ = '\0' ;
-
-	  pTokenName = pChar ; 
-
- 	  pValue = gHyp_data_new ( NULL ) ;
-	  if ( strlen ( pTokenValue ) > 0 ) {
-	    if ( isURLEncoded ) {
-	      gHyp_cgi_plusToSpace( pTokenValue );
-	      gHyp_cgi_unescapeUrl( pTokenValue );
-      	      gHyp_data_setStr ( pValue, pTokenValue ) ;
-  	      /*gHyp_util_debug("New token value %s",pTokenValue);*/
-	    }
-	  }
-	  if ( pVariable ) gHyp_data_append ( pVariable, pValue ) ;
 	}
       }
-      
+
       /* Always deliver the raw content */
       pData = gHyp_data_new ( "_http_data_" ) ;
       if ( pContentData )
@@ -4266,12 +4572,18 @@ SOCKET gHyp_secs1_fd ( sSecs1 *pSecs1 )
 
 sBYTE*	gHyp_secs1_buf ( sSecs1* pSecs1 ) 
 {
-  return pSecs1->inbuf ;
+  if ( pSecs1->flags & PROTOCOL_SECS1 ) 
+    return pSecs1->inbuf ;
+  else
+    return (sBYTE*) gzInputBuffer ;
 }
 
 int *gHyp_secs1_pNbytes ( sSecs1 *pSecs1 )
 {
-  return &pSecs1->nBytes ;
+  if ( pSecs1->flags & PROTOCOL_SECS1 ) 
+    return &pSecs1->nBytes ;
+  else
+    return &giNbytes ;
 }
 
 short gHyp_secs1_flags ( sSecs1 *pSecs1 )

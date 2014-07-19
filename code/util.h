@@ -3,6 +3,12 @@
  * Modifications:
  *
  * $Log: util.h,v $
+ * Revision 1.19  2010-02-01 22:27:18  bergsma
+ * Builld 100130, HS 3.9.0
+ *
+ * Revision 1.18  2009-12-24 15:56:55  bergsma
+ * More fixes for handling form data via HTTP
+ *
  * Revision 1.17  2008-06-07 02:49:50  bergsma
  * Added gHyp_util_breakTokenForMsg
  *
@@ -118,6 +124,5 @@ extern char *gHyp_util_readStream (  char *pStream,
 				    FILE *pp )  ;
 
 extern void gHyp_util_breakStream ( char *buffer, int bufLen, sData *pParent, sLOGICAL isLineBased ) ;
-int gHyp_util_breakStringForMsg( char *buffer, int bufLen, int maxBufLen ) ;
-
-
+extern int gHyp_util_breakStringForMsg( char *buffer, int bufLen, int maxBufLen ) ;
+extern char *gHyp_util_memmem(const void *buf, const void *pattern, size_t buflen, size_t len) ;

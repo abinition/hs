@@ -10,6 +10,12 @@
 /* Modifications: 
  *
  * $Log: router.c,v $
+ * Revision 1.34  2010-07-05 16:04:01  bergsma
+ * Create client mailboxes when CONNECT messages.
+ *
+ * Revision 1.33  2010-06-26 06:34:06  bergsma
+ * Comment
+ *
  * Revision 1.32  2007-02-15 03:23:47  bergsma
  * Initialize a variable pMethodObj to NULL
  *
@@ -564,7 +570,12 @@ int gHyp_router_message ( sConcept *pConcept,
 
   /* Look for a pre-existing return socket for the sender */
   if ( isLocalSender && !isMsgFromUs && senderClient[0] && !isWildCardSender ) {
-    pSenderData = gHyp_sock_findClient ( pClients, senderClient, senderId ) ;
+
+    if ( isConnect ) 
+      pSenderData = gHyp_sock_createClient ( pClients, senderClient, senderId, FALSE ) ;
+    else
+      pSenderData = gHyp_sock_findClient ( pClients, senderClient, senderId ) ;
+
   }
   else if ( !isLocalSender && isSenderResolved ) 
 
@@ -664,7 +675,10 @@ int gHyp_router_message ( sConcept *pConcept,
 	gHyp_concept_openReader ( pConcept ) ; 
 
         /* Look for a socket already created for the specified target */
-        pTargetData = gHyp_sock_findClient ( pClients, targetClient, targetId ) ;
+        if ( isConnect ) 
+          pTargetData = gHyp_sock_createClient ( pClients, targetClient, targetId, FALSE ) ;
+        else
+          pTargetData = gHyp_sock_findClient ( pClients, targetClient, targetId ) ;
 
 	/* Try to execute a script file if the message is CONNECT and
 	 * the socket does not exist.
@@ -918,6 +932,7 @@ int gHyp_router_message ( sConcept *pConcept,
 	}
       }
       if ( pAI ) {
+        /* For messages to ourself, they don't get written/read from the fifo's */
 	if ( guDebugFlags & DEBUG_DIAGNOSTICS )
 	  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
 			       "Found instance %s#%s",pTargetInstance,pTargetConcept) ;

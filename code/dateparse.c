@@ -11,6 +11,9 @@
  * Modifications:
  *
  *	$Log: dateparse.c,v $
+ *	Revision 1.10  2010-05-05 04:55:41  bergsma
+ *	Added http_asctime
+ *	
  *	Revision 1.9  2009-09-21 05:17:12  bergsma
  *	Comments
  *	
@@ -1095,14 +1098,14 @@ time_t gHyp_dateparse_parse( char* str )
       tm.tm_year = tm_year;
     }
   /* ANSI asctime: Sun Nov 6 08:49:37 1994  
-     wdy mth DD HH:MM   YY */
+     wdy mth DD HH:MM:SS YY */
   else if ( ( sscanf( cp, "%[a-zA-Z] %[a-zA-Z] %d %d:%d:%d %d",
 			str_wday, str_mon, &tm_mday, &tm_hour, &tm_min,
 			&tm_sec, &tm_year ) == 7 ) &&
 	    ( lHyp_dateparse_scanWday( str_wday, &tm_wday ) ) &&
 	    ( lHyp_dateparse_scanMon( str_mon, &tm_mon ) ) )
     {
-      /*DP( "wdy mth DD HH:MM:SS zone YY" );*/
+      /*DP( "wdy mth DD HH:MM:SS YY" );*/
       tm.tm_wday = tm_wday;
       tm.tm_mon = tm_mon;
       tm.tm_mday = tm_mday;

@@ -2,6 +2,9 @@
  * Modifications:
  *
  * $Log: secs1.h,v $
+ * Revision 1.14  2010-05-05 04:56:19  bergsma
+ * Added CGI form-data support
+ *
  * Revision 1.13  2009-08-11 21:19:07  bergsma
  * Fixed for ANSI C compatibility - some function names were too long....
  *
@@ -78,6 +81,7 @@ extern unsigned		gHyp_secs1_port ( sSecs1 * ) ;
 extern char*		gHyp_secs1_device ( sSecs1 * ) ;
 extern unsigned		gHyp_secs1_TID ( sSecs1 * ) ;
 extern unsigned		gHyp_secs1_SID ( sSecs1 * ) ;
+extern void             gHyp_secs1_httpFormData ( sData*, char*, sData* ) ; 
 extern int		gHyp_secs1_rawIncoming ( sSecs1*,sConcept*,sInstance*,sBYTE) ;
 extern int		gHyp_secs1_rawOutgoing ( sSecs1*,sInstance*,sData*,int,sBYTE ) ;
 extern int		gHyp_secs1_rawOutgoingEagain ( sSecs1 *pPort, sInstance *pAI, int ms ) ;
@@ -95,15 +99,15 @@ extern void		gHyp_secs1_setSSL ( sSecs1 *pSecs1, sSSL *pSSL ) ;
 extern int		gHyp_secs1_eagainTimeout(  sSecs1 *pSecs1, int timeout ) ;
 extern sHTTP*		gHyp_secs1_getHttp ( sSecs1 *pSecs1 ) ;
 extern void		gHyp_secs1_setHttp ( sSecs1 *pSecs1, sHTTP *pHTTP ) ;
-extern void gHyp_secs1_setHttp ( sSecs1 *pSecs1, sHTTP* pHTTP ) ; 
+extern void             gHyp_secs1_setHttp ( sSecs1 *pSecs1, sHTTP* pHTTP ) ; 
 extern sSSL*		gHyp_secs1_getSSL ( sSecs1 *pSecs1 ) ;
 extern sData*		gHyp_secs1_getEagain ( sSecs1 *pSecs1 ) ;
-extern sLOGICAL gHyp_secs1_doEagain ( sSecs1 *pSecs1 ) ;
-extern void gHyp_secs1_setEagain ( sSecs1 *pSecs1, sLOGICAL doEagain ) ;
+extern sLOGICAL         gHyp_secs1_doEagain ( sSecs1 *pSecs1 ) ;
+extern void             gHyp_secs1_setEagain ( sSecs1 *pSecs1, sLOGICAL doEagain ) ;
 extern sData*		gHyp_secs1_getForwardPorts ( sSecs1 *pSecs1 ) ;
 extern void		gHyp_secs1_setForwardPorts ( sSecs1 *pSecs1, sData* pfp ) ;
-extern void gHyp_secs1_setBinary( sSecs1* pSecs1, sLOGICAL isBinary ) ;
-extern sLOGICAL gHyp_secs1_isBinary( sSecs1* pSecs1 ) ;
+extern void             gHyp_secs1_setBinary( sSecs1* pSecs1, sLOGICAL isBinary ) ;
+extern sLOGICAL         gHyp_secs1_isBinary( sSecs1* pSecs1 ) ;
 extern void		gHyp_secs1_addForwardPort ( sSecs1 *pSecs1, int from_id, int to_id ) ;
 extern sData*		gHyp_secs1_copyForwardPort ( sSecs1 *pSecs1, int  ) ;
 extern void		gHyp_secs1_removeForwardPort ( sSecs1 *pSecs1, int from_id, int to_id ) ;

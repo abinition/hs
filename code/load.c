@@ -10,6 +10,17 @@
  * Modifications:
  *
  *   $Log: load.c,v $
+ *   Revision 1.60  2010-07-05 16:03:17  bergsma
+ *   Allow input literals larger than 512 characters.
+ *
+ *   Revision 1.59  2010-05-05 04:55:41  bergsma
+ *   Added http_asctime
+ *
+ *   Revision 1.58  2010-01-08 02:44:57  bergsma
+ *   Added ssl_md5(), enhanced ssl_digest.
+ *   Fixed urldecode, missing ":"
+ *   Enabled object calls, ie:  text.strtok( ) and the like...
+ *
  *   Revision 1.57  2009-12-08 20:49:02  bergsma
  *   placeholder for owl constructs
  *
@@ -336,6 +347,7 @@ void gHyp_load_new ()
   lHyp_load_newKey ( "random" ,  gHyp_system_random, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "datetime" ,  gHyp_system_datetime, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "asctime" ,  gHyp_system_asctime, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "http_asctime" ,  gHyp_http_asctime, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "time" ,  gHyp_system_time, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "date" ,  gHyp_system_date, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ; 
   lHyp_load_newKey ( "timestamp" ,  gHyp_system_timestamp, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
@@ -409,6 +421,7 @@ void gHyp_load_new ()
   lHyp_load_newKey ( "load" ,  gHyp_fileio_load, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "load_binary" ,  gHyp_fileio_load_binary, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "checksum" ,  gHyp_fileio_checksum, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "crc32" ,  gHyp_fileio_crc32, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "round" ,  gHyp_function_round, TOKEN_TYPECAST, PRECEDENCE_UNARY ) ;
 
   /* XML Conversion */
@@ -504,6 +517,7 @@ void gHyp_load_new ()
   lHyp_load_newKey ( "ssl_getState", gHyp_ssl_getState, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "ssl_setState", gHyp_ssl_setState, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "ssl_digest", gHyp_ssl_digest, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "ssl_md5", gHyp_ssl_md5, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
 #endif
 
 #ifdef AS_GD

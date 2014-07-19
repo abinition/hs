@@ -10,6 +10,11 @@
 /* Modifications: 
  *
  * $Log: frame.c,v $
+ * Revision 1.28  2010-01-08 02:44:57  bergsma
+ * Added ssl_md5(), enhanced ssl_digest.
+ * Fixed urldecode, missing ":"
+ * Enabled object calls, ie:  text.strtok( ) and the like...
+ *
  * Revision 1.27  2009-10-09 13:26:03  bergsma
  * Germany - October 2009 - Updates
  *
@@ -387,6 +392,7 @@ void gHyp_frame_delete ( sFrame * pFrame )
   /* Delete any temp data */
   if ( pFrame->pTempData ) {
     gHyp_data_delete ( pFrame->pTempData ) ;
+    pFrame->pTempData = NULL ;
   }
 
   /* Deallocate the frame levels space */
@@ -2196,7 +2202,7 @@ static void lHyp_frame_dereference ( sFrame *pFrame,
 				   FALSE, FALSE ) ;
       }
       else {
-	pResult = gHyp_data_copy ( pFrame->pTempData ) ;
+	pResult = gHyp_data_new ( NULL ) ; /*gHyp_data_copy ( pFrame->pTempData ) ;*/
       }
     }
     else

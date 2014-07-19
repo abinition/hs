@@ -3,6 +3,11 @@
  * Modifications:
  *
  * $Log: fileio.h,v $
+ * Revision 1.13  2010-01-08 02:44:57  bergsma
+ * Added ssl_md5(), enhanced ssl_digest.
+ * Fixed urldecode, missing ":"
+ * Enabled object calls, ie:  text.strtok( ) and the like...
+ *
  * Revision 1.12  2007-03-19 05:32:08  bergsma
  * New functions: min, max, pow, hypot, abs, acos, asin, atan,  ceil, cos,
  *  floor, log10, logN, sin, sqrt, tan, exp printf, sprintf, fprintf
@@ -69,6 +74,7 @@ extern void    	gHyp_fileio_echo ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_fileio_load ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_fileio_load_binary ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_fileio_checksum ( sInstance*, sCode*, sLOGICAL ) ;
+extern void    	gHyp_fileio_crc32 ( sInstance*, sCode*, sLOGICAL ) ;
 /*
 extern void    	gHyp_fileio_sprintf ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_fileio_printf ( sInstance*, sCode*, sLOGICAL ) ;

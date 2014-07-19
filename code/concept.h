@@ -3,6 +3,9 @@
  * Modifications:
  *
  * $Log: concept.h,v $
+ * Revision 1.13  2010-03-05 06:08:46  bergsma
+ * Add -u option and AUTOHOST environment variable.
+ *
  * Revision 1.12  2009-06-12 05:11:15  bergsma
  * HS 385 TAGGING - Added port_stop and port_go (but disabled in sock.c)
  *
@@ -44,7 +47,7 @@
 extern sConcept* gHyp_concept_new () ;
 extern SOCKET gHyp_concept_serviceHandle ( sConcept *pConcept ) ;
 extern SOCKET gHyp_concept_createService( sConcept*, char* ) ;
-extern sLOGICAL	gHyp_concept_init ( sConcept*, char*, char*, unsigned, int ) ;
+extern sLOGICAL	gHyp_concept_init ( sConcept*, char*, char*, char*, unsigned, int ) ;
 extern sLOGICAL gHyp_concept_setParent ( sConcept *pConcept, char *parent, char *root ) ;
 extern sInstance* gHyp_concept_instantiate ( sConcept *, sInstance*,  char*, char*, sLOGICAL, sLOGICAL, sLOGICAL ) ;
 extern void    	gHyp_concept_delete ( sConcept * ) ;

@@ -10,6 +10,18 @@
 /* Modifications:
  * 
  * $Log: http.c,v $
+ * Revision 1.34  2010-05-05 04:55:41  bergsma
+ * Added http_asctime
+ *
+ * Revision 1.33  2010-04-13 21:07:46  bergsma
+ * Problem with multiple elements to HTTP attributes
+ *
+ * Revision 1.32  2009-12-24 15:56:55  bergsma
+ * More fixes for handling form data via HTTP
+ *
+ * Revision 1.31  2009-12-19 05:54:21  bergsma
+ * Handle upload of form data
+ *
  * Revision 1.30  2009-08-11 21:19:07  bergsma
  * Fixed for ANSI C compatibility - some function names were too long....
  *
@@ -130,14 +142,16 @@ struct http_t {
 
   sBYTE	  state ;
   char	  arg1[VALUE_SIZE+1] ;
-  char	  arg2[VALUE_SIZE+1] ;
+  char	  arg2[MAX_INPUT_LENGTH+1] ;
   char	  arg3[VALUE_SIZE+1] ;
+  char	  boundary[VALUE_SIZE+1] ;
   sData*  pAttributeData ;
   int	  contentLength ;
   int	  actualContentLength ;
   sData*  pContentData ;
   sLOGICAL isChunkTransferEncoded ;
   sLOGICAL isXMLEncoded ;
+  sLOGICAL hasFormData ;
   sLOGICAL isURLEncoded ;
   sLOGICAL isPlainText ;
   sLOGICAL isBinary ;
@@ -159,6 +173,7 @@ sHTTP *gHyp_http_new ( )
   pHTTP->isChunkTransferEncoded = FALSE ;
   pHTTP->isXMLEncoded = FALSE ;
   pHTTP->isURLEncoded = FALSE ;
+  pHTTP->hasFormData = FALSE ;
   pHTTP->isPlainText = FALSE ;
   pHTTP->isBinary = FALSE ;
   pHTTP->isZeroLength = FALSE ;
@@ -182,6 +197,7 @@ void gHyp_http_reset ( sHTTP *pHTTP )
   pHTTP->isChunkTransferEncoded = FALSE ;
   pHTTP->isXMLEncoded = FALSE ;
   pHTTP->isURLEncoded = FALSE ;
+  pHTTP->hasFormData = FALSE ;
   pHTTP->isPlainText = FALSE ;
   pHTTP->isBinary = FALSE ;
   pHTTP->isZeroLength = FALSE ;
@@ -266,6 +282,20 @@ sLOGICAL gHyp_http_isChunkedTransferEnc( sHTTP* pHTTP )
 {
   return pHTTP->isChunkTransferEncoded ;
 }
+
+void gHyp_http_setFormDataBoundary( sHTTP* pHTTP, char *b )
+{
+  pHTTP->hasFormData = TRUE ;
+
+  strcpy ( pHTTP->boundary, b ) ;
+}
+
+char* gHyp_http_getFormDataBoundary( sHTTP* pHTTP )
+{
+  if ( pHTTP->hasFormData ) return pHTTP->boundary ;
+  else return NULL ;
+}
+
 
 void gHyp_http_setXMLEncoded( sHTTP* pHTTP )
 {
@@ -1544,8 +1574,8 @@ static void lHyp_http_QE (	sInstance 	*pAI,
 	    if ( n > 0 ) {
 
 	      if ( !firstValue ) {
-		line[lineLen++] = ',' ;
-		line[lineLen++] = '\0' ;
+		/*line[lineLen++] = ',' ;
+		line[lineLen++] = '\0' ;*/
 	      }
 	      firstValue = FALSE ;
 
@@ -1560,7 +1590,7 @@ static void lHyp_http_QE (	sInstance 	*pAI,
 					    "" ) ;
 	      */
 	      strncpy ( value2, value, n ) ;
-	      value2[n++] = '\0' ;
+	      value2[n] = '\0' ;
 
 	      if ( lineLen + n > VALUE_SIZE ) {
 
@@ -1882,3 +1912,100 @@ void gHyp_http_reply ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
   }
   return ;
 }
+void gHyp_http_asctime ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: http_asctime()
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+
+  else {
+
+    sStack 	
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+
+    sData
+      *pData,
+      *pResult ;
+
+    struct tm	*pstm ;	
+
+    char
+      str_wday[VALUE_SIZE],
+      str_mon[VALUE_SIZE],
+      ascTime[VALUE_SIZE+1],
+      timeStamp[VALUE_SIZE+1] ;
+
+    time_t
+      ts ;
+
+    int
+      n,
+      argCount = gHyp_parse_argCount ( pParse ) ;
+    
+    /* Assume success */	
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount > 1 ) gHyp_instance_error ( pAI,STATUS_ARGUMENT,
+	"Invalid arguments. Usage: http_asctime ( [utc] )" ) ;
+
+    if ( argCount == 1 ) {
+      pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
+      ts = gHyp_data_getRaw ( pData, gHyp_data_getSubScript(pData), TRUE  ) ;
+    }
+    else
+      ts = gsCurTime = time(NULL) ;
+
+    /* We need the time in GMT */
+    pstm = gmtime ( &ts ) ;
+    if ( !pstm ) gHyp_instance_error ( pAI,STATUS_BOUNDS,
+	"Invalid UTC value value %d", ts ) ;
+
+    /* ANSI asctime: Sun Nov 6 08:49:37 1994  
+     wdy mth DD HH:MM:SS YY */
+    strcpy ( ascTime, asctime( pstm ) ) ;
+
+    /* Extract out wdy and mth */ 
+    n = sscanf( ascTime, "%[a-zA-Z] %[a-zA-Z]", str_wday, str_mon ) ;
+
+    /* HTTP time: Sun, 06-Nov-1994 08:49:37 GMT 
+       wdy DD-mth-YYYY HH:MM:SS GMT
+     */
+
+    sprintf ( timeStamp, 
+              "%3s, %02d-%3s-%04d %02d:%02d:%02d GMT",
+              str_wday,
+              pstm->tm_mday,
+              str_mon,
+              pstm->tm_year+1900,
+              pstm->tm_hour,
+              pstm->tm_min,
+              pstm->tm_sec
+              );
+
+    gHyp_util_trim ( timeStamp ) ;
+    pResult = gHyp_data_new ( NULL ) ;
+    gHyp_data_setStr ( pResult, timeStamp ) ;
+    gHyp_stack_push ( pStack, pResult ) ;
+  }
+}
+

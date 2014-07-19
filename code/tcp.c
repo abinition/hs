@@ -10,6 +10,11 @@
  * Modifications:
  *
  *	$Log: tcp.c,v $
+ *	Revision 1.32  2010-01-08 02:44:57  bergsma
+ *	Added ssl_md5(), enhanced ssl_digest.
+ *	Fixed urldecode, missing ":"
+ *	Enabled object calls, ie:  text.strtok( ) and the like...
+ *	
  *	Revision 1.31  2009-01-19 23:24:36  bergsma
  *	PFP BUG.  Appended HTTP messages and detection of binary data instead of POST data
  *	
@@ -269,7 +274,7 @@ static int lHyp_tcp_alarmHandler ( int signo )
    *
    */   
   if ( giSocket != INVALID_SOCKET ) {
-    gHyp_util_logWarning("Timout waiting for socket connection");
+    gHyp_util_logWarning("Timeout waiting for socket connection");
     gHyp_sock_close ( giSocket, SOCKET_TCP, "", "" ) ;
     giSocket = INVALID_SOCKET ;
   }

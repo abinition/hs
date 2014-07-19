@@ -10,6 +10,35 @@
  * Modifications:
  *
  *	$Log: util.c,v $
+ *	Revision 1.76  2010-05-05 04:56:19  bergsma
+ *	Added CGI form-data support
+ *	
+ *	Revision 1.75  2010-04-23 05:17:46  bergsma
+ *	Added ? and , for URLencoding/decoding.
+ *	
+ *	Revision 1.74  2010-03-17 08:17:13  bergsma
+ *	Trim whitespace leaves \n alone.
+ *	
+ *	Revision 1.73  2010-02-01 22:27:18  bergsma
+ *	Builld 100130, HS 3.9.0
+ *	
+ *	Revision 1.72  2010-01-16 18:34:11  bergsma
+ *	Increase input stream for XML.
+ *	
+ *	Revision 1.71  2010-01-15 08:30:42  bergsma
+ *	Increase XML input buffers for parsing
+ *	
+ *	Revision 1.70  2010-01-08 02:44:57  bergsma
+ *	Added ssl_md5(), enhanced ssl_digest.
+ *	Fixed urldecode, missing ":"
+ *	Enabled object calls, ie:  text.strtok( ) and the like...
+ *	
+ *	Revision 1.69  2009-12-24 15:56:55  bergsma
+ *	More fixes for handling form data via HTTP
+ *	
+ *	Revision 1.68  2009-12-19 05:54:21  bergsma
+ *	Handle upload of form data
+ *	
  *	Revision 1.67  2009-09-28 05:24:00  bergsma
  *	For ORACLE, like SQLSERVER, uses double quotes for escaping a quote.
  *	
@@ -2355,7 +2384,7 @@ int gHyp_util_trimWhiteSpace ( char *target )
 {
   /* Description:
    *
-   *    Trim all trailing blanks from string
+   *    Trim all trailing blanks and tabs from string, but not \n or other
    *
    * Arguments:
    *
@@ -2369,7 +2398,7 @@ int gHyp_util_trimWhiteSpace ( char *target )
    */
 
   char *pStr = target + strlen ( target ) - 1 ;
-  while ( pStr >= target && *pStr <= ' ' )
+  while ( pStr >= target && (*pStr == ' ' || *pStr == '\t' ) )
     *pStr-- = '\0' ;
   return (int)((pStr-target)+1);
 }
@@ -2607,7 +2636,11 @@ int gHyp_util_urlEncode( char *in, int size_in, char *out )
     c = *in++ ;
 
     switch ( c ) {
-
+    case ',' :
+      *ptr++ = '%' ;
+      *ptr++ = '2' ;
+      *ptr++ = 'C' ;
+      break ; 
     case '%' :
       *ptr++ = '%' ;
       *ptr++ = '2' ;
@@ -2643,6 +2676,16 @@ int gHyp_util_urlEncode( char *in, int size_in, char *out )
       *ptr++ = '2' ;
       *ptr++ = 'B' ;
       break ;
+    case ':' :
+      *ptr++ = '%' ;
+      *ptr++ = '3' ;
+      *ptr++ = 'A' ;
+      break ;
+    case '?' :
+      *ptr++ = '%' ;
+      *ptr++ = '3' ;
+      *ptr++ = 'F' ;
+      break ; 
     default :
       if ( isprint ( c ) )
          *ptr++ = c ;
@@ -2865,7 +2908,7 @@ int gHyp_util_base64Decode( char *in, int size_in, char *out )
 char *gHyp_util_readStream (  char *pStream,
 			      char *pAnchor,
 			      char **ppEndOfStream,
-			      int *pStreamLen,
+			      int  *pStreamLen,
 			      sData *pStreamData,
 			      sData **ppValue,
 			      int *pContext,
@@ -2874,13 +2917,15 @@ char *gHyp_util_readStream (  char *pStream,
 			      FILE *pp )  
 {
   /* The function of this routine is to keep the buffer filled.
+   *
    * The data can either come from a FILE* (pp) or a sData* (pStreamData).   
    * In either case, the buffer is 3 times the size 
-   * of what can be read from pp or pStreamData ( MAX_INPUT_LENGTH ).
-   * The buffer is filled until it exceeds MAX_INPUT_LENGTH*3.
-   * When the current processing pointer exceeds MAX_INPUT_LENGTH, then
+   * of what can be read from pp or pStreamData ( STREAM_READ_SIZE ).
+   *
+   * The buffer is filled until it exceeds STREAM_READ_SIZE*3.
+   * When the current processing pointer exceeds STREAM_READ_SIZE, then
    * the contents are shifted to the beginning of the buffer, and the
-   * buffer is filled back to a point that exceeds MAX_INPUT_LENGTH*3.
+   * buffer is filled back to a point that exceeds STREAM_READ_SIZE*3.
    *
    *  pStream - the current processing position
    *  pAnchor - the start of the buffer
@@ -2889,9 +2934,10 @@ char *gHyp_util_readStream (  char *pStream,
    *  (ppValue,pContext,ss,isVector) - needed for pStreamData
    *  pp - another possible source of data 
    *
-   * The return value is the new pEndOfStream.
+   * The return value is the current stream position.
    * When the data is exhausted, the return value will be null, so that
    * subsequent calls to this routine will do nothing.
+   * ie: pStream = gHyp_util_readStream ( pStream, ...
    */
 
   sData *pValue ;
@@ -2905,43 +2951,37 @@ char *gHyp_util_readStream (  char *pStream,
   if ( pEndOfStream == NULL ) return pStream ;
 
   /* If the current processing pointer has not moved passed 
-   * MAX_INPUT_LENGTH, then we don't need to read more data in yet.
+   * STREAM_READ_SIZE, then we don't need to read more data in yet.
    */
 
-  /* Get the current length of the stream */
+  /* Get the current length of the stream left to process */
   *pStreamLen = (pEndOfStream - pStream) ;
 
+  /* As long as there is enough data, return that position */
   if ( pStream < pEndOfStream &&
-       pStream < (pAnchor + MAX_INPUT_LENGTH ) ) return pStream ;
+       pStream < (pAnchor + STREAM_READ_SIZE) ) return pStream ;
 
   /* Need to read some more data */
-  if ( pStream > pAnchor ) {
+  if ( pStream > pAnchor && *pStreamLen > 0 ) {
 
     /* Shift the remaining stream back to the anchor position */
     memmove ( pAnchor, pStream, *pStreamLen ) ;
 
-    /*(old way)memmove ( pAnchor, pStream, strlen ( pStream ) ) ;*/
-
     /* Calculate new end of stream, where we will append data. */
     pEndOfStream = pAnchor + *pStreamLen ;
-
-    /*(old way)pEndOfStream = pAnchor + (pEndOfStream - pStream) ;*/
 
     *ppEndOfStream = pEndOfStream ;
     pStream = pAnchor ;
 
     /*gHyp_util_debug("[[%.*s]]",*pStreamLen, pStream);*/
 
-	/*(old way) - redundant calculation. 
-    *pStreamLen = (pEndOfStream - pStream) ;
-    */
   }
 
   /* We now read data until the FILE or sData source is exhausted or
    * until the pEndOfStream value exceeds MAX_INPUT_LENGTH*3
    */
 
-  while ( pEndOfStream && (pEndOfStream < (pAnchor+(MAX_INPUT_LENGTH*3))) ) {
+  while ( pEndOfStream && (pEndOfStream < (pAnchor+(STREAM_READ_SIZE*3))) ) {
 
     if ( pStreamData ) {
    
@@ -2974,7 +3014,7 @@ char *gHyp_util_readStream (  char *pStream,
 	else {
           n = gHyp_data_getStr (pValue, 
 	 			pEndOfStream, 
-				MAX_INPUT_LENGTH, 
+				STREAM_READ_SIZE, 
 				*pContext, 
 				isVector ) ;
 	}
@@ -2988,7 +3028,7 @@ char *gHyp_util_readStream (  char *pStream,
     else if ( pp ) {
 
       /* Data comes from a file */
-      pStr = fgets ( pEndOfStream, MAX_INPUT_LENGTH, pp ) ;
+      pStr = fgets ( pEndOfStream, STREAM_READ_SIZE, pp ) ;
       if (!pStr)
 	pEndOfStream = NULL ;
       else
@@ -3086,6 +3126,9 @@ void gHyp_util_breakStream ( char *buffer, int bufLen, sData *pParent, sLOGICAL 
 
 int gHyp_util_breakStringForMsg( char *buffer, int bufLen, int maxBufLen ) 
 {
+
+  /* Not used anywhere....  */
+
   char 
     *pBuf,
     *pBuf2,
@@ -3130,7 +3173,27 @@ int gHyp_util_breakStringForMsg( char *buffer, int bufLen, int maxBufLen )
   /* Return new length */
   return (pBuf2-buffer);
 
-
-
 }
+
+char *gHyp_util_memmem(const void *buf, const void *pattern, size_t buflen, size_t len)
+{
+   char 
+     *bf = (char *)buf,
+     *pt = (char *)pattern,
+     *p = bf;
+
+      while (len <= (buflen - (p - bf)))
+      {
+            if (NULL != (p = (char*) memchr(p, (int)(*pt), buflen - (p - bf))))
+            {
+                  if (memcmp(p, pattern, len) == 0)
+                        return p;
+                  else  ++p;
+            }
+            else  break;
+      }
+      return NULL;
+}
+
+
   

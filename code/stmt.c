@@ -10,6 +10,9 @@
  * Modifications:
  *
  *	$Log: stmt.c,v $
+ *	Revision 1.17  2010-03-17 08:19:01  bergsma
+ *	Fixed return statement when assigning same value to its method.
+ *	
  *	Revision 1.16  2008-05-03 21:43:55  bergsma
  *	Use giLineCount and giProgram count together to better determine the
  *	location of a program token code.
@@ -1333,20 +1336,24 @@ void gHyp_stmt_return ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 	pMethodVariable = gHyp_frame_findRootVariable ( pFrame, "STATUS" ) ;
         pMethodStr = gHyp_data_getLabel ( pMethodVariable ) ;
       }
-      pLvalue = gHyp_data_new ( NULL ) ;
-      gHyp_data_setReference ( pLvalue, 
+
+      if ( pMethodVariable != gHyp_data_getVariable ( pStackData ) ) {
+
+	pLvalue = gHyp_data_new ( NULL ) ;
+	gHyp_data_setReference ( pLvalue, 
 			       pMethodStr,
 			       pMethodVariable ) ;
 
-      pResult = gHyp_type_assign ( pAI,
+	pResult = gHyp_type_assign ( pAI,
 				   pFrame,
 				   pLvalue,
 				   pStackData,
 				   TYPE_NULL,
 				   FALSE, FALSE  ) ;
-      gHyp_data_delete ( pResult ) ;
-      gHyp_data_delete ( pLvalue ) ;
-      
+	gHyp_data_delete ( pResult ) ;
+	gHyp_data_delete ( pLvalue ) ;
+      }
+
       if ( guDebugFlags & DEBUG_DIAGNOSTICS )
 	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS, 	
 			     "diag : return %s",

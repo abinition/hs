@@ -50,7 +50,7 @@
 #
 # include file dependancies
 INCLUDES = auto.h hypdef.h 
-OBJECTS = aimsg.o data.o dateparse.o hash.o channel.o signal.o tcp.o util.o hs.o branch.o cgi.o env.o fileio.o frame.o function.o hsms.o http.o hyp.o gd.o concept.o instance.o label.o load.o memtrack.o method.o operand.o operator.o parse.o port.o promis.o route.o router.o secs.o secs1.o secs2.o sock.o sort.o ssl.o stack.o stmt.o system.o type.o sql.o
+OBJECTS = aimsg.o data.o dateparse.o hash.o channel.o signal.o tcp.o util.o hs.o branch.o cgi.o env.o fileio.o frame.o function.o hsms.o http.o hyp.o concept.o instance.o label.o load.o memtrack.o method.o operand.o operator.o parse.o port.o promis.o route.o router.o secs.o secs1.o secs2.o sock.o sort.o ssl.o stack.o stmt.o system.o type.o sql.o gd.o
 PROC_FLAGS = sqlcheck=full define=AS_UNIX define=AS_HS
 
 # SOLARIS
@@ -72,21 +72,23 @@ PROC_FLAGS = sqlcheck=full define=AS_UNIX define=AS_HS
 #LIBS = 
 
 # DEC UNIX
-CC = cc
-CFLAGS =  -g3 -O -Wall -I. -I/usr/include -I/local/packages/gd-2.0.35 
-CDEFS = -DAS_GD -DAS_SQL -DAS_MYSQL -DAS_TRUE64
-LIBS  = -lm -L/usr/lib/mysql -lmysqlclient -lz -lgd 
+##CC = cc
+##CFLAGS =  -g3 -O -Wall -I.
+#CDEFS = -DAS_SQL -DAS_MYSQL -DAS_TRUE64 -DAS_MEMTRACK
+##CDEFS = -DAS_SQL -DAS_MYSQL -DAS_TRUE64 
+##LIBS  = -lm -L/usr/lib/mysql -lmysqlclient 
 #LIBS  = -L $(CELLworks)/FASTech/SDT/lib -lCw
 #LIBS = -L$(ORACLE_HOME)/lib -lclntsh 
 
 # LINUX
-##CC = gcc 
+CC = gcc 
 #CC = g++
 #CC = insure 
-##CFLAGS = -g -O -Wall -I. -I/usr/include
-##CDEFS =   -DAS_SQL -DAS_MYSQL -DAS_MEMTRACK -DAS_SSL
-##CPPFLAGS=-I/usr/kerberos/include LDFLAGS=-L/usr/kerberos/lib
-##LIBS = -lc -L/usr/lib/mysql -lmysqlclient -lz -lm -lssl -lcrypto
+CFLAGS = -g -O -Wall -I. -I/usr/include
+CDEFS =   -DAS_SQL -DAS_MYSQL -DAS_MEMTRACK -DAS_SSL -DAS_GD
+#CPPFLAGS=-I/usr/kerberos/include LDFLAGS=-L/usr/kerberos/lib
+LIBS = -lc -lm -lssl -lcrypto -lgd -ljpeg -L/usr/lib/mysql -lmysqlclient
+#LIBS = -lc -L/usr/lib/mysql -lmysqlclient -lz -lm -lssl -lcrypto
 #LIBS = -L/usr/lib -L$(ORACLE_HOME)/lib -lclntsh 
 #LIBS = -lefence
 
@@ -151,9 +153,6 @@ cgi.o : cgi.c  $(INCLUDES) cgi.h
 	$(CC) $(CFLAGS) $(CDEFS) -c $*.c -o $@
 
 concept.o : concept.c  $(INCLUDES) concept.h
-	$(CC) $(CFLAGS) $(CDEFS) -c $*.c -o $@
-
-gd.o : gd.c  $(INCLUDES) gd.h
 	$(CC) $(CFLAGS) $(CDEFS) -c $*.c -o $@
 
 fileio.o : fileio.c  $(INCLUDES) fileio.h

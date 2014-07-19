@@ -10,6 +10,9 @@
  * Modifications:
  *
  *   $Log: function.c,v $
+ *   Revision 1.55  2010-04-23 05:18:22  bergsma
+ *   Increased buffer size for URLencode.
+ *
  *   Revision 1.54  2009-06-12 05:04:22  bergsma
  *   HS 385 Final Checkin and TAG - Added pid() function
  *
@@ -998,7 +1001,7 @@ void gHyp_function_pack ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 			     context, 
 			     isVector ) ;
 
-      if ( N+n < (VALUE_SIZE/2) ) {
+      if ( N+n < VALUE_SIZE ) {
 
 	/* Pack it */
 	memcpy ( (void*) pStr , strVal, n ) ;
@@ -2306,7 +2309,7 @@ void gHyp_function_urlEncode(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     
     char
       encrypted[VALUE_SIZE+1],
-      decrypted[VALUE_SIZE+1],
+      decrypted[INTERNAL_VALUE_SIZE+1],
       *pStr ;
     
     sLOGICAL
@@ -2330,7 +2333,7 @@ void gHyp_function_urlEncode(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 					    ss ) ) ) {
         n = gHyp_data_getStr ( pValue, 
 			     decrypted, 
-			     VALUE_SIZE, 
+			     INTERNAL_VALUE_SIZE, 
 			     context, 
 			     isVector ) ;
         pStr = encrypted ;

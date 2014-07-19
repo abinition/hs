@@ -10,6 +10,17 @@
 /* Modifications:
  *
  * $Log: ssl.c,v $
+ * Revision 1.26  2010-06-26 06:34:28  bergsma
+ * Typo
+ *
+ * Revision 1.25  2010-01-08 04:38:29  bergsma
+ * Increased ssl_md5 input length
+ *
+ * Revision 1.24  2010-01-08 02:44:57  bergsma
+ * Added ssl_md5(), enhanced ssl_digest.
+ * Fixed urldecode, missing ":"
+ * Enabled object calls, ie:  text.strtok( ) and the like...
+ *
  * Revision 1.23  2009-03-07 21:27:32  bergsma
  * gHyp_data_getAll needs additional handle argument
  *
@@ -539,15 +550,28 @@ void gHyp_ssl_digest ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
     char
       digest[VALUE_SIZE+1],
+      digestType[VALUE_SIZE+1],
       text1[INTERNAL_VALUE_SIZE+1],
       text2[INTERNAL_VALUE_SIZE+1] ;
 
     /* Assume success */
     gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
 
-    if ( argCount != 1 && argCount!= 2 )
+    if ( argCount != 1 && argCount!= 2 && argCount != 3 )
       gHyp_instance_error ( pAI, STATUS_ARGUMENT,
-      "Invalid args. Usage: ssl_digest ( text1 [,text2 ] )");
+      "Invalid args. Usage: ssl_digest ( text1 [,text2 [,type] ] )");
+
+    if ( argCount == 3 ) {
+      /* Get the digest type */
+      pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
+      n = gHyp_data_getStr ( pData,
+                             digestType,
+                             VALUE_SIZE,
+                             gHyp_data_getSubScript ( pData ),
+                             TRUE ) ;
+    }
+    else
+      strcpy ( digestType, "SHA1" ) ;
 
     if ( argCount == 2 ) {
       /* Get the secondary text */
@@ -569,8 +593,88 @@ void gHyp_ssl_digest ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
                            gHyp_data_getSubScript ( pData ),
                            TRUE ) ;
 
-    /* Get the SHA1 digest */
-    gHyp_sock_digest ( text1, text2, digest ) ;
+    /* Get the SHA1 (or other) digest */
+    gHyp_sock_digest ( text1, text2, digest, digestType ) ;
+
+    pResult = gHyp_data_new ( NULL ) ;
+    gHyp_data_setStr ( pResult, digest ) ;
+    gHyp_stack_push ( pStack, pResult ) ;
+
+  }
+}
+
+void gHyp_ssl_md5 ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
+{
+  /* Description:
+   *
+   *    PARSE or EXECUTE the built-in function: ssl_md5 ( )
+   *    Returns 1
+   *
+   * Arguments:
+   *
+   *    pAI                                                     [R]
+   *    - pointer to instance object
+   *
+   *    pCode                                                   [R]
+   *    - pointer to code object
+   *
+   * Return value:
+   *
+   *    none
+   *
+   */
+  sFrame        *pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse        *pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+
+  else {
+
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+
+    sData
+      *pResult,
+      *pData,
+      *pValue;
+
+    int
+      ss,
+      context,
+      n,
+      argCount = gHyp_parse_argCount ( pParse ) ;
+
+    sLOGICAL
+      isVector=FALSE ;
+
+    char
+      digest[VALUE_SIZE+1],
+      text[MAX_INPUT_LENGTH+1],
+      *pStream = text,
+      *pAnchor = pStream,
+      *pEndOfStream = pStream ;
+
+    /* Assume success */
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 1 )
+      gHyp_instance_error ( pAI, STATUS_ARGUMENT,
+      "Invalid args. Usage: ssl_md5 ( text )");
+
+    pData = gHyp_stack_popRdata ( pStack, pAI ) ;
+    ss = gHyp_data_getSubScript ( pData ) ; 
+    context=-1;
+    isVector = ( gHyp_data_getDataType ( pData ) > TYPE_STRING ) ;
+    pValue = NULL ;
+    pStream = gHyp_util_readStream (	pStream, pAnchor, &pEndOfStream,
+					&n, pData, 
+					&pValue, &context, ss, isVector, 
+					NULL ) ;
+
+    /* Get the SHA1 (or other) digest */
+    gHyp_sock_md5 ( text, n, digest ) ;
 
     pResult = gHyp_data_new ( NULL ) ;
     gHyp_data_setStr ( pResult, digest ) ;
@@ -639,6 +743,9 @@ void gHyp_ssl_auth ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     gHyp_instance_pushSTATUS ( pAI, pStack ) ;
   }
 }
+
+
+
 
 void gHyp_ssl_authClient ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 {

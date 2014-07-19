@@ -10,6 +10,24 @@
 /* Modifications: 
  *
  * $Log: cgi.c,v $
+ * Revision 1.55  2010-07-05 16:00:47  bergsma
+ * Fix problem with NULL getenv
+ *
+ * Revision 1.54  2010-06-26 06:33:28  bergsma
+ * Improper breakStream on QUERY_STRING
+ *
+ * Revision 1.53  2010-05-05 04:56:19  bergsma
+ * Added CGI form-data support
+ *
+ * Revision 1.52  2010-04-24 18:35:09  bergsma
+ * Was spinning on reading commented <SCRIPT>
+ *
+ * Revision 1.51  2010-01-16 18:34:11  bergsma
+ * Increase input stream for XML.
+ *
+ * Revision 1.50  2010-01-15 08:30:42  bergsma
+ * Increase XML input buffers for parsing
+ *
  * Revision 1.49  2009-12-13 04:00:16  bergsma
  * Back to correcting XML parsing and unparsing.
  * With AS_XML_NON_STANDARD not set, elements could be missed
@@ -234,7 +252,7 @@ static char * cgi_error_strings[CGIERR_NUM_ERRS] = {
   "Content Length Discrepancy"
 };
 
-static char gzStream[MAX_INPUT_LENGTH*4+1] ;
+static char gzStream[STREAM_READ_SIZE*4+1] ;
 
 /********************** INTERNAL OBJECT STRUCTURES ***************************/
 
@@ -471,6 +489,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
     isEndTag,
     hasNL=FALSE,
     hasWS=FALSE,
+    isLiteral=(isPRE||isSCR||isTXT),
     isFirstLine,
     isLastLine,
     isChildLess,
@@ -511,9 +530,9 @@ char *gHyp_cgi_parseXML ( char *pStream,
     }
     else {
 
-      /* Found something.  Grab the contents before it (or ignore it if there
+      /* Found something.  Grab the contents preceeding it. (or ignore it if there
        * is no parent, ie: this is the first call to the function and we haven't
-       * encountered any root tags yet (or we are between root tags)
+       * encountered any root tags yet, or we are in-between root tags)
        */
       if ( pParentTag ) {
         
@@ -527,7 +546,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
 
 	  span = 0 ;
 	  wspan = 0 ;
-	  if ( !isSCR && !isPRE && !isTXT ) {
+	  if ( !isLiteral ) {
 	    /* When not "SCR or PRE or TXT", find the start of the first word in the line,
 	     * or the next line, whichever comes first.
 	     * (otherwise whitespace is kept LITERALLY).
@@ -540,7 +559,6 @@ char *gHyp_cgi_parseXML ( char *pStream,
 	    else
 	      span = 0 ;
 
-	    /*span = strspn ( pStream, "\r\n" ) ;*/
 	    hasNL = (span > 0 ) ;
 
 	    /* Then over whitespace */
@@ -556,11 +574,16 @@ char *gHyp_cgi_parseXML ( char *pStream,
 	  /* Find the end of each line or take the entire section up to the '<' */
 	  strLen = strcspn ( pStream, "\n\r" ) ;
 
-	  /* Don't go past the "<" */
+          /* For literal content (SCRIPT, PRE, TEXT), take everything, including the nl */
+	  if ( strLen == 0 && isLiteral ) strLen = strspn ( pStream, "\n\r" ) ;
+
+	  /* But never go past the end of the content, the "<" */
 	  if ( strLen > (pTag-pStream) ) strLen = pTag - pStream ; 
 
+          /* Need to know if this is the last line */
 	  isLastLine = ( pTag == pStream ) ;
 
+          /* For zero length lines, we need to know if they count as elements */
 	  if ( strLen == 0 ) {
 
 	    /* Seemingly an empty line */
@@ -570,11 +593,13 @@ char *gHyp_cgi_parseXML ( char *pStream,
 	      sprintf ( space, "%d %d %d %d",hasNL,hasWS,isFirstLine,isLastLine);
 #endif
 	      /*
+               * Empty content which translates to NULL elements.
+               *
+	       * 
+	       *
 
-
-	      * 
-	      * 
 	      NL WS F  L  Space Required
+              -- -- -- -- --------------
 	      0  0  0  0  not possible
 	      0  0  0  1  not possible
 	      0  0  1  0  not possible
@@ -591,6 +616,8 @@ char *gHyp_cgi_parseXML ( char *pStream,
 	      1  1  0  1  yes 
 	      1  1  1  0  no
 	      1  1  1  1  no
+
+              *
 	      */
 
 	      if (   ( !hasNL && hasWS && isFirstLine && isLastLine ) ||
@@ -612,6 +639,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
 	    }
 	  }
 	  else {
+            /* Content with a clearly defined element */
 	    strLen3 = strLen ;
 	    pStr3 = pStream ;
 
@@ -836,55 +864,51 @@ char *gHyp_cgi_parseXML ( char *pStream,
 
           if ( isSCR || isTXT ) {
 
+            /* The content must be taken literal */
+
 	    /*gHyp_util_debug("processing %s",pTag);*/
 	    while ( pStr < pStream ) {
 
-	      /* Find the end of each line or take the entire section. */
+              /* If at the end of a line, step over it, but only one line */
+	      if ( *pStr == '\n' )
+	        pStr += ( *(pStr+1) == '\r' ) ? 2 : 1 ;
+	      else if ( *pStream == '\r' )
+	        pStr += ( *(pStr+1) == '\n' ) ? 2 : 1 ;
+
+	      /* Span the contents of the next line, getting its length */
 	      strLen = strcspn ( pStr, "\n\r" ) ;
-	      /*if ( strLen == 0 ) strLen = pStream - pStr ;*/
+
+              /* The total length cannot be past the end of the content */
 	      if ( strLen > (pStream-pStr) ) strLen = pStream - pStr ;
-	 
-	      strLen3 = strLen ;
-	      pStr3 = pStr ;
-	      while ( strLen3 > 0 ) {
 
-		truncStrLen = MIN ( INTERNAL_VALUE_SIZE, strLen3 ) ;
-		if ( truncStrLen > 0 ) {
+              /* If there is content, break it up further if necessary */
+              if ( strLen > 0 ) {
 
-		  if ( truncStrLen == INTERNAL_VALUE_SIZE && strLen3 > INTERNAL_VALUE_SIZE ) {
+	        strLen3 = strLen ;
+	        pStr3 = pStr ;
+	        while ( strLen3 > 0 ) {
 
-		    /* Let's not cut words in half if we can help
-		     * it. Make the string a little shorter if we find a space
-		     * between non-spaces.
-		     * Start at the end of the string, search backwards over
-		     * non-spaces until we find a space.  If so, and its
-		     * not the beginning of the string, then we split the
-		     * string.
-		     * 
-		     */
-		    pStr2 = pStr+truncStrLen ;
+		  truncStrLen = MIN ( INTERNAL_VALUE_SIZE, strLen3 ) ;
+		  if ( truncStrLen > 0 ) {
 
-		    while ( pStr2 > pStr ) {
+		    if ( truncStrLen == INTERNAL_VALUE_SIZE && strLen3 > INTERNAL_VALUE_SIZE ) {
 
-		      c = *pStr2 ;
-		      /* If we find a space, split the string right here. */
-		      if ( c == ' ' ) break ;
-		      pStr2-- ;
-		    }
-
-		    /* Adjust truncStrLen if necessary */
-		    if ( pStr2 - pStr > 0 ) {
-		      truncStrLen = pStr2 - pStr ;
-		    }
-		    else {
-		      /* Look for comma */
+		      /* Let's not cut words in half if we can help
+		       * it. Make the string a little shorter if we find a space
+		       * between non-spaces.
+		       * Start at the end of the string, search backwards over
+		       * non-spaces until we find a space.  If so, and its
+		       * not the beginning of the string, then we split the
+		       * string.
+		       * 
+		       */
 		      pStr2 = pStr+truncStrLen ;
 
 		      while ( pStr2 > pStr ) {
 
-		       c = *pStr2 ;
-		        /* If we find a comma, split the string right here. */
-		        if ( c == ',' ) break ;
+		        c = *pStr2 ;
+		        /* If we find a space, split the string right here. */
+		        if ( c == ' ' ) break ;
 		        pStr2-- ;
 		      }
 
@@ -892,34 +916,43 @@ char *gHyp_cgi_parseXML ( char *pStream,
 		      if ( pStr2 - pStr > 0 ) {
 		        truncStrLen = pStr2 - pStr ;
 		      }
+		      else {
+		        /* Look for comma */
+		        pStr2 = pStr+truncStrLen ;
+
+		        while ( pStr2 > pStr ) {
+
+		          c = *pStr2 ;
+		          /* If we find a comma, split the string right here. */
+		          if ( c == ',' ) break ;
+		          pStr2-- ;
+		        }
+
+		        /* Adjust truncStrLen if necessary */
+		        if ( pStr2 - pStr > 0 ) {
+		          truncStrLen = pStr2 - pStr ;
+		        }
+		      }
 		    }
 
-		  }
+		    pStr2 = (char*) AllocMemory ( truncStrLen + 1 ) ;
+		    assert ( pStr2 ) ;
 
-		  pStr2 = (char*) AllocMemory ( truncStrLen + 1 ) ;
-		  assert ( pStr2 ) ;
-
-		  strncpy ( pStr2, pStr3, truncStrLen ) ;
-		  pStr2[truncStrLen] = '\0' ;
+		    strncpy ( pStr2, pStr3, truncStrLen ) ;
+		    pStr2[truncStrLen] = '\0' ;
   
-		  pStrData = gHyp_data_new ( NULL ) ;
-		  gHyp_data_setStr_n ( pStrData, pStr2, truncStrLen ) ;
+		    pStrData = gHyp_data_new ( NULL ) ;
+		    gHyp_data_setStr_n ( pStrData, pStr2, truncStrLen ) ;
 
-		  ReleaseMemory ( pStr2 ) ;
-		  gHyp_data_append ( pParentTag, pStrData ) ;
-		}
-		strLen3 -= truncStrLen ;
-		pStr3 += truncStrLen ;
+		    ReleaseMemory ( pStr2 ) ;
+		    gHyp_data_append ( pParentTag, pStrData ) ;
+		  }
+		  strLen3 -= truncStrLen ;
+		  pStr3 += truncStrLen ;
+	        }
+	        pStr += strLen ;
 	      }
-	      pStr += strLen ;
-/*
-	      if ( *pStr == '\n' )
-	        pStr += ( *(pStr+1) == '\r' ) ? 2 : 1 ;
-	      else if ( *pStream == '\r' )
-	        pStr += ( *(pStr+1) == '\n' ) ? 2 : 1 ;
-*/
-	      /*while ( *pStr == '\n' || *pStr == '\r' ) pStr++ ;*/ 
-	    }
+            }
 	  }
 
 	  if ( isEndTag )
@@ -1775,6 +1808,7 @@ void gHyp_cgi_xml ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 static int lHyp_cgi_init( sInstance *pAI, sFrame *pFrame )
 {
   int
+    n,
     cl, 
     i;
  
@@ -1782,12 +1816,18 @@ static int lHyp_cgi_init( sInstance *pAI, sFrame *pFrame )
     contentType[VALUE_SIZE+1];
 
   sBYTE
+    isIMG=FALSE,
     isCGI=FALSE,
     isXML=FALSE,
     isHYP=FALSE ;
 
   sData
-     *pParentTag ;
+     *pParentTag,
+     *pContentData;
+
+  char
+    *pEnv,
+    boundary[VALUE_SIZE+1] ;
 
   /* Default, no errors, no name/value pairs ("entries"): */
   giCgiErrno = CGIERR_NONE;
@@ -1795,7 +1835,7 @@ static int lHyp_cgi_init( sInstance *pAI, sFrame *pFrame )
 
   /* Check for REQUEST_METHOD (set by HTTP server): */
   
-  if ( getenv ( "REQUEST_METHOD" ) == NULL ) {
+  if ( (pEnv = getenv ( "REQUEST_METHOD" )) == NULL ) {
 
     /* None set?  Assume the user is invoking the CGI from a shell prompt
      * (for debugging): 
@@ -1806,24 +1846,31 @@ static int lHyp_cgi_init( sInstance *pAI, sFrame *pFrame )
     /* Determine the exact request method, and grab the data (if any)
        in the appropriate manner: */
     
-    if ( strcmp ( getenv("REQUEST_METHOD"),"POST") == 0 ) {
+    if ( strcmp ( pEnv, "POST") == 0 ) {
 
       /* Post method (data is sent to us via "stdin"): */
       
       giCgiRequestMethod = CGIREQ_POST;
 
-      strncpy ( contentType, getenv( "CONTENT_TYPE" ), VALUE_SIZE ) ;
-      contentType[VALUE_SIZE] = '\0' ;
-      gHyp_util_trim ( contentType ) ;
-      
-      isHYP = ( strstr(contentType,"application/hyperscript")!=NULL) ;
-      isCGI = ( strstr(contentType,"application/x-www-form-urlencoded")!=NULL) ;
-      isXML = ( strstr ( contentType, "text/xml" ) != NULL ||
+      isCGI = TRUE ;
+
+      pEnv = getenv( "CONTENT_TYPE" ) ;
+      contentType[0] = '\0' ;
+      if ( pEnv ) {
+        strncpy ( contentType, pEnv, VALUE_SIZE ) ;
+        contentType[VALUE_SIZE] = '\0' ;
+      }
+      n = gHyp_util_trim ( contentType ) ;
+      if ( n > 0 ) {
+        isIMG = ( strstr(contentType,"multipart/form-data")!=NULL) ;
+        isHYP = ( strstr(contentType,"application/hyperscript")!=NULL) ;
+        isCGI = ( strstr(contentType,"application/x-www-form-urlencoded")!=NULL) ;
+        isXML = ( strstr ( contentType, "text/xml" ) != NULL ||
 		strstr ( contentType, "text/html" ) ||
 		strstr ( contentType, "application/soap" ) != NULL ) ;
+      }
 
-
-      if ( !isCGI && !isXML && !isHYP ) {
+      if ( !isCGI && !isXML && !isHYP && !isIMG ) {
 	/* Is the content type incorrect (or not set at all?) */	  
 	giCgiErrno = CGIERR_INCORRECT_TYPE;
 	return(giCgiErrno);
@@ -1832,8 +1879,8 @@ static int lHyp_cgi_init( sInstance *pAI, sFrame *pFrame )
 		
 	/* How much data do we expect? */
 	
-	if ( getenv ( "CONTENT_LENGTH" ) == NULL ||
-	     sscanf ( getenv( "CONTENT_LENGTH" ), "%d", &cl) != 1) {
+	if ( (pEnv = getenv ( "CONTENT_LENGTH" )) == NULL ||
+	     sscanf ( pEnv, "%d", &cl) != 1) {
 	  
 	  giCgiErrno = CGIERR_BAD_CONTENT_LENGTH;
 	  return(giCgiErrno);
@@ -1841,7 +1888,9 @@ static int lHyp_cgi_init( sInstance *pAI, sFrame *pFrame )
 	
 	if ( isHYP ) {
 
-	  /*
+          /* For DOM usage.  The program code is not interpreted */
+
+	  /* List out the program contents
 	  pBuf = buf ;
 	  while ( pBuf ) {
 	    pBuf = fgets ( buf, MAX_INPUT_LENGTH, stdin ); 
@@ -1849,9 +1898,10 @@ static int lHyp_cgi_init( sInstance *pAI, sFrame *pFrame )
 	    gHyp_util_output2 ( pBuf ) ;
 	  }
 	  */
+
+          /* Ignore the code */
 	  return(CGIERR_NONE);
 	}
-
 
 	/* Create space for it: */	  
 	gzCgiQuery = (char*) AllocMemory(cl + 1);
@@ -1862,17 +1912,39 @@ static int lHyp_cgi_init( sInstance *pAI, sFrame *pFrame )
 	}
 	
 	/* Read it in: */
-	fgets(gzCgiQuery, cl + 1, stdin);
+        n = fread ( gzCgiQuery, 1, cl, stdin ); 
+
+	/*fgets(gzCgiQuery, cl + 1, stdin);*/
 	
 	/* Verify that we got as much data as we expected: */
-	if (strlen(gzCgiQuery) != (unsigned) cl)
+	if (n != (unsigned) cl)
 	  giCgiErrno = CGIERR_CONTENT_LENGTH_DISCREPANCY;
+
       }
     }
-    else if ( strcmp ( getenv("REQUEST_METHOD"),"GET") == 0 ) {
+    else if ( strcmp ( pEnv, "GET") == 0 ) {
       
-      /* GET method (data sent via "QUERY_STRING" env. variable): */	
-      isCGI = 1 ;
+      isCGI = TRUE ;
+      contentType[0] = '\0' ;
+      pEnv = getenv( "CONTENT_TYPE" ) ;
+      if ( pEnv ) {
+        strncpy ( contentType, pEnv, VALUE_SIZE ) ;
+        contentType[VALUE_SIZE] = '\0' ;
+      }
+      n = gHyp_util_trim ( contentType ) ;
+
+      if ( n > 0 ) {
+        /* GET method (data sent via "QUERY_STRING" env. variable): */	
+        isIMG = ( strstr(contentType,"multipart/form-data")!=NULL) ;
+        isHYP = ( strstr(contentType,"application/hyperscript")!=NULL) ;
+        isCGI = ( strstr(contentType,"application/x-www-form-urlencoded")!=NULL) ;
+        isXML = ( strstr ( contentType, "text/xml" ) != NULL ||
+		strstr ( contentType, "text/html" ) ||
+		strstr ( contentType, "application/soap" ) != NULL ) ;
+      }
+      else
+        isCGI = TRUE ;
+
       giCgiRequestMethod = CGIREQ_GET;
       
       /* Get a pointer to the data: */
@@ -1899,13 +1971,53 @@ static int lHyp_cgi_init( sInstance *pAI, sFrame *pFrame )
       giCgiErrno = CGIERR_UNKNOWN_METHOD;
       giCgiNumEntries = 0;
       return(giCgiErrno);
-    }      
+    }
+
     if ( isXML ) {
 
       pParentTag = gHyp_data_new( NULL ) ;
+      /* Although we *can* use setStr for setting a really large string,
+       * it is better to use gHyp_util_breakStream and then gHyp_util_readStream
+       *
       gHyp_data_setStr ( pParentTag, gzCgiQuery ) ;
       gHyp_cgi_xmlData ( pParentTag, pAI, pFrame, NULL ) ;
+      */
+      gHyp_data_setVariable ( pParentTag, "_xmldata_", TYPE_STRING ) ;
+      gHyp_util_breakStream ( gzCgiQuery, cl, pParentTag, TRUE ) ;
+      gHyp_cgi_xmlData ( pParentTag, pAI, pFrame, NULL ) ;
 
+    }
+    else if ( isIMG ) {
+
+      /*
+      pEndBuf = gzCgiQuery + cl ;
+      pLine = gzCgiQuery ;
+      while ( pLine < pEndBuf ) {
+	lineLen = MIN ( INTERNAL_VALUE_SIZE, (pEndBuf-pLine) ) ;
+        n = gHyp_util_unparseString ( value, pLine, lineLen, VALUE_SIZE, FALSE, FALSE, FALSE,"" ) ;
+	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,"[%s]",value) ;
+	pLine += lineLen ;
+      }
+      */
+      pContentData = gHyp_frame_createVariable ( gHyp_instance_frame(pAI), "_form_data_" ) ;
+      gHyp_data_deleteValues ( pContentData ) ;	  
+      gHyp_util_breakStream ( gzCgiQuery, cl, pContentData, TRUE ) ;
+
+      pParentTag = gHyp_frame_createVariable ( pFrame, "_http_form_" ) ;
+      gHyp_data_deleteValues ( pParentTag ) ;
+
+      /* The first element will be the boundary */
+      n = gHyp_data_getStr ( pContentData,
+			     boundary,
+			     VALUE_SIZE, 
+			     0,
+			     TRUE ) ;
+       if ( n > 0 ) {
+        gHyp_util_trim ( boundary ) ;
+	gHyp_secs1_httpFormData ( pContentData,
+				  boundary+2,
+				  pParentTag ) ;
+      }
     }
     else if ( isCGI ) {
 
