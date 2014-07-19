@@ -11,6 +11,16 @@
  * Modifications:
  *
  * $Log: data.c,v $
+ * Revision 1.37  2009-06-12 05:05:53  bergsma
+ * Comment
+ *
+ * Revision 1.36  2009-03-13 07:48:16  bergsma
+ * GD refinements.
+ * Added BUILD_VERSION
+ *
+ * Revision 1.35  2009-03-07 21:27:32  bergsma
+ * gHyp_data_getAll needs additional handle argument
+ *
  * Revision 1.34  2008-05-07 17:28:10  bergsma
  * Don't interpret "-" or "+" as a number.
  *
@@ -239,6 +249,7 @@ struct data_t {
    *    the sHyp object.
    * B. sInstance
    * C. sLabel
+   * D. Application sockets, DATA_OBJECT_* from hypdef.h
    */
   void*		pObject ;
   sBYTE		objectType ;
@@ -2923,6 +2934,7 @@ sData* gHyp_data_getAll ( sData 	*pData,
 			  unsigned long	*pUlongVal,
 			  double 	*pDoubleVal,
 			  sLOGICAL	*pBoolVal,
+			  void		**pHandle,
 			  char		*pStrBuf,
 			  int		*pStrLen,
 			  int		maxlen,
@@ -2972,6 +2984,9 @@ sData* gHyp_data_getAll ( sData 	*pData,
     bi,
     bo ;
 
+  void
+    *h ;
+
   sBYTE
     dataType ;
 
@@ -3017,11 +3032,13 @@ sData* gHyp_data_getAll ( sData 	*pData,
 	i = 0 ;
 	u = 0 ;
 	d = 0.0 ;
+	h = NULL ;
       }
       else {
 	i = (int) ul ;
 	u = ul ;
 	d = (double) ul ;
+	h = (void*) ul ;
       }
     }		 
     else if ( strspn ( pValue->pStrVal, "0123456789+-" ) == (size_t) j &&
@@ -3030,34 +3047,40 @@ sData* gHyp_data_getAll ( sData 	*pData,
 	i = 0 ;
 	u = 0 ;
 	d = 0.0 ;
+	h = NULL ;
       }
       else {
 	i = sl ;
 	u = (unsigned long ) sl ;
 	d = (double) sl ;
+	h = (void*) sl ;
       }
     }
     else if ( strspn ( pValue->pStrVal, "0123456789.eE+-" ) == (size_t) j ) {
       if ( sscanf ( pValue->pStrVal, "%lf", &d ) != 1 ) d = 0.0 ;
       i = (int) d ;
       u = (unsigned long) d ;
+      h = (void*)(int) d ;
     }
     else if ( j == 1 ) {
       /* Single character strings are taken as chars */
       i = *(pValue->pStrVal) ;
       u = i ;
       d = i ;
+      h = (void*) i ;
     }
     else if ( j != 0 && *pValue->pStrVal != '%' ) {
       /* Non-null that do not start with '%' are equal to 1 */
       i = 1 ;
       u = 1 ;
       d = 1.0 ;
+      h = (void*) 1 ;
     }
     else {
       i = 0 ;
       u = 0 ;
       d = 0.0 ;
+      h = NULL ;
     }
     strLen = MIN ( pValue->strlen, maxlen ) ;
     memcpy ( pStr, pValue->pStrVal, strLen ) ;
@@ -3071,6 +3094,7 @@ sData* gHyp_data_getAll ( sData 	*pData,
     strLen = sprintf ( pStr, "%d", sb );
     i = (int) sb ;
     u = (unsigned long) sb ;
+    h = (void*) (unsigned long) sb ;
     break ;
 
   case TYPE_ATTR :
@@ -3079,6 +3103,7 @@ sData* gHyp_data_getAll ( sData 	*pData,
     strLen = sprintf ( pStr, "%c", a ) ;
     i = (int) a ;
     u = (unsigned long) a ;
+    h = (void*) (unsigned long) a ;
     break ;
 
   case TYPE_CHAR :
@@ -3087,6 +3112,7 @@ sData* gHyp_data_getAll ( sData 	*pData,
     strLen = sprintf ( pStr, "%c", sc ) ;
     i = (int) sc ;
     u = (unsigned long) sc ;
+    h = (void*) (unsigned long) sc ;
     break ;
 
   case TYPE_UBYTE :
@@ -3095,6 +3121,7 @@ sData* gHyp_data_getAll ( sData 	*pData,
     strLen = sprintf ( pStr, "%u", ub ) ;
     i = (int) ub ;
     u = ub ;
+    h = (void*) (unsigned long) ub ;
     break ;
 
   case TYPE_UCHAR :
@@ -3103,7 +3130,7 @@ sData* gHyp_data_getAll ( sData 	*pData,
     strLen = sprintf ( pStr, "%c", uc ) ;
     i = (int) uc ;
     u = uc ;
-
+    h = (void*) (unsigned long) uc ;
     break ;
           
   case TYPE_BOOLEAN :
@@ -3112,6 +3139,7 @@ sData* gHyp_data_getAll ( sData 	*pData,
     strLen = sprintf ( pStr, "%u", bo ) ;
     i = (int) bo ;
     u = (unsigned long) bo ;
+    h = (void*) (unsigned long) bo ;
     break ;
           
   case TYPE_BINARY :
@@ -3120,6 +3148,7 @@ sData* gHyp_data_getAll ( sData 	*pData,
     strLen = sprintf ( pStr, "0x%02x", bi ) ;
     i = (int) bi ;
     u = (unsigned long) bi ;
+    h = (void*) (unsigned long) bi ;
     break ;
           
   case TYPE_HEX :
@@ -3128,6 +3157,7 @@ sData* gHyp_data_getAll ( sData 	*pData,
     strLen = sprintf ( pStr, "0x%08lx", x ) ;
     i = (int) x ;
     u = (unsigned long) x ;
+    h = (void*) (unsigned long) x ;
     break ;
           
   case TYPE_OCTAL :
@@ -3136,6 +3166,7 @@ sData* gHyp_data_getAll ( sData 	*pData,
     strLen = sprintf ( pStr, "0o%010lo", o ) ;
     i = (int) o ;
     u = (unsigned long) o ;
+    h = (void*) (unsigned long) o ;
     break ;
           
   case TYPE_UNICODE :
@@ -3144,6 +3175,7 @@ sData* gHyp_data_getAll ( sData 	*pData,
     strLen = sprintf ( pStr, "0u%05hx", n ) ;
     i = (int) n ;
     u = (unsigned long) n ;
+    h = (void*) (unsigned long) n ;
     break ;
           
   case TYPE_SHORT :
@@ -3152,6 +3184,7 @@ sData* gHyp_data_getAll ( sData 	*pData,
     strLen = sprintf ( pStr, "%d", sw ) ;
     i = (int) sw ;
     u = (unsigned long) sw ;
+    h = (void*) (unsigned long) sw ;
     break ;
         
   case TYPE_USHORT :
@@ -3160,6 +3193,7 @@ sData* gHyp_data_getAll ( sData 	*pData,
     strLen = sprintf ( pStr, "%u", uw ) ;
     i = (int) uw ;
     u = uw ;
+    h = (void*) (unsigned long) uw ;
     break ;
     
   case TYPE_INTEGER :
@@ -3167,6 +3201,7 @@ sData* gHyp_data_getAll ( sData 	*pData,
     u = (unsigned long) i ;
     d = (double) i ;
     strLen = sprintf ( pStr, "%d", (int) i ) ;
+    h = (void*) i ;
     break ;
     
   case TYPE_LONG :
@@ -3174,7 +3209,8 @@ sData* gHyp_data_getAll ( sData 	*pData,
     u = (unsigned long) sl ;
     d = (double) sl ;
     strLen = sprintf ( pStr, "%d", (int) sl ) ;
-    i = (int ) sl ;
+    i = (int) sl ;
+    h = (void*) sl ;
     break ;
     
   case TYPE_ULONG :
@@ -3183,6 +3219,7 @@ sData* gHyp_data_getAll ( sData 	*pData,
     d = (double) ul ;
     strLen = sprintf ( pStr, "%lu", (unsigned long) ul ) ;
     i = (int) ul ;
+    h = (void*) ul ;
     break ;
     
   case TYPE_FLOAT :
@@ -3191,6 +3228,7 @@ sData* gHyp_data_getAll ( sData 	*pData,
     strLen = sprintf ( pStr, "%.7g", f ) ;
     i = (int) f ;
     u = (unsigned long) f ;
+    h = (void*) (unsigned long) f ;
     break ;
     
   case TYPE_DOUBLE :
@@ -3198,6 +3236,7 @@ sData* gHyp_data_getAll ( sData 	*pData,
     strLen = sprintf ( pStr, "%.7g", d ) ;
     i = (int) d ;
     u = (unsigned long) d ;
+    h = (void*) (unsigned long) d ;
     break ;
     
   case TYPE_HANDLE :
@@ -3207,12 +3246,14 @@ sData* gHyp_data_getAll ( sData 	*pData,
     strLen = sprintf ( pStr, "0x%p", *(pValue->p.hValue+ss) );
     if ( *(pStr+3)=='x' ) 
       strLen = sprintf ( pStr, "%p", *(pValue->p.hValue+ss) );
+    h = (void*) *(pValue->p.hValue+ss) ;
     break ;
 
   default:
     i = 0 ;
     u = 0 ;
     d = 0.0 ;
+    h = NULL ;
     strLen = 0 ;
     break ;
   }
@@ -3223,6 +3264,7 @@ sData* gHyp_data_getAll ( sData 	*pData,
   *pUlongVal = u ;
   *pDoubleVal = d ;
   *pBoolVal  =  i ? 1 : 0 ;
+  *pHandle =  h ;
   *pStrLen = strLen ;
 
   return pValue ;

@@ -10,11 +10,45 @@
 #ifndef __HYPDEF_H_
 #define __HYPDEF_H_
 
-#define 	VERSION_HYPERSCRIPT	"3.8.4"
+#define 	VERSION_HYPERSCRIPT	    "3.8.6"
+#define 	VERSION_BUILD		    "090901"
+#define 	VERSION_HYPERSCRIPT_BUILD   "3.8.6-090901"
 
 /* Modification history:
  *
  * $Log: hypdef.h,v $
+ * Revision 1.91  2009-06-23 23:21:12  bergsma
+ * HS 3.8.6 PF Milestone
+ *
+ * Revision 1.90  2009-06-14 13:01:43  bergsma
+ * Post HS_385 Fixes - some functions such as port_binary, port_eagain,
+ * were not actually working (enabled).
+ *
+ * Revision 1.89  2009-06-12 05:03:44  bergsma
+ * HS 385 Final Checkin and TAG - Force PIPE_BUF to be 5120
+ *
+ * Revision 1.88  2009-04-09 19:57:21  bergsma
+ * Fixing issues with HTTP and buffer sizing
+ *
+ * Revision 1.87  2009-04-07 19:49:57  bergsma
+ * Fix problem when HTTP messages that have incomplete headers
+ * are found at the end of the incoming buffer.
+ *
+ * Revision 1.86  2009-04-02 06:35:13  bergsma
+ * Port reads and writes are 4K, Http reads and wites are 5K,
+ *
+ * Revision 1.85  2009-03-13 07:48:16  bergsma
+ * GD refinements.
+ * Added BUILD_VERSION
+ *
+ * Revision 1.84  2009-03-06 18:01:15  bergsma
+ * Added VERSION_BUILD. this is a date format YYMMDD
+ *
+ * Revision 1.83  2008-11-30 22:33:23  bergsma
+ * V 3.8.4
+ *
+ * Make -x use less frame space.
+ *
  * Revision 1.82  2008-07-07 15:22:59  bergsma
  * Update to HS 3.8.3
  *
@@ -343,12 +377,12 @@
 #endif
 
 /* UNIX fifo max size */
-#define		MAX_BUFFER_FIFO		PIPE_BUF
+#define		MAX_BUFFER_FIFO		5120
 
 /* MAX_MESSAGE_SIZE is the maximum allowed number of bytes that can
  * be read from the network socket, fifo, or mailbox channel.
  */
-#define		MAX_MESSAGE_SIZE	PIPE_BUF
+#define		MAX_MESSAGE_SIZE	5120
 
 /* MAX_BUFFER_SIZE is the buffer space allocated to hold the contents
  * of the read operation.  It is twice the size as MAX_MESSAGE_SIZE because
@@ -374,8 +408,14 @@
 #define 	TOKEN_SIZE  		128
 #define 	VALUE_SIZE  		512
 #define		INTERNAL_VALUE_SIZE	VALUE_SIZE/4
-#define		PORT_READ_SIZE	  	MIN ( 4*1024, MAX_MESSAGE_SIZE )	
-#define		PORT_WRITE_SIZE	  	MIN ( 4*1024, MAX_MESSAGE_SIZE )	
+
+/* The next 4 values are critical, they are always going to be 4K and 5K */
+#define		PORT_READ_SIZE	  	4096	
+#define		PORT_WRITE_SIZE	  	4096	
+#define		HTTP_READ_SIZE	  	4096	
+#define		HTTP_WRITE_SIZE	  	4096	
+
+
 #define 	FIELD_SIZE  		20
 #define 	DEFAULT_DELIMITER 	'|'
 #define		OVERFLOW_READ_SIZE	16*1024	
@@ -412,7 +452,7 @@
 #ifdef AS_SSL
 /* SSL */
 #define		SSL_ERROR_BUF_SIZE	120 
-#define		SSL_BUFFER_SIZE		PORT_READ_SIZE*2
+#define		SSL_BUFFER_SIZE		HTTP_READ_SIZE*2
 #define		SSL_WAIT_INCREMENT	100 /* milliseconds */
 #define		SSL_TIMEOUT		15000 /* milliseconds - 1.5 seconds */
 #endif
@@ -1022,13 +1062,13 @@
  *			------------------	--------------------
  * AUTO_FIFO		$AUTOFIFO (env)		N/A
  *
- * AUTO_HYP		$AUTOHYP (env)		AUTOHYP (logical)
+ * AUTO_SPOOL		$AUTOSPOOL (env)	AUTOSPOOL (logical)
  *
  * AUTO_LOG		$AUTOLOG (env)		AUTOLOG (logical)
  *
  * AUTO_UNIX		$AUTOUNIX		N/A
  *
- * AUTO_ROUTER		router			router
+ * AUTO_ROUTER		$AUTOROUTER		AUTOROUTER
  */
 
 /* Socket hash table size */

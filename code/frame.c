@@ -10,6 +10,9 @@
 /* Modifications: 
  *
  * $Log: frame.c,v $
+ * Revision 1.25  2009-07-23 16:15:37  bergsma
+ * Fixed dereference result when coming back from deferenced method call.
+ *
  * Revision 1.24  2008-08-27 07:22:59  bergsma
  * AUTOSPOOL was not extern
  *
@@ -2172,15 +2175,22 @@ static void lHyp_frame_dereference ( sFrame *pFrame,
     if ( pVariable ) {
 
       /* The new variable must be assigned to what should currently
-       * reside on the stack.
+       * reside on the stack.  If its not there, its already been
+       * taken off (we supposed) and put into pFrame->pTempData
        */
-      pData = gHyp_stack_popRdata ( pLevel->pStack, pAI ) ;
-      pResult = gHyp_type_assign ( pAI,
+      pData = gHyp_stack_peek ( pLevel->pStack ) ;
+      if ( pData ) {
+	pData = gHyp_stack_popRdata ( pLevel->pStack, pAI ) ;
+        pResult = gHyp_type_assign ( pAI,
 				   pFrame,
 				   pFrame->pTempData,
 				   pData,
 				   gHyp_data_dataType(pData),
 				   FALSE, FALSE ) ;
+      }
+      else {
+	pResult = gHyp_data_copy ( pFrame->pTempData ) ;
+      }
     }
     else
       pResult = gHyp_data_new ( NULL ) ;

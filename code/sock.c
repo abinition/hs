@@ -11,6 +11,41 @@
  * Modifications:
  *
  *	$Log: sock.c,v $
+ *	Revision 1.99  2009-07-23 16:16:47  bergsma
+ *	Comments
+ *	
+ *	Revision 1.98  2009-06-23 23:21:12  bergsma
+ *	HS 3.8.6 PF Milestone
+ *	
+ *	Revision 1.97  2009-06-14 13:01:43  bergsma
+ *	Post HS_385 Fixes - some functions such as port_binary, port_eagain,
+ *	were not actually working (enabled).
+ *	
+ *	Revision 1.96  2009-06-12 05:09:42  bergsma
+ *	HS 385 TAGGING - Fix $CREMBX - PIPE_BUF was too small
+ *	
+ *	Revision 1.95  2009-04-09 19:57:21  bergsma
+ *	Fixing issues with HTTP and buffer sizing
+ *	
+ *	Revision 1.94  2009-04-02 06:35:13  bergsma
+ *	Port reads and writes are 4K, Http reads and wites are 5K,
+ *	
+ *	Revision 1.93  2009-03-13 07:48:16  bergsma
+ *	GD refinements.
+ *	Added BUILD_VERSION
+ *	
+ *	Revision 1.92  2009-01-19 23:24:36  bergsma
+ *	PFP BUG.  Appended HTTP messages and detection of binary data instead of POST data
+ *	
+ *	Revision 1.91  2008-12-30 18:40:12  bergsma
+ *	Add support for conditional SSL
+ *	
+ *	Revision 1.90  2008-12-30 18:36:27  bergsma
+ *	Add support for conditional SSL
+ *	
+ *	Revision 1.89  2008-11-30 22:35:57  bergsma
+ *	Comments
+ *	
  *	Revision 1.88  2008-08-27 07:22:59  bergsma
  *	AUTOSPOOL was not extern
  *	
@@ -482,7 +517,7 @@ static int      giNumFds ;
 static int      giNumHosts ;
 static sLOGICAL	gbDoEagain ;
 static sLOGICAL	gbIsEagain ;
-static sBYTE	gpEagainBuf[PORT_WRITE_SIZE+1] ;
+static sBYTE	gpEagainBuf[HTTP_WRITE_SIZE+1] ;
 static int	giEagainBufLen ;
 /********************** INTERNAL OBJECT STRUCTURES ***************************/
 #ifdef AS_SSL
@@ -494,6 +529,7 @@ struct ssl_t {
   BIO *inBio ;
   sLOGICAL isClient ;
   int state ;
+  char condition[VALUE_SIZE+1] ;
 } ;
 #endif
 
@@ -515,6 +551,7 @@ extern "C" int sys$assign  (void *devnam, unsigned short int *chan,
                         unsigned int acmode, void *mbxnam,
                         __optional_params);
 extern "C" void aeqssp_automan_setctrlast ( int(*pf)(int) );
+/*extern "C" int aeqSsp_autoMan_crembx ( sDescr*, int*, int*, int* );*/
 extern "C" int lib$sys_trnLog ( sDescr*, int*, sDescr*, int, int ) ;
 extern "C" int access(const char *file_spec, int mode);
 extern "C" int sys$dassgn ( unsigned short int ) ;
@@ -527,8 +564,7 @@ extern "C" int sys$creprc  (unsigned int *pidadr, void *image, void
 extern "C" int sys$crembx  (char prmflg, unsigned short int *chan,
                          unsigned int maxmsg, unsigned int bufquo,
                          unsigned int promsk, unsigned int acmode, void
-                         *lognam, __optional_params);
-
+                         *lognam,...);
 extern "C" void sys$cancel ( short ) ;
 extern "C" int sys$waitfr (unsigned int efn);
 extern "C" int sys$clref (unsigned int efn);  
@@ -563,6 +599,7 @@ extern int sys$assign  (void *devnam, unsigned short int *chan,
                         unsigned int acmode, void *mbxnam,
                         __optional_params);
 extern void aeqssp_automan_setctrlast ( int(*pf)(int) );
+/*extern int aeqSsp_autoMan_crembx ( sDescr*, int*, int*, int* );*/
 extern int lib$sys_trnLog ( sDescr*, int*, sDescr*, int, int ) ;
 extern int access(const char *file_spec, int mode);
 extern int sys$dassgn ( unsigned short int ) ;
@@ -575,8 +612,7 @@ extern int sys$creprc  (unsigned int *pidadr, void *image, void
 extern int sys$crembx  (char prmflg, unsigned short int *chan,
                          unsigned int maxmsg, unsigned int bufquo,
                          unsigned int promsk, unsigned int acmode, void
-                         *lognam, __optional_params);
-
+                         *lognam,...);
 extern void sys$cancel ( short ) ;
 extern int sys$waitfr (unsigned int efn); 
 extern int sys$clref (unsigned int efn); 
@@ -1036,6 +1072,7 @@ sLOGICAL gHyp_sock_init ( )
   guSIGPIPE = 0 ;
   guSIGINT = 0 ;
   guSIGMBX = 1 ; /* SET TO 1  SO FIRST TIME AST IS SET */
+  guSIGMSG = 0 ;
 
 #ifdef SIGALRM
   gHyp_signal_establish ( SIGALRM, lHyp_sock_alarmHandler ) ;
@@ -1283,13 +1320,14 @@ HANDLE gHyp_sock_fifo ( char *path,
 		        sLOGICAL isWrite,
 			sLOGICAL alreadyExists ) 
 {
-  HANDLE 
-    s ;
 
 #ifdef AS_WINDOWS
   SECURITY_ATTRIBUTES sa;
   SECURITY_DESCRIPTOR sd;
 #endif
+
+  HANDLE 
+    s ;
 
 #ifdef AS_UNIX
 
@@ -1376,6 +1414,9 @@ HANDLE gHyp_sock_fifo ( char *path,
   makeDSCz              ( client_d, path ) ;
   int                   status,
                         bufferLen = 0 ;
+  unsigned long int prot = 0x0000ff00;
+  int maxmsg ;
+  int bufquo ;
 
   if ( create && !(guRunFlags & RUN_ROOT) ) create = FALSE ;
 
@@ -1396,19 +1437,34 @@ HANDLE gHyp_sock_fifo ( char *path,
 
     s = 0 ;
     /*gHyp_util_debug("Creating MBX '%s'",path) ;*/
-    status = sys$crembx( 0,
-                         (unsigned short*) &s,
-                         MAX_BUFFER_SIZE,
-                         (MAX_MESSAGE_SIZE * MAX_INSTANCE_MESSAGES),
-                         0,
-                         PSL$C_USER,
-                         &client_d ) ;
+    
+    status = sys$crembx( (char)0,
+                         (unsigned short int*) &s,
+                         (unsigned int)MAX_MESSAGE_SIZE,
+                         (unsigned int)(MAX_MESSAGE_SIZE * MAX_INSTANCE_MESSAGES),
+                         (unsigned int)0,
+                         (unsigned int)PSL$C_USER,
+                         (void*)&client_d ) ;
 
     if ( !gHyp_util_check ( status, 1 ) ) {
       gHyp_util_logError ( "Failed to create MBX '%s'", path ) ;
       s = INVALID_HANDLE_VALUE ;
     }
 
+    /******
+    maxmsg = MAX_MESSAGE_SIZE ;
+    bufquo = MAX_MESSAGE_SIZE*MAX_INSTANCE_MESSAGES ;
+    status = aeqSsp_autoMan_crembx ( 
+      &client_d, 
+      &maxmsg, 
+      &bufquo, 
+      &s );
+
+    if ( !status ) {
+      gHyp_util_logError ( "Failed to create MBX '%s'", path ) ;
+      s = INVALID_HANDLE_VALUE ;
+    }
+    *******/
   }
   else
     s = INVALID_HANDLE_VALUE ;
@@ -1691,7 +1747,6 @@ void gHyp_sock_enableSessions ( void *ctx )
       (void*)&s_server_session_id_context,
       sizeof s_server_session_id_context);
 }
-
 
 void gHyp_sock_setSessionObject ( sSSL *pSSL, sData *pSessionData )
 {
@@ -2943,6 +2998,7 @@ sLOGICAL gHyp_sock_setSSLstate ( sSSL *pSSL, sData *pSSLdata, sSSL *pSSLORIG)
 
   /*
   pSSL->isClient = pSSLORIG->isClient ;
+  strcpy(pSSL->condition,pSSLORIG->condition);
   pSSL->sslCtx = pSSLORIG->sslCtx ;
   pSSL->state = pSSLORIG->state ;
   */
@@ -3068,10 +3124,10 @@ sLOGICAL gHyp_sock_ctxAuthClient ( void *ctx )
 sSSL *gHyp_sock_copySSL ( sSSL *pSSL )
 {
   if ( pSSL == NULL ) return NULL ;
-  return gHyp_sock_createSSL ( pSSL->sslCtx, pSSL->isClient ) ;
+  return gHyp_sock_createSSL ( pSSL->sslCtx, pSSL->isClient, pSSL->condition ) ;
 }
 
-sSSL *gHyp_sock_createSSL ( void *ctx, sLOGICAL isClient )
+sSSL *gHyp_sock_createSSL ( void *ctx, sLOGICAL isClient, char *condition )
 {
   sSSL 
     *pSSL ;
@@ -3134,6 +3190,7 @@ sSSL *gHyp_sock_createSSL ( void *ctx, sLOGICAL isClient )
   pSSL->ssl = ssl ;
   pSSL->sslCtx = (SSL_CTX*) ctx ;
   pSSL->isClient = isClient ;
+  strcpy ( pSSL->condition, condition ) ;
   pSSL->state = -1 ; /* No state */
 
   /*
@@ -4212,6 +4269,37 @@ static int lHyp_sock_doSSL( sSSL* pSSL,
 	  maxWait -= SSL_WAIT_INCREMENT ;
 	}
 	else {
+
+	  /* If conditional SSL was set, then this is the point we
+	   * can redirect the user to an https connection
+	   * Basically, if the flag is set and the buffer looks like a
+	   * plaintext HTTP get request, then we redirect to https.
+	   *
+	   *  GET / HTTP/1.1
+	   *
+	   *  HTTP/1.1 301 Moved Permanently
+	   *  Location: https://securebob.com/
+	   *
+	   */
+	  if ( pSSL->condition[0] ) {
+	    if ( nReadSock > 14 && strstr ( pSSLbuf, "GET / HTTP/1.1" ) == pSSLbuf ) {
+	      /* ZAP that bastard! */ 
+	      if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+		gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
+		  "Redirection" ) ;
+	      
+ 	      lHyp_sock_write (	
+		s,
+		pSSL->condition,
+		strlen(pSSL->condition),
+		channelType,
+		pOverlapped,
+		FALSE ) ;
+		
+	      /* We don't care about the socket nomore, let it hangup */
+	      return -1 ;
+	    }
+	  }
 
 	  sslTimeout = SSL_WAIT_INCREMENT ; /* If was zero, no longer */
 	  nWriteOut = BIO_write( pSSL->outBio, pSSLbuf, nReadSock ) ;
@@ -5395,7 +5483,7 @@ void gHyp_sock_list ( sData *pClients, sData *pHosts )
     f ;
   
   gHyp_util_output ( "==Statistics=\n" ) ;
-  gHyp_util_logInfo ( "HyperScript Version %s", VERSION_HYPERSCRIPT ) ;
+  gHyp_util_logInfo ( "HyperScript Version %s (%s)", VERSION_HYPERSCRIPT, VERSION_BUILD ) ;
 
   gHyp_util_output ( "\nFifo clients:" ) ;
   for ( f=TRUE, pData = pFirst = gHyp_data_getFirst ( pClients ) ;
@@ -5416,6 +5504,105 @@ void gHyp_sock_list ( sData *pClients, sData *pHosts )
 
   return ;
 }
+
+/****************
+static int lHyp_sock_mapUnMapDrive(
+			  char *pLocalAddr,
+			  char *pServerName,
+			  char *pDriveLetter,
+			  sLOGICAL  doMap )
+{
+
+  if ( doMap ) 
+    gHyp_util_debug ( "Drive mapping %s to %s to %s",
+		      pLocalAddr, pServerName, pDriveLetter ) ;
+  else
+    gHyp_util_debug ( "Drive un-mapping %s to %s to %s",
+		      pLocalAddr, pServerName, pDriveLetter ) ;
+
+  if ( doMap )  {
+
+      for ( int i=0 ; i<iSizeUTF ; i++ ) { 
+ 	shareDirUTF[i] = sdUTF[i] ;
+      } 
+      shareDirUTF[iSizeUTF] = '\0' ;
+      pShareDir = shareDirUTF ;
+      debug_printf (1, "Drive mapping share (UTF) is : %s\n", pShareDir ) ;
+
+      rc = MapDrive(
+	     NULL,	      // IN: Owner window
+	     pLocalAddr,      // IN: eg: 127.0.0.2
+	     pServerName,     // IN:
+	     pShareDir,	      // IN:
+	     pDriveLetter,    // IN: Takes next available if = ""
+	     szAccessName,    // OUT: Local device name (drive letter) that was assigned.
+	     &accessNameSize, // IN:OUT: The size, in characters, of the lpAccessName buffer
+	     szErrorText,     // OUT: If error, this tells what might have happened
+	     VALUE_SIZE ) ;
+
+      if ( rc != 0 ) {
+        debug_printf (1, "Drive mapping failed, reason is : %s\n", szErrorText ) ;
+        accessNameSize = sprintf ( szAccessName, "%%%s", szErrorText ) ;
+      }
+      else {
+        szAccessName[accessNameSize] = '\0' ;
+      }
+
+    }
+    else {
+
+      debug_printf (1, "Removing lmhosts entries" ) ;
+      rc = iUpdateLMHOSTSFile(Flags, "" ) ;
+      if ( rc != 0 ) {
+        debug_printf (1, "Remove lmhosts entries failed" ) ;
+      }
+
+      debug_printf (1, "Unmapping drives" ) ;
+      rc = UnmapDrive( "*", szErrorText, VALUE_SIZE ) ;
+      if ( rc != 0 ) {
+        debug_printf (1, "Unmap drive entry failed" ) ;
+        accessNameSize = sprintf ( szAccessName, "%%%s", szErrorText ) ;
+      }
+      else {
+
+      strcpy ( szAccessName, "*" ) ;
+	accessNameSize = 1 ;
+      }
+    }    
+}
+
+int lHyp_sock_driveMapperThread(
+	)
+{
+
+    HookStruct *psPorts;
+    HANDLE hThread;
+    ULONG ulThreadId;
+    int rc;
+
+    psPorts = (HookStruct *)malloc(sizeof(*psPorts));
+
+    psPorts->iExchangeRFRPort = iExchangeRFRPort;
+    psPorts->iExchangeDIRPort = iExchangeDIRPort;
+    psPorts->iExchangeSTOREPort = iExchangeSTOREPort;
+
+
+
+    hThread = CreateThread (
+		NULL,			    // SecurityAttributes,
+		(16*1024),		    // Thread stack size.
+		(LPTHREAD_START_ROUTINE)iHookIntoPortMapperThread,  // StartFunction,
+		psPorts,		    // Parmeter to pass to the start function
+		0L,			    // CreationFlags,
+		&ulThreadId);		    // ThreadId
+
+    rc = GetLastError();
+
+    debug_printf(1, "SPMH: Returning rc = %s (%d)\n", pstrGetErrorString(rc), rc);
+    return rc;
+}
+
+************************************/
 
 void gHyp_sock_logger ( char *where, char *pMsg, sAImsg *pAImsg )
 {
@@ -5802,7 +5989,8 @@ sData* gHyp_sock_findHYP ( sData *pClients, char *targetObject, char *targetId,
     hsexe[MAX_PATH_SIZE+1],
     path[MAX_PATH_SIZE+1],
     log[MAX_PATH_SIZE+1],
-    *argv[14] = {
+    heap[6],
+    *argv[15] = {
       NULL,
       "-f", NULL, 
       "-e", "CONNECT", 
@@ -5810,12 +5998,13 @@ sData* gHyp_sock_findHYP ( sData *pClients, char *targetObject, char *targetId,
       "-e", "ABORT", 
       "-t", NULL, 
       "-l", NULL, 
-      NULL } ;
+      NULL, NULL } ;
  
    sData
      *pData ;
   
    int
+     argc,
      i ;
 
    sChannel
@@ -5887,7 +6076,18 @@ sData* gHyp_sock_findHYP ( sData *pClients, char *targetObject, char *targetId,
   argv[2] = path ;
   argv[10] = targetId ;
   argv[12] = log ;
-  if ( !lHyp_sock_exec ( argv[0], path, targetObject, log, argv, 13 ) ) return NULL ;
+
+  if ( guHeapMultiplier == 0 ) 
+    argc = 13 ;
+  else {
+    heap[0] = '-' ;
+    for ( i=1;i<=guHeapMultiplier;i++ ) heap[i] = 'x' ;
+    heap[guHeapMultiplier+1] = '\0' ;
+    argv[13] = heap ;
+    argc = 14 ;
+  }
+
+  if ( !lHyp_sock_exec ( argv[0], path, targetObject, log, argv, argc ) ) return NULL ;
 
   /* Wait for the mailbox to be created.  This could be a separate thread */
   pData = NULL ;
@@ -6503,6 +6703,15 @@ static int lHyp_sock_select_FDSET_objects ( sConcept *pConcept,
       break ;
     }
 
+    /* If the port is stopped, don't include it *
+     *
+     * This method was abandoned in favour of allowing the FDSET 
+     * but then just ignoring it until reading was possible
+     * 
+     if ( !gHyp_concept_getPortStopGo ( pConcept, socket ) ) continue ;
+     */
+
+
     if ( flags & (PROTOCOL_SECS1 | PROTOCOL_NONE | PROTOCOL_HTTP ) ) {
 
       pOverlapped = gHyp_secs1_overlapped ( (sSecs1*) pObject ) ;
@@ -6582,6 +6791,9 @@ static int lHyp_sock_select_read_objects ( sConcept *pConcept, sData *pSockets )
   sWORD
     id ;
 
+  sLOGICAL
+    isGo ;
+
   sBYTE
     objectType ;
 
@@ -6624,6 +6836,7 @@ static int lHyp_sock_select_read_objects ( sConcept *pConcept, sData *pSockets )
   if ( i >=0 && i < giNumFds ) {
 
     pData = gHyp_data_getChildBySS ( pSockets, i ) ;
+
     if ( pData ) {
 
 #else
@@ -6663,8 +6876,13 @@ static int lHyp_sock_select_read_objects ( sConcept *pConcept, sData *pSockets )
       break ;
     }
 
+    /* If the port is stopped, don't even bother to check if 
+     * the FDSET is true, see if another socket is ready 
+     */
+    isGo = gHyp_concept_getPortStopGo ( pConcept, socket ) ;
+
 #ifndef AS_WINDOWS
-    if ( FD_ISSET ( socket, &gsReadFDS ) ) {
+    if ( isGo && FD_ISSET ( socket, &gsReadFDS ) ) {
 
 #else
 
@@ -6675,6 +6893,9 @@ static int lHyp_sock_select_read_objects ( sConcept *pConcept, sData *pSockets )
     else if ( networkEvents.lNetworkEvents & FD_CLOSE )
     else if ( networkEvents.lNetworkEvents & FD_WRITE )
     */
+
+    /* For WINDOZE, we just pretend the sock has no data */
+    if ( !isGo ) return COND_SILENT ;
 
 #endif
       if ( flags == (PROTOCOL_HSMS | SOCKET_LISTEN) ) {
@@ -6831,6 +7052,10 @@ static int lHyp_sock_select_read_objects ( sConcept *pConcept, sData *pSockets )
 	  /* Transfer the id. */
 	  gHyp_instance_updateFd ( pAIassigned, newSocket, id, NULL, FALSE ) ;
 
+	  /* And and and.... what? */
+	  gHyp_secs1_setBinary ( pPort, gHyp_secs1_isBinary ( pListenPort ) ) ;
+
+
 	}	
 	else {
 	  gHyp_util_logWarning ( "No id is assigned to new socket %d from port listen socket %d",newSocket, socket ) ;
@@ -6887,6 +7112,8 @@ static int lHyp_sock_select_read_objects ( sConcept *pConcept, sData *pSockets )
 	  /* Transfer the id. */
 	  gHyp_instance_updateFd ( pAIassigned, newSocket, id, NULL, FALSE ) ;
 
+	  /* And and and.... what? */
+	  gHyp_secs1_setBinary ( pPort, gHyp_secs1_isBinary ( pListenPort ) ) ;
 	}
 	else {
 	  gHyp_util_logWarning ( "No id is assigned to new socket %d from http listen socket %d",newSocket, socket ) ;
@@ -6933,6 +7160,7 @@ static int lHyp_sock_select_read_objects ( sConcept *pConcept, sData *pSockets )
 
 	  /* Transfer the id. */
 	  gHyp_instance_updateFd ( pAIassigned, newSocket, id, NULL, FALSE ) ;
+
 	}	
 	else {
 	  gHyp_util_logWarning ( "No id is assigned to new socket %d from UNIX listen socket %d",newSocket, socket ) ;
@@ -7003,6 +7231,9 @@ static int lHyp_sock_select_read_objects ( sConcept *pConcept, sData *pSockets )
 	  gHyp_util_logInfo ( "Id %d is assigned to new UNIX handoff socket %d",id, newSocket ) ;
 	  gHyp_instance_updateFd ( pAIassigned, newSocket, id, NULL, FALSE ) ;
 
+	  /* And and and.... what? */
+	  gHyp_secs1_setBinary ( pPort, gHyp_secs1_isBinary ( pListenPort ) ) ;
+
 	}
 	else {
 	  gHyp_util_logWarning ( "No id is assigned to new UNIX socket %d from handoff socket %d",newSocket, socket ) ;
@@ -7022,6 +7253,10 @@ static int lHyp_sock_select_read_objects ( sConcept *pConcept, sData *pSockets )
       }
       else if ( flags & PROTOCOL_HTTP ) {
           msgLen = gHyp_secs1_rawIncoming ( (sSecs1*) pObject, pConcept, pAI, DATA_OBJECT_HTTP ) ;
+	  /* Sometimes two HTTP messages are stuck together, if so, dive back in for more! */
+	  while ( msgLen >= 0 && guSIGMSG ) {
+            msgLen = gHyp_secs1_rawIncoming ( (sSecs1*) pObject, pConcept, pAI, DATA_OBJECT_HTTP ) ;
+	  }
       }
       else if ( flags & PROTOCOL_SECS1 ) {
           msgLen = gHyp_secs1_incoming ( (sSecs1*) pObject, pConcept, pAI ) ;
@@ -7040,12 +7275,14 @@ static int lHyp_sock_select_read_objects ( sConcept *pConcept, sData *pSockets )
 
 	/* We don't do the following, because secs1_rawIncoming and hsms_incoming
 	 * will have already done this for us.
-	 * 
+	 *
+
         gHyp_util_logError ( "Failed to write to socket %d",s ) ;
         if ( pNext == pData ) pNext = NULL ;
         gHyp_data_detach ( pData ) ;
         gHyp_data_delete ( pData ) ;
         pFirst = gHyp_data_getFirst ( pSockets ) ;
+
 	*/
 
 	return msgLen ;
@@ -7054,8 +7291,6 @@ static int lHyp_sock_select_read_objects ( sConcept *pConcept, sData *pSockets )
   }
   return COND_SILENT ;
 }
-
-
 
 static int lHyp_sock_select_write_objects ( sConcept *pConcept, sData *pSockets, int mOffset ) 
 {  
@@ -7911,8 +8146,6 @@ int gHyp_sock_select ( sConcept* pConcept,
 
   cond = lHyp_sock_select_read_objects ( pConcept,pSockets ) ;
   if ( cond < 0 ) return cond ;
-
-
 
   return COND_SILENT ;
 }

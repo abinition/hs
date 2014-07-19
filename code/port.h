@@ -2,6 +2,9 @@
  * Modifications:
  *
  * $Log: port.h,v $
+ * Revision 1.6  2009-06-12 05:11:15  bergsma
+ * HS 385 TAGGING - Added port_stop and port_go (but disabled in sock.c)
+ *
  * Revision 1.5  2006-10-27 17:27:19  bergsma
  * Added port_sendmsg and port_recvmsg
  *
@@ -23,6 +26,8 @@ extern void	gHyp_port_enable ( sInstance *, sCode *, sLOGICAL  ) ;
 extern void	gHyp_port_disable ( sInstance *, sCode *, sLOGICAL ) ; 
 extern void	gHyp_port_binary ( sInstance *, sCode *, sLOGICAL ) ;
 extern void	gHyp_port_eagain ( sInstance *, sCode *, sLOGICAL ) ;
+extern void	gHyp_port_go ( sInstance *, sCode *, sLOGICAL ) ;
+extern void	gHyp_port_stop ( sInstance *, sCode *, sLOGICAL ) ;
 extern void	gHyp_port_event ( sInstance *, sCode *, sLOGICAL  ) ;
 extern void	gHyp_port_query ( sInstance *, sCode *, sLOGICAL  ) ;
 extern void	gHyp_port_handle ( sInstance *, sCode *, sLOGICAL  ) ;

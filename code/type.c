@@ -11,6 +11,9 @@
  * Modifications:
  *
  *	$Log: type.c,v $
+ *	Revision 1.19  2009-03-07 21:27:32  bergsma
+ *	gHyp_data_getAll needs additional handle argument
+ *	
  *	Revision 1.18  2007-06-24 17:49:02  bergsma
  *	Return proper "typeof" for literals.
  *	
@@ -198,6 +201,9 @@ sData *gHyp_type_assign ( sInstance *pAI,
   double
     double1 ;
 
+  void
+    *handle1 ;
+
   /* This routine handles all assignment operations; top-level variables,
    * sub-variables, and intermediate stack results.  It also handles both list
    * and vectors, which can be initialized from either lists or vectors.
@@ -383,6 +389,7 @@ sData *gHyp_type_assign ( sInstance *pAI,
 			     &ulong1,
 			     &double1, 
 			     &bool1, 
+			     &handle1,
 			     value,
 			     &i,
 			     VALUE_SIZE,
@@ -999,6 +1006,7 @@ sData *gHyp_type_assign ( sInstance *pAI,
 			       &ulong1,
 			       &double1, 
 			       &bool1, 
+			       &handle1,
 			       value, 
 			       &i,
 			       VALUE_SIZE,

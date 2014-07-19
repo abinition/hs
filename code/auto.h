@@ -3,6 +3,15 @@
  * Modifications:
  *
  * $Log: auto.h,v $
+ * Revision 1.27  2009-06-12 05:00:49  bergsma
+ * HS 385 Final Checkin and TAG
+ *
+ * Revision 1.26  2009-03-08 16:17:45  bergsma
+ * First successfull hs/gd compile&link
+ *
+ * Revision 1.25  2009-01-22 01:34:01  bergsma
+ * For guSIGMSG
+ *
  * Revision 1.24  2008-08-27 07:22:59  bergsma
  * AUTOSPOOL was not extern
  *
@@ -180,6 +189,7 @@ extern char		gzPIDfileSpec[MAX_PATH_SIZE+1] ; /* PID file */
 extern time_t		gsCurTime ; 	/* Current time, updated regularily. */
 extern sLOGICAL 	guTimeStamp ;	/* Integer timeStamp. */
 extern unsigned short	guRunFlags ; 	/* General flags */
+extern unsigned short	guHeapMultiplier ;
 
 extern sInstance *gpAI ;	/* HyperScript instance */
 extern sInstance *gpAImain  ;	/* Main HyperScript instance */
@@ -236,6 +246,7 @@ extern unsigned		guSIGINT ;     	/* Set when SIGINT */
 extern unsigned		guSIGTERM ;    	/* Set when SIGTERM */
 extern unsigned		guSIGHUP ;     	/* Set when SIGHUP */
 extern unsigned		guSIGMBX ;     	/* Set when SIGMBX */
+extern unsigned		guSIGMSG ;	/* Set when SIGMSG */
 
 /* Function prototypes */
 #include "aimsg.h"
@@ -256,6 +267,7 @@ extern unsigned		guSIGMBX ;     	/* Set when SIGMBX */
 #include "frame.h"
 #include "function.h"
 #include "hyp.h"
+#include "gd.h"
 #include "instance.h"
 #include "label.h"
 #include "load.h"

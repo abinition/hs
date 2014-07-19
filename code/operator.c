@@ -6,10 +6,17 @@
 !          ***** Program property of Ab Initio Software                       !
 !                                                                             !
 !*****************************************************************************/
+
 /*
  * Modifications:
  *
  *   $Log: operator.c,v $
+ *   Revision 1.25  2009-03-22 19:21:39  bergsma
+ *   no message
+ *
+ *   Revision 1.24  2009-03-07 21:27:32  bergsma
+ *   gHyp_data_getAll needs additional handle argument
+ *
  *   Revision 1.23  2008-02-17 02:10:46  bergsma
  *   Added deg2rad and rad2deg
  *
@@ -162,6 +169,10 @@ static sData *lHyp_operator_binaryOp (	sInstance	*pAI,
     isVector1,
     isVector2 ;
   
+  void
+    *handle1,
+    *handle2 ;
+
   sBYTE
     dataType1,
     dataType2,
@@ -256,6 +267,7 @@ static sData *lHyp_operator_binaryOp (	sInstance	*pAI,
 			 &ulong1,
 			 &double1, 
 			 &bool1, 
+			 &handle1,
 			 value1,
 			 &len1,
 			 VALUE_SIZE,
@@ -276,6 +288,7 @@ static sData *lHyp_operator_binaryOp (	sInstance	*pAI,
 			 &ulong2,
 			 &double2, 
 			 &bool2,
+			 &handle2,
 			 value2,
 			 &len2,
 			 VALUE_SIZE,
@@ -829,6 +842,9 @@ static sData *lHyp_operator_unaryOp (	sInstance	*pAI,
     dataType,
     tokenType ;
 
+  void
+    *handle ;
+
   /* Initialize result */
   pResult = gHyp_data_new ( "_op1_" ) ;
   pArgStr = gHyp_data_getLabel ( pArg ) ;
@@ -849,6 +865,7 @@ static sData *lHyp_operator_unaryOp (	sInstance	*pAI,
 			&ulongVal,
 			&doubleVal, 
 			&boolVal,
+			&handle,
 			value,
 			&valueLen,
 			VALUE_SIZE,
@@ -2837,3 +2854,4 @@ void gHyp_operator_rad2deg ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     gHyp_stack_push ( pStack, pResult ) ;
   }
 }
+

@@ -10,6 +10,9 @@
  * Modifications:
  *
  *   $Log: sort.c,v $
+ *   Revision 1.4  2009-03-07 21:27:32  bergsma
+ *   gHyp_data_getAll needs additional handle argument
+ *
  *   Revision 1.3  2002-11-14 01:43:57  bergsma
  *   Ditto.
  *
@@ -76,6 +79,10 @@ static sLOGICAL lHyp_sort_compExch ( sData *pData,
     tokenType1,
     tokenType2 ;
 
+  void
+    *handle1,
+    *handle2 ;
+
   pValue1 = gHyp_data_getAll ( pData, 
 			       &tokenType1, 
 			       &dataType1, 
@@ -83,6 +90,7 @@ static sLOGICAL lHyp_sort_compExch ( sData *pData,
 			       &ulong1,
 			       &double1, 
 			       &bool1, 
+			       &handle1,
 			       value1,
 			       &len1,
 			       VALUE_SIZE,
@@ -96,6 +104,7 @@ static sLOGICAL lHyp_sort_compExch ( sData *pData,
 			       &ulong2,
 			       &double2, 
 			       &bool2, 
+			       &handle2,
 			       value2, 
 			       &len2,
 			       VALUE_SIZE,

@@ -3,6 +3,9 @@
  * Modifications:
  *
  * $Log: concept.h,v $
+ * Revision 1.12  2009-06-12 05:11:15  bergsma
+ * HS 385 TAGGING - Added port_stop and port_go (but disabled in sock.c)
+ *
  * Revision 1.11  2007-02-26 02:35:01  bergsma
  * No longer user NULL_DEVICEID placeholder.  PORT and HTTP
  * autoallocate device ids, HSMS and SECS I are pre-determined.
@@ -82,3 +85,6 @@ extern sData* gHyp_concept_getClients ( sConcept *pConcept ) ;
 extern sChannel *gHyp_concept_findNetworkByFd ( sConcept *pConcept, SOCKET fd ) ;
 extern sSSL* gHyp_concept_getSSL ( sConcept *pConcept ) ;
 extern void gHyp_concept_setSSL ( sConcept *pConcept, sSSL *pSSL ) ;
+extern void gHyp_concept_setPortStopGo ( sConcept *pConcept, SOCKET fd, sLOGICAL go ) ;
+extern sLOGICAL gHyp_concept_getPortStopGo ( sConcept *pConcept, SOCKET fd ) ;
+

@@ -62,6 +62,9 @@
 ! Modifications:
 !
 !   $Log: automan.for,v $
+!   Revision 1.6  2009-08-19 14:30:47  bergsma
+!   Automan Upper Window message truncation
+!
 !   Revision 1.5  2005-09-28 04:42:56  bergsma
 !   OPCERT Functionality
 !
@@ -5374,7 +5377,7 @@
      &			dataLen,
      &			statusTextLen
 
-	character*(MAX_MESSAGE_LEN)	text
+	character*(MAX_MESSAGE_LEN*2)	text
 
 	character*(TYP__PARMNMSZ)	parmName
 	character*(TYP__PARMVALSZ)	parmVal
@@ -5445,7 +5448,7 @@
 	      k = 0
 	      j = 1
 	      text = ' '
-	      do while ( j .le. valueCount(i) .and. k .lt. MAX_MESSAGE_LEN )
+	      do while ( j .le. valueCount(i) .and. k .lt. (MAX_MESSAGE_LEN*2) )
 
 		text(k+1:)= value(j,i)(:valueLen(j,i))
 		k = k + valueLen(j,i)
@@ -5652,7 +5655,7 @@
 	integer*4	i,j,k,
      &			promptReplyLen
 
-	character*(MAX_MESSAGE_LEN)	text
+	character*(MAX_MESSAGE_LEN*2)	text
 	character*(VALUE_SIZE)		promptReply
 
 
@@ -5680,7 +5683,7 @@
 	      k = 0
 	      j = 1
 	      text = ' '
-	      do while ( j .le. valueCount(i) .and. k .lt. MAX_MESSAGE_LEN )
+	      do while ( j .le. valueCount(i) .and. k .lt. (MAX_MESSAGE_LEN*2) )
 
 		text(k+1:)= value(j,i)(:valueLen(j,i))
 		k = k + valueLen(j,i)

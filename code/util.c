@@ -10,6 +10,13 @@
  * Modifications:
  *
  *	$Log: util.c,v $
+ *	Revision 1.65  2009-04-09 19:57:21  bergsma
+ *	Fixing issues with HTTP and buffer sizing
+ *	
+ *	Revision 1.64  2009-03-13 07:48:16  bergsma
+ *	GD refinements.
+ *	Added BUILD_VERSION
+ *	
  *	Revision 1.63  2008-09-09 13:48:48  bergsma
  *	Make gzStream larger, 4* MAX_INPUT_LENGHT.  Allows bigger XML
  *	structures to be parsed (large chrt records from PROMIS).
@@ -1803,16 +1810,16 @@ int gHyp_util_parseXML ( char *pStr )
       
       else if ( strncmp ( pStr, "&#x", 3 ) == 0 ) {
          i = sscanf ( pStr+3, "%x%n", (unsigned int*) &u, &n ) ;
-	 if ( i == 1 && n > 0 && n < 5 && *(pStr+3+n) == ';' ) {
+	 if ( i == 1 && n > 0 && n < 6 && *(pStr+3+n) == ';' ) {
             *pAnchor++ = (char) u ;
-            pStr += (n+4) ;
+            pStr += (n+3) ;
 	 }
       }
       else if ( strncmp ( pStr, "&#", 2 ) == 0 ) {
          i = sscanf ( pStr+2, "%u%n", (unsigned int*) &u, &n ) ;
 	 if ( i == 1 && n > 0 && n < 6 && *(pStr+2+n) == ';' ) {
             *pAnchor++ = (char) u ;
-            pStr += (n+3) ;
+            pStr += (n+2) ;
 	 }
       }
       else
@@ -2236,7 +2243,7 @@ int gHyp_util_unparseString ( char *pDstStr,
         if ( pDst+2 > pEndDst ) break ;
 #ifdef AS_SQLSERVER
 	*pDst++ = '\'' ;
-#else
+#else /* ORACLE, MYSQL, PGSQL */
 	*pDst++ = '\\' ;
 #endif
 	*pDst++ = '\'' ;
@@ -2275,8 +2282,12 @@ int gHyp_util_unparseString ( char *pDstStr,
           pDst += sprintf ( pDst, "%03o", 195 ) ;
           *pDst++ = '\\' ;
           pDst += sprintf ( pDst, "%03o", uc ) ;
-#else
-          *pDst++ = '\\' ;
+
+#else     /* ORACLE, MYSQL, SQLSERVER */
+
+	  /* Replace the unprintable with a dot. */
+          *pDst++ = '.' ;
+
 #endif
 
 #endif
@@ -3044,16 +3055,20 @@ void gHyp_util_breakStream ( char *buffer, int bufLen, sData *pParent, sLOGICAL 
 	  /* We'd like to store longer, but will it fit? */
 
 	  width3 = width2 ;
-	  for ( i=0;i<width2;i++ ) if ( !isprint(work[i]) ) width3+=3;
+	  for ( i=0;i<width2;i++ ) if ( work[i] <= 0 || !isprint(work[i]) ) width3+=3;
 	  if ( width3 <= VALUE_SIZE ) 
 	     /* Yes, it will fit - adjust size */
 	     width = width2 ;
 	}
       }
+      pValue = gHyp_data_new ( NULL ) ;
+      gHyp_data_setStr_n ( pValue, (char*) work, width ) ;
+    }
+    else {
+      pValue = gHyp_data_new ( NULL ) ;
+      gHyp_data_setStr_n ( pValue, (char*) pBuf, width ) ;
     }
 
-    pValue = gHyp_data_new ( NULL ) ;
-    gHyp_data_setStr_n ( pValue, (char*) work, width ) ;
     gHyp_data_append ( pParent, pValue ) ;
 
     bufLen -= width ;

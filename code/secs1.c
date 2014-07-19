@@ -11,6 +11,46 @@
  * Modifications:
  *
  *   $Log: secs1.c,v $
+ *   Revision 1.79  2009-08-11 21:19:07  bergsma
+ *   Fixed for ANSI C compatibility - some function names were too long....
+ *
+ *   Revision 1.78  2009-08-04 00:11:06  bergsma
+ *   Fix parsing of POST URL-encoded data.
+ *
+ *   Revision 1.77  2009-07-23 16:16:17  bergsma
+ *   Fixed infinite loop caused by truncated HTTP messages.
+ *
+ *   Revision 1.76  2009-06-12 05:03:02  bergsma
+ *   HS 385 Final Checkin and TAG - Append message bug
+ *
+ *   Revision 1.75  2009-04-09 19:57:21  bergsma
+ *   Fixing issues with HTTP and buffer sizing
+ *
+ *   Revision 1.74  2009-04-07 19:49:57  bergsma
+ *   Fix problem when HTTP messages that have incomplete headers
+ *   are found at the end of the incoming buffer.
+ *
+ *   Revision 1.73  2009-04-02 06:35:13  bergsma
+ *   Port reads and writes are 4K, Http reads and wites are 5K,
+ *
+ *   Revision 1.72  2009-03-22 19:21:39  bergsma
+ *   no message
+ *
+ *   Revision 1.71  2009-03-06 18:00:24  bergsma
+ *   Comment change
+ *
+ *   Revision 1.70  2009-03-02 00:34:35  bergsma
+ *   Improved handling of zero-length content buffers
+ *
+ *   Revision 1.69  2009-01-19 23:24:36  bergsma
+ *   PFP BUG.  Appended HTTP messages and detection of binary data instead of POST data
+ *
+ *   Revision 1.68  2009-01-02 17:56:51  bergsma
+ *   no message
+ *
+ *   Revision 1.67  2008-12-30 18:35:39  bergsma
+ *   Correct for content beginning with \r\n
+ *
  *   Revision 1.66  2008-06-11 18:49:49  bergsma
  *   typo
  *
@@ -263,6 +303,14 @@
 
 /********************** INTERNAL OBJECT STRUCTURES ***************************/
 
+/* Let's keep the I/O buffers permanently allocated.  That's going to make the
+ * OS happier, plus we can handle guSIGMSG with it here
+ */
+
+static char gzOutBuffer[MAX_INPUT_LENGTH+1] ;
+static char gzInputBuffer[OVERFLOW_READ_SIZE+1] ;
+static int  giNbytes ;
+
 #include "secshead.h"
 
 struct secs1_t
@@ -284,6 +332,8 @@ struct secs1_t
 
   sBYTE			inbuf[MAX_SECS1_BUFFER*2] ;
   sBYTE			outbuf[MAX_SECS1_BUFFER*2] ;
+  sBYTE			savebuf[HTTP_READ_SIZE+1];
+  int			savebuflen ;
   sLOGICAL		doEagain ;	  /* If eagain processing is enabled - default = no */
   sData*		pEagain ;	  /* Write pending data */  
   sData*		pEagainPartial ;  /* Write partial data */  
@@ -356,6 +406,7 @@ sSecs1 *gHyp_secs1_new ( short flags,
   pSecs1->nextEagainTime1 = 0 ; ;
   pSecs1->nextEagainTime2 = 0 ; ;
   pSecs1->nextEagainInc = 0 ;
+  pSecs1->savebuflen = 0 ;
 
   if ( flags & PROTOCOL_HTTP ) 
     pSecs1->pHTTP = gHyp_http_new() ;
@@ -2266,6 +2317,7 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
     isXMLEncoded=FALSE,
     isLineBased=TRUE,
     doKnitting=FALSE,
+    isZeroLength=FALSE,
     isMessageComplete,
     jmpEnabled ;
   
@@ -2275,18 +2327,16 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
 
   int
     i,
-    n,
+    n=0,
     ss,
     context,
     lineLen=0,
     width,width2,width3,
     forwardCount,
-    nBytes=0,
     actualContentLength=0,
     contentLength=0 ;
 
   sBYTE
-    state,
     httpState;
 
   sSecs1
@@ -2297,16 +2347,14 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
     c,
     *pBuf,
     *pEndBuf,
-    buffer[OVERFLOW_READ_SIZE+1],
     *pChar,
     *pTokenName,
     *pTokenValue,
     *pMsg,
-    *pContent,*pContent2,
+    *pContent,*pContent2,*pContent3,
     *pLine,
     *pEndLine,
     *pArg1,*pArg2,*pArg3,
-    prefix[3],
     target[TARGET_SIZE+1],
     sender[SENDER_SIZE+1],
     method[METHOD_SIZE+1],
@@ -2335,8 +2383,6 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
   SOCKET
     fd ;
 
-#define URL_EXPECT_TOKEN 0
-#define URL_EXPECT_VALUE 1
 
   /* If we're nested too deep in handlers, then forget it */
   if ( giJmpLevel == MAX_JMP_LEVEL ) {
@@ -2345,7 +2391,7 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
   }
 
   /******************************************************************
-   * WHO GETS THE DATA
+   * WHO GETS THE DATA?
    ******************************************************************/
   
   pAIassigned = gHyp_concept_getInstForFd ( pConcept, pPort->fd ) ;
@@ -2422,28 +2468,51 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
   /* Save the previous longjmp return point. */
   jmpEnabled = giJmpEnabled ;
   giJmpEnabled = FALSE ;
-  pBuf = buffer ;
-  nBytes =  gHyp_sock_read ( (SOCKET) pPort->fd,
+  pBuf = gzInputBuffer ;
+  if ( guSIGMSG ) {
+    guSIGMSG = 0 ;
+
+    /* giNbytes is already set, so is the gzInputBuffer.
+     * We are not going to be issuing a read.
+     */
+    gHyp_util_debug("Processing appended message of %d bytes [%.*s...]",
+		    giNbytes,MIN(giNbytes,60),gzInputBuffer );
+
+  }
+  else {
+    if ( pPort->savebuflen > 0 ) {
+      gHyp_util_debug("Short HTTP Message save previously is restored, inserting %d bytes to buffer start",pPort->savebuflen); 
+      memmove ( gzInputBuffer, pPort->savebuf, pPort->savebuflen ) ;
+      pBuf += pPort->savebuflen ;
+    }
+    giNbytes =  gHyp_sock_read ( (SOCKET) pPort->fd,
 			     (char*) pBuf, 
-			     PORT_READ_SIZE,
+			     (objectType==DATA_OBJECT_HTTP)?HTTP_READ_SIZE:PORT_READ_SIZE,
 			     (short)(pPort->flags&MASK_SOCKET),
 			     0, /* 0 means read already completed, just get result */
 			     &pPort->nBytes,
   			     &pPort->overlapped,
-			     pPort->pSSL) ;
+			     pPort->pSSL) +
+			     pPort->savebuflen ;
+
+    /* Watch out for zero byte reads when we have a savebuf condition */
+    if ( pPort->savebuflen == giNbytes ) giNbytes = 0 ;
+    pPort->savebuflen = 0 ;
+  }
 
   /* Restore the previous longjmp return point. */
   giJmpEnabled = jmpEnabled ;
   
-  if ( nBytes < 0 ) {
+  if ( giNbytes < 0 ) {
     gHyp_util_logError ( "Failed to read data from socket=%d, id=%d, device=%s",
 			 pPort->fd,id,pPort->device ) ;
     /* Close the port */
-    if ( pAIassigned ) gHyp_instance_signalHangup ( pAIassigned, (int) pPort->fd, pPort->modifier, id ) ;
+    if ( pAIassigned ) gHyp_instance_signalHangup ( pAIassigned, 
+      (int) pPort->fd, pPort->modifier, id ) ;
     gHyp_concept_deleteSocketObject ( pConcept, (SOCKET) pPort->fd ) ;
     return COND_SILENT ;
   }
-  else if ( nBytes == 0 ) {
+  else if ( giNbytes == 0 ) {
     
     if ( id != NULL_DEVICEID )
       gHyp_util_logWarning ( "Failed to receive data from socket %u, device %d (%s)",
@@ -2480,25 +2549,24 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
     /* If the object type is HTTP, then we need to buffer
      * all the data until we get the complete record.
      */
-    buffer[nBytes] = '\0' ;
-    pBuf = buffer ;
-    pEndBuf = pBuf + nBytes ;
+    gzInputBuffer[giNbytes] = '\0' ;
+    pBuf = gzInputBuffer ;
+    pEndBuf = pBuf + giNbytes ;
 
-    
     if ( guDebugFlags & DEBUG_PROTOCOL ) {
       gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
-		"Id %u, socket %d, %u bytes",id,pPort->fd,nBytes) ; ;
+		"Id %u, socket %d, %u bytes",id,pPort->fd,giNbytes) ; ;
       pLine = pBuf ;
       while ( pLine < pEndBuf ) {
 	lineLen = MIN ( INTERNAL_VALUE_SIZE, (pEndBuf-pLine) ) ;
         n = gHyp_util_unparseString ( value, pLine, lineLen, VALUE_SIZE, FALSE, FALSE, FALSE,"" ) ;
-	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,"[%s]",value) ; ;
+	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,"[%s]",value) ;
 	pLine += lineLen ;
       }
     }
     if ( guDebugFlags & DEBUG_DIAGNOSTICS ) {
 	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
-		"Received %u bytes on socket %d, id %d",nBytes,pPort->fd,id) ;
+		"Received %u bytes on socket %d, id %d",giNbytes,pPort->fd,id) ;
     }
 
     /******************************************************************
@@ -2535,17 +2603,17 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
 
 #ifdef AS_WINDOWS
 		  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
-					"%d -> %d (%u) %u bytes",id,forwardId,GetTickCount(),nBytes);
+					"%d -> %d (%u) %u bytes",id,forwardId,GetTickCount(),giNbytes);
 #else
 		  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
-					"%d -> %d (%u) %u bytes",id,forwardId,gsCurTime,nBytes) ;
+					"%d -> %d (%u) %u bytes",id,forwardId,gsCurTime,giNbytes) ;
 #endif	        
 
   
 		}
  		n = gHyp_sock_write ( (SOCKET) fd, 
-				      buffer, 
-				      nBytes,
+				      gzInputBuffer, 
+				      giNbytes,
 				      (short) (pForwardPort->flags&MASK_SOCKET), 
 				      (OVERLAPPED*) &pForwardPort->overlapped, 
 				      pForwardPort->pSSL ) ;
@@ -2575,7 +2643,7 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
      * PRE-PROCESS THE DATA - GET HTTP HEADER ELEMENTS
      ******************************************************************/
     if ( objectType == DATA_OBJECT_HTTP ) {
-
+    
       pHTTP = pPort->pHTTP ;
 
       /* Get the state of the object and its current contents */
@@ -2589,22 +2657,41 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
       isURLEncoded = gHyp_http_isURLEncoded(pHTTP);
       isPlainText = gHyp_http_isPlainText(pHTTP);
       isBinary = gHyp_http_isBinary(pHTTP);
-
+      isZeroLength = gHyp_http_isZeroLength(pHTTP);
+      
       if ( httpState == HTTP_EXPECT_HEADER ) {
-
+      
 	/* Look for the double newline. */
-	pContent = pBuf + nBytes ;
+	pContent = pBuf + giNbytes ;
 	pContent2 = strstr ( pBuf, "\n\n" ) ;
-	if ( pContent2 && pContent2 < pContent ) pContent = pContent2 ;
-	pContent2 = strstr ( pBuf, "\r\n\r\n" ) ;
-	if ( pContent2 && pContent2 < pContent ) pContent = pContent2 ;
+
+	/* If we find it, set pointer to start of content (set the number
+	 * of extra hops to get the start of the content)
+	 */
+	if ( pContent2 && pContent2 < pContent ) { pContent = pContent2 ; n = 1 ; }
+
+	/* But also check to see if the content is proceeded by double newlines */
+	pContent3 = strstr ( pBuf, "\r\n\r\n" ) ;
+
+	/* If it is found, we use that instead, set the number of extra hops to 3 */
+	if ( pContent3 && pContent3 < pContent ) { pContent = pContent3 ; n = 3 ; }
+
+	/* If we didnt' get enough of the header, then abandon now */
+	if ( !pContent2 && !pContent3 ) {
+	  gHyp_util_debug("HTTP Message too short, saving %d bytes.",giNbytes); 
+	  memmove ( pPort->savebuf, gzInputBuffer, giNbytes ) ;
+	  pPort->savebuflen = giNbytes ;
+	  return COND_SILENT ;
+	}
+
+	/* Null terminate the header */
 	*pContent = '\0' ;
 
-	if ( pContent < (pBuf+nBytes) ) {
-	  /* There is content */
+	if ( pContent < (pBuf+giNbytes) ) {
+	  /* There appears to be some content */
 	  pContent++ ;
-	  pContent += strspn ( pContent, "\r\n" ) ;
-	  actualContentLength = nBytes - (pContent-buffer) ;
+	  pContent += n ;  /* Position to the beginning of the data stream */
+	  actualContentLength = giNbytes - (pContent-gzInputBuffer) ;
   	  gHyp_http_updateContent ( pHTTP,  contentLength, actualContentLength ) ;
 	}
 
@@ -2627,12 +2714,26 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
 		if ( n != 1 || contentLength < 0 ) contentLength = 0 ;
 	        if ( guDebugFlags & DEBUG_PROTOCOL )
 		  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
-		    "Content Length = %d",contentLength,actualContentLength);
+		    "Content/Actual Length = %d/%d",contentLength,actualContentLength);
 		gHyp_http_updateContent ( pHTTP,  contentLength, actualContentLength ) ;
+		/* Keep track of zero length payloads */
+		if ( contentLength == 0 ) {
+		  isZeroLength = TRUE ;
+		  gHyp_http_setZeroLength ( pHTTP ) ;
+		}
 	      }
 	    }
 	  }
 	}
+
+	/*
+	if ( !isZeroLength && actualContentLength == 0 ) {
+	  gHyp_util_debug("HTTP Message needs content, appending %d bytes later",giNbytes); 
+	  memmove ( pPort->savebuf, gzInputBuffer, giNbytes ) ;
+	  pPort->savebuflen = giNbytes ;
+	  return COND_SILENT ;
+        }
+	*/
 
 	/* Look for "Transfer-Encoding" and see if it is "chunked" */
 	pChar = strstr ( pBuf, "Transfer-Encoding" ) ;
@@ -2690,6 +2791,10 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
 		else if ( strstr ( pChar, "application/x-www-form-urlencoded" ) != NULL ) {
 		  isURLEncoded = TRUE ;
 		  gHyp_http_setURLEncoded ( pHTTP ) ;
+		}
+		else if ( strstr ( pChar, "application/binary" ) != NULL ) {
+		  isBinary = TRUE ;
+		  gHyp_http_setBinary ( pHTTP, TRUE ) ;
 		}
 	      }
 	    }
@@ -2787,13 +2892,14 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
 	 * The entire buffer is content continued.
 	 * Add the length to the content received so far.
 	 */
-	pContent = buffer ;
-	actualContentLength += nBytes ;
+	pContent = gzInputBuffer ;
+	actualContentLength += giNbytes ;
 	if ( guDebugFlags & DEBUG_PROTOCOL )
 	  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 	    "Actual/content now is %d/%d",actualContentLength,contentLength);
   	gHyp_http_updateContent ( pHTTP,  contentLength, actualContentLength ) ;
         pBuf = pContent ;
+
       }
     }
     else {
@@ -2801,10 +2907,10 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
       /* Standard port incoming data.
        * The entire buffer is the result 
        */
-      pContent = buffer ;
+      pContent = gzInputBuffer ;
       pBuf = pContent ;
       pContentData = gHyp_data_new ( "_data_" ) ;
-      actualContentLength = nBytes ;
+      actualContentLength = giNbytes ;
       contentLength = actualContentLength ;
       isLineBased = ! gHyp_secs1_isBinary ( pPort ) ;
     }
@@ -2848,12 +2954,12 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
 	      if ( pChar ) *pChar = '\0' ;
 	      gHyp_util_trim ( value ) ;
 
-	      /*gHyp_util_debug("Chunked value = %s at offset %d",value,pBuf-buffer );*/
+	      /*gHyp_util_debug("Chunked value = %s at offset %d",value,pBuf-gzInputBuffer );*/
 	      n = sscanf ( value, "%x", &contentLength )  ;
 	      if ( n != 1 ) {
 
 		/* Conversion error. */
-		gHyp_util_logWarning("Expecting chunked value, received '%s'",value);
+		gHyp_util_logWarning("Expecting chunked Content-Length value but instead received '%s'",value);
 		contentLength = 0 ;
   	        gHyp_http_updateContent ( pHTTP,  contentLength, actualContentLength ) ;
 	      }
@@ -2900,8 +3006,13 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
 	     * then if we see a </html> or </HTML> at the end, we
 	     * say we are done. Another way maybe is to see a CR
 	     * or LF at the end, but this could be unpredictable.
+	     * If 'Content-Length: 0' was seen, then end-of-message
+	     * and if actualContentLength is > 0, its an appended msg.
 	     */
-	    if ( actualContentLength > 0 ) { 
+	    if ( isZeroLength ) {
+	      isEndOfMessage = TRUE ;
+	    }
+	    else if ( actualContentLength > 0 ) { 
 
 	      if ( !isXMLEncoded ) {
 
@@ -2929,14 +3040,16 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
 
       } /* end if ( objectType == DATA_OBJECT_HTTP ) */
       
-      /* How many bytes should we process?
-       *
-       * For chunked transfers.
-       */
+      /* How many bytes should we process? */
       n = MIN ( actualContentLength, pEndBuf-pContent ) ;
-      if ( isChunkedTransferEncoded ) {
+       if ( isChunkedTransferEncoded ) {
 	if ( actualContentLength > contentLength ) {
 	  n -= ( actualContentLength - contentLength ) ;
+	}
+      }
+      else {
+	if ( isZeroLength || (contentLength > 0 && contentLength < actualContentLength) ) {
+	  n -= ( actualContentLength - contentLength );
 	}
       }
 
@@ -2950,7 +3063,6 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
           /************************************************************************
 	   * KNIT LAST LINE FROM PREVIOUS BUFFER WITH FIRST LINE OF CURRENT BUFFER 
            *************************************************************************/
-
 	  isLineBased =  ( (!isBinary && isPlainText ) || isXMLEncoded ) ;
 
 	  /* Find out if we even need to knit */
@@ -3028,7 +3140,7 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
 		 */
 
 		width3 = width2 ;
-		for ( i=0;i<width2;i++ ) if ( !isprint(pBuf[i]) ) width3+=3;
+		for ( i=0;i<width2;i++ ) if ( pBuf[i] <= 0 || !isprint(pBuf[i]) ) width3+=3;
 		if ( width3 <= (VALUE_SIZE-lineLen) ) 
 		  /* Yes, it will fit - adjust size */
 		  width = width2 ;
@@ -3133,6 +3245,11 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
 	if ( actualContentLength < contentLength ) {
 
 	  /* We haven't received all of the content. Wait for more. */
+	  if ( guDebugFlags & DEBUG_PROTOCOL )
+	      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
+	      "Incomplete message (%d bytes), %d expected, %d received, %d remaining",
+	  giNbytes, contentLength, actualContentLength, (contentLength-actualContentLength) );
+	  
 	  return COND_SILENT ;
 	}
 
@@ -3149,7 +3266,7 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
 	    /* Find the segment after the chunk just processed,
 	     * the next chunk's size value should be there.
 	     */
-	    pBuf = pContent ; /*buffer + (contentLength+nBytes-actualContentLength) ;*/
+	    pBuf = pContent ; /*buffer + (contentLength+giNbytes-actualContentLength) ;*/
 	    pChar = pBuf ;
 
 	    /* Skip past any line breaks */
@@ -3176,7 +3293,8 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
 	     * the end of the buffer, then expect more data.
 	     */
 	    if ( contentLength == actualContentLength ) isEndOfBuffer = TRUE ;
-
+	    if ( contentLength > 0 && actualContentLength >= contentLength ) isEndOfBuffer = TRUE ;
+	    if ( isZeroLength ) isEndOfBuffer = TRUE ;
 	  }
 	} 
       } /* end if ( n > 0 ) */
@@ -3212,13 +3330,26 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
 	  return COND_SILENT ;
 	}
 	else {
-	  /* Not cbunked */
-	  if ( contentLength > actualContentLength ) return COND_SILENT ;
+	  /* Not chunked */
+	  if ( contentLength > actualContentLength ) {
+
+	    if ( guDebugFlags & DEBUG_PROTOCOL )
+	      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
+	      "Incomplete message (%d bytes), %d expected, %d received, %d remaining",
+	    giNbytes, contentLength, actualContentLength, (contentLength-actualContentLength) );
+
+	    return COND_SILENT ;
+	  }
 	}
       }
 
       /* If haven't got an official content by now, set it to the actual */
-      if ( contentLength == 0 && actualContentLength > 0 ) contentLength = actualContentLength ;
+      if ( !isZeroLength && contentLength == 0 && actualContentLength > 0 ) {
+	contentLength = actualContentLength ;
+	gHyp_http_updateContent ( pHTTP, 
+			      contentLength,
+			      actualContentLength ) ;
+      }
 
       isReply = gHyp_http_isReply ( pPort->pHTTP ) ;
       isMessageComplete = TRUE ;
@@ -3355,7 +3486,7 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
       if ( isXMLEncoded ) {
 	gHyp_cgi_xmlData ( pContentData, pAIassigned, gHyp_instance_frame(pAI), pTV ) ;
       }
-      else if ( contentLength > 0 && isPOSTdata ) {
+      else if ( contentLength > 0 && isPOSTdata && !isBinary ) {
 	
 	/* Process the POST data */
 	pVariable = NULL ;
@@ -3363,88 +3494,69 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
 	ss = -1 ; 
 	context = -1 ;
 	pData = NULL ;
-	state = URL_EXPECT_TOKEN ;
-	prefix[0] = '\0' ;
+	pChar = gzOutBuffer ;
+	/* First put all the contentData in a big buffer */
 	while ( (pData = gHyp_data_nextValue ( pContentData, 
   					       pData,
 					       &context,
 					       ss ))) {
-	  /* Copy any prefix */
-	  value[0] = '\0' ;
-	  strcpy ( value, prefix ) ;
-	  prefix[0] = '\0' ;
-	  pChar = value + strlen(value) ;
+
 	  n = gHyp_data_getStr ( pData, 
 				 pChar, 
 				 VALUE_SIZE, 
 				 context, 
 				 isVector ) ;
+	  pChar += n ;
+	  if ( pChar-gzOutBuffer > (MAX_INPUT_LENGTH-VALUE_SIZE) ) break ;
 
-	  pTokenName = value ;
-	  while ( *pTokenName ) {
+	}
+	*pChar++ = '\0' ;
 
-	    if ( state == URL_EXPECT_TOKEN ) {
+	/*gHyp_util_debug("Appended %d bytes of post data in %d buffer",(pChar-gzOutBuffer),MAX_INPUT_LENGTH );*/
 
-	      /* Look for '=' */
-	      pTokenValue = strchr ( pTokenName, '=' ) ;
-	      if ( !pTokenValue ) break ;
+	/* Now parse the long string */
+	pTokenName = gzOutBuffer ;
+	while ( *pTokenName ) {
 
-	      /* Make sure there is both a token and a value */
-	      *pTokenValue = '\0' ;
-	      gHyp_util_trim ( pTokenName ) ;
-	      if ( strlen ( pTokenName ) == 0 ) break ;
-	      pVariable = gHyp_data_new ( pTokenName ) ;
-	      gHyp_data_append ( pTV, pVariable ) ;
+	  /* Look for '=' */
+	  pTokenValue = strchr ( pTokenName, '=' ) ;
+	  if ( !pTokenValue ) break ;
 
-	      /* Get the token value */
-	      pTokenValue++ ;
-	      state = URL_EXPECT_VALUE ;
-		  
-	    }
-	    else
-	      pTokenValue = value ;
+	  /* Make sure there is both a token and a value */
+	  *pTokenValue = '\0' ;
+	  gHyp_util_trim ( pTokenName ) ;
+	  if ( strlen ( pTokenName ) == 0 ) break ;
+	  pVariable = gHyp_data_new ( pTokenName ) ;
+	  gHyp_data_append ( pTV, pVariable ) ;
 
-	    /* Look for end of value section */
-	    pChar = strchr ( pTokenValue, '&' ) ;
-	    if ( pChar ) {
-	      /* Mark end of value */
-	      *pChar++ = '\0' ;
-	      state = URL_EXPECT_TOKEN ;
-	      pTokenName = pChar ; 
-	    }
-	    else {
+  	  /*gHyp_util_debug("New token %s",pTokenName);*/
 
-	      /* The value continues... 
-	       * Its length is at least to the end of the value 
-	       */
-	      width = strlen ( pTokenValue ) ;
+	  /* Get the token value */
+	  pTokenValue++ ;
 
-	      /* Where is the last occurrence of '%' escape char? */
-	      pChar = strrchr ( pTokenValue, '%' ) ;
-
-	      /* If it ends in the last or second to last position,
-	       * we need to snip it out and begin it in the next
-	       * line.
-	       */
-	      if ( pChar > ( pTokenValue + width - 3 ) ) {
-		strcpy ( prefix, pChar ) ;
-		*pChar++ = '\0' ;
-		pTokenName = pChar ;
-	      }
-	      else
-		pTokenName = pTokenValue+width ;
-	    }
-
- 	    pValue = gHyp_data_new ( NULL ) ;
-	    if ( strlen ( pTokenValue ) > 0 ) {
-	      if ( isURLEncoded ) {
-		gHyp_cgi_plusToSpace( pTokenValue );
-		gHyp_cgi_unescapeUrl( pTokenValue );
-		gHyp_data_setStr ( pValue, pTokenValue ) ;
-	      }
-	    }
-	    if ( pVariable ) gHyp_data_append ( pVariable, pValue ) ;
+	  /* Look for end of value section */
+	  pChar = strchr ( pTokenValue, '&' ) ;
+	  if ( !pChar ) {
+    	    gHyp_util_debug("Last value %s",pTokenValue);
+	    pChar = pTokenValue + strlen ( pTokenValue ) ;
+	    *pChar = '\0' ;
 	  }
+	  else
+	    /* Mark end of value */
+	    *pChar++ = '\0' ;
+
+	  pTokenName = pChar ; 
+
+ 	  pValue = gHyp_data_new ( NULL ) ;
+	  if ( strlen ( pTokenValue ) > 0 ) {
+	    if ( isURLEncoded ) {
+	      gHyp_cgi_plusToSpace( pTokenValue );
+	      gHyp_cgi_unescapeUrl( pTokenValue );
+      	      gHyp_data_setStr ( pValue, pTokenValue ) ;
+  	      /*gHyp_util_debug("New token value %s",pTokenValue);*/
+	    }
+	  }
+	  if ( pVariable ) gHyp_data_append ( pVariable, pValue ) ;
 	}
       }
       
@@ -3454,12 +3566,30 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
         gHyp_data_moveValues ( pData, pContentData ) ;
       gHyp_data_append ( pTV, pData ) ;
 	  
+      /* Add a variable _http_datalen_ */
+      pData = gHyp_data_new ( "_http_datalen_" ) ;
+      gHyp_data_newVector ( pData, TYPE_INTEGER, 1, TRUE ) ;
+      gHyp_data_setVectorRaw ( pData, &contentLength, 0 ) ;
+      gHyp_data_append ( pTV, pData ) ;
+
       /* Reset the http data area */
       gHyp_http_reset ( pHTTP ) ;
 
       /* Reset state */
       pPort->state = MESSAGE_EVENT ;
 
+      /* If actualContentLength was greater than contentLength, then this
+       * is another message appended to the end.
+       * We're going to have to create a signal and save it in the start of the buffer,
+       * then come right back and process it too!
+       */
+      if ( (isZeroLength || contentLength > 0) && actualContentLength > contentLength ) {
+        guSIGMSG = 1 ;
+	giNbytes = actualContentLength-contentLength ;
+        memmove ( gzInputBuffer, pEndBuf-giNbytes, giNbytes );
+	gzInputBuffer[giNbytes] = '\0' ;
+	gHyp_util_debug("Appended message of %d bytes [%.*s...] ",giNbytes,MIN(giNbytes,60),gzInputBuffer );
+      }
 
     }
     else {
@@ -3567,7 +3697,7 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
   }
 }
 
-int gHyp_secs1_rawOutgoing ( sSecs1 *pPort, sInstance *pAI, sData *pData, int id )
+int gHyp_secs1_rawOutgoing ( sSecs1 *pPort, sInstance *pAI, sData *pData, int id, sBYTE objectType )
 {
   /* Three return values:
    * > 0  = message written 
@@ -3589,6 +3719,7 @@ int gHyp_secs1_rawOutgoing ( sSecs1 *pPort, sInstance *pAI, sData *pData, int id
   int
     count,
     ss,
+    write_size,
     cmdLen,
     context,
     valueLen,
@@ -3596,15 +3727,16 @@ int gHyp_secs1_rawOutgoing ( sSecs1 *pPort, sInstance *pAI, sData *pData, int id
     nBytes=0 ;
 
   char
-    command[PORT_WRITE_SIZE+1],
+    command[HTTP_WRITE_SIZE+1],
     *pCmd,
     *pEndCmd,
-    *pStr,
-    buffer[MAX_INPUT_LENGTH+1] ;
+    *pStr ;
+
+  write_size = (objectType==DATA_OBJECT_HTTP)?HTTP_WRITE_SIZE:PORT_WRITE_SIZE;
 
   /* Construct the message to be sent to the port. */
   pCmd = command ;
-  pEndCmd = pCmd + PORT_WRITE_SIZE ;    
+  pEndCmd = pCmd + write_size ;    
   pResult = NULL ;
 
   dataType = gHyp_data_getDataType ( pData ) ;
@@ -3625,11 +3757,11 @@ int gHyp_secs1_rawOutgoing ( sSecs1 *pPort, sInstance *pAI, sData *pData, int id
     }
     else {
       valueLen = gHyp_data_getStr ( pResult, 
-				    buffer, 
+				    gzOutBuffer, 
 				    MAX_INPUT_LENGTH, 
 				    context, 
 				    isVector ) ;
-      pStr = buffer ;
+      pStr = gzOutBuffer ;
     }
 
     if ( (pCmd + valueLen) > pEndCmd ) {
@@ -3663,13 +3795,13 @@ int gHyp_secs1_rawOutgoing ( sSecs1 *pPort, sInstance *pAI, sData *pData, int id
       totalBytes += nBytes ;
       /* Reset buffer */
       pCmd = command ;
-      pEndCmd = pCmd + PORT_WRITE_SIZE ;
+      pEndCmd = pCmd + write_size ;
     }
 
-    if ( valueLen > PORT_WRITE_SIZE ) {
+    if ( valueLen > write_size ) {
 
       /* Break up the buffer into 2 chunks */
-      cmdLen = PORT_WRITE_SIZE ;
+      cmdLen = write_size ;
       memcpy ( pCmd, pStr, cmdLen ) ;
       pStr += cmdLen ;
       valueLen -= cmdLen ;;	
@@ -3837,7 +3969,7 @@ int gHyp_secs1_rawOutgoingEagain ( sSecs1 *pPort, sInstance *pAI, int millisecon
       }
 
       gHyp_sock_doEagain () ;
-      /* Not that when we are taking data from pEagainPartial, any
+      /* Note that when we are taking data from pEagainPartial, any
        * SSL info is set to NULL because the data from pEagainPartial
        * would have already been encrypted and we thus want to bypass
        */
@@ -3932,7 +4064,7 @@ int gHyp_secs1_rawOutgoingEagain ( sSecs1 *pPort, sInstance *pAI, int millisecon
   return totalBytes ;
 }
 
-int  gHyp_secs1_rawOutgoingEagainInit ( sSecs1 *pPort, sInstance *pAI, sData *pData )
+int  gHyp_secs1_rawOutEagainInit ( sSecs1 *pPort, sInstance *pAI, sData *pData, sBYTE objectType )
 {
   sLOGICAL
     isVector ;
@@ -3946,6 +4078,7 @@ int  gHyp_secs1_rawOutgoingEagainInit ( sSecs1 *pPort, sInstance *pAI, sData *pD
     *pValue;
 
   int
+    write_size,
     ss,
     cmdLen,
     context,
@@ -3953,11 +4086,13 @@ int  gHyp_secs1_rawOutgoingEagainInit ( sSecs1 *pPort, sInstance *pAI, sData *pD
     totalBytes=0;
 
   char
-    command[PORT_WRITE_SIZE+1],
+    command[HTTP_WRITE_SIZE+1],
     *pCmd,
     *pEndCmd,
     *pStr,
     value[VALUE_SIZE+1] ;
+
+  write_size = (objectType == DATA_OBJECT_HTTP)? HTTP_WRITE_SIZE : PORT_WRITE_SIZE ;
 
   if ( pPort->pEagain == NULL ) pPort->pEagain = gHyp_data_new ( "_eagain_" ) ;
 
@@ -3968,7 +4103,7 @@ int  gHyp_secs1_rawOutgoingEagainInit ( sSecs1 *pPort, sInstance *pAI, sData *pD
   pPort->nextEagainTime2 = 0 ;
 
   pCmd = command ;
-  pEndCmd = pCmd + PORT_WRITE_SIZE ;    
+  pEndCmd = pCmd + write_size ;    
   pResult = NULL ;
   ss = -1 ; 
   context = -1 ;
@@ -4006,7 +4141,7 @@ int  gHyp_secs1_rawOutgoingEagainInit ( sSecs1 *pPort, sInstance *pAI, sData *pD
 
       /* Reset buffer */
       pCmd = command ;
-      pEndCmd = pCmd + PORT_WRITE_SIZE ;
+      pEndCmd = pCmd + write_size ;
 
       totalBytes += cmdLen ;	
     }

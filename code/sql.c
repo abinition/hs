@@ -14,6 +14,10 @@
  * Modified:
  *
  * $Log: sql.c,v $
+ * Revision 1.65  2009-06-17 22:49:02  bergsma
+ * For sql_datetime and datetime, reject erroreous dates, SPECIFICALLY from
+ * PROMIS, a NULL date is -1200798848
+ *
  * Revision 1.64  2008-10-16 23:41:31  bergsma
  * Bad datetime dbconv in SQLSERVER
  *
@@ -2788,7 +2792,7 @@ void gHyp_sql_datetime ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       
         ts = gHyp_data_getRaw ( pValue, context, TRUE  ) ;
         pstm = localtime ( &ts ) ;
-	if ( !pstm )
+	if ( !pstm || pstm->tm_year == 168 )
   	  strcpy ( timeStamp, "NULL" ) ;
 	else
           sprintf ( timeStamp, 

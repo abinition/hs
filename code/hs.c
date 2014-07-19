@@ -1,9 +1,13 @@
 /*****************************************************************************!
 !                HyperScript Software Source Code.                            !
 !                                                                             !
-!          ***** Copyright: (c) 1994 Ab Initio Software                       !
+!          ***** Copyright: (c) 2002 Abinition (TM), Inc                      !
+!          ***** Program property of Abinition, Inc                           !
 !          ***** All rights reserved - Licensed Material.                     !
+!
+!          ***** Copyright: (c) 1994 Ab Initio Software                       !
 !          ***** Program property of Ab Initio Software                       !
+!          ***** All rights reserved - Licensed Material.                     !
 !                                                                             !
 !*****************************************************************************/
 
@@ -11,6 +15,9 @@
  * Modifications:
  *
  * $Log: hs.c,v $
+ * Revision 1.47  2009-08-19 14:29:56  bergsma
+ * Need TM after Abintion
+ *
  * Revision 1.46  2008-05-03 21:43:55  bergsma
  * Use giLineCount and giProgram count together to better determine the
  * location of a program token code.

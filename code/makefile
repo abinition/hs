@@ -3,12 +3,6 @@
 # Modifications:
 #
 #	$Log: makefile,v $
-#	Revision 1.10  2009-04-09 19:57:21  bergsma
-#	Fixing issues with HTTP and buffer sizing
-#	
-#	Revision 1.8  2006-02-16 16:55:51  myockey
-#	Changes to HP-UX compile options
-#	
 #	Revision 1.7  2004/06/13 14:15:22  bergsma
 #	Comments about AS_SSL, AS_JNI, AS_DLL
 #	
@@ -56,7 +50,7 @@
 #
 # include file dependancies
 INCLUDES = auto.h hypdef.h 
-OBJECTS = aimsg.o data.o dateparse.o hash.o channel.o signal.o tcp.o util.o hs.o branch.o cgi.o env.o fileio.o frame.o function.o hsms.o http.o hyp.o concept.o instance.o label.o load.o memtrack.o method.o operand.o operator.o parse.o port.o promis.o route.o router.o secs.o secs1.o secs2.o sock.o sort.o ssl.o stack.o stmt.o system.o type.o sql.o gd.o
+OBJECTS = aimsg.o data.o dateparse.o hash.o channel.o signal.o tcp.o util.o hs.o branch.o cgi.o env.o fileio.o frame.o function.o hsms.o http.o hyp.o concept.o instance.o label.o load.o memtrack.o method.o operand.o operator.o parse.o port.o promis.o route.o router.o secs.o secs1.o secs2.o sock.o sort.o ssl.o stack.o stmt.o system.o type.o sql.o
 PROC_FLAGS = sqlcheck=full define=AS_UNIX define=AS_HS
 
 # SOLARIS
@@ -72,30 +66,27 @@ PROC_FLAGS = sqlcheck=full define=AS_UNIX define=AS_HS
 #LIBS = -L$(ORACLE_HOME)/lib -lclntsh 
 
 # HP-UX
-###CC = c89
-###LIBS = 
-###CFLAGS = -Ac -g -w -I.
-#CC = gcc
-#CFLAGS = -g -O -Wall -I. -I/usr/include -I/usr/local/include
-#CDEFS = -DAS_HPUX
-#LIBS = -L/usr/lib -lm
-
+#CC = c89
+#CFLAGS = -Ac -g -w -I.
+#CDEFS = -DAS_HPUX 
+#LIBS = 
 
 # DEC UNIX
-#CC = gcc
-#CFLAGS =  -g -O -Wall -I.
-#CDEFS = 
+CC = cc
+CFLAGS =  -g3 -O -Wall -I.
+CDEFS = -DAS_SQL -DAS_MYSQL -DAS_TRUE64
+LIBS  = -lm -L/usr/lib/mysql -lmysqlclient 
 #LIBS  = -L $(CELLworks)/FASTech/SDT/lib -lCw
 #LIBS = -L$(ORACLE_HOME)/lib -lclntsh 
 
 # LINUX
-CC = gcc 
+##CC = gcc 
 #CC = g++
 #CC = insure 
-CFLAGS = -g -O -Wall -I. -I/usr/include -I/var/www/securebob/gd/gd-2.0.35
-CDEFS =   -DAS_SQL -DAS_MYSQL -DAS_SSL -DAS_GD
+##CFLAGS = -g -O -Wall -I. -I/usr/include
+##CDEFS =   -DAS_SQL -DAS_MYSQL -DAS_MEMTRACK -DAS_SSL
 ##CPPFLAGS=-I/usr/kerberos/include LDFLAGS=-L/usr/kerberos/lib
-LIBS = -lc -L/usr/lib/mysql -lmysqlclient -lz -lm -lssl -lcrypto -lgd -ljpeg
+##LIBS = -lc -L/usr/lib/mysql -lmysqlclient -lz -lm -lssl -lcrypto
 #LIBS = -L/usr/lib -L$(ORACLE_HOME)/lib -lclntsh 
 #LIBS = -lefence
 
@@ -103,6 +94,7 @@ LIBS = -lc -L/usr/lib/mysql -lmysqlclient -lz -lm -lssl -lcrypto -lgd -ljpeg
 ##CFLAGS = -g -O -Wall -I. -I/usr/kerberos/include -I/usr/include
 ##CDEFS = -DAS_SSL  -DAS_SQL -DAS_PGSQL
 ##LIBS = -lc -lz -lm -lssl -lcrypto -L/usr/kerberos/lib -L/usr/lib/pgsql/lib -lpq
+
 
 all: hyperscript
 hyperscript: hs
@@ -234,9 +226,6 @@ stmt.o : stmt.c  $(INCLUDES) stmt.h
 	$(CC) $(CFLAGS) $(CDEFS) -c $*.c -o $@
 
 sql.o : sql.c  $(INCLUDES) sql.h
-	$(CC) $(CFLAGS) $(CDEFS) -c $*.c -o $@
-
-gd.o : gd.c  $(INCLUDES) gd.h
 	$(CC) $(CFLAGS) $(CDEFS) -c $*.c -o $@
 
 ##########################################################

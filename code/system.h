@@ -3,6 +3,9 @@
  * Modifications:
  *
  * $Log: system.h,v $
+ * Revision 1.6  2009-06-12 05:01:28  bergsma
+ * HS 385 Final Checkin and TAG - added setheap function.
+ *
  * Revision 1.5  2007-03-15 01:08:27  bergsma
  * Added getclock function
  *
@@ -35,3 +38,4 @@ extern time_t	date_parse ( char* ) ;
 extern void    	gHyp_system_getenv ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_system_setenv ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_system_unsetenv ( sInstance*, sCode*, sLOGICAL ) ;
+extern void    	gHyp_system_setheap ( sInstance*, sCode*, sLOGICAL )  ;

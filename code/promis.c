@@ -11,6 +11,9 @@
  * Modifications:
  *
  *	$Log: promis.c,v $
+ *	Revision 1.29  2009-08-11 21:19:07  bergsma
+ *	Fixed for ANSI C compatibility - some function names were too long....
+ *	
  *	Revision 1.28  2007-06-07 17:31:20  bergsma
  *	Close and reopen TEST file before we use it, because we were assuming it
  *	was already open, and this may not always be the case.
@@ -139,8 +142,8 @@
 
 /**********************	INTERNAL GLOBAL VARIABLES ****************************/
 
-static sInstance *gpAI = NULL ;	/* HyperScript instance */
-static sInstance *gpAImain = NULL ;	/* Main HyperScript instance */
+/*static sInstance *gpAI = NULL ;*/	/* HyperScript instance */
+/*static sInstance *gpAImain = NULL ;*/	/* Main HyperScript instance */
 static char		gzResult[MAX_PROMIS_RESULT_SIZE+1] ;
 static sData		*gpData ;
 static sLOGICAL         giIsHSenabled = FALSE ;

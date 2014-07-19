@@ -9,6 +9,31 @@
 /* Modifications: 
  *
  * $Log: concept.c,v $
+ * Revision 1.67  2009-08-24 20:41:52  bergsma
+ * _DEBUG
+ *
+ * Revision 1.66  2009-08-19 14:29:46  bergsma
+ * Need TM after Abintion
+ *
+ * Revision 1.65  2009-06-23 23:21:12  bergsma
+ * HS 3.8.6 PF Milestone
+ *
+ * Revision 1.64  2009-06-14 13:01:43  bergsma
+ * Post HS_385 Fixes - some functions such as port_binary, port_eagain,
+ * were not actually working (enabled).
+ *
+ * Revision 1.63  2009-06-12 05:11:15  bergsma
+ * HS 385 TAGGING - Added port_stop and port_go (but disabled in sock.c)
+ *
+ * Revision 1.62  2009-03-06 18:00:03  bergsma
+ * Include build date in startup line
+ *
+ * Revision 1.61  2009-01-22 01:34:01  bergsma
+ * For guSIGMSG
+ *
+ * Revision 1.60  2008-11-30 22:34:46  bergsma
+ * FrameDepth: make less with -x
+ *
  * Revision 1.59  2008-06-22 18:27:58  bergsma
  * After successfully doing a renameto(), function must return TRUE.
  *
@@ -253,6 +278,7 @@ char		gzPIDfileSpec[MAX_PATH_SIZE+1] ; /* PID file */
 time_t          gsCurTime ;     /* Current time, updated regularily. */
 sLOGICAL        guTimeStamp ;   /* Integer timeStamp. */
 unsigned short  guRunFlags ;    /* General flags */
+unsigned short  guHeapMultiplier ; /* General flags */
 sInstance	*gpAI ;		/* HyperScript instance */
 sInstance	*gpAImain ;	/* Main HyperScript instance */
 
@@ -314,7 +340,7 @@ unsigned                guSIGINT ;      /* Set when SIGINT */
 unsigned                guSIGTERM ;     /* Set when SIGTERM */
 unsigned                guSIGHUP ;      /* Set when SIGHUP */
 unsigned                guSIGMBX ;      /* Set when SIGMBX */
-
+unsigned		guSIGMSG ;	/* Set when SIGMSG */
 /********************** INTERNAL GLOBAL VARIABLES ****************************/
 
 /********************** INTERNAL OBJECT STRUCTURES ***************************/
@@ -723,6 +749,7 @@ sLOGICAL gHyp_concept_init ( sConcept *pConcept,
   giMaxFrameDepth = giMaxExprSize / 2 ;
   gpsTempData = NULL ;
   gpsTempData2 = NULL ;
+  guHeapMultiplier = 0 ;
 
   pConcept->link.hasRegistered = FALSE ;
 
@@ -778,9 +805,9 @@ sLOGICAL gHyp_concept_init ( sConcept *pConcept,
 
   /* Announce we're starting */
   gHyp_util_output ( "================================================================\n" ) ;
-  gHyp_util_logInfo ( "HYPERSCRIPT Version %s", VERSION_HYPERSCRIPT ) ;
+  gHyp_util_logInfo ( "HYPERSCRIPT Version %s (%s)", VERSION_HYPERSCRIPT, VERSION_BUILD ) ;
   /*gHyp_util_logInfo ( "Copyright: (c) 1994 Ab Initio Software" ) ;*/
-  gHyp_util_logInfo ( "Copyright:(c) 1994, 2002  Abinition, Inc" ) ;
+  gHyp_util_logInfo ( "Copyright:(c) 1994, 2002  Abinition (TM), Inc" ) ;
 
   /* HyperScript Initialization */
   if ( !lHyp_concept_initEnvironment ( concept ) ) return FALSE ;
@@ -1072,14 +1099,14 @@ sLOGICAL gHyp_concept_setParent ( sConcept *pConcept, char *parent, char *root )
   gHyp_util_upperCase ( gzConceptPath, strlen ( gzConceptPath ) ) ;
 #endif
 
-   /*
+#ifdef _DEBUG 
    gHyp_util_debug ( "FIFO INBOX is %s", gzInboxPath ) ;
    gHyp_util_debug ( "CONCEPT PATH is %s", gzConceptPath ) ;
    gHyp_util_debug ( "FIFO OUTBOX is %s", gzOutboxPath ) ; 
    gHyp_util_debug ( "gzParent is %s", gzParent ) ;
    gHyp_util_debug ( "gzConcept is %s", gzConcept ) ;
    gHyp_util_debug ( "gzROOT is %s",gzRoot);
-   */
+#endif
 
   return TRUE ;
 }
@@ -2074,7 +2101,8 @@ void gHyp_concept_newSocketObject ( sConcept *pConcept,
 
   */
   sData
-    *pData ;
+    *pData,
+    *pDataStopGo ;
 
   char
     socketString[32] ;
@@ -2089,6 +2117,18 @@ void gHyp_concept_newSocketObject ( sConcept *pConcept,
                           pObject,
                           objectType,
                           pfDelete ) ;
+
+    /* An application socket can now have a stop/go state
+     * If its in the stop state, then we do not do 'select'
+     * on it, otherwise its a 'go'.   
+     * A simple boolean data element attached to the pData
+     * structure will work
+     */
+    pDataStopGo = gHyp_data_new ( NULL ) ;
+    gHyp_data_setBool ( pDataStopGo, TRUE ) ;
+    gHyp_data_append ( pData, pDataStopGo ) ;
+    /*gHyp_util_debug("Socket %d is initialized with GO",socket);*/
+
     gHyp_data_append ( pConcept->link.pSockets, pData ) ;
   }
   else
@@ -2099,6 +2139,67 @@ void gHyp_concept_newSocketObject ( sConcept *pConcept,
   return ;
 } 
 
+void gHyp_concept_setPortStopGo ( sConcept *pConcept, SOCKET socket, sLOGICAL go )
+{
+  sData
+    *pData,
+    *pDataStopGo ;
+  
+  sLOGICAL
+    hasGo ;
+
+  char
+    socketString[32] ;
+
+  sprintf ( socketString, "%x", socket ) ;
+  pData = gHyp_data_getChildByName ( pConcept->link.pSockets, socketString ) ;
+
+  if ( pData ) {
+    pDataStopGo = gHyp_data_getFirst ( pData ) ;
+    if ( pDataStopGo ) {
+
+      hasGo = gHyp_data_getBool ( pDataStopGo, 0, FALSE ) ;
+
+      gHyp_data_setBool ( pDataStopGo, go ) ;
+
+      /*
+      if ( go && !hasGo ) 
+	gHyp_util_debug("Socket %d set to GO",socket);
+      else if ( !go && hasGo )
+	gHyp_util_debug("Socket %d set to STOPPED",socket);
+      */
+
+    }
+  }
+  
+  return ;
+}
+
+sLOGICAL gHyp_concept_getPortStopGo ( sConcept *pConcept, SOCKET socket )
+{
+  sData
+    *pData,
+    *pDataStopGo ;
+
+  sLOGICAL
+    hasGo ;
+
+  char
+    socketString[32] ;
+
+  sprintf ( socketString, "%x", socket ) ;
+  pData = gHyp_data_getChildByName ( pConcept->link.pSockets, socketString ) ;
+
+  if ( pData ) {
+    pDataStopGo = gHyp_data_getFirst ( pData ) ;
+    if ( pDataStopGo ) {
+      hasGo = gHyp_data_getBool (pDataStopGo, 0, FALSE ) ;
+      /*if ( !hasGo) gHyp_util_debug("Socket %d is STOPPED",socket);*/
+      return hasGo ;
+    }
+  }
+  return TRUE ;
+}
 
 void gHyp_concept_deleteSocketObject ( sConcept *pConcept, SOCKET socket )
 { 

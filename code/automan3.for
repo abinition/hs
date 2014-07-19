@@ -36,6 +36,9 @@
 ! Modifications:
 !
 !     $Log: automan3.for,v $
+!     Revision 1.4  2009-08-19 14:30:47  bergsma
+!     Automan Upper Window message truncation
+!
 !     Revision 1.3  2005-03-30 04:05:02  bergsma
 !     HS needs to externalize backslash, not ignore it.  Thus, AUTOMAN must be
 !     modified to interpret \\s, \\u, and \\g.
@@ -834,7 +837,7 @@
 
 	do while ( i .le. messageLen .and. row .le. msgEndRow ) 
 
-          if ( message(i:i) .ne. '\' .or. i .eq. messageLen ) then
+      if ( message(i:i) .ne. '\' .or. i .eq. messageLen ) then
 
 	    ! No translation. Copy to current line
 	    line(j:j) = message(i:i)
@@ -846,10 +849,10 @@
 	    j = j + 1
 	    k = k + 1
 	
-          else
+      else
 
 	    ! Modifier found - get translation
-            i = i + 1	
+        i = i + 1	
 	    modifier = message(i:i)
 
 	    if ( modifier .eq. '\' ) then

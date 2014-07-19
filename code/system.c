@@ -11,6 +11,13 @@
  * Modifications:
  *
  *	$Log: system.c,v $
+ *	Revision 1.35  2009-06-17 22:49:02  bergsma
+ *	For sql_datetime and datetime, reject erroreous dates, SPECIFICALLY from
+ *	PROMIS, a NULL date is -1200798848
+ *	
+ *	Revision 1.34  2009-06-12 05:01:28  bergsma
+ *	HS 385 Final Checkin and TAG - added setheap function.
+ *	
  *	Revision 1.33  2008-09-09 13:48:48  bergsma
  *	Make gzStream larger, 4* MAX_INPUT_LENGHT.  Allows bigger XML
  *	structures to be parsed (large chrt records from PROMIS).
@@ -299,7 +306,7 @@ void gHyp_system_datetime ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       ts = gsCurTime = time(NULL) ;
 
     pstm = localtime ( &ts ) ;
-    if ( !pstm ) gHyp_instance_error ( pAI,STATUS_BOUNDS,
+    if ( !pstm || pstm->tm_year == 168 ) gHyp_instance_error ( pAI,STATUS_BOUNDS,
 	"Invalid ansi time value %d", ts ) ;
 
 
@@ -1711,5 +1718,63 @@ void gHyp_system_unsetenv ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     unsetenv ( token ) ;
 #endif
     gHyp_instance_pushSTATUS ( pAI, pStack  ) ;
+  }
+}
+
+
+void gHyp_system_setheap ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: setheap ( multiplier )
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+
+  else {
+
+    sStack 	
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+    
+    sData
+      *pData;
+    
+    int
+      argCount = gHyp_parse_argCount ( pParse ) ;
+    
+    /* Assume success */	
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 1 ) gHyp_instance_error ( pAI,STATUS_ARGUMENT,
+	"Invalid arguments. Usage: setheap ( multiplier )" ) ;
+
+    pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
+    guHeapMultiplier = gHyp_data_getInt ( pData, gHyp_data_getSubScript(pData), TRUE ) ;
+    
+    if ( guHeapMultiplier > 4 ) {
+
+      guHeapMultiplier = 4 ;
+      gHyp_instance_warning ( pAI,STATUS_ARGUMENT,
+	"Set heap multiplier cannot exceed 4" ) ;
+    }
+    gHyp_instance_pushSTATUS ( pAI, pStack ) ;
+
   }
 }

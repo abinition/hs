@@ -10,6 +10,19 @@
  * Modifications:
  *
  *   $Log: load.c,v $
+ *   Revision 1.56  2009-06-23 23:21:12  bergsma
+ *   HS 3.8.6 PF Milestone
+ *
+ *   Revision 1.55  2009-06-14 13:01:43  bergsma
+ *   Post HS_385 Fixes - some functions such as port_binary, port_eagain,
+ *   were not actually working (enabled).
+ *
+ *   Revision 1.54  2009-06-12 05:07:10  bergsma
+ *   HS 385 TAGGING - Added pid() and setheap()
+ *
+ *   Revision 1.53  2009-03-06 04:13:14  bergsma
+ *   Adding GD functionality
+ *
  *   Revision 1.52  2008-10-10 14:43:46  bergsma
  *   INFORMIX
  *
@@ -283,6 +296,7 @@ void gHyp_load_new ()
   lHyp_load_newKey ( "method" ,  gHyp_function_method, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "tid" ,  gHyp_function_tid, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "sid" ,  gHyp_function_sid, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "pid" ,  gHyp_function_pid, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "idle" ,  gHyp_env_idle, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "instantiate",  gHyp_env_instantiate, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "instantiation",  gHyp_env_instantiation, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
@@ -327,6 +341,7 @@ void gHyp_load_new ()
   lHyp_load_newKey ( "getenv" ,  gHyp_system_getenv, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "setenv" ,  gHyp_system_setenv, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "unsetenv" ,  gHyp_system_unsetenv, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "setheap" ,  gHyp_system_setheap, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
 
 #ifdef AS_PROMIS
   /* PROMIS functions */
@@ -443,6 +458,8 @@ void gHyp_load_new ()
   lHyp_load_newKey ( "port_handle" ,  gHyp_port_handle, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "port_binary" ,  gHyp_port_binary, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "port_eagain" ,  gHyp_port_eagain, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "port_stop" ,  gHyp_port_stop, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "port_go" ,  gHyp_port_go, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
 
 #if defined ( AS_UNIX ) 
   lHyp_load_newKey ( "port_recvmsg" ,  gHyp_port_recvmsg, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
@@ -484,6 +501,12 @@ void gHyp_load_new ()
   lHyp_load_newKey ( "ssl_getState", gHyp_ssl_getState, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "ssl_setState", gHyp_ssl_setState, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "ssl_digest", gHyp_ssl_digest, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+#endif
+
+#ifdef AS_GD
+  lHyp_load_newKey ( "gd_open",  gHyp_gd_open, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "gd_query", gHyp_gd_query, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "gd_close", gHyp_gd_close, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
 #endif
 
 #ifdef AS_MAPI

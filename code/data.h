@@ -4,12 +4,15 @@
  * Modifications:
  *
  * $Log: data.h,v $
+ * Revision 1.14  2009-03-07 21:27:32  bergsma
+ * gHyp_data_getAll needs additional handle argument
+ *
  * Revision 1.13  2007-09-03 06:21:31  bergsma
  * Remove const quallifiers
  *
  * Revision 1.12  2007-07-11 18:47:27  mhohimer
  * Added new functions primarily intended to facilitate Node_* functions in env.c:
-gHyp_data_getPrev
+ * gHyp_data_getPrev
  * gHyp_data_getTagIndex
  * gHyp_data_getChildNodeByIndex
  * gHyp_data_getFirstNode
@@ -64,7 +67,7 @@ extern void 		gHyp_data_newConstant_scanf ( sData*, sBYTE, char*, int ) ;
 extern void*		gHyp_data_getObject ( sData *pData ) ;
 extern sBYTE		gHyp_data_getObjectType ( sData *pData ) ;
 extern void		gHyp_data_setObject ( sData *, void *, sBYTE, void (*pf)(void*) ) ;
-extern void	       gHyp_data_copyObject ( sData *pDst, sData *pSrc ) ;
+extern void	        gHyp_data_copyObject ( sData *pDst, sData *pSrc ) ;
 extern void		gHyp_data_exchange ( sData*, sData* ) ;
 extern void 		gHyp_data_append ( sData*, sData* ) ;
 extern void 		gHyp_data_insert ( sData*, sData* ) ;
@@ -104,7 +107,7 @@ extern sBYTE		gHyp_data_getDataType ( sData* ) ;
 extern sBYTE		gHyp_data_tokenType ( sData* ) ;
 extern sBYTE		gHyp_data_getTokenType ( sData* ) ;
 extern sData* 		gHyp_data_getAll ( sData*, sBYTE*, sBYTE*,
-					   int*, unsigned long*, double*, sLOGICAL*,
+					   int*, unsigned long*, double*, sLOGICAL*, void**,
 					   char*, int*, int, int, sLOGICAL ) ;
 extern int 		gHyp_data_getCount ( sData * ) ;
 extern int 		gHyp_data_check ( sData * ) ;

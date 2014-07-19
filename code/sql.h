@@ -3,6 +3,9 @@
  * Modifications:
  *
  * $Log: sql.h,v $
+ * Revision 1.5  2008-11-30 22:37:03  bergsma
+ * *** empty log message ***
+ *
  * Revision 1.4  2007-03-15 01:08:48  bergsma
  * Added sql_datetime function
  *

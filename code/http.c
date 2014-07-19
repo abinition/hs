@@ -10,6 +10,19 @@
 /* Modifications:
  * 
  * $Log: http.c,v $
+ * Revision 1.30  2009-08-11 21:19:07  bergsma
+ * Fixed for ANSI C compatibility - some function names were too long....
+ *
+ * Revision 1.29  2009-06-14 13:01:43  bergsma
+ * Post HS_385 Fixes - some functions such as port_binary, port_eagain,
+ * were not actually working (enabled).
+ *
+ * Revision 1.28  2009-04-02 06:35:13  bergsma
+ * Port reads and writes are 4K, Http reads and wites are 5K,
+ *
+ * Revision 1.27  2009-03-02 00:34:35  bergsma
+ * Improved handling of zero-length content buffers
+ *
  * Revision 1.26  2008-02-12 23:15:31  bergsma
  * VS 2008 update
  *
@@ -128,6 +141,7 @@ struct http_t {
   sLOGICAL isURLEncoded ;
   sLOGICAL isPlainText ;
   sLOGICAL isBinary ;
+  sLOGICAL isZeroLength ;
 } ;
 
 /**********************	FUNCTION DEFINITIONS ********************************/
@@ -147,6 +161,7 @@ sHTTP *gHyp_http_new ( )
   pHTTP->isURLEncoded = FALSE ;
   pHTTP->isPlainText = FALSE ;
   pHTTP->isBinary = FALSE ;
+  pHTTP->isZeroLength = FALSE ;
 
   return pHTTP ;
 }
@@ -169,6 +184,7 @@ void gHyp_http_reset ( sHTTP *pHTTP )
   pHTTP->isURLEncoded = FALSE ;
   pHTTP->isPlainText = FALSE ;
   pHTTP->isBinary = FALSE ;
+  pHTTP->isZeroLength = FALSE ;
   gHyp_data_deleteValues ( pHTTP->pContentData ) ;
   gHyp_data_deleteValues ( pHTTP->pAttributeData ) ;
 }
@@ -259,6 +275,16 @@ void gHyp_http_setXMLEncoded( sHTTP* pHTTP )
 sLOGICAL gHyp_http_isXMLEncoded( sHTTP* pHTTP )
 {
   return pHTTP->isXMLEncoded ;
+}
+
+sLOGICAL gHyp_http_isZeroLength( sHTTP* pHTTP )
+{
+  return pHTTP->isZeroLength ;
+}
+
+void gHyp_http_setZeroLength( sHTTP* pHTTP )
+{
+  pHTTP->isZeroLength = TRUE ;
 }
 
 void gHyp_http_setURLEncoded( sHTTP* pHTTP )
@@ -926,6 +952,8 @@ void gHyp_http_binary ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 			    id ) ;
       status = FALSE ;
     }
+    else 
+      status = TRUE ;
 
     if ( status ) {
 
@@ -1054,6 +1082,8 @@ void gHyp_http_eagain ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 			    id ) ;
       status = FALSE ;
     }
+    else 
+      status = TRUE ;
 
     if ( status ) {
 
@@ -1408,6 +1438,8 @@ static void lHyp_http_QE (	sInstance 	*pAI,
 			    id ) ;
     status = FALSE ;
   }
+  else 
+    status = TRUE ;
 
   if ( status ) {
 
@@ -1633,6 +1665,10 @@ static void lHyp_http_QE (	sInstance 	*pAI,
     }
 
     if ( !hasContentLength && contentLength > 0) {
+      /* Some googling has suggested that specifying a content length
+	 of zero will cause problems, so we keep the logic the same 
+	 Rather, set it explicitly to zero when needed.
+       */
       pValue = gHyp_data_new ( NULL ) ;
       n = sprintf ( line, "Content-Length: %d\r\n", contentLength ) ;
       gHyp_data_setStr_n ( pValue, line, n ) ;
@@ -1661,12 +1697,12 @@ static void lHyp_http_QE (	sInstance 	*pAI,
 
     if ( gHyp_secs1_doEagain( pHttpPort ) ) {
       /* The Eagain way - allows other's to read while we are writing */
-      nBytes = gHyp_secs1_rawOutgoingEagainInit ( pHttpPort, pAI, pHttpList ) ;
+      nBytes = gHyp_secs1_rawOutEagainInit ( pHttpPort, pAI, pHttpList, DATA_OBJECT_HTTP ) ;
       nBytes = gHyp_secs1_rawOutgoingEagain ( pHttpPort, pAI, 0 ) ;
     }
     else {
       /* Write until complete */
-      nBytes = gHyp_secs1_rawOutgoing( pHttpPort, pAI, pHttpList, id ) ;
+      nBytes = gHyp_secs1_rawOutgoing( pHttpPort, pAI, pHttpList, id, DATA_OBJECT_HTTP ) ;
     }
 
     gHyp_secs1_setState ( pHttpPort, mode ) ;

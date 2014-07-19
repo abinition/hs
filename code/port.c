@@ -10,6 +10,22 @@
 /* Modifications:
  * 
  * $Log: port.c,v $
+ * Revision 1.41  2009-08-11 21:19:07  bergsma
+ * Fixed for ANSI C compatibility - some function names were too long....
+ *
+ * Revision 1.40  2009-06-23 23:21:12  bergsma
+ * HS 3.8.6 PF Milestone
+ *
+ * Revision 1.39  2009-06-14 13:01:43  bergsma
+ * Post HS_385 Fixes - some functions such as port_binary, port_eagain,
+ * were not actually working (enabled).
+ *
+ * Revision 1.38  2009-06-12 05:11:15  bergsma
+ * HS 385 TAGGING - Added port_stop and port_go (but disabled in sock.c)
+ *
+ * Revision 1.37  2009-04-02 06:35:13  bergsma
+ * Port reads and writes are 4K, Http reads and wites are 5K,
+ *
  * Revision 1.36  2008-03-05 22:21:10  bergsma
  * Try and get recvmsg and sendmsg working for TRU64
  *
@@ -766,6 +782,8 @@ void gHyp_port_binary ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 			    id ) ;
       status = FALSE ;
     }
+    else 
+      status = TRUE ;
 
     if ( status ) {
 
@@ -880,6 +898,8 @@ void gHyp_port_eagain ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 			    id ) ;
       status = FALSE ;
     }
+    else 
+      status = TRUE ;
 
     if ( status ) {
 
@@ -1154,6 +1174,8 @@ static void lHyp_port_QE (	sInstance 	*pAI,
 			    id ) ;
     status = FALSE ;
   }
+  else 
+    status = TRUE ;
 
   if ( status ) {
 
@@ -1192,12 +1214,12 @@ static void lHyp_port_QE (	sInstance 	*pAI,
 
     if ( gHyp_secs1_doEagain( pPort ) ) {
       /* Non-blocking way */
-      nBytes = gHyp_secs1_rawOutgoingEagainInit ( pPort, pAI, pPortData ) ;
+      nBytes = gHyp_secs1_rawOutEagainInit ( pPort, pAI, pPortData, DATA_OBJECT_PORT ) ;
       nBytes = gHyp_secs1_rawOutgoingEagain ( pPort, pAI, 0 ) ;
     }
     else {
       /* Blocking way */
-      nBytes = gHyp_secs1_rawOutgoing( pPort, pAI, pPortData, id ) ;
+      nBytes = gHyp_secs1_rawOutgoing( pPort, pAI, pPortData, id, DATA_OBJECT_PORT ) ;
     }
 
     gHyp_secs1_setState ( pPort, mode ) ;
@@ -1329,6 +1351,232 @@ void gHyp_port_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
   }
   return ;
 }
+
+void gHyp_port_go ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: port_go ( )
+   *	Returns 1
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+  
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+    
+  else {
+ 
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+    
+    sData
+      *pData ;
+
+    sLOGICAL
+      status=FALSE ;
+
+    SOCKET
+      portFd ;
+
+    sSecs1
+      *pPort ;
+
+    int
+      id ;
+
+    int
+      argCount = gHyp_parse_argCount ( pParse ) ;
+
+    sInstance
+      *pAIassigned ;
+    
+    /* Assume success */	
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 1 )
+      gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+      "Invalid args. Usage: port_go ( id )");
+
+    /* Get the device id */
+    pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
+    id = gHyp_data_getInt ( pData, gHyp_data_getSubScript ( pData ), TRUE ) ;
+
+    /* Check id */
+    if ( id < 0 || id > 65535 )
+      gHyp_instance_error ( pAI,STATUS_BOUNDS, "Device ID out of range" ) ;
+
+    /* Get the port structure */
+    pAIassigned = gHyp_concept_getInstForDeviceId ( gHyp_instance_getConcept ( pAI ), (sWORD) id ) ;
+
+    if ( !pAIassigned ) {
+      gHyp_instance_warning ( pAI,STATUS_PORT, 
+			    "Device id %d is not assigned",
+			    id ) ;
+      status = FALSE ;
+    }
+    else 
+      status = TRUE ;
+
+    if ( status ) {
+
+      portFd = gHyp_instance_getDeviceFd ( pAIassigned, (sWORD) id ) ;
+      if ( portFd == INVALID_SOCKET ) {
+	gHyp_instance_warning ( pAI,STATUS_PORT, 
+			    "Socket %d does not exist.",
+			    portFd ) ;
+	status = FALSE ;
+      }
+    }
+
+    if ( status ) {
+      pPort = (sSecs1*) gHyp_concept_getSocketObject ( gHyp_instance_getConcept(pAI), 
+							(SOCKET) portFd, 
+							DATA_OBJECT_NULL ) ;
+      if ( !pPort ) {
+	gHyp_instance_warning ( pAI,STATUS_PORT, 
+	  		    "Socket %d does not exist.",
+			    portFd ) ;
+	status = FALSE ;
+      }
+    }
+
+    if ( status ) {
+      /*gHyp_util_debug("Setting port GO for socket %d",gHyp_secs1_fd(pPort));*/
+      gHyp_concept_setPortStopGo ( gHyp_instance_getConcept(pAI), gHyp_secs1_fd(pPort), TRUE ) ;
+    }
+
+    gHyp_instance_pushSTATUS ( pAI, pStack ) ;
+  }
+}
+
+
+void gHyp_port_stop ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: port_stop ( )
+   *	Returns 1
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+  
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+    
+  else {
+ 
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+    
+    sData
+      *pData ;
+
+    sLOGICAL
+      status=FALSE ;
+
+    SOCKET
+      portFd ;
+
+    sSecs1
+      *pPort ;
+
+    int
+      id ;
+
+    int
+      argCount = gHyp_parse_argCount ( pParse ) ;
+
+    sInstance
+      *pAIassigned ;
+    
+    /* Assume success */	
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 1 )
+      gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+      "Invalid args. Usage: port_stop ( id )");
+
+    /* Get the device id */
+    pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
+    id = gHyp_data_getInt ( pData, gHyp_data_getSubScript ( pData ), TRUE ) ;
+
+    /* Check id */
+    if ( id < 0 || id > 65535 )
+      gHyp_instance_error ( pAI,STATUS_BOUNDS, "Device ID out of range" ) ;
+
+    /* Get the port structure */
+    pAIassigned = gHyp_concept_getInstForDeviceId ( gHyp_instance_getConcept ( pAI ), (sWORD) id ) ;
+
+    if ( !pAIassigned ) {
+      gHyp_instance_warning ( pAI,STATUS_PORT, 
+			    "Device id %d is not assigned",
+			    id ) ;
+      status = FALSE ;
+    }
+    else 
+      status = TRUE ;
+
+    if ( status ) {
+
+      portFd = gHyp_instance_getDeviceFd ( pAIassigned, (sWORD) id ) ;
+      if ( portFd == INVALID_SOCKET ) {
+	gHyp_instance_warning ( pAI,STATUS_PORT, 
+			    "Socket %d does not exist.",
+			    portFd ) ;
+	status = FALSE ;
+      }
+    }
+
+    if ( status ) {
+      pPort = (sSecs1*) gHyp_concept_getSocketObject ( gHyp_instance_getConcept(pAI), 
+							(SOCKET) portFd, 
+							DATA_OBJECT_NULL ) ;
+      if ( !pPort ) {
+	gHyp_instance_warning ( pAI,STATUS_PORT, 
+	  		    "Socket %d does not exist.",
+			    portFd ) ;
+	status = FALSE ;
+      }
+    }
+
+    if ( status ) {
+      /*gHyp_util_debug("Setting port STOP for socket %d",gHyp_secs1_fd(pPort));*/
+      gHyp_concept_setPortStopGo ( gHyp_instance_getConcept(pAI), gHyp_secs1_fd(pPort), FALSE ) ;
+    }
+
+    gHyp_instance_pushSTATUS ( pAI, pStack ) ;
+  }
+}
+
 
 #if defined ( AS_UNIX ) 
 

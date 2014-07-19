@@ -10,6 +10,9 @@
  * Modifications:
  *
  *   $Log: mapi.c,v $
+ *   Revision 1.2  2009-01-02 18:04:36  bergsma
+ *   no message
+ *
  *   Revision 1.1  2005/01/25 05:43:42  bergsma
  *
  */
@@ -112,9 +115,9 @@ extern char *gszRPC_UUID;
 */
 
 #define NCACN_IP_TCP ((unsigned char *)"ncacn_ip_tcp")
-#define INTERFACE_DESC1 ((unsigned char *)"NSAS PF Exchange RFR")
-#define INTERFACE_DESC2 ((unsigned char *)"NSAS PF Exchange DIR")
-#define INTERFACE_DESC3 ((unsigned char *)"NSAS PF Exchange STORE")
+#define INTERFACE_DESC1 ((unsigned char *)"SB PF Exchange RFR")
+#define INTERFACE_DESC2 ((unsigned char *)"SB PF Exchange DIR")
+#define INTERFACE_DESC3 ((unsigned char *)"SB PF Exchange STORE")
 
 
 

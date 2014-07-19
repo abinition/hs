@@ -2,6 +2,12 @@
  * Modifications:
  *
  * $Log: secs1.h,v $
+ * Revision 1.13  2009-08-11 21:19:07  bergsma
+ * Fixed for ANSI C compatibility - some function names were too long....
+ *
+ * Revision 1.12  2009-04-02 06:35:13  bergsma
+ * Port reads and writes are 4K, Http reads and wites are 5K,
+ *
  * Revision 1.11  2007-07-22 02:59:06  bergsma
  * Add secs1_setHttp
  *
@@ -73,9 +79,9 @@ extern char*		gHyp_secs1_device ( sSecs1 * ) ;
 extern unsigned		gHyp_secs1_TID ( sSecs1 * ) ;
 extern unsigned		gHyp_secs1_SID ( sSecs1 * ) ;
 extern int		gHyp_secs1_rawIncoming ( sSecs1*,sConcept*,sInstance*,sBYTE) ;
-extern int		gHyp_secs1_rawOutgoing ( sSecs1*,sInstance*,sData*,int ) ;
+extern int		gHyp_secs1_rawOutgoing ( sSecs1*,sInstance*,sData*,int,sBYTE ) ;
 extern int		gHyp_secs1_rawOutgoingEagain ( sSecs1 *pPort, sInstance *pAI, int ms ) ;
-extern int		gHyp_secs1_rawOutgoingEagainInit ( sSecs1 *pPort, sInstance *pAI, sData *pData ) ;
+extern int		gHyp_secs1_rawOutEagainInit ( sSecs1 *pPort, sInstance *pAI, sData *pData,sBYTE ) ;
 extern SOCKET		gHyp_secs1_fd ( sSecs1* ) ;
 extern SOCKET		gHyp_secs1_parentSocket ( sSecs1* ) ;
 extern sInstance*	gHyp_secs1_parentAI ( sSecs1 *pSecs1 ) ;

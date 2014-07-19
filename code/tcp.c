@@ -10,6 +10,9 @@
  * Modifications:
  *
  *	$Log: tcp.c,v $
+ *	Revision 1.31  2009-01-19 23:24:36  bergsma
+ *	PFP BUG.  Appended HTTP messages and detection of binary data instead of POST data
+ *	
  *	Revision 1.27  2008-05-03 21:42:14  bergsma
  *	When incoming target is an ip address, don't assume that is the return
  *	address, so we must resolve all incoming ip addresses further.

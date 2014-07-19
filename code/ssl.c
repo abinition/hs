@@ -10,6 +10,15 @@
 /* Modifications:
  *
  * $Log: ssl.c,v $
+ * Revision 1.23  2009-03-07 21:27:32  bergsma
+ * gHyp_data_getAll needs additional handle argument
+ *
+ * Revision 1.22  2008-12-30 18:36:27  bergsma
+ * Add support for conditional SSL
+ *
+ * Revision 1.21  2008-11-30 22:35:57  bergsma
+ * Comments
+ *
  * Revision 1.20  2008-05-03 21:44:17  bergsma
  * Add placeholder extra arg (isCond) to ssl_assign
  *
@@ -752,6 +761,7 @@ void gHyp_ssl_assign ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       objectType ;
 
     int
+      n,
       argCount = gHyp_parse_argCount ( pParse ) ;
 
     sSSL
@@ -761,25 +771,34 @@ void gHyp_ssl_assign ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       *ctx;
 
     sLOGICAL
-      isConditionalSSL=FALSE,
       isClientSpecified,
       isClient=FALSE ;
+
+    char
+      condition[VALUE_SIZE+1] ;
 
     /* Assume success */
     gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
 
     if ( argCount != 2 && argCount != 3 && argCount != 4 )
       gHyp_instance_error ( pAI, STATUS_ARGUMENT,
-      "Invalid args. Usage: hSSL = ssl_assign ( ssl_context_handle, handle [,isClient[,isCond]] )");
+      "Invalid args. Usage: hSSL = ssl_assign ( ssl_context_handle, handle [,isClient[,condition]] )");
 
     if ( argCount == 4 ) {
+      /* Get the condition */
       pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
-      isConditionalSSL = gHyp_data_getBool ( pData, gHyp_data_getSubScript ( pData ), TRUE );
+      n = gHyp_data_getStr ( pData,
+                           condition,
+                           VALUE_SIZE,
+                           gHyp_data_getSubScript ( pData ),
+                           TRUE ) ;    
     }
     else
-      isConditionalSSL = FALSE ;
+      n = 0 ;
 
-    if ( argCount == 3 ) {
+    condition[n] = '\0' ;
+
+    if ( argCount >= 3 ) {
       pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
       isClient = gHyp_data_getBool ( pData, gHyp_data_getSubScript ( pData ), TRUE );
       isClientSpecified = TRUE ;
@@ -813,7 +832,7 @@ void gHyp_ssl_assign ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       if ( pChannel ) {
 
           if ( !isClientSpecified ) isClient = TRUE ;
-          pSSL = gHyp_sock_createSSL ( ctx, isClient /*, isConditionalSSL*/ ) ;
+          pSSL = gHyp_sock_createSSL ( ctx, isClient, condition ) ;
           if ( pSSL == NULL )
             gHyp_instance_error ( pAI, STATUS_SSL, "No SSL bio created");
           gHyp_channel_setSSL ( pChannel, pSSL ) ;
@@ -821,7 +840,7 @@ void gHyp_ssl_assign ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       else if ( gHyp_concept_serviceHandle ( pConcept ) == fd ) {
 
           if ( !isClientSpecified ) isClient = FALSE ;
-          pSSL = gHyp_sock_createSSL ( ctx, isClient /*, isConditionalSSL*/ ) ;
+          pSSL = gHyp_sock_createSSL ( ctx, isClient, condition ) ;
           if ( pSSL == NULL )
             gHyp_instance_error ( pAI, STATUS_SSL, "No SSL bio created");
           gHyp_concept_setSSL ( pConcept, pSSL ) ;
@@ -851,7 +870,7 @@ void gHyp_ssl_assign ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
           if ( !isClientSpecified )
             isClient = !(gHyp_secs1_flags(pPort) & (SOCKET_LISTEN | SOCKET_UNIX_LISTEN)) ;
-          pSSL = gHyp_sock_createSSL ( ctx, isClient /*, isConditionalSSL */) ;
+          pSSL = gHyp_sock_createSSL ( ctx, isClient, condition ) ;
           if ( pSSL == NULL )
             gHyp_instance_error ( pAI, STATUS_SSL, "No SSL bio created");
           gHyp_secs1_setSSL ( pPort, pSSL ) ;
@@ -875,7 +894,7 @@ void gHyp_ssl_assign ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
           if ( !isClientSpecified )
             isClient = !(gHyp_hsms_flags(pHsms) & (SOCKET_LISTEN | SOCKET_UNIX_LISTEN)) ;
-          pSSL = gHyp_sock_createSSL ( ctx, isClient /*, isConditionalSSL*/ ) ;
+          pSSL = gHyp_sock_createSSL ( ctx, isClient, condition ) ;
           if ( pSSL == NULL )
             gHyp_instance_error ( pAI, STATUS_SSL, "No SSL bio created");
           gHyp_hsms_setSSL ( pHsms, pSSL ) ;
@@ -900,7 +919,7 @@ void gHyp_ssl_assign ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
           if ( !isClientSpecified )
             isClient = !(gHyp_secs1_flags(pSecs1) & (SOCKET_LISTEN | SOCKET_UNIX_LISTEN)) ;
 
-          pSSL = gHyp_sock_createSSL ( ctx, isClient ) ;
+          pSSL = gHyp_sock_createSSL ( ctx, isClient, condition ) ;
           if ( pSSL == NULL )
             gHyp_instance_error ( pAI, STATUS_SSL, "No SSL bio created");
           gHyp_secs1_setSSL ( pSecs1, pSSL ) ;
@@ -1498,6 +1517,9 @@ sData *gHyp_ssl_getData ( sData *pData, char *a, char *b, char *c )
 }
 
 /**********************
+
+  S A V E  T H I S  F O R  L A T E R  U S E  I N  E C R Y P T I N G / D E C R Y P T I N G  A  F I L E 
+
 #include <openssl/blowfish.h>
 #include <openssl/evp.h>
 #include <fcntl.h>

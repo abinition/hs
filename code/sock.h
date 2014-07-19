@@ -3,6 +3,9 @@
  * Modifications:
  *
  * $Log: sock.h,v $
+ * Revision 1.20  2008-12-30 18:36:27  bergsma
+ * Add support for conditional SSL
+ *
  * Revision 1.19  2007-07-11 14:44:59  bergsma
  * Add second argyment to ssl_digest
  *
@@ -88,7 +91,7 @@ extern void gHyp_sock_setSession ( void *ctx, void *session  ) ;
 extern void *gHyp_sock_getSession ( void *ctx ) ;
 extern void gHyp_sock_enableSessions ( void *ctx ) ;
 extern sSSL* gHyp_sock_copySSL ( sSSL *pSSL ) ;
-extern sSSL* gHyp_sock_createSSL ( void *ctx, sLOGICAL isClient ) ;
+extern sSSL* gHyp_sock_createSSL ( void *ctx, sLOGICAL isClient, char *condition ) ;
 extern sData *gHyp_sock_getSSLstate(  sSSL *pSSL  ) ;
 extern sLOGICAL gHyp_sock_setSSLstate ( sSSL *pSSL, sData *pSSLdata, sSSL *pSSLORIG ) ;
 #endif

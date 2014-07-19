@@ -11,6 +11,10 @@
  * Modifications:
  *
  *	$Log: fileio.c,v $
+ *	Revision 1.54  2009-03-13 07:48:16  bergsma
+ *	GD refinements.
+ *	Added BUILD_VERSION
+ *	
  *	Revision 1.53  2008-08-09 04:46:52  bergsma
  *	Allow attribute values to exceed INTERNAL_VALUE_SIZE
  *	
@@ -3297,8 +3301,8 @@ void gHyp_fileio_checksum ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       ss,
       context,
       n,
-      fileSize,
-      filePtr,
+      fileSize=0,
+      filePtr=0,
       argCount = gHyp_parse_argCount ( pParse ) ;
     
     sData

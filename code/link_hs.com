@@ -11,6 +11,9 @@ $!
 $! Modifications:
 $!
 $!   $Log: link_hs.com,v $
+$!   Revision 1.4  2009-08-24 20:41:39  bergsma
+$!   Make sure FILTABLES is defined
+$!
 $!   Revision 1.3  2005-04-03 17:36:19  bergsma
 $!   HS 3.54  (FIX OF FLOATING POINT OVERFLOW IN TLOGFEED).
 $!   1. Don't delete LISting files.
@@ -27,6 +30,8 @@ $ link_hs == 0
 $ @aeq_ssp:arch
 $ @aeq_ssp:ccc AS_PROMIS
 $
+$! Check that global sections are installed.
+$ if ( f$trnlnm ( "FILTABLES" ) .eqs. "" ) then @PDB:GLOBAL INSTALL 
 $!
 $! Link the standalone image
 $!

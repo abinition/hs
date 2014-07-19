@@ -290,7 +290,7 @@ int MemPrintAllocs(const PAYLOAD *p1, void *p2)
    */
   if ( p1->Size == 64 && 
       (	strstr ( p1->FileName, "data.c" ) || strstr ( p1->FileName, "DATA.C" ) ) ) {
-        gHyp_util_debug("Did not delete %s of %s",
+    gHyp_util_debug("Did not delete %s of %s",
 	gHyp_data_getLabel( (sData*)p1->Ptr ),
 	gHyp_data_getLabel( gHyp_data_getParent( (sData*)p1->Ptr ) )) ;
   }

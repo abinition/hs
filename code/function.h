@@ -3,6 +3,12 @@
  * Modifications:
  *
  * $Log: function.h,v $
+ * Revision 1.15  2009-08-19 14:32:30  bergsma
+ * No such function _timestamp
+ *
+ * Revision 1.14  2009-06-12 05:04:22  bergsma
+ * HS 385 Final Checkin and TAG - Added pid() function
+ *
  * Revision 1.13  2007-03-26 21:16:18  bergsma
  * Added parseurl function().
  *
@@ -59,6 +65,7 @@ extern void    	gHyp_function_method ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_function_mode ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_function_tid ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_function_sid ( sInstance*, sCode*, sLOGICAL ) ;
+extern void    	gHyp_function_pid ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_function_self ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_function_sender ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_function_strlen ( sInstance*, sCode*, sLOGICAL ) ;
@@ -68,7 +75,6 @@ extern void    	gHyp_function_strext ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_function_strtok ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_function_time ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_function_timeout ( sInstance*, sCode*, sLOGICAL ) ;
-extern void    	gHyp_function_timestamp ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_function_trim ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_function_undef ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_function_encode( sInstance*, sCode*, sLOGICAL ) ;

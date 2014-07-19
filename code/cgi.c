@@ -10,6 +10,12 @@
 /* Modifications: 
  *
  * $Log: cgi.c,v $
+ * Revision 1.44  2009-07-23 16:14:40  bergsma
+ * Removed debug statement
+ *
+ * Revision 1.43  2008-11-30 22:34:13  bergsma
+ * Don't generate space between <tag><tag2> if there isn't any
+ *
  * Revision 1.42  2008-09-13 20:11:34  bergsma
  * pSearch became invalid after gHyp_util_readStream
  *
@@ -425,6 +431,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
     i,
     streamLen,
     span,
+    wspan,
     tagLen,
     tag2Len,
     attrLen,
@@ -490,6 +497,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
 	  if ( tagged ) { pStream-- ; if ( isEndTag ) pStream-- ; tagged = FALSE ; }
 
 	  span = 0 ;
+	  wspan = 0 ;
 	  if ( !isSCR && !isPRE && !isTXT ) {
 	    /* When not "SCR or PRE or TXT", find the start of the first word in the line,
 	     * or the next line, whichever comes first.
@@ -499,7 +507,8 @@ char *gHyp_cgi_parseXML ( char *pStream,
 	    span = strspn ( pStream, "\r\n" ) ;
 
 	    /* Then over whitespace */
-	    span += strspn ( pStream+span, " \t" ) ;
+	    wspan = strspn ( pStream+span, " \t" ) ;
+	    span += wspan ;
 
 	    /* Stop there */
 	    pStream += span ;
@@ -512,7 +521,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
 
 	  if ( strLen == 0 ) {
 	    /* Empty line */
-	    if ( isPRE || span > 0 ) {
+	    if ( isPRE || wspan > 0 ) {
 	      /* Add a space */
 	      pStrData = gHyp_data_new ( NULL ) ;
 	      gHyp_data_setStr ( pStrData, " " ) ;
@@ -852,10 +861,12 @@ char *gHyp_cgi_parseXML ( char *pStream,
   strncpy ( tag, pStream, tagLen ) ;
   tag[tagLen] = '\0' ;
   
+  /*
   if ( strcmp ( tag, "var1value" ) == 0 ) {
     gHyp_util_debug("Processing %s",tag);
   }
-  
+  */
+
   strcpy ( tag_lc, tag ) ;
   gHyp_util_lowerCase ( tag_lc, tagLen ) ;
 

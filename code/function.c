@@ -10,6 +10,9 @@
  * Modifications:
  *
  *   $Log: function.c,v $
+ *   Revision 1.54  2009-06-12 05:04:22  bergsma
+ *   HS 385 Final Checkin and TAG - Added pid() function
+ *
  *   Revision 1.53  2008-07-01 23:48:54  bergsma
  *   When doing 'toexternal', make room for VALUE_SIZE*4
  *
@@ -504,6 +507,51 @@ void gHyp_function_sid ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     gHyp_stack_push ( pStack, pResult ) ;
   }
 }
+
+void gHyp_function_pid ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: pid()
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+
+  else {
+
+    sStack 	*pStack = gHyp_frame_stack ( pFrame ) ;
+    sData	*pResult ;
+    int	   	argCount = gHyp_parse_argCount ( pParse ) ;
+    
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 0 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT,
+	"Invalid arguments. Usage: pid()" ) ;
+
+    pResult = gHyp_data_new ( NULL ) ;
+    gHyp_data_setInt (	pResult, giPID ) ;
+
+    gHyp_stack_push ( pStack, pResult ) ;
+  }
+}
+
 
 void gHyp_function_self ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
 {

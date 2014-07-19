@@ -10,6 +10,9 @@
 /* Modifications:
  *
  * $Log: env.c,v $
+ * Revision 1.40  2009-04-09 19:57:21  bergsma
+ * Fixing issues with HTTP and buffer sizing
+ *
  * Revision 1.39  2008-09-09 13:48:48  bergsma
  * Make gzStream larger, 4* MAX_INPUT_LENGHT.  Allows bigger XML
  * structures to be parsed (large chrt records from PROMIS).
@@ -3674,7 +3677,7 @@ void gHyp_env_version ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     			   "Invalid arguments. Usage: version ( )" ) ;
 
     pResult = gHyp_data_new ( NULL ) ;
-    gHyp_data_setStr ( pResult, VERSION_HYPERSCRIPT ) ; 
+    gHyp_data_setStr ( pResult, VERSION_HYPERSCRIPT_BUILD ) ; 
     gHyp_stack_push ( pStack, pResult ) ;
   }
 }

@@ -2,6 +2,9 @@
  * Modifications:
  *
  * $Log: mapidata.c,v $
+ * Revision 1.2  2009-01-02 18:04:36  bergsma
+ * no message
+ *
  * Revision 1.1  2005/01/25 05:43:42  bergsma
  *
  */

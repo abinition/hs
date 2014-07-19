@@ -2,6 +2,9 @@
  * Modifications:
  *
  * $Log: http.h,v $
+ * Revision 1.6  2009-03-02 00:34:35  bergsma
+ * Improved handling of zero-length content buffers
+ *
  * Revision 1.5  2006-10-11 16:16:00  bergsma
  * Make EAGAIN an optional feature that must be turned on.
  *
@@ -38,6 +41,8 @@ extern sLOGICAL	gHyp_http_isXMLEncoded( sHTTP* pHTTP ) ;
 extern void	gHyp_http_setXMLEncoded( sHTTP* pHTTP ) ;
 extern sLOGICAL	gHyp_http_isURLEncoded( sHTTP* pHTTP ) ;
 extern void	gHyp_http_setURLEncoded( sHTTP* pHTTP ) ;
+extern sLOGICAL	gHyp_http_isZeroLength( sHTTP* pHTTP ) ;
+extern void	gHyp_http_setZeroLength( sHTTP* pHTTP ) ;
 extern sLOGICAL	gHyp_http_isPlainText( sHTTP* pHTTP ) ;
 extern void	gHyp_http_setPlainText( sHTTP* pHTTP ) ;
 extern sLOGICAL	gHyp_http_isBinary( sHTTP* pHTTP ) ;
