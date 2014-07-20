@@ -20,7 +20,8 @@ $!	Check for C++ first, then DEC C compiler.
 $!	
 $!
 $ ! Clear any predefined targets for 'cc'
-$ if "''cc'" .nes. "" then delete/sym/global cc
+$ !!!if "''cc'" .nes. "" then delete/sym/global cc
+$ if f$type(cc) .eqs. "STRING" then delete/sym/global cc
 $
 $ ! Get architecture options
 $ @aeq_ssp:arch

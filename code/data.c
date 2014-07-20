@@ -185,6 +185,11 @@ gHyp_data_getPrev
 /**********************	INTERNAL GLOBAL VARIABLES ****************************/
 
 static char * NULLstring = "" ;
+static short len_1  = 1 ;
+static short len_2  = 2 ;
+static short len_4  = 4 ;
+static short len_8  = 8 ;
+static short len_16 = 16 ;
 
 /********************** INTERNAL OBJECT STRUCTURES ***************************/
 
@@ -262,7 +267,8 @@ struct data_t {
   /* Label when TOKEN_VARIABLE, TOKEN_UNIDENTIFIED, or TOKEN_REFERENCE.
    */  
   char*			pStrVal ;       /* External (string) representation */
-  int			strlen ;        /* String length */
+  int			strLen ;        /* String length */
+  int			maxLen ;        /* High water string length */
 
   /* Linkages, for TOKEN_VARIABLE (TYPE_LIST or TYPE_STRING) only!!! */
   sData*	pData ; 	/* Child data member */
@@ -319,7 +325,8 @@ sData* gHyp_data_new ( char *name )
   pData->objectType = DATA_OBJECT_NULL ;
   pData->pfDelete = NULL ;
   pData->pStrVal = NULLstring ;
-  pData->strlen = 0 ;
+  pData->strLen = 0 ;
+  pData->maxLen = 0 ;
   pData->tokenType = TOKEN_LITERAL ;
   pData->dataType = TYPE_STRING ;
   pData->p.value = NULL ;
@@ -1345,10 +1352,11 @@ sData *gHyp_data_copy ( sData *pSrc )
   if ( pSrc->pStrVal != NULLstring ) {
 
     /* Always copy the string representation */
-    pDst->pStrVal = (char*) AllocMemory ( pSrc->strlen + 1 ) ;
+    pDst->pStrVal = (char*) AllocMemory ( pSrc->strLen + 1 ) ;
     assert ( pDst->pStrVal ) ;
-    memcpy ( pDst->pStrVal, pSrc->pStrVal, pSrc->strlen+1 ) ;
-    pDst->strlen = pSrc->strlen ;
+    memcpy ( pDst->pStrVal, pSrc->pStrVal, pSrc->strLen+1 ) ;
+    pDst->strLen = pSrc->strLen ;
+    pDst->maxLen = pSrc->strLen ;
     /*
     gHyp_util_logInfo("Copying from %s(%p) to %s(%p)",
 		      pSrc->pStrVal,pSrc->pStrVal,
@@ -1738,7 +1746,8 @@ static void lHyp_data_delete ( sData *pData )
   */
   if ( pData->pStrVal != NULLstring ) ReleaseMemory ( pData->pStrVal ) ;
   pData->pStrVal = NULLstring ;
-  pData->strlen = 0 ;
+  pData->strLen = 0 ;
+  pData->maxLen = 0 ;
 
   /* Finally, delete the data area itself */
   ReleaseMemory ( pData ) ;
@@ -2515,7 +2524,7 @@ void *gHyp_data_getHandle ( sData *pData, int ss, sLOGICAL recurse  )
 
 static int lHyp_data_getStr ( sData *pData, 
 			      char *pStrBuf, 
-			      int maxlen,
+			      int maxLen,
 			      int ss,
 			      sLOGICAL recurse,
 			      sLOGICAL isExternal,
@@ -2534,7 +2543,7 @@ static int lHyp_data_getStr ( sData *pData,
    *	pStr				[W]
    *	- pointer to string buffer
    *
-   *	maxlen				[R]
+   *	maxLen				[R]
    *	- length of pStr
    *
    *	ss				[R]
@@ -2595,15 +2604,15 @@ static int lHyp_data_getStr ( sData *pData,
     if ( isExternal ) {
       strLen = gHyp_util_unparseString ( pStr, 
 					 pValue->pStrVal, 
-					 pValue->strlen, 
-					 maxlen,
+					 pValue->strLen, 
+					 maxLen,
 					 isForMsg,
 					 isForXML,
 					 FALSE,
 					 "") ;
     }
     else {
-      strLen = MIN ( pValue->strlen, maxlen ) ;
+      strLen = MIN ( pValue->strLen, maxLen ) ;
       memcpy ( pStr, pValue->pStrVal, strLen ) ;
       *(pStr+strLen) = '\0' ;
     }
@@ -2696,13 +2705,13 @@ static int lHyp_data_getStr ( sData *pData,
 
 int gHyp_data_getStr ( sData *pData, 
 			 char *pStrBuf, 
-			 int maxlen,
+			 int maxLen,
 			 int ss,
 			 sLOGICAL recurse ) 
 {
   return lHyp_data_getStr ( pData, 
 			    pStrBuf, 
-			    maxlen,
+			    maxLen,
 			    ss,
 			    recurse,
 			    FALSE,
@@ -2712,13 +2721,13 @@ int gHyp_data_getStr ( sData *pData,
 
 int gHyp_data_getStr_external ( sData *pData, 
 			char *pStrBuf, 
-			int maxlen,
+			int maxLen,
 			int ss,
 			sLOGICAL recurse ) 
 {
   return lHyp_data_getStr ( pData, 
 			    pStrBuf, 
-			    maxlen,
+			    maxLen,
 			    ss,
 			    recurse,
 			    TRUE,
@@ -2728,7 +2737,7 @@ int gHyp_data_getStr_external ( sData *pData,
 
 int gHyp_data_getStr_nonulls ( sData *pData, 
 			char *pStrBuf, 
-			int maxlen,
+			int maxLen,
 			int ss,
 			sLOGICAL recurse ) 
 {
@@ -2738,7 +2747,7 @@ int gHyp_data_getStr_nonulls ( sData *pData,
   
   n = lHyp_data_getStr ( pData, 
 			 pStrBuf, 
-			 maxlen,
+			 maxLen,
 			 ss,
 			 recurse,
 			 FALSE,
@@ -2766,13 +2775,13 @@ int gHyp_data_getStr_nonulls ( sData *pData,
 
 int gHyp_data_getStr_msg ( sData *pData, 
 			char *pStrBuf, 
-			int maxlen,
+			int maxLen,
 			int ss,
 			sLOGICAL recurse ) 
 {
   return lHyp_data_getStr ( pData, 
 			    pStrBuf, 
-			    maxlen,
+			    maxLen,
 			    ss,
 			    recurse,
 			    TRUE,
@@ -2783,13 +2792,13 @@ int gHyp_data_getStr_msg ( sData *pData,
 
 int gHyp_data_getStr_xml ( sData *pData, 
 			char *pStrBuf, 
-			int maxlen,
+			int maxLen,
 			int ss,
 			sLOGICAL recurse ) 
 {
   return lHyp_data_getStr ( pData, 
 			    pStrBuf, 
-			    maxlen,
+			    maxLen,
 			    ss,
 			    recurse,
 			    TRUE,
@@ -2837,7 +2846,7 @@ sBYTE gHyp_data_dataLen ( sData *pData )
 
   case TYPE_LIST :
   case TYPE_STRING :
-    return pData->strlen ;
+    return pData->strLen ;
   case TYPE_ATTR :
     return sizeof ( char ) ;
   case TYPE_CHAR :
@@ -2878,7 +2887,72 @@ sBYTE gHyp_data_dataLen ( sData *pData )
   return 0 ;  
 }
 
+short *gHyp_data_dataLenPtr( sData *pData )
+{
+  /* Description:
+   *
+   *	Returns a pointer to the data len of a data object
+   *
+   * Arguments:
+   *
+   *	pData				[R]
+   *	- pointer to data object
+   *
+   * Return value:	
+   *
+   *
+   */
+  switch ( pData->dataType ) {
 
+  case TYPE_LIST :
+  case TYPE_STRING :
+    return &pData->strLen ;
+
+  case TYPE_ATTR :
+  case TYPE_CHAR :
+  case TYPE_BYTE :
+  case TYPE_UCHAR :
+  case TYPE_UBYTE :
+  case TYPE_BOOLEAN :
+  case TYPE_BINARY :
+    return &len_1 ;
+
+  case TYPE_UNICODE :
+  case TYPE_SHORT :
+  case TYPE_USHORT :
+    return &len_2 ;
+
+  case TYPE_HEX :
+  case TYPE_OCTAL :
+  case TYPE_LONG :
+  case TYPE_ULONG :
+    return &len_4
+
+  case TYPE_INTEGER :
+    if ( sizeof ( int ) == 4 )
+      return &len_4 ;
+    else
+      return &len_8 ;
+
+  case TYPE_FLOAT :
+    if ( sizeof ( float ) == 4 )
+      return &len_4 ;
+    else if ( sizeof ( float ) == 8 )
+      return &len_8 ;
+    else
+      return &len_16 ;
+
+  case TYPE_DOUBLE :
+    if ( sizeof ( double ) == 8 )
+      return &len_8 ;
+    else
+      return &len_16 ;    
+
+  case TYPE_HANDLE :
+    return &len_4 ;
+  }
+  return 0 ;  
+}
 
 sBYTE gHyp_data_dataType ( sData *pData )
 {
@@ -2973,7 +3047,7 @@ sData* gHyp_data_getAll ( sData 	*pData,
 			  void		**pHandle,
 			  char		*pStrBuf,
 			  int		*pStrLen,
-			  int		maxlen,
+			  int		maxLen,
 			  int		ss,
 			  sLOGICAL	recurse )
 {
@@ -3121,7 +3195,7 @@ sData* gHyp_data_getAll ( sData 	*pData,
       d = (double) 0.0 ;
       h = (void*) (int) 0 /*NULL*/ ;
     }
-    strLen = MIN ( pValue->strlen, maxlen ) ;
+    strLen = MIN ( pValue->strLen, maxLen ) ;
     memcpy ( pStr, pValue->pStrVal, strLen ) ;
     *(pStr+strLen) = '\0' ;
 
@@ -4028,7 +4102,7 @@ sData* gHyp_data_getValue ( sData *pData, int ss, sLOGICAL recurse )
     if ( recurse ) {
       if ( ss == -1 ) ss = 0 ;
       /*if ( ss < (int) strlen ( pData->pStrVal ) ) return pData ;*/
-      if ( ss < pData->strlen ) return pData ;
+      if ( ss < pData->strLen ) return pData ;
     }
     else
       return pData ;
@@ -4186,7 +4260,8 @@ void gHyp_data_setLabel ( sData *pData, char *pStrVal )
     pData->pStrVal = (char*) AllocMemory ( n + 1 ) ;
     assert ( pData->pStrVal ) ;
     strcpy ( pData->pStrVal, pStrVal ) ;
-    pData->strlen = n ;
+    pData->strLen = n ;
+    pData->maxLen = n ;
   }
   return ;
 }
@@ -4212,21 +4287,32 @@ void gHyp_data_setStr ( sData *pData, char *pStr )
    *
    */ 
   int
-    n ;
-    
+    i, n ;
+ 
   if ( pData->pStrVal != pStr ) {
 
-    if ( pData->pStrVal != NULLstring ) ReleaseMemory ( pData->pStrVal ) ;
     if ( pStr ) {
       n = strlen ( pStr ) ;
-      pData->pStrVal = (char *) AllocMemory ( n + 1 ) ;
-      assert ( pData->pStrVal ) ;
-      strcpy ( pData->pStrVal, pStr ) ;
-      pData->strlen = n ;
+      if ( pData->pStrVal == NULLstring ) {
+        pData->pStrVal = (char *) AllocMemory ( n + 1 ) ;
+        assert ( pData->pStrVal ) ;
+      }
+      else if ( n > pData->maxLen ) {
+        pData->pStrVal = (char *) ReAllocMemory ( pData->pStrVal, n + 1 ) ;
+        assert ( pData->pStrVal ) ;
+      }
+      memcpy ( pData->pStrVal, pStr, n ) ;
+      pData->pStrVal[n] = '\0' ;
+      pData->maxLen = MAX ( n, pData->maxLen ) ;
+      pData->strLen = n ;
+      for (i=n+1;i<pData->maxLen;i++ ) pData->pStrVal[i] = '\0' ;
+ 
     }
     else {
+      if ( pData->pStrVal != NULLstring ) ReleaseMemory ( pData->pStrVal ) ;
       pData->pStrVal = NULLstring ;
-      pData->strlen = 0 ;
+      pData->strLen = 0 ;
+      pData->maxLen = 0 ;
     }
   }
  
@@ -4261,20 +4347,50 @@ void gHyp_data_setStr_n ( sData *pData, char *pStr, int n )
    *	none
    *
    */ 
+  char *ptr;
+  int i ;
 
   if ( pData->pStrVal != pStr ) {
 
-    if ( pData->pStrVal != NULLstring ) ReleaseMemory ( pData->pStrVal ) ;
     if ( pStr ) {
-      pData->pStrVal = (char*) AllocMemory ( n + 1 ) ;
+      if ( pData->pStrVal == NULLstring ) {
+        pData->pStrVal = (char*) AllocMemory ( n + 1 ) ;
+        /*
+        if ( gHyp_data_getTokenType(gHyp_data_getParent(pData))==TOKEN_VARIABLE) gHyp_util_debug("n memory loc %d for %s",pData->pStrVal,pStr);
+        */
+        assert ( pData->pStrVal ) ;
+      }
+      else if ( n > pData->maxLen ) {
+/*
+gHyp_util_debug("new size is %d, old size was %d, parent tt = %d", n , pData->maxLen,
+gHyp_data_getTokenType(gHyp_data_getParent(pData)) );
+*/
+        ptr = (char *) ReAllocMemory ( pData->pStrVal, n + 1 ) ;
+      /*
+      if ( ptr != pData->pStrVal ) gHyp_util_debug("N memory loc %d -> %d for %s",pData->pStrVal,ptr,pStr);
+      */
+        pData->pStrVal=ptr;
+        assert ( pData->pStrVal ) ;
+      }
+/*
+      else {
+gHyp_util_debug("new size %d, old size %d '%s'<-'%s' @ %x", n , pData->maxLen, pData->pStrVal,pStr, pData->pStrVal);
+      }
+*/
       memcpy ( pData->pStrVal, pStr, n ) ;
-      assert ( pData->pStrVal ) ;
       pData->pStrVal[n] = '\0' ;
-      pData->strlen = n ;
+      pData->maxLen = MAX ( n, pData->maxLen ) ;
+      pData->strLen = n ;
+      for (i=n+1;i<pData->maxLen;i++ ) pData->pStrVal[i] = '\0' ; 
     }
     else {
+      if ( pData->pStrVal != NULLstring ) ReleaseMemory ( pData->pStrVal ) ;
       pData->pStrVal = NULLstring ;
-      pData->strlen = 0 ;
+/**/
+      gHyp_util_debug("n NULL loc %d",pData->pStrVal);
+/**/
+      pData->strLen = 0 ;
+      pData->maxLen = 0 ;
     }
   }
  
@@ -5004,9 +5120,10 @@ void gHyp_data_setInt ( sData *pData, int val )
   int
     n ;
     
-  if ( pData->p.value ) ReleaseMemory ( pData->p.value ) ;
-  pData->p.iValue = (int*) AllocMemory ( sizeof ( int ) ) ;
-  assert ( pData->p.iValue ) ;
+  if ( !pData->p.value ) {
+    pData->p.iValue = (int*) AllocMemory ( sizeof ( int ) ) ;
+    assert ( pData->p.iValue ) ;
+  }
   *(pData->p.iValue) = val ;
 
   if ( pData->pStrVal != NULLstring ) ReleaseMemory ( pData->pStrVal ) ;
@@ -5015,7 +5132,8 @@ void gHyp_data_setInt ( sData *pData, int val )
   pData->pStrVal = (char*) AllocMemory ( n + 1 ) ;
   assert ( pData->pStrVal ) ;
   strcpy ( pData->pStrVal, strVal ) ;
-  pData->strlen = n;
+  pData->strLen = n;
+  pData->maxLen = n;
 
   /*gHyp_util_logInfo("New int %s (%p)",pData->pStrVal) ;*/
 
@@ -5050,9 +5168,10 @@ void gHyp_data_setDouble ( sData *pData, double val )
   int
     n ;
 
-  if ( pData->p.value ) ReleaseMemory ( pData->p.value ) ;
-  pData->p.dValue = (double*) AllocMemory ( sizeof ( double ) ) ;
-  assert ( pData->p.dValue ) ;
+  if ( !pData->p.value ) {
+    pData->p.dValue = (double*) AllocMemory ( sizeof ( double ) ) ;
+    assert ( pData->p.dValue ) ;
+  }
   *(pData->p.dValue) = val ;
 
   if ( pData->pStrVal != NULLstring ) ReleaseMemory ( pData->pStrVal ) ;
@@ -5061,7 +5180,8 @@ void gHyp_data_setDouble ( sData *pData, double val )
   pData->pStrVal = (char*) AllocMemory ( n + 1 ) ;
   assert ( pData->pStrVal ) ;
   strcpy ( pData->pStrVal, strVal ) ;
-  pData->strlen = n ;
+  pData->strLen = n ;
+  pData->maxLen = n;
   /*gHyp_util_logInfo("New float %s (%p)",pData->pStrVal) ;*/
 
   pData->tokenType = TOKEN_CONSTANT ;
@@ -5096,9 +5216,10 @@ void gHyp_data_setBool ( sData *pData, sLOGICAL boolval )
   int 
     n ;
 
-  if ( pData->p.value ) ReleaseMemory ( pData->p.value ) ;
-  pData->p.scValue = (char*) AllocMemory ( sizeof ( char ) ) ;
-  assert ( pData->p.scValue ) ;
+  if ( !pData->p.value ) {
+    pData->p.scValue = (char*) AllocMemory ( sizeof ( char ) ) ;
+    assert ( pData->p.scValue ) ;
+  }
   *(pData->p.scValue ) = boolval ;
 
   if ( pData->pStrVal != NULLstring ) ReleaseMemory ( pData->pStrVal ) ;
@@ -5107,7 +5228,8 @@ void gHyp_data_setBool ( sData *pData, sLOGICAL boolval )
   pData->pStrVal = (char*) AllocMemory ( n + 1 ) ;
   assert ( pData->pStrVal ) ;
   strcpy ( pData->pStrVal, strVal ) ;
-  pData->strlen = n ;
+  pData->strLen = n ;
+  pData->maxLen = n;
   /*gHyp_util_logInfo("New boolean %s (%p)",pData->pStrVal) ;*/
 
   pData->tokenType = TOKEN_CONSTANT ;
@@ -5142,9 +5264,10 @@ void gHyp_data_setHandle ( sData *pData, void *handle )
   int
     n ;
 
-  if ( pData->p.value ) ReleaseMemory ( pData->p.value ) ;
-  pData->p.hValue = (void**) AllocMemory ( sizeof ( void* ) ) ;
-  assert ( pData->p.hValue ) ;
+  if ( !pData->p.value ) {
+    pData->p.hValue = (void**) AllocMemory ( sizeof ( void* ) ) ;
+    assert ( pData->p.hValue ) ;
+  }
   *(pData->p.hValue) = handle ;
 
   if ( pData->pStrVal != NULLstring ) ReleaseMemory ( pData->pStrVal ) ;
@@ -5156,7 +5279,8 @@ void gHyp_data_setHandle ( sData *pData, void *handle )
   pData->pStrVal = (char*) AllocMemory ( n + 1 ) ;
   assert ( pData->pStrVal ) ;
   strcpy ( pData->pStrVal, strVal ) ;
-  pData->strlen = n ;
+  pData->strLen = n ;
+  pData->maxLen = n;
   /*gHyp_util_logInfo("New handle %s (%p)",pData->pStrVal) ;*/
 
   pData->tokenType = TOKEN_CONSTANT ;

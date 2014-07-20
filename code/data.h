@@ -102,6 +102,7 @@ extern int 		gHyp_data_getStr_nonulls ( sData*, char*, int, int, sLOGICAL);
 extern int 		gHyp_data_getStr_msg ( sData*, char*, int, int, sLOGICAL);
 extern int 		gHyp_data_getStr_xml ( sData*, char*, int, int, sLOGICAL);
 extern sBYTE		gHyp_data_dataLen ( sData* ) ;
+extern short *gHyp_data_dataLenPtr( sData *pData ) ;
 extern sBYTE		gHyp_data_dataType ( sData* ) ;
 extern sBYTE		gHyp_data_getDataType ( sData* ) ;
 extern sBYTE		gHyp_data_tokenType ( sData* ) ;

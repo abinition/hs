@@ -1442,8 +1442,13 @@ static int lHyp_secs1_incoming ( sSecs1 *pSecs1,
 	/* Have previous blocks been received? */
 	if ( pHeader ) {
 
-	  /* A header exists, thus a message is already in progress. */
-	  if ( header.isPrimaryMsg || !pHeader->isPrimaryMsg ) {
+	  /* A header exists, thus a message may already be in progress. 
+           * - Primary messages can always interrupt messages in progress.
+           * - Any message type can always interrupt a secondary message in progress.
+           * - Any message type can always interrupt a message whose last block has been received.
+           *   (example: S1F4 interrupting a completed S6F3).
+           */
+          if ( header.isPrimaryMsg || !pHeader->isPrimaryMsg || pHeader->isLastBlock ) {
 
 	    /* Just reset secsII buffer. Start over. */
 	    gHyp_secs2_resetBuf ( pSecs2, SECS_INCOMING ) ;

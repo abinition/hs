@@ -3004,7 +3004,11 @@ void gHyp_fileio_log ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       gsLog = stdout ;
       gzLogName[0] = '\0' ;
     }
-    else if ( !pFILElog ) {
+    else if ( !pFILElog 
+#ifdef AS_WINDOWS
+      || !pFILElog->_ptr
+#endif
+      ) {
     
       if ( (guRunFlags & RUN_RESTRICTED) ) 
         gHyp_instance_warning ( pAI, STATUS_RESTRICTED,"The log() function is RESTRICTED" ) ;
