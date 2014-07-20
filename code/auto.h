@@ -3,13 +3,6 @@
  * Modifications:
  *
  * $Log: auto.h,v $
- * Revision 1.30  2013-05-21 17:50:21  bergsma
- * Windows does not know about stdint include file.
- *
- * Revision 1.29  2013-05-21 17:46:26  bergsma
- * Add secs_map & secp_unmap.  Deal with 64-bit systems where long and
- * int datatypes are 32 bit.  HS long,ulong,and int are 32 bit.
- *
  * Revision 1.28  2010-03-05 06:08:46  bergsma
  * Add -u option and AUTOHOST environment variable.
  *
@@ -114,9 +107,7 @@
 #include <stdarg.h>	/* va* functions */
 #include <stdio.h>      /* standard IO functions */
 #include <stddef.h>     /* standard types */
-#ifdef AS_UNIX
 #include <stdint.h>	/* int32_t def */
-#endif
 #include <stdlib.h>	/* standard library functions */
 #include <time.h> 	/* for localtime function */
 #include <errno.h>	/* errno */
@@ -153,13 +144,8 @@ struct endian_t
   union {
     double		d ;
     float		f ;
-#ifdef AS_UNIX
-    int32_t		sl ;
-    uint32_t		ul ;
-#else
-    long		sl ;
-    unsigned long	ul ;
-#endif
+    int			sl ;
+    unsigned int	ul ;
     short		ss ;
     unsigned short	us ;
     unsigned char       b[8] ;		

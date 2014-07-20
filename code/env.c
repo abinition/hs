@@ -10,13 +10,6 @@
 /* Modifications:
  *
  * $Log: env.c,v $
- * Revision 1.51  2013-05-21 17:50:21  bergsma
- * Windows does not know about stdint include file.
- *
- * Revision 1.50  2013-05-21 17:46:26  bergsma
- * Add secs_map & secp_unmap.  Deal with 64-bit systems where long and
- * int datatypes are 32 bit.  HS long,ulong,and int are 32 bit.
- *
  * Revision 1.49  2013-01-14 18:26:35  bergsma
  * When doing 'map', use gHyp_util_getRaw over getInt, getDouble, etc
  *
@@ -1281,12 +1274,10 @@ static sData* lHyp_env_map ( sData *pDst,
    * In the case where the compile sets a long/ulong/int at 64 bits,
    * we must override and say its really 4 bytes!!!
    */
-#ifdef AS_UNIX
   if (	dstDataType == TYPE_INTEGER ||
 	dstDataType == TYPE_LONG ||
 	dstDataType == TYPE_ULONG )
     dstDataLen = sizeof ( int32_t ) ;
-#endif
 
   isVectorDst = ( dstTokenType == TOKEN_VARIABLE && dstDataType > TYPE_STRING ) ;
   ssd = gHyp_data_getSubScript ( pDst ) ; 

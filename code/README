@@ -213,6 +213,7 @@ Appendix A: Details on Installing GD
 	ln -sf /home/autoprod/packages/openssl-0.9.8c/include/openssl/ openssl
 	ln -sf /home/autoprod/packages/jpeg-6b/ jpeg
 	ln -sf /home/autoprod/packages/gd-2.0.35/ gd
+	ln -sf /home/autoprod/packages/freetype-2.3.5/ freetype
 
 	## LIBRARIES
 	cd /usr/local/lib

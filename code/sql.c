@@ -3017,7 +3017,7 @@ void gHyp_sql_toexternal(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     if ( context== -2 && ss != -1 ) {
       gHyp_data_delete ( pResult ) ;
       gHyp_instance_error ( pAI, STATUS_BOUNDS, 
-			    "Subscript '%d' is out of bounds in sql_toexternal()",
+			    "Subscript '%s' is out of bounds in sql_toexternal()",
 			    ss);
     }
     if ( isEmpty ) {
@@ -3150,7 +3150,7 @@ void gHyp_sql_datetime ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       if ( context== -2 && ss != -1 ) {
         gHyp_data_delete ( pResult ) ;
         gHyp_instance_error ( pAI, STATUS_BOUNDS, 
-			    "Subscript '%d' is out of bounds in sql_datetime()",
+			    "Subscript '%s' is out of bounds in sql_datetime()",
 			    ss);
       }
       gHyp_stack_push ( pStack, pResult ) ;

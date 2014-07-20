@@ -177,7 +177,7 @@ int gHyp_parse_argCount ( sParse *pParse )
   /* If the expression token is itself an argument (eg: an object function), 
    * then add it as an argument.
    */ 
-  if ( pParse->exprCount >= 0 ) {
+  if ( pParse->exprCount > 0 ) {
     dotArg = ( pParse->exprFlag[pParse->exprCount] & EXPR_FUNCTION_CALL ) ; 
     /* Clear the flag */
     pParse->exprFlag[pParse->exprCount] = 0 ;
@@ -1085,7 +1085,8 @@ void gHyp_parse_loop (	sParse *pParse,
 
       if ( pParse->flag & PARSE_OBJECT_CALL && 
           inputTokenType == TOKEN_FUNCTION ) {
-	pParse->exprFlag[pParse->exprCount] |= EXPR_FUNCTION_CALL ;
+
+        pParse->exprFlag[pParse->exprCount] |= EXPR_FUNCTION_CALL ;
         exprFlag = pParse->exprFlag[pParse->exprCount] ;
         /* IMPORTANT TO RESET the ARG COUNT HERE back to zero */
         /*gHyp_util_debug("Resetting to 0");*/
@@ -1516,16 +1517,15 @@ void gHyp_parse_loop (	sParse *pParse,
 	 *	that will be detected when the function is executed.
 	 */
 	if (	inputTokenType == TOKEN_FUNCTION &&
-		exprTokenType == TOKEN_DOT ) {
-		if ( pParse->exprCount > 0 )  {
+	        exprTokenType == TOKEN_DOT &&
+                pParse->exprCount > 1 )  {
           /* Remember this flag at begining of the next iteration of the
            * loop where the function is put on the end of the expression.
            */
 	  pParse->flag |= PARSE_OBJECT_CALL ;
           gHyp_hyp_setPrecedence ( pInputCode, PRECEDENCE_OPERAND ) ;
           gHyp_hyp_setRank ( pInputCode, RANK_OPERAND ) ;
-		}
-	}
+        }
 
         /* 10.  If debug is set, then print out the expression */
 	if ( guDebugFlags & DEBUG_INFIX_EXPR ) {
@@ -1563,7 +1563,6 @@ void gHyp_parse_loop (	sParse *pParse,
          * 	- If the token is an operator or a function, then it will 
 	 *	  be executed, and will use the values already on the stack. 
          */	
-	/*pParse->flag = pParse->exprFlag[pParse->exprCount];*/
         pParse->exprCount-- ;
 
         if ( gHyp_frame_isStmtTrue ( pFrame ) && 

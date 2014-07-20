@@ -1673,11 +1673,6 @@ int gHyp_instance_readQueue ( sInstance* pAI )
     /* Advance start of queue */
     pAI->msg.startQQ++ ;
     if ( pAI->msg.startQQ >= MAX_QUEUE_DEPTH ) pAI->msg.startQQ = 0 ;
-    
-    /* OK to call this, it just makes sure any read has a timeout of zero,
-     * in which case this requeued message will be processed.
-     */
-    gHyp_instance_signalMsg( pAI ) ;
 
     return COND_NORMAL ;
   }
@@ -1713,11 +1708,6 @@ int gHyp_instance_readQueue ( sInstance* pAI )
     /* Advance start of queue */
     pAI->msg.startRQ++ ;
     if ( pAI->msg.startRQ >= MAX_QUEUE_DEPTH ) pAI->msg.startRQ = 0 ;
-
-    /* OK to call this, it just makes sure any read has a timeout of zero,
-     * in which case this requeued message will be processed.
-     */
-    gHyp_instance_signalMsg( pAI ) ;
 
     return COND_NORMAL ;
   }
@@ -4989,9 +4979,13 @@ int  gHyp_instance_run ( sInstance * pAIarg )
        * still has an outstanding condition to handle, then don't to the
        * gHyp_instance_read until the conditions are fully handled
        */
-      if (  !pAI->signal.tokenSignal &&
-            !(hasCondition = gHyp_instance_handleCondition(pAI))
-          ) { 
+      if (  pAI->signal.tokenSignal ||
+            (hasCondition = gHyp_instance_handleCondition(pAI))
+	    ) {
+        /* Loop around and execute the condition */
+        gHyp_instance_setState ( pAI, STATE_PARSE ) ;
+      }
+      else {
 
         /* Look for a signal or an incoming message */
         cond = gHyp_instance_read ( pAI, FALSE ) ;

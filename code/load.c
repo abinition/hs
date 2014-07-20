@@ -10,10 +10,6 @@
  * Modifications:
  *
  *   $Log: load.c,v $
- *   Revision 1.64  2013-05-21 17:46:26  bergsma
- *   Add secs_map & secp_unmap.  Deal with 64-bit systems where long and
- *   int datatypes are 32 bit.  HS long,ulong,and int are 32 bit.
- *
  *   Revision 1.63  2013-05-15 16:42:52  bergsma
  *   Comment
  *
@@ -371,15 +367,6 @@ void gHyp_load_new ()
   lHyp_load_newKey ( "unsetenv" ,  gHyp_system_unsetenv, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "setheap" ,  gHyp_system_setheap, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
 
-/*
-#ifdef AS_JS
-*
-  lHyp_load_newKey ( "var" ,  gHyp_type_list, TOKEN_TYPECAST, PRECEDENCE_UNARY ) ;
-  lHyp_load_newKey ( "function" ,  gHyp_type_list, TOKEN_TYPECAST, PRECEDENCE_UNARY ) ;
-
-*
-#endif
-*/
 #ifdef AS_PROMIS
   /* PROMIS functions */
   lHyp_load_newKey ( "pexec" ,  gHyp_promis_pexec, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;

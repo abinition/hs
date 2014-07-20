@@ -1,0 +1,185 @@
+/* regexec searches for a given pattern, specified by PREG, in the
+   string STRING.
+
+   If NMATCH is zero or REG_NOSUB was set in the cflags argument to
+   `regcomp', we ignore PMATCH.  Otherwise, we assume PMATCH has at
+   least NMATCH elements, and we set them to the offsets of the
+   corresponding matched substrings.
+
+   EFLAGS specifies `execution flags' which affect matching: if
+   REG_NOTBOL is set, then ^ does not match at the beginning of the
+   string; if REG_NOTEOL is set, then $ does not match at the end.
+
+   We return 0 if we find a match and REG_NOMATCH if not.  */
+
+int
+regexec (preg, string, nmatch, pmatch, eflags)
+    const regex_t *preg;
+    const char *string;
+    size_t nmatch;
+    regmatch_t pmatch[];
+    int eflags;
+
+
+
+
+
+/* regcomp takes a regular expression as a string and compiles it.
+
+   PREG is a regex_t *.  We do not expect any fields to be initialized,
+   since POSIX says we shouldn't.  Thus, we set
+
+     `buffer' to the compiled pattern;
+     `used' to the length of the compiled pattern;
+     `syntax' to RE_SYNTAX_POSIX_EXTENDED if the
+       REG_EXTENDED bit in CFLAGS is set; otherwise, to
+       RE_SYNTAX_POSIX_BASIC;\
+     `newline_anchor' to REG_NEWLINE being set in CFLAGS;
+     `fastmap' and `fastmap_accurate' to zero;
+     `re_nsub' to the number of subexpressions in PATTERN.
+
+   PATTERN is the address of the pattern string.
+
+   CFLAGS is a series of bits which affect compilation.
+
+     If REG_EXTENDED is set, we use POSIX extended syntax; otherwise, we
+     use POSIX basic syntax.
+
+     If REG_NEWLINE is set, then . and [^...] don't match newline.
+     Also, regexec will try a match beginning after every newline.
+
+     If REG_ICASE is set, then we considers upper- and lowercase
+     versions of letters to be equivalent when matching.
+
+     If REG_NOSUB is set, then when PREG is passed to regexec, that
+     routine will report only success or failure, and nothing about the
+     registers.
+
+   It returns 0 if it succeeds, nonzero if it doesn't.  (See gnu-regex.h for
+   the return codes and their meanings.)  */
+
+int
+regcomp (preg, pattern, cflags)
+    regex_t *preg;
+    const char *pattern;
+    int cflags;
+
+
+
+/* re_compile_pattern is the GNU regular expression compiler: it
+   compiles PATTERN (of length SIZE) and puts the result in BUFP.
+   Returns 0 if the pattern was valid, otherwise an error string.
+
+   Assumes the `allocated' (and perhaps `buffer') and `translate' fields
+   are set in BUFP on entry.
+
+   We call regex_compile to do the actual compilation.  */
+
+const char *
+re_compile_pattern (pattern, length, bufp)
+     const char *pattern;
+     size_t length;
+     struct re_pattern_buffer *bufp;
+{
+
+
+The regex have 4 functions in there header file(regex.h).
+
+int regcomp(regex_t *, const char *, int);
+int regexec(const regex_t *, const char *, size_t, regmatch_t[], int);
+size_t regerror(int, const regex_t *, char *, size_t);
+void regfree(regex_t *);
+
+Regcomp
+
+This function do the prepairens till regexec, put the patter in the struct and the options. The options can be one of the following.
+
+REG_EXTENDED = Use Extended Regular Expressions.
+REG_ICASE = Not case sensitive.
+REG_NOSUB = Report only success/fail in regexec().
+REG_NEWLINE = Read over newlines.
+
+Regexec
+
+Preform the regular match, based on the things inputed in regcomp, will return 0 if match, it weill return REG_NOMATCH if there were no match, REG_ENOSYS if the function is not supported. Flags can be the following:
+
+REG_NOTBOL = ^ is not end of string, a special charachter insted.
+REG_NOTEOL = $ is not end of string, a special charachter insted.
+
+Regerror
+
+Translate the error codes returned from regexec and regcomp to string, on success it will return the numbers of bytes required to hold the string otherwise 0.
+
+Regfree
+
+Free all the memory used by the regex.
+
+Coding with it
+
+The part that you have to remember is that the regcomp have to be called before you make the real match so that it have something to match against. In the regcomp you load up the regex string and then match it with the text string in regexec. The struct that Im been talking about is regex_t. A simple call to regcomp would look like.
+regcomp(&re, "^fwe{1,}", 0);
+Where re is the regex_t. A simple regexec call would look like:
+regexec(&re, "fweeep", (size_t)0, NULL, 0);
+That would load up it with no flags(like the aboven one). And most importent don't forget to free the memory.
+regfree(&re);
+An regerror call would look like:
+regerror(error, &re, string, 128);
+Where error is an int that hold an returnedvalue from regexec or regcomp. and string is an 128 long char.
+Example
+Here is an example function wroten to make it more easy to use regex match in C. 
+#include // sys/types.h
+ 
+ 
+ 
+#include // regex.h
+ 
+ 
+ 
+
+ 
+ 
+ 
+int match(const char *string, char *pattern) {
+ 
+ 
+ 
+  int status;
+ 
+ 
+ 
+  regex_t re;
+ 
+ 
+ 
+
+ 
+ 
+ 
+  if(regcomp(&re, pattern, REG_EXTENDED|REG_NOSUB) != 0) {
+ 
+ 
+ 
+    return 0; }
+ 
+ 
+ 
+  status = regexec(&re, string, (size_t)0, NULL, 0);
+ 
+ 
+ 
+  regfree(&re);
+ 
+ 
+ 
+  if(status != 0) {
+ 
+ 
+ 
+    return 0; }
+ 
+ 
+ 
+  return 1; }
+  
+  
+  

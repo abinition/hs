@@ -37,7 +37,6 @@ extern void		gHyp_type_ubyte ( sInstance*, sCode*, sLOGICAL ) ;
 extern void		gHyp_type_char ( sInstance*, sCode*, sLOGICAL ) ;
 extern void		gHyp_type_uchar ( sInstance*, sCode*, sLOGICAL ) ;
 extern void		gHyp_type_list ( sInstance*, sCode*, sLOGICAL ) ;
-extern void		gHyp_type_var ( sInstance*, sCode*, sLOGICAL ) ;
 extern void		gHyp_type_binary ( sInstance*, sCode*, sLOGICAL ) ;
 extern void		gHyp_type_boolean ( sInstance*, sCode*, sLOGICAL ) ;
 extern void		gHyp_type_hex ( sInstance*, sCode*, sLOGICAL ) ;
