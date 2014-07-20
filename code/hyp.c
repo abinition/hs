@@ -10,6 +10,12 @@
 /* Modifications:
  *
  * $Log: hyp.c,v $
+ * Revision 1.16  2011-05-19 22:11:58  bergsma
+ * Input stream can be MAX_STREAM_LENGTH, up from MAX_INPUT_LENGTH
+ *
+ * Revision 1.15  2011-01-08 21:30:15  bergsma
+ * New args for frame functions
+ *
  * Revision 1.14  2008-06-13 04:14:26  bergsma
  * Protect tokenStr from overwite
  *
@@ -574,7 +580,7 @@ int gHyp_hyp_source ( sInstance *pAIarg,
    */
 
   static char		
-    stream[MAX_INPUT_LENGTH+1] ;
+    stream[MAX_STREAM_LENGTH+1] ;
 
   char
     *pStream,
@@ -614,7 +620,7 @@ int gHyp_hyp_source ( sInstance *pAIarg,
 #else
     gsSocketToCancel = fileno ( pp ) ;
 #endif
-    pStream = fgets ( stream, MAX_INPUT_LENGTH, pp ) ;
+    pStream = fgets ( stream, MAX_STREAM_LENGTH, pp ) ;
 
     /* Test for end-of-file */
     if ( pStream == NULL ) return COND_ERROR ;
@@ -916,7 +922,8 @@ void gHyp_hyp_transfer ( sInstance *pAI,
 		    PRECEDENCE_EOS,
 		    1,
 		    gHyp_stmt_eos ) ;
-    pMethodVariable = gHyp_frame_createVariable ( gHyp_instance_frame(pAI), 
+    pMethodVariable = gHyp_frame_createVariable ( pAI,
+                                                  gHyp_instance_frame(pAI), 
 						  gHyp_data_getLabel ( pMethodData ) ) ;
     pData = gHyp_data_new ( NULL ) ;
     gHyp_data_setStr ( pData, STATUS_ACKNOWLEDGE ) ;

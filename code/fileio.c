@@ -11,6 +11,27 @@
  * Modifications:
  *
  *	$Log: fileio.c,v $
+ *	Revision 1.71  2012-02-09 22:53:23  bergsma
+ *	Unintialized vars.
+ *	
+ *	Revision 1.70  2011-07-03 16:35:19  bergsma
+ *	Added load_csv and csv
+ *	
+ *	Revision 1.69  2011-05-30 17:05:56  bergsma
+ *	When doing fputs, and line already ends with \n, then output line.
+ *	
+ *	Revision 1.68  2011-02-24 05:12:27  bergsma
+ *	Adjusting values for MAX_OUTPUT_LENGTH and MAX_INPUT_LENGTH
+ *	
+ *	Revision 1.67  2011-02-24 03:13:32  bergsma
+ *	Adjusting values for MAX_OUTPUT_LENGTH and MAX_INPUT_LENGTH
+ *	
+ *	Revision 1.66  2011-02-20 00:58:21  bergsma
+ *	Use MAX_INPUT instead of MAX_OUTPUT
+ *	
+ *	Revision 1.64  2011-01-08 21:27:00  bergsma
+ *	Add JSON functionality - jdescribe.
+ *	
  *	Revision 1.63  2010-04-23 05:15:20  bergsma
  *	Error expanding attr values in XML when they are > 256 characters long.
  *	
@@ -447,6 +468,7 @@ static int lHyp_fileio_describe2 ( sData *pParent,
 				   char *pOutput,
 				   FILE *fp,
 				   sLOGICAL isXML,
+                                   sLOGICAL isJSON,
 				   sLOGICAL isPRE,
 				   sLOGICAL isTXT,
 				   sLOGICAL isMSG,
@@ -476,20 +498,18 @@ static int lHyp_fileio_describe2 ( sData *pParent,
 
   char
     c,
-    newOutput[MAX_OUTPUT_LENGTH+1],
-    tmpOutput[MAX_OUTPUT_LENGTH+1],
-    prefixStr[VALUE_SIZE+1],
-    suffixStr[VALUE_SIZE+1],
     spacer[2] = {0,0},
-    /*
-    value[VALUE_SIZE+1],
-    value2[VALUE_SIZE+1],
-    */
-    value[MAX_OUTPUT_LENGTH+1],
-    value2[MAX_OUTPUT_LENGTH+1],
     tag[TOKEN_SIZE+1],
     *pOut,
     *pValue ;
+
+ char
+    newOutput[MAX_STREAM_LENGTH],
+    tmpOutput[MAX_STREAM_LENGTH],
+    prefixStr[VALUE_SIZE+1],
+    suffixStr[VALUE_SIZE+1],
+    value[MAX_INPUT_LENGTH],
+    value2[MAX_INPUT_LENGTH] ;
 
   sBYTE
     dataType,
@@ -521,6 +541,8 @@ static int lHyp_fileio_describe2 ( sData *pParent,
     else {
       if ( isXML )
 	strcpy ( suffixStr, " " ) ;
+      else if ( isJSON )
+	strcpy ( suffixStr, "," ) ;
       else
 	strcpy ( suffixStr, "," ) ;
     }
@@ -568,6 +590,11 @@ static int lHyp_fileio_describe2 ( sData *pParent,
 			    "%s%s",  
 			    gHyp_data_getLabel ( pParent ),
 			    suffixStr ) ;
+    else if ( isJSON )
+      newOffset = sprintf ( newOutput,
+			    "%s\"%s\"",  
+			    gHyp_data_getLabel ( pParent ),
+			    suffixStr ) ;
     else {
 
       if ( !isMSG )
@@ -577,7 +604,7 @@ static int lHyp_fileio_describe2 ( sData *pParent,
     			    suffixStr ) ;
       else {
 	strcpy ( value, gHyp_data_getLabel( pParent ) ) ;
-	n = gHyp_util_unparseString ( value2, value, strlen(value), VALUE_SIZE, TRUE, FALSE, FALSE,"'" ) ;
+	n = gHyp_util_unparseString ( value2, value, strlen(value), MAX_OUTPUT_LENGTH, TRUE, FALSE, FALSE,"'" ) ;
         newOffset = sprintf ( newOutput,
 			    "&'%s'%s",
 			    value2,
@@ -593,7 +620,7 @@ static int lHyp_fileio_describe2 ( sData *pParent,
     if ( isMSG )
       n = gHyp_data_getStr_msg ( pParent, 
 			      value, 
-			      VALUE_SIZE,
+			      MAX_OUTPUT_LENGTH,
 			      0,
 			      FALSE ) ;
 
@@ -601,27 +628,37 @@ static int lHyp_fileio_describe2 ( sData *pParent,
       if ( !isSCR && !isPRE && !isTXT ) 
         n = gHyp_data_getStr_xml ( pParent, 
 			      value, 
-			      VALUE_SIZE,
+			      MAX_OUTPUT_LENGTH,
 			      0,
 			      FALSE ) ;
 
       else 
         n = gHyp_data_getStr_nonulls ( pParent, 
 			        value, 
-			        VALUE_SIZE,
+			        MAX_OUTPUT_LENGTH,
 			        0,
 			        FALSE ) ;
+
+    }
+    else if ( isJSON ) {
+      n = gHyp_data_getStr_external ( pParent, 
+			      value, 
+			      MAX_OUTPUT_LENGTH,
+			      0,
+			      FALSE ) ;
 
     }
     else
       n = gHyp_data_getStr_external ( pParent, 
 			      value, 
-			      VALUE_SIZE,
+			      MAX_OUTPUT_LENGTH,
 			      0,
 			      FALSE ) ;
 
     if ( isXML ) {
+
       if ( pResult ) {
+
 	/* Leave out \n if there is only one value */
 	pData = gHyp_data_getParent ( pParent ) ;
 	if ( pData && 
@@ -643,6 +680,11 @@ static int lHyp_fileio_describe2 ( sData *pParent,
 			    "%s",
 			    pValue ) ;
     }
+    else if ( isJSON )
+      newOffset = sprintf ( newOutput,
+			    "\"%s\"%s",
+			    pValue,
+			    suffixStr ) ;
     else 
       newOffset = sprintf ( newOutput,
 			    "\"%s\"%s",
@@ -663,6 +705,13 @@ static int lHyp_fileio_describe2 ( sData *pParent,
 			    "<%s>%s", 
 			    gHyp_data_getLabel ( pParent ),
 			    suffixStr ) ;
+    else if ( isJSON )
+
+        newOffset = sprintf ( newOutput,
+			    "\"%s\"%s",
+			    gHyp_data_getLabel ( pParent ),
+			    suffixStr ) ;
+
     else
       if ( !isMSG ) 
         newOffset = sprintf ( newOutput,
@@ -671,7 +720,7 @@ static int lHyp_fileio_describe2 ( sData *pParent,
 			    suffixStr ) ;
       else {
 	strcpy ( value, gHyp_data_getLabel( pParent ) ) ;
-	n = gHyp_util_unparseString ( value2, value, strlen(value), VALUE_SIZE, TRUE, FALSE, FALSE, "'" ) ;
+	n = gHyp_util_unparseString ( value2, value, strlen(value), MAX_OUTPUT_LENGTH, TRUE, FALSE, FALSE, "'" ) ;
         newOffset = sprintf ( newOutput,
 			    "&'%s'%s",
 			    value2,
@@ -687,6 +736,11 @@ static int lHyp_fileio_describe2 ( sData *pParent,
          parentDataType == TYPE_UCHAR ||
 	 parentDataType == TYPE_ATTR ) {
       if ( isXML )
+        newOffset = sprintf ( newOutput,
+			      "%s%s",
+			      gHyp_data_getLabel ( pParent ),
+			      suffixStr ) ;
+      else if ( isJSON )
         newOffset = sprintf ( newOutput,
 			      "%s%s",
 			      gHyp_data_getLabel ( pParent ),
@@ -712,6 +766,11 @@ static int lHyp_fileio_describe2 ( sData *pParent,
 			      suffixStr ) ;
 	}
       }
+      else if ( isJSON )
+	newOffset = sprintf ( newOutput,
+			      "%s%s", 
+			      gHyp_data_getLabel ( pParent ),
+			      suffixStr ) ;
       else
 	newOffset = sprintf ( newOutput,
 			      "%s%s", 
@@ -730,13 +789,13 @@ static int lHyp_fileio_describe2 ( sData *pParent,
       if ( isXML )
         n = gHyp_data_getStr_xml ( pParent, 
 			      value, 
-			      VALUE_SIZE,
+			      MAX_OUTPUT_LENGTH,
 			      parentContext,
 			      isParentVector ) ;
       else
         n = gHyp_data_getStr_external ( pParent, 
 			      value, 
-			      VALUE_SIZE,
+			      MAX_OUTPUT_LENGTH,
 			      parentContext,
 			      isParentVector ) ;
       pValue = value ;
@@ -877,24 +936,36 @@ static int lHyp_fileio_describe2 ( sData *pParent,
 
 	if ( isMSG ) {
 	  strcpy ( value, gHyp_data_getLabel( pParent ) ) ;
-	  gHyp_util_unparseString ( value2, value, strlen(value), VALUE_SIZE, TRUE, FALSE, FALSE,"'" ) ;
+          gHyp_util_unparseString ( value2, value, strlen(value), MAX_OUTPUT_LENGTH, TRUE, FALSE, FALSE,"'" ) ;
 	}
 	else
 	  strcpy ( value2, gHyp_data_getLabel( pParent ) ) ;
 	
-	if ( isParentDynamic ) {
-	  newOffset = sprintf ( newOutput,
+        if ( isJSON ) {
+          if ( gHyp_data_getCount ( pParent ) == 1 || gHyp_data_getDataType ( pParent ) == TYPE_ATTR )
+	    newOffset = sprintf ( newOutput,
+                             "\"%s\" : ",
+			     value2 ) ;
+          else
+            newOffset = sprintf ( newOutput,
+                              "\"%s\" : {",
+			     value2 ) ;
+        }
+        else {
+	  if ( isParentDynamic ) {
+	    newOffset = sprintf ( newOutput,
 			     "%s '%s' = {",
 			     gzaType[parentDataType],
 			     value2 ) ;
-	}
-	else {
-	  newOffset = sprintf ( newOutput, 
+	  }
+	  else {
+	    newOffset = sprintf ( newOutput, 
 			     "%s '%s'[%u] = {",
 			     gzaType[parentDataType],
 			     value2,
 			     size ) ;
-	}
+	  }
+        }
       }
 
       /* Print (recursively) all the parents values */
@@ -935,13 +1006,18 @@ static int lHyp_fileio_describe2 ( sData *pParent,
 	  if ( c < 32 ) maxLen -= 3 ;  /*Figure allow 3 extra chars for expansion */
 	  noValue = FALSE ;
 
-	  if ( i  >= maxLen ) {
+	  if ( i  >= maxLen || c == '\n' || c == '\000' ) {
 
 	    /* Output what is there and start a new line */
+  	    maxLen = MAX_OUTPUT_LENGTH ; /*VALUE_SIZE ;*/
 	    value[i] = '\0' ;
 	    pValue = value ;
-	    if ( !isSCR && !isPRE && !isTXT ) {
-	      gHyp_util_unparseString ( value2, 
+            
+            /*
+            gHyp_util_debug("Sizeof value is %d %d %d",sizeof(value),strlen(value),MAX_OUTPUT_LENGTH);
+	    */
+            if ( !isSCR && !isPRE && !isTXT ) {
+	      gHyp_util_unparseString ( value2 ,
 					value, 
 					i, 
 					MAX_OUTPUT_LENGTH, /*VALUE_SIZE,*/ 
@@ -994,7 +1070,9 @@ static int lHyp_fileio_describe2 ( sData *pParent,
 	}
 
 	if ( noValue && isXML ) {
-	  value[0] = '\0'; i = 0 ;
+          /* For XML, got to have at least a <CR> if there are no values */
+	  value[0] = '\0';
+          i = 0 ;
 	}
 
 	if ( i >= 0 ) {
@@ -1074,6 +1152,7 @@ static int lHyp_fileio_describe2 ( sData *pParent,
 						pOutput,
 						fp,
 						isXML,
+                                                isJSON,
 						isPRE,
 						isTXT,
 						isMSG,
@@ -1113,6 +1192,7 @@ static int lHyp_fileio_describe2 ( sData *pParent,
 						     pOutput,
 						     fp,
 						     isXML,
+                                                     isJSON,
 						     isPRE,
 						     isTXT,
 						     isMSG,
@@ -1199,6 +1279,8 @@ static int lHyp_fileio_describe2 ( sData *pParent,
       }
       else {
 
+        /* Not XML - JASON or HS */
+
 	/* Return the trailing "}" */
 	if ( lastValue && indent == 0 ) {
 	  suffixStr[0] = ending ; suffixStr[1] = '\0' ;
@@ -1223,7 +1305,10 @@ static int lHyp_fileio_describe2 ( sData *pParent,
 	  outputLen = strlen ( pOutput ) ;
 	}
 	
-        tmpOutputLen = sprintf ( tmpOutput, "}%s", suffixStr ) ;
+        if ( isJSON && ((gHyp_data_getCount(pParent)==1) || (gHyp_data_getDataType ( pParent ) == TYPE_ATTR)) )
+          tmpOutputLen = sprintf ( tmpOutput, "%s", suffixStr ) ;
+        else
+          tmpOutputLen = sprintf ( tmpOutput, "}%s", suffixStr ) ;
 
 	strcat ( newOutput, tmpOutput ) ;
 	newOffset += tmpOutputLen ;
@@ -1301,6 +1386,7 @@ void lHyp_fileio_describe ( sInstance *pAI,
 			    sLOGICAL isPARSE,
 			    sLOGICAL isFILE,
 			    sLOGICAL isXML,
+                            sLOGICAL isJSON,
 			    sLOGICAL isMSG,
 			    sLOGICAL isString ) 
 {
@@ -1323,7 +1409,7 @@ void lHyp_fileio_describe ( sInstance *pAI,
 
     char
       ending,
-      output[MAX_OUTPUT_LENGTH+1],
+      output[MAX_BUFFER_SIZE+1],
       tag[TOKEN_SIZE+1] ;
 
     sLOGICAL
@@ -1356,6 +1442,10 @@ void lHyp_fileio_describe ( sInstance *pAI,
 	  gHyp_instance_error ( 
 			       pAI, STATUS_ARGUMENT,
 			       "Invalid arguments. Usage: xfdescribe ( variable, handle )" ) ;
+	else if ( isJSON )
+	  gHyp_instance_error ( 
+			       pAI, STATUS_ARGUMENT,
+			       "Invalid arguments. Usage: jfdescribe ( variable, handle )" ) ;
 	else
 	  gHyp_instance_error ( 
 			       pAI, STATUS_ARGUMENT,
@@ -1380,6 +1470,10 @@ void lHyp_fileio_describe ( sInstance *pAI,
 	  gHyp_instance_error ( 
             pAI, STATUS_ARGUMENT,
 	    "Invalid arguments. Usage: result = xsdescribe ( variable [,indent] )" ) ;      
+	else if ( isJSON )
+	  gHyp_instance_error ( 
+            pAI, STATUS_ARGUMENT,
+	    "Invalid arguments. Usage: result = jsdescribe ( variable [,indent] )" ) ;      
 	else
 	  gHyp_instance_error ( 
             pAI, STATUS_ARGUMENT,
@@ -1400,6 +1494,10 @@ void lHyp_fileio_describe ( sInstance *pAI,
 	  gHyp_instance_error ( 
             pAI, STATUS_ARGUMENT,
 	    "Invalid arguments. Usage: xdescribe ( variable )" ) ;
+	else if ( isJSON ) 
+	  gHyp_instance_error ( 
+            pAI, STATUS_ARGUMENT,
+	    "Invalid arguments. Usage: jdescribe ( variable )" ) ;
 	else
 	  gHyp_instance_error ( 
             pAI, STATUS_ARGUMENT,
@@ -1450,6 +1548,7 @@ void lHyp_fileio_describe ( sInstance *pAI,
 			    output, 
 			    fp,
 			    isXML,
+                            isJSON,
 			    isPRE,
 			    isTXT,
 			    isMSG,
@@ -1477,14 +1576,19 @@ void lHyp_fileio_describe ( sInstance *pAI,
   }	
 }
 
-sData *gHyp_fileio_describeData ( sInstance *pAI, sData *pData, char ending, sLOGICAL isXML, int *pContentLength ) 
+sData *gHyp_fileio_describeData (   sInstance *pAI, 
+                                    sData *pData, 
+                                    char ending, 
+                                    sLOGICAL isXML,
+                                    sLOGICAL isJSON,
+                                    int *pContentLength ) 
 {
     sData
       *pContainer,
       *pLine ;
 
     char
-      output[MAX_OUTPUT_LENGTH+1] ;
+      output[MAX_BUFFER_SIZE+1] ;
 
     sLOGICAL
       firstValue,
@@ -1511,6 +1615,7 @@ sData *gHyp_fileio_describeData ( sInstance *pAI, sData *pData, char ending, sLO
 			    output, 
 			    NULL,
 			    isXML,  /* isXML */
+                            isJSON,/* isJSON */
 			    FALSE,  /* isPRE */
 			    FALSE,  /* isTXT */
 			    TRUE,   /* isMSG */
@@ -1550,7 +1655,7 @@ void gHyp_fileio_sdescribe ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
    *	none
    *
    */
-  lHyp_fileio_describe ( pAI, pCode, isPARSE, FALSE, FALSE, FALSE, TRUE ) ;
+  lHyp_fileio_describe ( pAI, pCode, isPARSE, FALSE, FALSE, FALSE, FALSE, TRUE ) ;
 }
 
 void gHyp_fileio_fdescribe ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
@@ -1572,7 +1677,7 @@ void gHyp_fileio_fdescribe ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
    *
    *	none
    */
-  lHyp_fileio_describe ( pAI, pCode, isPARSE, TRUE, FALSE, FALSE, FALSE ) ;
+  lHyp_fileio_describe ( pAI, pCode, isPARSE, TRUE, FALSE, FALSE, FALSE, FALSE ) ;
 }
 
 void gHyp_fileio_describe ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
@@ -1595,7 +1700,7 @@ void gHyp_fileio_describe ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
    *	none
    *
    */
-  lHyp_fileio_describe ( pAI, pCode, isPARSE, FALSE, FALSE, FALSE, FALSE ) ;
+  lHyp_fileio_describe ( pAI, pCode, isPARSE, FALSE, FALSE, FALSE, FALSE, FALSE ) ;
 }
 
 void gHyp_fileio_xfdescribe ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
@@ -1617,7 +1722,7 @@ void gHyp_fileio_xfdescribe ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
    *
    *	none
    */
-  lHyp_fileio_describe ( pAI, pCode, isPARSE, TRUE, TRUE, FALSE, FALSE ) ;
+  lHyp_fileio_describe ( pAI, pCode, isPARSE, TRUE, TRUE, FALSE, FALSE, FALSE ) ;
 }
 
 void gHyp_fileio_xdescribe ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
@@ -1640,7 +1745,7 @@ void gHyp_fileio_xdescribe ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
    *	none
    *
    */
-  lHyp_fileio_describe ( pAI, pCode, isPARSE, FALSE, TRUE, FALSE, FALSE ) ;
+  lHyp_fileio_describe ( pAI, pCode, isPARSE, FALSE, TRUE, FALSE, FALSE, FALSE ) ;
 }
 
 void gHyp_fileio_xsdescribe ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
@@ -1663,8 +1768,77 @@ void gHyp_fileio_xsdescribe ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
    *	none
    *
    */
-  lHyp_fileio_describe ( pAI, pCode, isPARSE, FALSE, TRUE, FALSE, TRUE ) ;
+  lHyp_fileio_describe ( pAI, pCode, isPARSE, FALSE, TRUE, FALSE, FALSE, TRUE ) ;
 }
+
+void gHyp_fileio_jfdescribe ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: jfdescribe ( variable )
+   *	Returns description of variable.
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   */
+  lHyp_fileio_describe ( pAI, pCode, isPARSE, TRUE, FALSE, TRUE, FALSE, FALSE ) ;
+}
+
+void gHyp_fileio_jdescribe ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: jdescribe ( variable )
+   *	Returns description of variable.
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   */
+  lHyp_fileio_describe ( pAI, pCode, isPARSE, FALSE, FALSE, TRUE, FALSE, FALSE ) ;
+}
+
+void gHyp_fileio_jsdescribe ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: jsdescribe ( variable )
+   *	Returns description of variable.
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   */
+  lHyp_fileio_describe ( pAI, pCode, isPARSE, FALSE, FALSE, TRUE, FALSE, TRUE ) ;
+}
+
 
 static void lHyp_fileio_put (	sInstance 	*pAI, 
 				sCode 		*pCode, 	
@@ -1727,12 +1901,13 @@ static void lHyp_fileio_put (	sInstance 	*pAI,
       *pEndMsg,
       putMessage[MAX_OUTPUT_LENGTH+1],
       quote,
-      value[MAX_INPUT_LENGTH+1] ;
+      value[MAX_OUTPUT_LENGTH+1] ;
     
     FILE
       *fp = NULL ; 
     
     sLOGICAL
+      hasNewline,
       isFirstValue = TRUE,
       isVector ;
 
@@ -1801,7 +1976,7 @@ static void lHyp_fileio_put (	sInstance 	*pAI,
       if ( isBinary ) {
 	valueLen = gHyp_data_getStr ( pResult, 
 				     value, 
-				     VALUE_SIZE, 
+				     MAX_OUTPUT_LENGTH, 
 				     context, 
 				     isVector ) ;
 
@@ -1822,7 +1997,7 @@ static void lHyp_fileio_put (	sInstance 	*pAI,
 
 	valueLen = gHyp_data_getStr_nonulls ( pResult, 
 				     value, 
-				     MAX_INPUT_LENGTH, 
+				     MAX_OUTPUT_LENGTH, 
 				     context, 
 				     isVector ) ;
 
@@ -1839,6 +2014,8 @@ static void lHyp_fileio_put (	sInstance 	*pAI,
         if ( quote ) valueLen += 2 ;
 
       }
+
+      hasNewline = ( value[valueLen-1] == '\n' ) ;
 
       if ( ( pMsg + valueLen + 3 ) > pEndMsg ) {
       
@@ -1867,6 +2044,22 @@ static void lHyp_fileio_put (	sInstance 	*pAI,
 
       pMsg += valueLen ;
       *pMsg = '\0' ;
+
+      if ( hasNewline ) {
+
+	/* Ends with newline */
+	if ( isFile ) {
+	  if ( isBinary )
+	    fwrite ( putMessage, 1, (pMsg-putMessage), fp ) ; 
+	  else
+	    fprintf ( fp, "%s", putMessage ) ;
+	}
+	else
+	  gHyp_util_log ( putMessage ) ;    
+
+	pMsg = putMessage ;
+      }
+
     }	
     if ( context == -2 && ss != -1 )
       gHyp_instance_error ( pAI, STATUS_BOUNDS, 
@@ -3138,6 +3331,468 @@ void gHyp_fileio_echo ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     }
     gHyp_stack_push ( pStack, pResult ) ;
   }
+}
+
+
+static sData* lHyp_fileio_parseCSV( sData* pData, 
+                                    char *elementTag, 
+                                    int maxLines, 
+                                    sFrame* pFrame, 
+                                    FILE *pFILE, 
+                                    sInstance*  pAI  ) 
+{
+  /* Description:
+   *
+   *	Parse CSV ata from a file or from sData
+   *
+   * Arguments:
+   *
+   * 
+   *
+   * Return value:
+   *
+   *	none
+   */
+
+  sData
+    *pResult,
+    *pTag,
+    *pElement,
+    *pHeader[MAX_SQL_ITEMS],
+    *pLabel,
+    *pValue=NULL ;
+
+  int
+    context,
+    ss,
+    headerCount=0,
+    itemCount,
+    line,
+    tokLen,
+    n,
+    buflen ;
+  
+  sLOGICAL
+      isEOF = FALSE ;
+
+  char
+      deliminator,
+      *delim = ",",
+      *pBuf,
+      *pTok,
+      *pLastTok,
+      buf[MAX_INPUT_LENGTH+1] ;
+
+  pResult = gHyp_data_new ( NULL ) ;
+  gHyp_data_setVariable ( pResult, "_csv_", TYPE_STRING ) ;
+  
+  if ( pData ) {
+    /* From a data source */
+    pValue = NULL ;
+    context = 0 ;
+    ss = -1 ;
+    pValue = gHyp_data_nextValue ( pData, 
+				   pValue, 
+				   &context,
+				   ss ) ;
+    if ( !pValue ) return pResult ;
+    n = gHyp_data_getStr ( pValue, 
+			   buf, 
+			   MAX_INPUT_LENGTH,
+			   context,
+			   TRUE ) ; 
+    pBuf = buf ;
+  }
+  else {
+
+    /* From a file:  Read header line first */
+    line = 0 ;
+    pBuf = buf ;
+    pBuf = fgets ( buf, VALUE_SIZE, pFILE );
+    isEOF = feof ( pFILE ) ;      
+    if ( !pBuf && !isEOF ) {
+      gHyp_data_delete ( pResult ) ;
+      gHyp_instance_error ( pAI,
+			    STATUS_FILE,
+			    "Failed to read from input stream" ) ;
+    }
+  }
+
+  if ( pBuf ) {
+
+    gHyp_util_trim ( pBuf ) ;
+    buflen = strlen ( pBuf ) ;
+
+    /* Parse out the header fields:
+     *
+     * VID,Real-Time ID,Format,Units,Description,Limit CEID,Min,Max,Enumerated Type Description
+     * 22,,U1,"","Specify Abort Level",,,,
+     * 23,,U4,,"ALID of alarm causing latest transition",,,,
+     * 24,,L,"","List of Enabled alarms",,,,
+     * 25,,L,"","List of which alarms are ON",,,,
+     *
+     * creating a structure like:
+     *
+     *    csvData = load_csv "csv.dat" ;
+     *    describe csvData ;
+     *
+     *    list csvData = {
+     *      list element = {
+     *        list 'VID' = 22 
+     *        list 'Real-Time ID' = {},
+     *        list 'Format' = "U1",
+     *        list 'Units' = "",
+     *        list 'Description' = "Specify Abort Level",
+     *        list 'Limit CEID' = {},
+     *        list 'Min' = {},
+     *        lust 'Max' = {},
+     *        list 'Enumerated Type Description' = {}
+     *      },
+     *      list element = {
+     *        list 'VID' = 32 
+     *        list 'Real-Time ID' = {},
+     *      
+     */
+    headerCount = 0 ;
+
+    /* Obtain the first token/field (name) */
+    pTok = strtok (buf, delim);
+     
+    if ( pTok == NULL || *pTok == '\0' ) {
+      gHyp_data_delete ( pResult ) ;
+      gHyp_instance_error ( pAI,
+			    STATUS_FILE,
+			    "Invalid header field in CSV file" ) ;
+    }          
+       
+    /* Set each header field */
+    while ( pTok ) {
+
+      /* Save header name */
+      pElement  = gHyp_data_new ( pTok ) ;
+      pHeader[headerCount++] = pElement ;
+ 
+      /* Get next header name */
+      pLastTok = pTok ;
+      tokLen = strlen ( pLastTok ) ;
+
+      /*gHyp_util_debug("%x %x",(pLastTok + tokLen),(pBuf + buflen)) ; */
+      if ( (pLastTok + tokLen) == (pBuf + buflen ) ) break ;
+
+      pTok = strtok(NULL, delim);
+ 
+      /* It shouldn't be a null or empty record. */
+      if ( pTok == NULL || *pTok == '\0'  ) {
+        while ( headerCount-- ) gHyp_data_delete ( pHeader[headerCount] ) ;
+        gHyp_data_delete ( pResult ) ;
+        gHyp_instance_error ( pAI,
+			      STATUS_FILE,
+			      "Empty header field in CVS header row" ) ;
+      }
+
+      /* Two comma's in a row - a,,b - is an error! */
+      if ( pTok != ( pLastTok + tokLen + 1 ) ) {
+        while ( headerCount-- ) gHyp_data_delete ( pHeader[headerCount] ) ;
+        gHyp_data_delete ( pResult ) ;
+        gHyp_instance_error ( pAI,
+			      STATUS_FILE,
+			      "Missing header field in CVS header row" ) ;
+      }
+    }
+  } 
+    
+  while ( !isEOF && pBuf ) {
+
+    if ( pData ) {
+      /* From a data source */
+      pValue = gHyp_data_nextValue (  pData, 
+				      pValue, 
+				      &context,
+				      ss ) ;
+      if ( !pValue ) {
+        while ( headerCount-- ) gHyp_data_delete ( pHeader[headerCount] ) ;
+        return pResult ;
+      }
+      n = gHyp_data_getStr (  pValue, 
+  			      buf, 
+			      MAX_INPUT_LENGTH,
+			      context,
+			      TRUE ) ; 
+      pBuf = buf ;
+    }
+    else {
+      pBuf = fgets ( buf, VALUE_SIZE, pFILE );
+      isEOF = feof ( pFILE ) ;      
+      if ( !pBuf && !isEOF ) {
+	gHyp_data_delete ( pResult ) ;
+        gHyp_instance_error ( pAI,
+			        STATUS_FILE,
+			        "Failed to read from input stream" ) ;
+      }
+    }
+
+    if ( pBuf ) {
+
+      /* Get headerCount elements from each line.
+       * If one is missing, then its an empty value
+       */
+      gHyp_util_trim ( pBuf ) ;
+      buflen = strlen ( pBuf ) ;
+
+      pTag = gHyp_data_new ( elementTag ) ;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           /* Obtain the first value */
+      pTok = strtok (buf, delim);
+        
+      /* Set each header field */
+      itemCount = 0 ;
+      while ( itemCount < headerCount ) {
+            
+        pLabel = gHyp_data_new ( gHyp_data_getLabel ( pHeader[itemCount] ) ) ;
+        if ( pTok && *pTok ) {
+
+          /* Not an empty value - parse the token into its natural format,
+           * unless it is a literal enclosed in single or double quotes
+           */
+          tokLen = strlen ( pTok ) ;
+          deliminator = *pTok ;
+          if ( ( deliminator == '\'' || deliminator == '"' ) && 
+                 *(pTok+tokLen-1) == deliminator ) {
+            /* Token is deliminated, remove */
+            tokLen = tokLen - 2 ;
+            pTok++ ;
+            *(pTok+tokLen) = '\0' ;
+            pElement = gHyp_data_new ( NULL ) ;
+            gHyp_data_setStr_n ( pElement, pTok, tokLen ) ;
+          }
+          else {
+            pElement = gHyp_data_new ( NULL ) ;
+            gHyp_data_setToken ( pElement, pTok ) ;
+          }
+          gHyp_data_append ( pLabel, pElement ) ;
+          gHyp_data_append ( pTag, pLabel ) ;
+
+          pLastTok = pTok ;
+          tokLen = strlen ( pLastTok ) ;
+                
+          /* Get next token value */
+          pTok = strtok(NULL, delim);
+
+          if ( pTok ) {
+
+           /* See what we skipped */
+
+            if ( (pLastTok + tokLen) == (pBuf + buflen ) ) {
+              /* End of buffer - complete the values and break loop */
+              while ( itemCount < headerCount-1 ) {
+                itemCount++ ;
+                pLabel = gHyp_data_new ( gHyp_data_getLabel ( pHeader[itemCount] ) ) ;
+                gHyp_data_append ( pTag, pLabel ) ;
+              }
+              break ;
+            }
+
+            /* How many skipped items? */
+            n = ( pTok - ( pLastTok + tokLen + 1 ) ) ; 
+            while ( n-- && itemCount < headerCount-1 ) {
+              itemCount++ ;
+              pLabel = gHyp_data_new ( gHyp_data_getLabel ( pHeader[itemCount] ) ) ;
+              gHyp_data_append ( pTag, pLabel ) ;
+            }
+          }
+
+        }
+        else {
+          /* Empty value */
+          gHyp_data_append ( pTag, pLabel ) ;
+        }
+
+        /* Next value */
+        itemCount++ ;
+
+      }
+     
+      gHyp_data_append ( pResult, pTag ) ;
+      line++ ;
+      if ( maxLines != -1 && line >= maxLines ) break ;
+    }
+  }
+ 
+  if ( pFILE ) fclose ( pFILE ) ;
+
+  while ( headerCount-- ) gHyp_data_delete ( pHeader[headerCount] ) ;
+
+  return pResult ;
+}
+
+void gHyp_fileio_load_csv( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: load_csv ( fileSpec, tagName, maxLines )
+   *	Returns the string that was input.
+   *
+   * Arguments:
+   *
+   *	pAI				[R]
+   *	- pointer to Instance object
+   *
+   *	pCode				[R]
+   *	- pointer to Code object
+   *
+   *	isPARSE				[R]
+   *	- STATE_PARSE if TRUE, STATE_EXECUTE if FALSE
+   * 
+   *
+   * Return value:
+   *
+   *	none
+   */
+
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+
+  else {
+  
+    sStack 	
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+    
+    int
+      maxLines,
+      n,
+      argCount = gHyp_parse_argCount ( pParse ) ;
+    
+    sData
+      *pData,
+      *pResult ;
+
+    char
+      elementTag[VALUE_SIZE+1],
+      *pFileSpec,
+      fileSpec[MAX_PATH_SIZE+1] ;
+    FILE
+      *pFILE ;
+
+    if ( argCount != 1 && argCount != 2 && argCount != 3) 
+      gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+    	"Invalid arguments. Usage: load_csv ( fileSpec [, elementTag, [,maxlines]] )" ) ;
+
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    strcpy ( elementTag, "element" ) ;
+    maxLines = -1 ;
+      
+    if ( argCount == 3 ) {
+      pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
+      maxLines = gHyp_data_getInt ( pData, gHyp_data_getSubScript (pData), TRUE ) ;
+    }
+
+    if ( argCount >= 2 ) {
+      pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
+      n = gHyp_data_getStr ( pData, 
+			     elementTag, 
+			     VALUE_SIZE,
+			     gHyp_data_getSubScript(pData),
+			     TRUE ) ;    
+    }
+    
+    pData = gHyp_stack_popRvalue ( pStack, pAI ) ; 
+    n = gHyp_data_getStr ( pData, 
+			   fileSpec, 
+			   MAX_PATH_SIZE,
+			   gHyp_data_getSubScript(pData),
+			   TRUE ) ;
+    pFileSpec = fileSpec ;
+
+    pFILE = fopen ( pFileSpec, "r" ) ;
+    if ( !pFILE ) {
+      gHyp_instance_warning ( pAI, STATUS_FILE,
+			      "Could not open file '%s'", pFileSpec ) ;
+      pResult = NULL ;
+    }
+    else {
+      pResult = lHyp_fileio_parseCSV ( NULL, elementTag, maxLines, pFrame, pFILE, pAI ) ;
+    }
+
+    if ( pResult )
+      gHyp_stack_push ( pStack, pResult ) ;
+    else
+      gHyp_instance_pushSTATUS ( pAI, pStack ) ;
+  }
+}
+
+void gHyp_fileio_csv ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{    
+
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: csv ( csvData, tagName )
+   *	Returns the string that was input.
+   *
+   * Arguments:
+   *
+   *	pAI				[R]
+   *	- pointer to Instance object
+   *
+   *	pCode				[R]
+   *	- pointer to Code object
+   *
+   *	isPARSE				[R]
+   *	- STATE_PARSE if TRUE, STATE_EXECUTE if FALSE
+   * 
+   *
+   * Return value:
+   *
+   *	none
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+
+  else {
+  
+    sStack 	
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+    
+    char
+      elementTag[VALUE_SIZE+1];
+
+    int
+      n,
+      maxLines,
+      argCount = gHyp_parse_argCount ( pParse ) ;
+
+   sData
+      *pResult,
+      *pData ;
+
+    if ( argCount == 2 ) {
+      pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
+      n = gHyp_data_getStr ( pData, 
+			     elementTag, 
+			     VALUE_SIZE,
+			     gHyp_data_getSubScript(pData),
+			     TRUE ) ;    
+    }
+    else
+      strcpy ( elementTag, "element" ) ;
+
+    pData = gHyp_stack_popRdata ( pStack, pAI ) ;
+
+    maxLines = gHyp_data_getCount ( pData ) ;
+    pResult = lHyp_fileio_parseCSV ( pData, elementTag, maxLines, pFrame, NULL, pAI ) ;
+  
+    if ( pResult )
+      gHyp_stack_push ( pStack, pResult ) ;
+    else
+      gHyp_instance_pushSTATUS ( pAI, pStack ) ;
+  }  
 }
 
 void gHyp_fileio_load( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 

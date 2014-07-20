@@ -10,6 +10,12 @@
  * Modifications:
  *
  *	$Log: util.c,v $
+ *	Revision 1.78  2011-02-24 03:12:55  bergsma
+ *	Fix bug in gHyp_util_readStream
+ *	
+ *	Revision 1.77  2011-01-08 21:32:40  bergsma
+ *	Added " and ' for URL decoding/encoding
+ *	
  *	Revision 1.76  2010-05-05 04:56:19  bergsma
  *	Added CGI form-data support
  *	
@@ -866,7 +872,7 @@ int gHyp_util_getclock ()
       tickcount ;
 
 #ifndef AS_WINDOWS
-#ifdef AS_TRUE64
+#ifdef AS_TRU64
   struct timespec tp ;
 #else
   struct timeval tval ;
@@ -876,7 +882,7 @@ int gHyp_util_getclock ()
 
 #ifndef AS_WINDOWS
 
-#ifdef AS_TRUE64
+#ifdef AS_TRU64
 
   getclock( 1, &tp );
   tickcount = tp.tv_nsec / 1000000 ;        /* convert to milliseconds */
@@ -2094,7 +2100,8 @@ int gHyp_util_unparseString ( char *pDstStr,
 
   /* Parse string into external format. Special case exists if the string is
    * for XML or AbInitio Message.
-   * The specialChars are those additional chars that should be preceded by a backslash.
+   * The specialChars are those additional chars that should be preceded by a backslash
+   * for with &#000; sequences.
    */
   char
     c,
@@ -2636,6 +2643,15 @@ int gHyp_util_urlEncode( char *in, int size_in, char *out )
     c = *in++ ;
 
     switch ( c ) {
+    case '"' :
+      *ptr++ = '%' ;
+      *ptr++ = '2' ;
+      *ptr++ = '2' ;
+    case '\'' :
+      *ptr++ = '%' ;
+      *ptr++ = '2' ;
+      *ptr++ = '7' ;
+      break ; 
     case ',' :
       *ptr++ = '%' ;
       *ptr++ = '2' ;
@@ -2919,7 +2935,7 @@ char *gHyp_util_readStream (  char *pStream,
   /* The function of this routine is to keep the buffer filled.
    *
    * The data can either come from a FILE* (pp) or a sData* (pStreamData).   
-   * In either case, the buffer is 3 times the size 
+   * In either case, the buffer is 4 times the size 
    * of what can be read from pp or pStreamData ( STREAM_READ_SIZE ).
    *
    * The buffer is filled until it exceeds STREAM_READ_SIZE*3.
@@ -2935,9 +2951,10 @@ char *gHyp_util_readStream (  char *pStream,
    *  pp - another possible source of data 
    *
    * The return value is the current stream position.
-   * When the data is exhausted, the return value will be null, so that
-   * subsequent calls to this routine will do nothing.
-   * ie: pStream = gHyp_util_readStream ( pStream, ...
+   * When the data is exhausted, the value in ppEndOfStream is set to null,
+   * so that subsequent calls to this routine will do nothing except just
+   * return the pointer to the position of the start of the buffer
+   * last read.
    */
 
   sData *pValue ;
@@ -2985,7 +3002,7 @@ char *gHyp_util_readStream (  char *pStream,
 
     if ( pStreamData ) {
    
-      /* Data comes from an sData source */
+      /* Data comes from a sData source */
       pValue = ppValue ? *ppValue : NULL ;
 
       /* Get next line */
@@ -3029,12 +3046,16 @@ char *gHyp_util_readStream (  char *pStream,
 
       /* Data comes from a file */
       pStr = fgets ( pEndOfStream, STREAM_READ_SIZE, pp ) ;
-      if (!pStr)
+      if (!pStr) {
+        *pStreamLen = (pEndOfStream - pStream) ;
 	pEndOfStream = NULL ;
-      else
+      }
+      else {
 	pEndOfStream += strlen ( pStr ) ;
+        *pStreamLen = (pEndOfStream - pStream) ;
+      }
       *ppEndOfStream = pEndOfStream ; 
-      *pStreamLen = (pEndOfStream - pStream) ;
+
     }
   }
   /*gHyp_util_debug("{{%.*s}}",*pStreamLen, pStream);*/

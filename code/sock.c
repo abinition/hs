@@ -11,6 +11,29 @@
  * Modifications:
  *
  *	$Log: sock.c,v $
+ *	Revision 1.111  2012-04-03 20:59:38  bergsma
+ *	Comments
+ *	
+ *	Revision 1.110  2011-12-24 01:41:37  bergsma
+ *	Bug fixed for E500.   Needed "pOverlapped->Internal = STATUS_READY"
+ *	after write of COM port.
+ *	
+ *	Revision 1.109  2011-04-27 21:24:47  bergsma
+ *	Comment out logInfo ( "Removing '%s'",path) messages.
+ *	
+ *	Revision 1.108  2011-04-10 19:19:20  bergsma
+ *	Fix so that shebang files won't delete themselves after closing.
+ *	
+ *	Revision 1.107  2011-02-26 07:42:06  bergsma
+ *	no message
+ *	
+ *	Revision 1.106  2011-02-20 00:54:53  bergsma
+ *	More print statements
+ *	
+ *	Revision 1.105  2010-12-31 06:51:02  bergsma
+ *	1. Add SHA256 digest function.
+ *	2. For UNIX sockets, signal connect on correct new socket
+ *	
  *	Revision 1.104  2010-07-05 16:04:55  bergsma
  *	Comment
  *	
@@ -484,6 +507,8 @@ typedef long    fd_set ;
 #include <openssl/x509.h>
 #include <openssl/pem.h>
 #include <openssl/md5.h>
+#include <openssl/sha.h>
+#include <openssl/hmac.h>
 
 
 #endif
@@ -710,6 +735,7 @@ static int lHyp_sock_alarmHandler ( int signo )
     longjmp ( gsJmpStack[giJmpLevel], COND_NORMAL ) ;
 #endif
 
+  /* Else.. do nothing... silently ignored */
   return 1 ;
 }
 
@@ -758,6 +784,8 @@ static int lHyp_sock_pipeHandler ( int signo )
 
   /* Longjmp out of here if a setjmp return point was set up */
   if ( giJmpOverride ) longjmp ( gsJmpOverride, 1 ) ;
+
+  /* Always fatal */
   if ( giJmpEnabled ) longjmp ( gsJmpStack[0], COND_FATAL ) ;
 #endif
 
@@ -1287,6 +1315,7 @@ static HANDLE lHyp_sock_openFifo ( char *path, sLOGICAL isRead, sLOGICAL isWrite
   /* Check to see if fifo already exists */
   if ( stat ( path, &buf ) == -1 || !S_ISFIFO ( buf.st_mode ) )  {
     /* Not a fifo, delete it */
+    /*gHyp_util_logInfo ( "Removing '%s'",path ) ;*/
     unlink ( path ) ;
     return INVALID_HANDLE_VALUE ; 
   }
@@ -1296,6 +1325,7 @@ static HANDLE lHyp_sock_openFifo ( char *path, sLOGICAL isRead, sLOGICAL isWrite
     if ( errno != ENXIO )
       gHyp_util_sysError ( "Failed to open FIFO '%s'", path ) ;
 #ifdef AS_UNIX
+    /*gHyp_util_logInfo ( "Removing '%s'",path ) ;*/
     unlink ( path ) ;
 #endif
     return INVALID_HANDLE_VALUE ;
@@ -1365,10 +1395,12 @@ HANDLE gHyp_sock_fifo ( char *path,
     }
     create = FALSE ;
   }
-  else
+  else {
     /* Not a fifo, delete it */
+    /*gHyp_util_logInfo ( "Removing '%s'",path ) ;*/
     unlink ( path ) ;
-  
+  }
+
   if ( create ) {
 
     gHyp_util_logInfo("Making Fifo %s",path);
@@ -1502,9 +1534,11 @@ sLOGICAL gHyp_sock_mkdir ( char *path )
   /* Check to see if fifo already exists - create if necessarry */
   if (  stat ( path, &buf ) != -1 && S_ISDIR ( buf.st_mode ) ) 
     return TRUE ;
-  else
+  else {
+    /*gHyp_util_logInfo ( "Removing '%s'",path ) ;*/
     unlink ( path ) ;
-  
+  }
+
   if ( mkdir ( path, ( S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IROTH ) ) == -1 )
     return gHyp_util_sysError ( "Failed to create path '%s'", path ) ;
   else
@@ -3053,7 +3087,7 @@ void gHyp_sock_digest ( char *text, char *text2, char *digest, char* digestType 
  unsigned char 
    md_value[EVP_MAX_MD_SIZE];
 
- int 
+ unsigned int 
    md_len,
    n ;
 
@@ -3074,13 +3108,38 @@ void gHyp_sock_digest ( char *text, char *text2, char *digest, char* digestType 
   EVP_DigestFinal_ex(&mdctx, md_value, &md_len);
   EVP_MD_CTX_cleanup(&mdctx);
 
-  n = gHyp_util_base64Encode( md_value, md_len, digest )  ;
+  n = gHyp_util_base64Encode( (char*) md_value, md_len, digest )  ;
   digest[n] = '\0' ;
 
   /*
   n = gHyp_util_unparseString ( digest, md_value, md_len, strlen ( digest ), 
 				FALSE, FALSE, FALSE, "" ) ;
 				*/
+  return ;
+}
+
+void gHyp_sock_hmac256 ( char *data, char *key, char *digest ) 
+{
+  HMAC_CTX
+     ctx ;
+
+  unsigned int
+    n ;
+
+  unsigned char
+    hash[SHA256_DIGEST_LENGTH] ;
+
+  OpenSSL_add_all_algorithms();
+
+  HMAC_CTX_init ( &ctx ) ;
+  HMAC_Init_ex(&ctx, key, strlen(key), EVP_sha256(), NULL);
+  HMAC_Update(&ctx, (const unsigned char*) data, strlen(data) );
+  HMAC_Final(&ctx, hash, &n );
+  HMAC_CTX_cleanup(&ctx);
+
+  n = gHyp_util_base64Encode( (char*) hash, SHA256_DIGEST_LENGTH, digest )  ;
+  digest[n] = '\0' ;
+
   return ;
 }
 
@@ -3891,6 +3950,7 @@ static int lHyp_sock_write ( SOCKET s,
 	  /*gHyp_util_debug("Pending write I/O, blocking for result");*/
           if ( GetOverlappedResult( (HANDLE) s, pOverlapped, &nBytes, TRUE ) ) {
 	    ResetEvent ( pOverlapped->hEvent ) ;
+   	    pOverlapped->Internal = STATUS_READY ;
           }
           else {
             if ( !silent ) gHyp_util_sysError ( "Failed to get overlapped result from socket %d",s ) ;
@@ -4682,7 +4742,11 @@ void gHyp_sock_close ( SOCKET socket, short channelType, char* target, char* pat
       gHyp_util_logWarning ( "Failed to deassign MBX connection" ) ;
 #else
     close ( socket ) ; 
-    if ( stat ( path, &buf ) != -1 ) unlink ( path ); 
+    if ( *path ) 
+      if ( stat ( path, &buf ) != -1 ) {
+        /*gHyp_util_logInfo ( "Removing '%s'",path ) ;*/
+        unlink ( path ); 
+      }
 #endif
 #endif
     break ;
@@ -4698,7 +4762,7 @@ void gHyp_sock_close ( SOCKET socket, short channelType, char* target, char* pat
     break ;
 
   case SOCKET_TCP:
-    gHyp_util_logInfo ( "Closing TCP client connection (%d) to host '%s'",
+    gHyp_util_logInfo ( "Closing TCP client connection (%d) to device '%s'",
                         socket, target ) ;
 
   case SOCKET_UNIX_LISTEN:
@@ -4881,7 +4945,7 @@ static sChannel* lHyp_sock_getMBOXchannel ( char *object,
 			      alreadyExists ) ) != INVALID_HANDLE_VALUE ) {	
   
     pChannel = gHyp_channel_new ( object,
-                                  path,
+                                  path, /*targetId,*/
                                   (SOCKET_FIFO | PROTOCOL_AI),
                                   s ) ;
 
@@ -4939,7 +5003,7 @@ static sChannel* lHyp_sock_getFIFOchannel ( char *object,
 			      alreadyExists ) ) != INVALID_HANDLE_VALUE ) {
   
     pChannel = gHyp_channel_new ( object,
-                                  path,
+                                  path, /*targetId,*/
                                   (SOCKET_FIFO | PROTOCOL_AI),
                                   s ) ;
 
@@ -5005,7 +5069,7 @@ static sChannel* lHyp_sock_getMSLOTchannel ( char *object,
                              alreadyExists ) ) != INVALID_HANDLE_VALUE ) {
   
     pChannel = gHyp_channel_new ( object,
-                                  path,
+                                  path, /*targetId,*/
                                   (SOCKET_FIFO | PROTOCOL_AI),
                                   (SOCKET) s ) ;
 
@@ -5053,7 +5117,7 @@ static sChannel* lHyp_sock_getDMBXchannel ( char *object,
     gHyp_util_logInfo ( "Created DMBX read socket %s (%d) for client MBX '%s'", 
                         object,
                         s,
-                        path ) ;
+                        targetId ) ;
   }
   return pChannel ;
 }
@@ -5542,7 +5606,6 @@ void gHyp_sock_list ( sData *pClients, sData *pHosts )
 
   return ;
 }
-
 /****************
 static int lHyp_sock_mapUnMapDrive(
 			  char *pLocalAddr,
@@ -5878,7 +5941,7 @@ static sLOGICAL lHyp_sock_exec (        char *file,
   /* Flush output before we do it */
   if ( gsLog ) fflush ( gsLog ) ;
 
-#ifndef AS_TRUE64
+#ifndef AS_TRU64
   if ( (pid = vfork ()) < 0 )
     return gHyp_util_sysError ( "Problem with vfork" ) ;
 #else
@@ -6967,7 +7030,7 @@ static int lHyp_sock_select_read_objects ( sConcept *pConcept, sData *pSockets )
                                        (void (*)(void*))gHyp_hsms_delete ) ;
         msgLen = 0 ;
         pAIassigned = gHyp_concept_getInstForFd ( pConcept, socket ) ;
-	id = pAIassigned == NULL ? NULL_DEVICEID : gHyp_instance_getDeviceId ( pAIassigned, socket ) ;
+	id = (pAIassigned == NULL) ? NULL_DEVICEID : gHyp_instance_getDeviceId ( pAIassigned, socket ) ;
 	if ( pAIassigned ) gHyp_instance_signalConnect ( pAIassigned, newSocket, port, id ) ;
  
 	if ( id != NULL_DEVICEID ) {
@@ -7192,7 +7255,8 @@ static int lHyp_sock_select_read_objects ( sConcept *pConcept, sData *pSockets )
 	id = pAIassigned == NULL ? NULL_DEVICEID : gHyp_instance_getDeviceId ( pAIassigned, socket ) ;
 
 	/* Create the signal that specifies what we just selected */
-	if ( pAIassigned ) gHyp_instance_signalConnect ( pAIassigned, socket, port, id ) ;
+        port = 0 ;  /* For UNIX sockets, there really isn't a port number */
+	if ( pAIassigned ) gHyp_instance_signalConnect ( pAIassigned, newSocket, port, id ) ;
 
 	if ( id != NULL_DEVICEID ) {
 
@@ -7207,7 +7271,7 @@ static int lHyp_sock_select_read_objects ( sConcept *pConcept, sData *pSockets )
       }
       else if ( flags == (PROTOCOL_NONE | SOCKET_UNIX) ) {
 
-	/* A socket descriptor is being passed to us */
+	/* A socket descriptor is being passed to us.  The 'port' is optional, a secret. */
 	newSocket = gHyp_tcp_recvmsg ( socket, &port ) ;
 
         if ( newSocket == INVALID_SOCKET ) return COND_SILENT ; /*COND_ERROR ;*/
@@ -7297,7 +7361,7 @@ static int lHyp_sock_select_read_objects ( sConcept *pConcept, sData *pSockets )
 	  }
       }
       else if ( flags & PROTOCOL_SECS1 ) {
-          msgLen = gHyp_secs1_incoming ( (sSecs1*) pObject, pConcept, pAI ) ;
+        msgLen = gHyp_secs1_incoming ( (sSecs1*) pObject, pConcept, pAI ) ;
       }
       else if ( flags & PROTOCOL_HSMS) {
           msgLen = gHyp_hsms_incoming ( (sHsms*) pObject,pConcept,pAI ) ; 
@@ -7485,7 +7549,7 @@ static int lHyp_sock_select_FDSET_hosts ( sConcept *pConcept, sData *pHosts )
                           pOverlapped,
 			  FALSE) == 0 ) {
 
-    /*gHyp_util_debug("Adding host %d to offset %d",s,giNumSelectEvents);*/
+      /*gHyp_util_debug("Adding host %d to offset %d",s,giNumSelectEvents);*/
 #ifdef AS_WINDOWS
       gsEvents[giNumSelectEvents++] = pOverlapped->hEvent ;      
 #else
@@ -8032,7 +8096,7 @@ int gHyp_sock_select ( sConcept* pConcept,
 
 #ifdef AS_WINDOWS
 
-  /*gHyp_util_debug("Waiting, timeout in %d milliseconds",mtimeout);*/
+  /*gHyp_util_debug("Waiting, timeout in %d milliseconds",mTimeout);*/
   if ( giNumSelectEvents == 0 ) {
 
     /* Cannot do a WaitForMultipleObjects with zero objects.  If the
@@ -8069,6 +8133,7 @@ int gHyp_sock_select ( sConcept* pConcept,
   }
   else {
     giOffset = giOffset - WAIT_OBJECT_0 ;
+    /*gHyp_util_debug("%d found.",giOffset) ;*/
     timeout = 0 ;
   }
 #else  /* UNIX and VMS */

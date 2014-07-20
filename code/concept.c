@@ -9,6 +9,9 @@
 /* Modifications: 
  *
  * $Log: concept.c,v $
+ * Revision 1.72  2011-01-08 21:22:32  bergsma
+ * Comment changes.
+ *
  * Revision 1.71  2010-07-05 16:01:31  bergsma
  * Close reader/writer after moveto and renameto
  *
@@ -261,7 +264,7 @@
 /********************** HYPERSCRIPT INTERFACE ********************************/
 #include "auto.h"       /* System Interface and Function Prototypes */
 
-#ifdef AS_TRUE64
+#ifdef AS_TRU64
 #include "mem.h"
 #endif
 
@@ -1190,7 +1193,8 @@ sInstance* gHyp_concept_instantiate ( sConcept *pConcept,
   if ( swapFrames )
     /* Swap the frames
      * Done for "instantiate()", because we want to have the
-     * running frame, which always is the concept instance.
+     * running frame, which always is the concept instance,
+     * because only the concept instance can instantiate.
      */
     gHyp_instance_swapFrames ( pAI, pAImain ) ;
   
@@ -1199,7 +1203,7 @@ sInstance* gHyp_concept_instantiate ( sConcept *pConcept,
      * Done for "instantiate()", because our new instance must
      * swap back the concept instance data area.
      * Also done for "renameto()", becuase our renamed new
-     * concept instance.wants the data area of the old instance.
+     * concept instance wants the data area of the old instance.
      */
     gHyp_instance_swapData ( pAI, pAImain ) ;
   
@@ -2316,7 +2320,7 @@ void gHyp_concept_deleteSocketObject ( sConcept *pConcept, SOCKET socket )
         pInstance = gHyp_concept_getInstForFd ( pConcept, socket ) ;
 	if ( !pInstance ) break ;
 
- 	/* Get the next id used by the instance */
+ 	/* Get the id used by the instance */
 	id = gHyp_instance_getDeviceId ( pInstance, socket ) ;
 	if ( id != NULL_DEVICEID && parentSocket != INVALID_SOCKET ) { 
 	  pSecs2 = gHyp_secs2_new () ;
@@ -2352,7 +2356,7 @@ void gHyp_concept_deleteSocketObject ( sConcept *pConcept, SOCKET socket )
         pInstance = gHyp_concept_getInstForFd ( pConcept, socket ) ;
 	if ( !pInstance ) break ;
 
- 	/* Get the next id used by the instance */
+ 	/* Get the id used by the instance */
 	id = gHyp_instance_getDeviceId ( pInstance, socket ) ;
 	if ( id != NULL_DEVICEID && parentSocket != INVALID_SOCKET ) {
 	  pSecs2 = gHyp_secs2_new () ;
@@ -2385,7 +2389,7 @@ void gHyp_concept_deleteSocketObject ( sConcept *pConcept, SOCKET socket )
         pInstance = gHyp_concept_getInstForFd ( pConcept, socket ) ;
 	if ( !pInstance ) break ;
 
- 	/* Get the next id used by the instance */
+ 	/* Get the id used by the instance */
 	id = gHyp_instance_getDeviceId ( pInstance, socket ) ;
 	if ( id != NULL_DEVICEID && parentSocket != INVALID_SOCKET ) { 
   	  gHyp_instance_updateFd ( pInstance, parentSocket, id, NULL, FALSE ) ;

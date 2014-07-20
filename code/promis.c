@@ -11,6 +11,12 @@
  * Modifications:
  *
  *	$Log: promis.c,v $
+ *	Revision 1.38  2011-03-14 01:11:08  bergsma
+ *	no message
+ *	
+ *	Revision 1.37  2011-01-08 21:44:14  bergsma
+ *	New args to frame Variable functions.
+ *	
  *	Revision 1.36  2010-05-26 21:26:06  bergsma
  *	Must initialize special "D" tlog records that have no buffer.
  *	
@@ -400,7 +406,7 @@ static sData* lHyp_promis_snap (	sInstance	*pAI,
   makeDSCs	( result_d, result );
 
   /* deprecated *
-  pVariable = gHyp_frame_createVariable ( pFrame, "SNAP" ) ;
+  pVariable = gHyp_frame_createVariable ( pAI, pFrame, "SNAP" ) ;
   gHyp_data_deleteValues ( pVariable ) ;
   */
 
@@ -1286,9 +1292,9 @@ static sLOGICAL lHyp_promis_addTRES ( 	long fileId,
 
   /* Make a sub-variable 'data' */
   if ( isTRfile )
-    pDATA = gHyp_frame_createVariable ( pFrame, "$data" ) ;
+    pDATA = gHyp_frame_createVariable ( pAI, pFrame, "$data" ) ;
   else
-    pDATA = gHyp_frame_createVariable ( pFrame, "data" ) ;
+    pDATA = gHyp_frame_createVariable ( pAI, pFrame, "data" ) ;
 
   gHyp_data_deleteValues ( pDATA ) ;
   gHyp_data_setHashed ( pDATA, TRUE ) ;
@@ -1397,7 +1403,7 @@ static sLOGICAL lHyp_promis_addTBLS ( long fileId,
 
   /* Initialize the file variable */
   gHyp_util_lowerCase ( tableName, 4 ) ;
-  pTABLE = gHyp_frame_createVariable ( pFrame, tableName ) ;
+  pTABLE = gHyp_frame_createVariable ( pAI, pFrame, tableName ) ;
   gHyp_data_deleteValues ( pTABLE ) ;
   gHyp_data_setHashed ( pTABLE, TRUE ) ;
 
@@ -1524,6 +1530,8 @@ static sLOGICAL lHyp_promis_addTLOG (	long fileId,
    *  "Journal",
    *  "Delete" records where TLOG_M_JOURNAL = 4 (Delete record contains a before image)
    *
+   * NOW THIS IS COMMENTED OUT *
+   *
   if ( recid[0] != 'P' && 
        recid[0] != 'U' &&
        recid[0] != 'J' &&
@@ -1532,7 +1540,12 @@ static sLOGICAL lHyp_promis_addTLOG (	long fileId,
   *
   */
 
-  /* Get the field 'BUFFERA' */
+  /* Get the fieldName_d 'BUFFERA' 
+   * This would be the start of the contained record.
+   * The recId is zero of course.
+   * The fileId is TLOG
+
+   */
   recId = 0 ;
   stat = Fil_Tbl_RecFieldInfo (	&fileId, 
 				&recId, 
@@ -1549,6 +1562,7 @@ static sLOGICAL lHyp_promis_addTLOG (	long fileId,
         recid[0] == 'J' ||
         recid[0] == 'D' ) {
 
+    /* The filename comes files - 4 characters */
     strncpy ( tableName, (const char*) pBuf+fieldOffset-1, 4 ) ; 
     tableName[4] = '\0' ;
 
@@ -1582,9 +1596,11 @@ static sLOGICAL lHyp_promis_addTLOG (	long fileId,
 
     if ( recid[0] != 'P' ) {
 
+      /* There's at least a key value - snatch it */
       strncpy ( ukeyvalue, (const char*) pBuf+fieldOffset-1, MAX_PROMIS_KEY_SIZE ) ; 
       ukeyvalue[MAX_PROMIS_KEY_SIZE] = '\0' ;
 
+      /* But we need the key info for the record - the actual field size */
       fileId2 = rec.id ;
       stat = Fil_Tbl_FieldName ( &fileId2, &firstFieldId, &keyField_d ) ;
       recId = 0 ;
@@ -1612,7 +1628,7 @@ static sLOGICAL lHyp_promis_addTLOG (	long fileId,
           * few fields that make up the key.
           * The rest of the buffer will have to be initialized
           * using Fil_BufInit( file.Id , aeqSsp_autoFil_file(newselect).buffer )
-
+          * The total length of useable data is as follows:
           */
         length = fieldOffset + fieldSize - 1 ;
       }
@@ -2107,7 +2123,7 @@ sData* gHyp_promis_getSymbol (	sInstance	*pAI,
      					&statusTextLen ) ;
   if ( !(status & 1) ) return NULL ;
 
-  if ( !pVariable ) pVariable = gHyp_frame_createVariable ( pFrame, pSymbol ) ;
+  if ( !pVariable ) pVariable = gHyp_frame_createVariable ( pAI, pFrame, pSymbol ) ;
   gHyp_data_deleteValues ( pVariable ) ;
   pResult = gHyp_data_new ( NULL ) ;
   result[resultLen] = '\0' ;
@@ -2153,7 +2169,7 @@ sData* gHyp_promis_getParm (	sInstance	*pAI,
      						&statusTextLen ) ;
   if ( !(status & 1) ) return NULL ;
 
-  if ( !pVariable ) pVariable = gHyp_frame_createVariable ( pFrame, pParm ) ;
+  if ( !pVariable ) pVariable = gHyp_frame_createVariable ( pAI, pFrame, pParm ) ;
   gHyp_data_deleteValues ( pVariable ) ;
   pResult = gHyp_data_new ( NULL ) ;
   result[resultLen] = '\0' ;
@@ -2568,7 +2584,7 @@ void gHyp_promis_pexec ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     gHyp_stack_push ( pStack, pResult ) ;
 
     /* Initialize output area */
-    gpData = gHyp_frame_createVariable ( pFrame, "_promis_data_" ) ;
+    gpData = gHyp_frame_createVariable ( pAI, pFrame, "_promis_data_" ) ;
     gHyp_data_deleteValues ( gpData ) ;
   
     /* Call the secret TUT callback function */
@@ -2977,7 +2993,7 @@ sData *gHyp_promis_parseRecord ( sInstance *pAI,
   /* Parse the record */
 
   /* Initialize the file variable */
-  if ( !pTV ) pTV = gHyp_frame_createVariable (pFrame,recordName);
+  if ( !pTV ) pTV = gHyp_frame_createVariable (pAI, pFrame,recordName);
   gHyp_data_deleteValues ( pTV ) ;
   gHyp_data_setHashed ( pTV, TRUE ) ;
 

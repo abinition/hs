@@ -3,6 +3,12 @@
  * Modifications:
  *
  * $Log: fileio.h,v $
+ * Revision 1.15  2011-07-03 16:35:19  bergsma
+ * Added load_csv and csv
+ *
+ * Revision 1.14  2011-01-08 21:27:00  bergsma
+ * Add JSON functionality - jdescribe.
+ *
  * Revision 1.13  2010-01-08 02:44:57  bergsma
  * Added ssl_md5(), enhanced ssl_digest.
  * Fixed urldecode, missing ":"
@@ -54,7 +60,10 @@ extern void	gHyp_fileio_fdescribe ( sInstance*, sCode*, sLOGICAL ) ;
 extern void	gHyp_fileio_xdescribe ( sInstance*, sCode*, sLOGICAL ) ;
 extern void	gHyp_fileio_xfdescribe ( sInstance*, sCode*, sLOGICAL ) ;
 extern void	gHyp_fileio_xsdescribe ( sInstance*, sCode*, sLOGICAL ) ;
-extern sData*   gHyp_fileio_describeData ( sInstance *pAI, sData *pData, char, sLOGICAL, int * ) ;
+extern void	gHyp_fileio_jdescribe ( sInstance*, sCode*, sLOGICAL ) ;
+extern void	gHyp_fileio_jfdescribe ( sInstance*, sCode*, sLOGICAL ) ;
+extern void	gHyp_fileio_jsdescribe ( sInstance*, sCode*, sLOGICAL ) ;
+extern sData*   gHyp_fileio_describeData ( sInstance *pAI, sData *pData, char, sLOGICAL, sLOGICAL, int * ) ;
 extern void	gHyp_fileio_fopen ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_fileio_fclose ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_fileio_fputs ( sInstance*, sCode*, sLOGICAL ) ;
@@ -73,6 +82,8 @@ extern void    	gHyp_fileio_unlink ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_fileio_echo ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_fileio_load ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_fileio_load_binary ( sInstance*, sCode*, sLOGICAL ) ;
+extern void    	gHyp_fileio_load_csv ( sInstance*, sCode*, sLOGICAL ) ;
+extern void    	gHyp_fileio_csv ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_fileio_checksum ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_fileio_crc32 ( sInstance*, sCode*, sLOGICAL ) ;
 /*

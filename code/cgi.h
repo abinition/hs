@@ -2,6 +2,9 @@
  * Modifications:
  *
  * $Log: cgi.h,v $
+ * Revision 1.14  2011-01-08 21:21:53  bergsma
+ * Added urlparse() function.
+ *
  * Revision 1.13  2007-07-09 05:35:30  bergsma
  * Add urlstring()
  *
@@ -45,6 +48,7 @@
  */
 extern void	gHyp_cgi_parse ( sInstance *pAI, sFrame* ) ;
 extern void	gHyp_cgi_urlstring( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) ;
+extern void	gHyp_cgi_urlparse( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) ;
 extern void	gHyp_cgi_unescapeUrl(char *url) ;
 extern void     gHyp_cgi_plusToSpace( char *url) ;
 extern void	gHyp_cgi_xml ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) ; 

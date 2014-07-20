@@ -15,6 +15,16 @@
  * Modifications:
  *
  * $Log: hs.c,v $
+ * Revision 1.51  2011-02-24 23:55:34  bergsma
+ * Change some PROTOCOL debugs to DIAGNOSTIC debugs.
+ * Get HSDOM working.
+ *
+ * Revision 1.50  2011-02-24 03:13:33  bergsma
+ * Adjusting values for MAX_OUTPUT_LENGTH and MAX_INPUT_LENGTH
+ *
+ * Revision 1.49  2011-02-20 00:58:35  bergsma
+ * Use MAX_INPUT instead of MAX_OUTPUT
+ *
  * Revision 1.48  2010-03-05 06:09:28  bergsma
  * Add -u option and AUTOHOST environment variable.
  *
@@ -263,7 +273,7 @@ JNIEXPORT jboolean JNICALL Java_HyperScript2_initJNI
   return TRUE ;
 }
 
-static char eval[MAX_OUTPUT_LENGTH+1];
+static char eval[MAX_MESSAGE_SIZE+1];
 static void lHyp_hs_jeval ( char *token )
 {
   jstring jtoken ;  
@@ -275,7 +285,7 @@ static void lHyp_hs_jeval ( char *token )
 }
 
 
-static char output[MAX_OUTPUT_LENGTH+1];
+static char output[MAX_STREAM_LENGTH+1];
 static void lHyp_hs_output ( char *token )
 {
   jstring joutput ;
@@ -384,7 +394,7 @@ JNIEXPORT jint JNICALL Java_HyperScript2_writeLoopback
 JNIEXPORT jstring JNICALL Java_HyperScript2_hs(JNIEnv *env, jobject obj, jstring token )
 {
 
-  static char		stream[MAX_INPUT_LENGTH+1] ;
+  static char		stream[MAX_MESSAGE_SIZE+1] ;
   static char		terminator ;
   static char*		pStream ;
   static char*		pEndStream ;
@@ -443,7 +453,7 @@ JNIEXPORT jstring JNICALL Java_HyperScript2_hs(JNIEnv *env, jobject obj, jstring
     lineCount = 0 ;
     stream[0] = '\0' ;
     pStream = stream ;
-    pEndStream = stream + MAX_INPUT_LENGTH ;
+    pEndStream = stream + MAX_MESSAGE_SIZE ;
 
   }
 
@@ -627,7 +637,7 @@ void gHyp_hs_jeval ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     char
       *pStr,
       value[VALUE_SIZE+1],
-      command[MAX_OUTPUT_LENGTH+1],
+      command[MAX_MESSAGE_SIZE+1],
       *pCmd,
       *pEndCmd ;
 
@@ -651,7 +661,7 @@ void gHyp_hs_jeval ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
     /* Construct the message to be sent to the shell. */
     pCmd = command ;
-    pEndCmd = pCmd + MAX_OUTPUT_LENGTH ;    
+    pEndCmd = pCmd + MAX_MESSAGE_SIZE ;    
     pValue = NULL ;
     isVector = ( gHyp_data_getDataType ( pData ) > TYPE_STRING ) ;
     ss = gHyp_data_getSubScript ( pData ) ; 
@@ -669,8 +679,8 @@ void gHyp_hs_jeval ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       
       if ( (pCmd + valueLen) > pEndCmd ) 
 	gHyp_instance_error ( pAI, STATUS_IO,
-			      "\n",
-			      MAX_OUTPUT_LENGTH ) ;
+			      "Exceeded max input length %d\n",
+			      MAX_MESSAGE_SIZE ) ;
       sprintf ( pCmd, "%s", pStr ) ;
       pCmd += valueLen ;   
     }

@@ -2,7 +2,7 @@ Release Notes HyperScript V3.1.6
 
 Modifications:
 	$Log: releaseNotes_316.txt,v $
-	Revision 1.1  2003/07/27 01:11:46  bergsma
+	Revision 1.1  2003-07-27 01:11:46  bergsma
 	Release notes for V3.1.6
 	
 	Revision 1.1  2003/06/05 22:16:22  bergsma

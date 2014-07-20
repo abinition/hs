@@ -11,6 +11,12 @@
  * Modifications:
  *
  *   $Log: operator.c,v $
+ *   Revision 1.28  2011-02-20 00:57:13  bergsma
+ *   MAX_INPUT from MAX_OUTPUT
+ *
+ *   Revision 1.27  2011-01-08 21:43:20  bergsma
+ *   JSON handling
+ *
  *   Revision 1.26  2010-01-08 02:44:57  bergsma
  *   Added ssl_md5(), enhanced ssl_digest.
  *   Fixed urldecode, missing ":"
@@ -110,7 +116,7 @@
 
 /********************** INTERNAL OBJECT STRUCTURES ***************************/
 
-/********************** INTERNAL OBJECT STRUCTURES ************************/
+static char gzStream[STREAM_READ_SIZE*4+1] ;
 
 /**********************	FUNCTION DEFINITIONS ********************************/
 
@@ -1308,8 +1314,9 @@ void gHyp_operator_dereference ( sInstance *pAI,sCode *pCode,sLOGICAL isPARSE )
 
     char
       *pStr,
-      *pStream,
-      value[MAX_INPUT_LENGTH+1] ;
+      *pStream = gzStream,
+      *pAnchor = pStream,
+      *pEndOfStream = pStream ;
 
     sBYTE
       tokenType ;
@@ -1318,11 +1325,11 @@ void gHyp_operator_dereference ( sInstance *pAI,sCode *pCode,sLOGICAL isPARSE )
       isVector ;
 
     int
-      n,
       lineCount=0,
+      streamLen,
       hypIndex=0,
-      context,
-      ss ;
+      context=-1,
+      ss=-1 ;
 
     /* Remove the argument */
     pArg = gHyp_stack_popRdata ( pStack, pAI ) ;
@@ -1356,54 +1363,47 @@ void gHyp_operator_dereference ( sInstance *pAI,sCode *pCode,sLOGICAL isPARSE )
 	}
       }
     }
-    /* For all values of arg */
-    pValue = NULL ;
-    isVector = (gHyp_data_getDataType( pArg ) > TYPE_STRING ) ;
-    context = -1 ;
-    while ( ( pValue = gHyp_data_nextValue ( pArg, 
- 				             pValue, 
-					     &context,
-					     ss ) ) ) {
-      n = gHyp_data_getStr ( pValue,
-	 		     value, 
-			     MAX_INPUT_LENGTH, 
-			     context, 
-			     isVector ) ;
-      pStr = value ;
 
-      /* For first token of variable to dereference. Save position where
-       * code will be loaded.
-       */
+    /* Stream dereference */
+    pValue = NULL ;
+    streamLen = 0 ;
+    *pStream = '\0' ;
+    isVector = (gHyp_data_getDataType( pArg ) > TYPE_STRING ) ;
+    while (
+     (pStream = gHyp_util_readStream (	pStream, pAnchor, &pEndOfStream,
+					&streamLen, pArg, 
+					&pValue, &context, ss, isVector, 
+					NULL ) ) ) {
+
       if ( lineCount == 0 ) {
 	pHyp = gHyp_frame_getHyp ( pFrame ) ;
 	hypIndex = gHyp_hyp_getHypCount ( pHyp ) ;
-	pStream = gHyp_load_fromStream ( pAI, pHyp, "{", lineCount++ ) ;
-	if ( !pStream || *pStream ) {
+	pStr = gHyp_load_fromStream ( pAI, pHyp, "{", lineCount++ ) ;
+	if ( !pStr || *pStr ) {
 	  gHyp_hyp_setHypCount ( pHyp, hypIndex ) ;
 	  gHyp_instance_error ( pAI,
 				STATUS_UNDEFINED,
 				"Failed to load HyperScript segment (deref) '{'" ) ;
-	}
+        }
       }
 
-      pStream = gHyp_load_fromStream ( pAI, pHyp, pStr, lineCount++ ) ;
-      if ( !pStream || *pStream ) {
+      pStr = pStream ;
+      pStr = gHyp_load_fromStream ( pAI, pHyp, pStr, lineCount++ ) ;
+      if ( !pStr || *pStr ) {
 	gHyp_hyp_setHypCount ( pHyp, hypIndex ) ;
 	gHyp_instance_error ( pAI,
 			      STATUS_UNDEFINED,
 			      "Failed to load HyperScript segment (dref) *(%s)",
-			      pStr ) ;
+			      pStream ) ;
       }
+ 
+      pStream += streamLen ;
+      if ( pValue == NULL ) break ;
+    }
 
-    }
-    if ( context== -2 && ss != -1 ) {
-      if ( pResult ) gHyp_data_delete ( pResult ) ; 
-      gHyp_instance_error ( pAI, STATUS_BOUNDS, 
-	        "Subscript '%d' is out of bounds in dereference",ss) ;
-    }
     if ( lineCount > 0 ) {
-      pStream = gHyp_load_fromStream ( pAI, pHyp, ";}", lineCount++ ) ;
-      if ( !pStream || *pStream ) {
+      pStr = gHyp_load_fromStream ( pAI, pHyp, ";}", lineCount++ ) ;
+      if ( !pStr || *pStr ) {
 	gHyp_hyp_setHypCount ( pHyp, hypIndex ) ;
 	gHyp_instance_error ( pAI,
 			      STATUS_UNDEFINED,
@@ -1414,6 +1414,7 @@ void gHyp_operator_dereference ( sInstance *pAI,sCode *pCode,sLOGICAL isPARSE )
 				      hypIndex, 
 				      pHyp ) ;
     }
+  
     return ;
   }
 }
@@ -1510,12 +1511,122 @@ void gHyp_operator_eval ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
    * It is not known yet whether or not the ':' will be a label marker or
    * part of a "x ? a : b" expression.  When the expression is evaluated,
    * it will be determined.
+   *
+   * For JSON, the ":" gets treated like the assignment operator "=".
+   *
+   * { "a" : {1,2,3} }  is equivalent to { list a = {1,2,3} }
    */
 
   sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
   sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
 
-  if ( isPARSE ) gHyp_parse_operator ( pParse, pCode, pAI ) ;
+  if ( isPARSE ) 
+    
+    gHyp_parse_operator ( pParse, pCode, pAI ) ;
+
+  else {
+
+    /* JSON VARIABLE ASSIGNMENT */
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+
+    sData
+      *pResult=NULL,
+      *pLvalue,
+      *pRdata ;
+
+    sLOGICAL
+      hasPrevSibling,
+      isSubVariable ;
+
+    sBYTE
+      exprTokenType ;
+
+    sBYTE
+      dataType,
+      dataType2 ;
+
+   
+    if ( gHyp_parse_isConditional( pParse, gHyp_frame_getHyp ( pFrame ) ) ) return ;
+
+    /* Pop the data to be assigned. Since we are using Rdata2, we
+     * must dispose of pRdata ourselves. (Ie: at the end of this routine.)
+     * We use stack_popRdata2 because we may need to
+     * keep the data that is going to be assigned to the variable
+     * if it needs to be created with the dereference/dotcreate method.
+     * See lHyp_frame_dereference().
+     */
+
+    /*gHyp_util_debug ( "JSON ASSIGNMENT" ) ;*/
+    pRdata = gHyp_stack_popRdata2 ( pStack, pAI ) ;
+
+    /* Pop the variable that will get the data */
+    gpsTempData = pRdata ; 
+    pLvalue = gHyp_stack_popLvalue ( pStack, pAI ) ;
+    gpsTempData = NULL ; 
+
+    /* The different types of Lvalues for 'a' are given by these examples:
+     *
+     * Expression          Lvalue 
+     * a = 1 ;             &a        - reference to a
+     * a[3] = 1 ;          &a[3]     - reference to a[3]   
+     * b = { a = 1 } ;     'a'       - identifier
+     * a.b = 1 ;       	   &a.b      - unresolved reference.
+     */
+
+    isSubVariable = ( gHyp_parse_listDepth ( pParse ) > 0 ||
+		      gHyp_parse_isMethodArgs ( pParse ) ) ;
+
+    /* Change to ATTR iff
+     * 1. The data value is not a LIST, ie: it is a literal or constant.
+     * 2. All previous data types for the parent's children are also ATTR
+     *    (The listCount is either 1 or the top stack element is an ATTR) 
+     */
+    dataType = gHyp_data_getDataType ( pRdata ) ;
+    exprTokenType = gHyp_parse_exprTokenType ( pParse ) ;
+
+    dataType2 = TYPE_LIST ;
+    hasPrevSibling = 0 ;
+    pResult = gHyp_stack_peek ( pStack ) ;
+    if ( pResult ) {
+      if ( strcmp ( gHyp_data_getLabel ( pResult ), "_sub_" ) == 0 ) {
+        dataType2 = gHyp_data_getDataType ( gHyp_data_getFirst ( pResult ) ) ;
+        hasPrevSibling = 1 ;
+      }
+    }
+
+
+    /*
+    if ( dataType != TYPE_LIST && ( exprTokenType == TOKEN_BLIST || dataType2 == TYPE_ATTR ) ) 
+      dataType = TYPE_ATTR ;
+
+    else if ( dataType == TYPE_STRING && 
+              exprTokenType == TOKEN_EVAL && 
+              (!hasPrevSibling || dataType2 == TYPE_ATTR ) )
+      dataType = TYPE_ATTR ;
+
+    else
+      dataType = TYPE_LIST ;
+    */
+
+    if ( strcmp ( gHyp_data_getLabel ( pRdata ), "_json_" ) == 0 ) 
+      pResult = pRdata ;
+    else 
+      pResult = gHyp_type_assign ( pAI,
+				 pFrame,
+				 pLvalue,
+				 pRdata,
+				 dataType,
+				 isSubVariable,
+				 TRUE ) ;
+
+    /* Don't forget about pRdata if we are done with it */
+    if ( pResult != pRdata ) gHyp_data_delete ( pRdata ) ;
+
+    /* Push the result */
+    gHyp_stack_push ( pStack, pResult ) ;
+    
+  }
 }
 
 
@@ -1547,7 +1658,7 @@ void gHyp_operator_dot ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       *pArgs;
  
     char
-      newVariable[MAX_OUTPUT_LENGTH+1],
+      newVariable[MAX_INPUT_LENGTH+1],
       variable[VALUE_SIZE+1],
       subVariable[VALUE_SIZE+1],
       *pVariableStr,
@@ -1649,7 +1760,7 @@ void gHyp_operator_dot ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 				 pVariableStr, pSubVariableStr ) ;
 	  
 	  if ( !pParent ) 
-	    pParent = gHyp_frame_createVariable ( pFrame, pVariableStr ) ;
+	    pParent = gHyp_frame_createVariable ( pAI, pFrame, pVariableStr ) ;
 	  pChild = gHyp_data_new ( pSubVariableStr ) ;
 	  /*gHyp_util_debug("%p(%s)new-childof(%s)",pChild,pSubVariableStr,
 			    pVariableStr ) ;

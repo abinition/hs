@@ -10,6 +10,9 @@
  * Modifications:
  *
  *   $Log: stack.c,v $
+ *   Revision 1.9  2011-01-08 21:41:00  bergsma
+ *   Better debug statement - prints stack #
+ *
  *   Revision 1.8  2009-10-22 15:57:54  bergsma
  *   Solve problem with ENQ contention during SECS 1 Reply.
  *   This was for the MAP-4 at Siliconix
@@ -122,8 +125,9 @@ void gHyp_stack_push ( sStack * pStack, sData *pData )
     
     if ( guDebugFlags & DEBUG_STACK )
       gHyp_util_logDebug (	FRAME_DEPTH_NULL, DEBUG_STACK,
-				"push : %s", 
-      				gHyp_data_print ( pData ) ) ;
+				"push : %s [%d]", 
+      				gHyp_data_print ( pData ),
+                                pStack->depth ) ;
   }
   else {
     gHyp_data_delete ( pData ) ;
@@ -158,8 +162,9 @@ sData * gHyp_stack_pop ( sStack * pStack )
     if ( guDebugFlags & DEBUG_STACK )
       gHyp_util_logDebug (
       	FRAME_DEPTH_NULL, DEBUG_STACK,
-	"pop  : %s", 
-      	gHyp_data_print ( pStack->data[pStack->depth] ) ) ;
+	"pop  : %s [%d]", 
+      	gHyp_data_print ( pStack->data[pStack->depth] ),
+        pStack->depth ) ;
   
     return pStack->data[pStack->depth] ;
   }

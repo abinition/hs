@@ -3,6 +3,16 @@
  * Modifications:
  *
  * $Log: instance.h,v $
+ * Revision 1.19  2012-01-29 21:18:20  bergsma
+ * Build 3.9.4 - 120202
+ *
+ * Revision 1.18  2012-01-08 01:25:25  bergsma
+ * More work on ENQ contention.
+ *
+ * Revision 1.17  2011-09-20 05:35:54  bergsma
+ * Fixed problem with replyMessage occurring to early, also problem
+ * with ENQ contention and resending when the message queue was empty.
+ *
  * Revision 1.16  2009-12-08 20:48:20  bergsma
  * Add pushLocalSTATUS method
  *
@@ -119,6 +129,7 @@ extern void gHyp_instance_setTargetPath ( sInstance *pAI, char* targetPath ) ;
 extern sAImsg* 	gHyp_instance_currentMsg ( sInstance * ) ;
 extern sAImsg*	gHyp_instance_outgoingMsg ( sInstance * ) ;
 extern sAImsg*	gHyp_instance_incomingMsg ( sInstance * ) ;
+extern sLOGICAL gHyp_instance_atCorrectDepth ( sInstance *pAI, char *pMethodStr, int depth );
 extern sLOGICAL	gHyp_instance_isEND ( sInstance * ) ;
 extern void    	gHyp_instance_setAlarm ( sInstance *, int ) ;
 extern void    	gHyp_instance_setAlarmHandler ( sInstance *, int, sHyp* ) ;

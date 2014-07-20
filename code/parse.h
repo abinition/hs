@@ -3,6 +3,10 @@
  * Modifications:
  *
  * $Log: parse.h,v $
+ * Revision 1.7  2011-01-08 21:43:47  bergsma
+ * JSON handling.
+ * Operator dot function handling.
+ *
  * Revision 1.6  2010-01-08 02:44:57  bergsma
  * Added ssl_md5(), enhanced ssl_digest.
  * Fixed urldecode, missing ":"
@@ -33,6 +37,7 @@ extern sBYTE		gHyp_parse_inputPrecedence ( sParse *pParse ) ;
 extern int		gHyp_parse_inputIndex ( sParse *pParse ) ;
 extern char*		gHyp_parse_inputToken ( sParse *pParse ) ;
 extern sBYTE		gHyp_parse_inputTokenType ( sParse *pParse ) ;
+extern sBYTE		gHyp_parse_exprTokenType ( sParse *pParse ) ;
 extern sCode*		gHyp_parse_methodCode ( sParse * ) ;
 extern sLOGICAL		gHyp_parse_isSubVariable ( sParse* ) ; 
 extern sLOGICAL		gHyp_parse_isVariableDef ( sParse* ) ; 
@@ -46,7 +51,7 @@ extern sLOGICAL         gHyp_parse_isMethodDef ( sParse *pParse ) ;
 extern sLOGICAL		gHyp_parse_isMethodDeferred ( sParse *pParse ) ;
 extern sLOGICAL		gHyp_parse_isMethodDeprecated ( sParse *pParse ) ;
 extern sLOGICAL		gHyp_parse_isIndexCall ( sParse * ) ;
-extern sLOGICAL		gHyp_parse_isExprBegin ( sParse * ) ;
+extern sLOGICAL		gHyp_parse_isConditional ( sParse *, sHyp* ) ;
 extern void gHyp_parse_completeExpression ( sParse *pParse,
 				     sInstance *pAI,
 				     sHyp *pHyp,

@@ -60,7 +60,7 @@ WIN32 (VS 2008) Hyperscript Build Procedures
 
 			1. zlib
 
-			tar -xvf zlib-1.2.3.tar.tar
+			tar -xvf zlib-1.2.3.tar
 			cd zlib-1.2.3/
 			./configure
 			make

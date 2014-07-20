@@ -11,8 +11,12 @@
  * Modifications:
  *
  *	$Log: type.c,v $
- *	Revision 1.26  2010-06-26 06:35:09  bergsma
- *	Better recognition of identifiers.  Pre-JASON support
+ *	Revision 1.28  2011-02-24 05:12:27  bergsma
+ *	Adjusting values for MAX_OUTPUT_LENGTH and MAX_INPUT_LENGTH
+ *	
+ *	Revision 1.27  2011-01-08 21:33:33  bergsma
+ *	Support for JSON assignment.
+ *	Increased buffer size from VALUE_SIZE to MAX_INPUT_LENGTH
  *	
  *	Revision 1.25  2010-04-23 05:16:52  bergsma
  *	Backed out fix whereby global subvariable types could not be changed while in local mode.
@@ -177,7 +181,7 @@ sData *gHyp_type_assign ( sInstance *pAI,
     variable[VALUE_SIZE+1],
     *pStream,
     *pStreamEnd,
-    buffer[MAX_INPUT_LENGTH+1],
+    buffer[MAX_BUFFER_SIZE+1],
     value[MAX_INPUT_LENGTH+1] ;
 
   sData
@@ -240,7 +244,8 @@ sData *gHyp_type_assign ( sInstance *pAI,
 
   /* If there is source data, is it a vector source ? */
   if ( pSrcData ) {
-    isVectorSrc = ( gHyp_data_getTokenType ( pSrcData ) == TOKEN_VARIABLE &&
+    isVectorSrc = ( (gHyp_data_getTokenType ( pSrcData ) == TOKEN_VARIABLE || 
+                     gHyp_data_getTokenType ( pSrcData ) == TOKEN_CONSTANT ) &&
 		    gHyp_data_getDataType ( pSrcData ) > TYPE_STRING ) ;
     sss = gHyp_data_getSubScript ( pSrcData ) ;
     isSrcDynamic = gHyp_data_isDynamic ( pSrcData ) ;
@@ -594,18 +599,9 @@ sData *gHyp_type_assign ( sInstance *pAI,
       if ( tokenType == TOKEN_UNIDENTIFIED ||
 	   tokenType == TOKEN_VARIABLE ||
 	   ( tokenType == TOKEN_REFERENCE &&
-             ( gHyp_data_getReference(pDstData) ||
-	       gHyp_util_isIdentifier ( variable ) 
-             ) 
-
-             /*
-             ( (pValue = gHyp_data_getValue ( pDstData, ss, TRUE )) != NULL && 
-                gHyp_data_getReference ( pDstData ) != pValue &&
-                gHyp_data_tokenType ( pValue ) != TOKEN_VARIABLE 
-             )
-             */
-           ) 
-          ) {
+	     gHyp_util_isIdentifier ( variable ) ) ||
+           ( tokenType == TOKEN_LITERAL &&  /* JSON Variable */
+             gHyp_util_isIdentifier ( variable ) )) {
 	
 	/* Result will be a variable contained in a temp variable */
 	pResult = gHyp_data_new ( "_sub_" ) ;
@@ -630,8 +626,7 @@ sData *gHyp_type_assign ( sInstance *pAI,
 	/* Variable definition in local scope.
 	 * See if the variable already exists in local scope 
 	 */
-	pVariable = gHyp_frame_findLocalVariable ( pFrame, 
-						   variable ) ;
+	pVariable = gHyp_frame_findLocalVariable ( pFrame, variable ) ;
 
         /*
         * When commented out, you cannot change the 'type' of a global sub-variable
@@ -655,25 +650,12 @@ sData *gHyp_type_assign ( sInstance *pAI,
       if ( !pVariable && 
 	   ( tokenType == TOKEN_UNIDENTIFIED ||
 	     ( tokenType == TOKEN_REFERENCE &&
-               ( gHyp_data_getReference(pDstData) ||
-	         gHyp_util_isIdentifier ( variable ) 
-               ) 
+	       gHyp_util_isIdentifier ( variable ) ) ||
+             ( tokenType == TOKEN_LITERAL &&   /* JSON Variable */
+               gHyp_util_isIdentifier ( variable ) )
+              )) {
 
-               /*
-               ( (pValue = gHyp_data_getValue ( pDstData, ss, TRUE )) != NULL && 
-                  gHyp_data_getReference ( pDstData ) != pValue &&
-                  gHyp_data_tokenType ( pValue ) != TOKEN_VARIABLE 
-               )
-               */
-             ) 
-           )
-         ) {
-
-
-
-             
-
-	pVariable = gHyp_frame_createVariable ( pFrame, variable ) ;	
+	pVariable = gHyp_frame_createVariable ( pAI, pFrame, variable ) ;	
       }
       /* Lastly, try to evaluate pLvalue as an expression.
        * This will be a case like a.b.c = {...}

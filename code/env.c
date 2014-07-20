@@ -10,6 +10,16 @@
 /* Modifications:
  *
  * $Log: env.c,v $
+ * Revision 1.46  2011-03-14 01:07:54  bergsma
+ * Fix node_getnodebyattr
+ *
+ * Revision 1.45  2011-02-24 23:55:34  bergsma
+ * Change some PROTOCOL debugs to DIAGNOSTIC debugs.
+ * Get HSDOM working.
+ *
+ * Revision 1.44  2011-01-08 21:23:41  bergsma
+ * Extra pAI arg in frame *Variable* functions
+ *
  * Revision 1.43  2010-01-28 04:25:48  bergsma
  * Bug with data_detach, detach first, prevent accidental erasure of value
  *
@@ -187,7 +197,7 @@ gHyp_env_node_name
 
 /**********************	INTERNAL GLOBAL VARIABLES ****************************/
 
-static char gzStream[MAX_INPUT_LENGTH*4+1] ;
+static char gzStream[(MAX_INPUT_LENGTH*4)+1] ;
 
 /********************** INTERNAL OBJECT STRUCTURES ************************/
 
@@ -711,6 +721,9 @@ void lHyp_env_instantiate ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE, sLOG
        * by pAInew.
        *
        */
+      /* Nope * gHyp_instance_swapDevices ( pAInew, pAI ) ; */
+      gHyp_instance_setgpAImain ( pAI ) ;
+      gHyp_instance_setgpAI ( pAInew ) ;
 
       gHyp_frame_setHypIndex ( pFrame, gHyp_frame_getHypIndex(pFrame) - 1 ) ;
       gHyp_parse_restoreExprRank ( pParse ) ;
@@ -794,7 +807,7 @@ void gHyp_env_undef ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
     if ( (pVariable = gHyp_data_getVariable ( pData ) ) ) 
       
-      gHyp_frame_deleteVariable ( pFrame, gHyp_data_getLabel ( pVariable ) ) ;
+      gHyp_frame_deleteVariable ( pAI, pFrame, gHyp_data_getLabel ( pVariable ) ) ;
     
     else
       gHyp_instance_warning ( pAI, STATUS_UNDEFINED, "Cannot undef '%s'",
@@ -1066,7 +1079,7 @@ void gHyp_env_global ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 	pRootVariable = gHyp_frame_findRootVariable ( pFrame, pVarStr ) ;
 	if ( pVariable != pRootVariable ) {
 	  /* Variable does not exist in global scope  */
-	  if ( pRootVariable ) gHyp_frame_deleteRootVariable ( pFrame, pVarStr ) ;	  
+	  if ( pRootVariable ) gHyp_frame_deleteRootVariable ( pAI, pFrame, pVarStr ) ;	  
 	  gHyp_data_detach ( pVariable ) ;
 	  gHyp_data_append( gHyp_frame_getRootMethodData(pFrame),pVariable);
 	}
@@ -2301,7 +2314,7 @@ sData* gHyp_env_mergeData ( sData *pDst,
 			    "Failed to load HyperScript segment (merge) 'merge ( '" ) ;
 	}
 	contentLength = 0 ;
-        pValue = gHyp_fileio_describeData ( pAI, pDstValue, ' ', FALSE, &contentLength ) ;
+        pValue = gHyp_fileio_describeData ( pAI, pDstValue, ' ', FALSE, FALSE, &contentLength ) ;
         pToken = NULL ;
         ss = -1 ;
         context = -1 ;
@@ -5009,6 +5022,7 @@ void gHyp_env_node_getnodebyattr ( sInstance *pAI, sCode *pCode, sLOGICAL isPARS
       valueBuffer[VALUE_SIZE+1] ;
 
     int
+      n,
       argCount = gHyp_parse_argCount ( pParse ),
       i ;
           
@@ -5024,14 +5038,22 @@ void gHyp_env_node_getnodebyattr ( sInstance *pAI, sCode *pCode, sLOGICAL isPARS
 
     /* error if argument are of wrong type */
     if( gHyp_data_getDataType( pData ) != TYPE_LIST ||
-        gHyp_data_getDataType( pAttrVal ) != TYPE_STRING ||
+        gHyp_data_getDataType( pAttrVar ) != TYPE_STRING ||
         gHyp_data_getDataType( pAttrVal ) != TYPE_STRING ) 
       gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-	  "Invalid arguments. Usage: node_getnodebyattr ( node, attr_name, attr_value )" ) ;
+	  "Invalid argument types. Usage: node_getnodebyattr ( node, attr_name, attr_value )" ) ;
+
+    /* Get the value of the third argument */
+    n = gHyp_data_getStr (  pAttrVal, 
+			    buffer, 
+			    VALUE_SIZE,
+			    gHyp_data_getSubScript(pAttrVal),
+			    TRUE ) ;
+    buffer[n] = '\0' ;
 
     if( (pChild = gHyp_data_getNodeByAttr( pData,
                                            gHyp_data_getLabel(pAttrVar),
-                                           gHyp_data_getLabel(pAttrVal),
+                                           buffer,
                                            valueBuffer )) ) {                               	     
       /*generate the ancestory chain back up to pData*/  
       tempBuffer[0] = '\0' ;				      

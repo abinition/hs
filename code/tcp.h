@@ -2,6 +2,9 @@
  * Modifications:
  *
  * $Log: tcp.h,v $
+ * Revision 1.9  2011-01-08 21:34:40  bergsma
+ * TRUE64 is really TRU64
+ *
  * Revision 1.8  2007-02-17 01:53:13  bergsma
  * Socket handoff does not work with TRUE64
  *
@@ -40,7 +43,7 @@ extern sAlias*		gHyp_tcp_createAlias ( char *pHost, char *pAddr ) ;
 extern void		gHyp_tcp_removeAliases ( char* ) ;
 extern void		gHyp_tcp_gethostname ( char *, int  ) ;
 extern sLOGICAL		gHyp_tcp_setup ( SOCKET s ) ;
-#if defined (AS_UNIX) 
+#if defined (AS_UNIX)
 extern sLOGICAL		gHyp_tcp_sendmsg( char *pClient, char *pService, SOCKET sendfd, int port ) ;
 extern SOCKET		gHyp_tcp_recvmsg ( int s, int *pport ) ;
 extern SOCKET		gHyp_tcp_makeUNIX ( char *pService ) ;

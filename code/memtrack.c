@@ -288,7 +288,7 @@ int MemPrintAllocs(const PAYLOAD *p1, void *p2)
    * to know where, so this helps us get the name of the 
    * sData object
    */
-  if ( p1->Size == 64 && 
+  if ( (p1->Size == 60) && 
       (	strstr ( p1->FileName, "data.c" ) || strstr ( p1->FileName, "DATA.C" ) ) ) {
     gHyp_util_debug("Did not delete %s of %s",
 	gHyp_data_getLabel( (sData*)p1->Ptr ),

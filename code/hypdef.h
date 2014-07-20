@@ -10,13 +10,91 @@
 #ifndef __HYPDEF_H_
 #define __HYPDEF_H_
 
-#define 	VERSION_HYPERSCRIPT	    "3.9.1g"
-#define 	VERSION_BUILD		    "100701"
-#define 	VERSION_HYPERSCRIPT_BUILD   "3.9.1g-100701"
+#define 	VERSION_HYPERSCRIPT	    "3.9.4"
+#define 	VERSION_BUILD		    "120212"
+#define 	VERSION_HYPERSCRIPT_BUILD   "3.9.4-120212"
 
 /* Modification history:
  *
  * $Log: hypdef.h,v $
+ * Revision 1.136  2012-02-14 19:41:26  bergsma
+ * Completed fix of ENQ contention
+ *
+ * Revision 1.135  2012-02-09 22:52:49  bergsma
+ * Release candidate HS3.9.4-120209 - fix replyMessage[outgoingDepth]
+ *
+ * Revision 1.134  2012-01-29 21:18:20  bergsma
+ * Build 3.9.4 - 120202
+ *
+ * Revision 1.133  2012-01-19 03:31:27  bergsma
+ * Build 120118
+ *
+ * Revision 1.132  2012-01-16 16:56:28  bergsma
+ * More fixes for enq contention in gHyp_instance_replyMessage
+ *
+ * Revision 1.131  2012-01-08 01:27:17  bergsma
+ * Version 120107
+ *
+ * Revision 1.130  2011-12-24 03:53:19  bergsma
+ * New revision
+ *
+ * Revision 1.129  2011-09-29 08:44:46  bergsma
+ * Fix issue with replyMessage and ENQ contention
+ *
+ * Revision 1.128  2011-09-20 05:36:12  bergsma
+ * Version update.
+ *
+ * Revision 1.127  2011-09-02 21:12:41  bergsma
+ * V 3.9.5
+ *
+ * Revision 1.126  2011-07-03 16:35:19  bergsma
+ * Added load_csv and csv
+ *
+ * Revision 1.125  2011-06-03 23:16:53  bergsma
+ * New Build
+ *
+ * Revision 1.124  2011-05-30 17:06:24  bergsma
+ * Build 5/30/2011
+ *
+ * Revision 1.123  2011-05-19 22:11:18  bergsma
+ * 110505
+ *
+ * Revision 1.122  2011-04-10 17:17:07  bergsma
+ * Build HS 3.9.4 07-April-2011
+ *
+ * Revision 1.121  2011-03-06 21:44:07  bergsma
+ * Change MAX_RESEND from 1000 to 3.   Why was it sooo high?
+ *
+ * Revision 1.120  2011-02-24 23:55:34  bergsma
+ * Change some PROTOCOL debugs to DIAGNOSTIC debugs.
+ * Get HSDOM working.
+ *
+ * Revision 1.119  2011-02-24 05:12:27  bergsma
+ * Adjusting values for MAX_OUTPUT_LENGTH and MAX_INPUT_LENGTH
+ *
+ * Revision 1.118  2011-02-24 03:13:32  bergsma
+ * Adjusting values for MAX_OUTPUT_LENGTH and MAX_INPUT_LENGTH
+ *
+ * Revision 1.117  2011-02-20 00:59:02  bergsma
+ * no message
+ *
+ * Revision 1.116  2011-02-19 23:05:36  bergsma
+ * New standards:
+ * MAX_OUTPUT_LENGTH	2000  (allow for formatting characters)
+ * MAX_INPUT_LENGTH	2048  (external - vi cannot display more than this)
+ * MAX_LOG_LENGTH	1024   (log files)
+ * MAX_TERMINAL_LENGTH	MAX_LOG_LENGTH (terminal screen)
+ * MAX_BUFFER_FIFO         5120  (fifos)
+ * MAX_MESSAGE_SIZE        5120  (tcp)
+ * MAX_BUFFER_LENGTH       MAX_MESSAGE_LENGTH *2  (tcp buffering)
+ * PORT_READ,_SIZE             4096  (ideal tcp block read/write size)
+ * PORT_WRITE_SIZE             4096
+ *
+ * Revision 1.115  2011-01-08 21:31:59  bergsma
+ * Placeholders for +=, -=, *=, /=, %=.
+ * Support of expression function calls.  Ie  object.count().
+ * Increased HSMS message size to 64K.
+ *
  * Revision 1.114  2010-07-05 16:01:01  bergsma
  * Build rev
  *
@@ -423,14 +501,14 @@
 #define		MAX_TIMEOUT_SECONDS	MAX_ALARM_SECONDS
 #define		MAX_SLEEP_SECONDS	MAX_ALARM_SECONDS
 #define		MAX_CONNECT_TRIES	3
-#define		MAX_RESEND		1000	
+#define		MAX_RESEND		3	
 #define		MAX_REWAIT		1000
 #define		RETRY_INTERVAL		2
 #define		FRAME_DEPTH_NULL	MAX_FRAME_DEPTH+1
 #define		MAX_SIGNALS		8
 #define		MAX_PROMIS_RESULT_SIZE	256
-#define		MAX_REPLY_DEPTH		64
-#define		MAX_QUEUE_DEPTH		64 
+#define		MAX_REPLY_DEPTH		32
+#define		MAX_QUEUE_DEPTH		32 
 #define		MAX_HASH_TABLE_SIZE	257
 #define		HEARTBEAT_INTERVAL	60 * 10   /* 10 minutes */
 #define		IDLE_INTERVAL		180	  /* 3 min */
@@ -526,15 +604,17 @@
 #define		MAX_INSTANCE_MESSAGES 	8
 
 /* Other buffer sizes for i/o devices */
-#define		MAX_OUTPUT_LENGTH	MAX_MESSAGE_SIZE
-#define		MAX_INPUT_LENGTH	MAX_OUTPUT_LENGTH 
-#define		MAX_TRACE_LENGTH	132 	/* Max trace length */
-#define		MAX_LOG_LENGTH		256	/* Max log file text length */
+#define		MAX_INPUT_LENGTH	4096  /* Maximum raw input data */
+#define		MAX_OUTPUT_LENGTH	512   /* Easy short lines to read */
+#define		MAX_LOG_LENGTH		1024  /* Must be > MAX_OUTPUT_LENGTH */
+#define		MAX_STREAM_LENGTH	5120  /* Through pipes, like for jeval */
+#define		MAX_COMMAND_LENGTH	2048  /* Editor's like vi don't want > 2048 */
+#define		MAX_TRACE_LENGTH	132   /* For program listings */
 
 #ifdef AS_PROMIS
 #define		MAX_TERMINAL_LENGTH	256
 #else
-#define		MAX_TERMINAL_LENGTH	MAX_OUTPUT_LENGTH
+#define		MAX_TERMINAL_LENGTH	MAX_LOG_LENGTH
 #endif
 
 #ifdef AS_SSL
@@ -665,6 +745,11 @@
 #define		TOKEN_EVAL		47	/* :	*/
 #define		TOKEN_DOT		48      /* .    */
 #define		TOKEN_POINTER		49      /* ->   */
+#define		TOKEN_ASSIGN_ADD	50	/* +=	*/
+#define		TOKEN_ASSIGN_SUB	51	/* -=	*/
+#define		TOKEN_ASSIGN_MUL	52	/* *=	*/
+#define		TOKEN_ASSIGN_DIV	53	/* /=	*/
+#define		TOKEN_ASSIGN_MOD	54	/* %=	*/
                                          
 /* Binary and unary math operators that are not tokens 
  *
@@ -699,7 +784,7 @@
  * evaluated from left to right.  For operators of equal precendence that 
  * need to be evaluated in right to left order, there needs to be both an 
  * input precendence and an expression precedence, where the input precedence
- * is set higher then the expression precedence so that the operator is
+ * is set higher than the expression precedence so that the operator is
  * not removed from the end of the expression.
  *
  * The following tokens (operators) require right-to-left evaluation:
@@ -787,6 +872,9 @@
 #define		PARSE_SUBVARIABLE	256
 #define		PARSE_LIST_CALL		512
 #define         PARSE_OBJECT_CALL	1024
+
+#define         EXPR_FUNCTION_CALL      1
+
 
 /* State transition parameters for Hyperscript grammer */
 #define		G_PROGRAM_STMT		0
@@ -1042,7 +1130,7 @@
 #define		SECS_OUTGOING		1
 #define		SECS_MINIMUM_HSMS_PORT	4000
  
-#define		MAX_HSMS_MESSAGE_SIZE	40000 /*32768*/
+#define		MAX_HSMS_MESSAGE_SIZE	65536 /*40000*/ /*32768*/
 #define		MAX_HSMS_BUFFER_SIZE	MAX_BUFFER_SIZE
 #define		NULL_DEVICEID		0xffff
 
@@ -1230,7 +1318,7 @@
 #define		EXPECT_VALUE		6
 
 /* SQL bounds */
-#define         MAX_SQL_ITEMS           128
+#define         MAX_SQL_ITEMS           256
 #define		MAX_SQL_STMT_LENGTH	MAX_INPUT_LENGTH*4
 #define		MAX_SQL_USERNAME_LENGTH	64
 #define		MAX_SQL_PASSWORD_LENGTH	128

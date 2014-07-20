@@ -2,7 +2,7 @@ Release Notes HyperScript V3.1.5
 
 Modifications:
 	$Log: releaseNotes_315.txt,v $
-	Revision 1.2  2003/07/27 01:11:14  bergsma
+	Revision 1.2  2003-07-27 01:11:14  bergsma
 	Typo, these are V3.1.5 notes
 	
 	Revision 1.1  2003/06/05 22:16:22  bergsma

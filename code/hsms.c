@@ -11,6 +11,9 @@
  * Modifications:
  *
  * $Log: hsms.c,v $
+ * Revision 1.21  2011-02-20 00:58:44  bergsma
+ * Use MAX_INPUT instead of MAX_OUTPUT
+ *
  * Revision 1.20  2009-11-17 16:07:31  bergsma
  * New call arguments to gHyp_instance_read
  *
@@ -200,7 +203,7 @@ void gHyp_hsms_delete ( sHsms *pHsms )
 
 void gHyp_hsms_close ( sHsms *pHsms ) 
 {
-  gHyp_sock_close ( pHsms->socket, SOCKET_TCP, pHsms->node, "" ) ;
+  gHyp_sock_close ( pHsms->socket, SOCKET_TCP, pHsms->node, "hsms" ) ;
 #ifdef AS_WINDOWS
   CloseHandle ( pHsms->overlapped.hEvent ) ;
 #endif

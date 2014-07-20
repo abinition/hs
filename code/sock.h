@@ -3,6 +3,9 @@
  * Modifications:
  *
  * $Log: sock.h,v $
+ * Revision 1.22  2011-01-08 21:40:09  bergsma
+ * Added sock_hmac256
+ *
  * Revision 1.21  2010-01-08 02:44:57  bergsma
  * Added ssl_md5(), enhanced ssl_digest.
  * Fixed urldecode, missing ":"
@@ -84,6 +87,7 @@ extern sLOGICAL	gHyp_sock_mkdir ( char* ) ;
 #ifdef AS_SSL
 extern void *gHyp_sock_ctxInit(char*,char*,char*);
 extern int gHyp_sock_password_cb(char *buf, int num, int rwflag, void *userdata ) ;
+extern void gHyp_sock_hmac256 ( char *text, char *text2, char *digest ) ;
 extern void gHyp_sock_digest ( char *text, char *text2, char *digest, char *type ) ;
 extern void gHyp_sock_md5 ( char *text, int len, char *digest ) ;
 extern sLOGICAL gHyp_sock_ctxCiphers ( void * ctx, char *ciphers ) ;

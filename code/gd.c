@@ -14,6 +14,9 @@
  * Modified:
  *
  * $Log: gd.c,v $
+ * Revision 1.18  2011-09-02 21:11:56  bergsma
+ * Tru64 has no support for jpeg
+ *
  * Revision 1.17  2010-06-26 06:33:48  bergsma
  * Init
  *
@@ -1319,7 +1322,7 @@ void gHyp_gd_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 	      ) ;
 	    boolean_result = TRUE ;
 	  }
-
+#ifndef AS_TRU64
 	  else if ( strcmp ( functionStr, "gdImageJpeg" ) == 0 ) {
 	
 	    gdImageJpeg ( 
@@ -1347,7 +1350,7 @@ void gHyp_gd_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
 	    list_result = TRUE ;
 	  }
-
+#endif
 	  else if ( strcmp ( functionStr, "gdImageLine" ) == 0 ) {
       
 	    gdImageLine( 
@@ -1873,8 +1876,10 @@ void gHyp_gd_open ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 #ifdef AS_GD
       if ( strstr ( value, "png" ) || strstr ( value, "PNG" ) )
         im = gdImageCreateFromPng( fp ) ;
+#ifndef AS_TRU64
       else if ( strstr ( value, "jpg" ) || strstr ( value, "JPG" ) )
         im = gdImageCreateFromJpeg( fp ) ;
+#endif
 #else
       im = NULL ;
 #endif

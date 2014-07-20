@@ -1,0 +1,324 @@
+HS is short for HyperScript.  
+
+If you are building this on UNIX
+	
+	./configure
+	make
+	sudo make install
+
+
+For other platforms, read below.
+
+
+
+A Brief History of HS
+---------------------
+HS was developed as a programming lanugage for factory automation, specifically for semiconductor equipment communications using the SECS protocol.  The corporation that licenses HS to semiconductor manufacturers is Abinition.
+
+For a time there was another scripting language with the same name as "hyperscript", it was produced by Symmetrix, but it has no relation to Abinition's HyperScript (HS) and its usage today is unknown.  
+The web sites HyperScript.com, HyperScript.org, and HyperScript.net belong to Abinition.  
+
+There is no Wiki yet for this HS.  (ToDo: Create Wiki for HS).
+
+The reasons to use HS are for its features, naturally.  HS evolved its features based on the simple axiom: when it was deemed easier to add a new feature to HS rather than to use an alternative workaround, then HS grew new features. The idea of "easier" has a lot to do with the mission statement for HS, see 4) below.
+
+The important "features" or characteristics of HS are:
+
+	1. For use as a fast prototyping interpretive programming language, a verstile "scripting" language.  HS has a pleasant grammer that is closely tied to native C.  It executes in a classic recursive desent manner, however it employs a "very late", JIT binding technique.  Conseqeuently, HS programs often employ a lot of dereferencing code.  The perception between what is code and what is data in a HS program is often blurred.
+
+	2. HS stores data structures in a consise internal format which happens to map very consisely with the external "readable" format.  A HS data structure is also fully exchangeable with two well known data formats, XML and JSON.
+ 
+
+	3. HS is useful for the following types of programs:
+	a) HTTP and HTTPS transactions, both client or server side processing.
+	b) Client SQL transactions (ORACLE, MySQL, SQLSERVER, POSTGRES)
+	c) SECS/GEM transactions (equipment or host).
+	d) Interprocess and intraprocess communications. 
+
+	4. The HS "mission statement" is one that enforces the following rules: 
+	a) Keep HS strictly ansi C
+	b) Maintain portability
+	c) Maintain a small run-time footprint
+	d) Do not use multi-threading 
+	e) Compiles under most C compilers.
+	f) No 3rd party vendors.
+	g) Use only open source 'C' api interfaces.
+
+
+
+UNIX Instructions
+-----------------
+
+	Use the standard
+
+	./configure
+	make
+	sudo make install
+
+	The standard build includes the following options
+
+		AS_SSL
+			Currently OpenSSL 0.9.8
+
+		AS_SQL with either AS_MYSQL, AS_SQLSERVER, AS_ORACLE, or AS_PGSQL
+
+		AS_GD
+			With PNG, JPEG, and FreeType support.
+
+	----
+	Todo  
+	----
+	- need to make AS_SSL, AS_SQL, and AS_GD configurable options  
+	- need to integrate HAVE_<fn> directives into code where functions are used
+	- need to clean up potentially dangerous functions that can cause stack overflow
+
+
+	There are more detailed explainations of how to install the options further below.
+
+
+Compiling for WIN32 
+
+
+	HS is compiled and linked using Visual Studio 2008 (*)
+ 
+	(*) Note: This requires most Windows targets to have the 
+	          vcredist_x86 or vcredist_x64 patches installed.
+
+	There are several project targets.  A standalone image plus various plugin images.
+
+1.	HS Standalone, HS.EXE
+
+	HS was often released with various degrees of support for SSL, SQL, and GD.
+	For example, an HS that is simply used to route messages (router.hyp), needs no 
+	SSL or SQL or GD, and thus becomes a much more compact image.
+
+	In the past, the release strategy was to rotate through the following combinations, 
+	building each with a combination of SQL server and SSL support.  
+
+	Support for SQL, SSL, and GD
+	1. AS_SQL (AS_SQLSERVER | AS_MYSQL | AS_ORACLE | AS_POSTGRES) + AS_SSL + AS_GD 
+
+	Support for SSL only
+	2. AS_SSL
+
+	Bare-bones image.
+	4. (none)  -  makes HS.EXE which is named to ROUTER.EXE
+	- ROUTER.EXE is used in Windows for the (Boot HyperScript) Service (booths.exe)
+
+
+
+2.	HS-DOM, ActiveX control HSX.DLL deployed using webpickle.cab
+
+	a) From VS, select “Build hsx”
+		AS_ATL and AS_SSL are the directives used
+
+	b) You get HSX.DLL in the Release directory
+
+	c) cd to \abinition\hs\hsx and execute MAKECABSIGNED.BAT
+		password is Abinition
+
+	e) You get WebPickle.cab in \Abinition\hs\deploy
+		CVS it
+
+
+
+3.	HS-DOM, JAVA control HS.DLL, deployed using abinition.jar
+
+	a) From VS, select "Build hsdll"
+		AS_DLL, AS_JNI, AS_SSL are the directives used
+
+	b) You get HS.DLL and HSDLL.LIB in the Release directory
+		CVS them
+
+	c) cd to \abinition\hs\ and execute the ANT sequences.
+		(make sure JAVA is 1.6 or recent)
+
+		ant clean
+		ant init
+		ant genkey
+		
+		ant jar		<=== repeatable
+
+	d) You get Abinition.jar in \Abinition\hs\deploy
+
+	
+
+Appendix A: Details on Installing GD
+
+	a) Installing supporting packages
+		
+		For Windows, obtain the gd.lib, either generating from the gd.dll
+		file, or getting a download of gd.lib off of the internet.  Alternatively,
+		it is possible to build gd.lib from the gd sources, but that has not been
+		done on windows.
+
+		For Linux, first install all the required support packages so that the include
+		areas and libraries can be found:
+
+			1. zlib
+
+			tar -xvf zlib-1.2.3.tar
+			cd zlib-1.2.3/
+			./configure
+			make
+			su
+			make install
+
+			2. jpeglib
+
+			tar -xvzf jpegsrc.v6b.tar.gz
+			cd jpeg-6b/ 
+
+			./configure
+			make
+			su
+			make install
+
+			3. libpng
+
+			tar -xvzf libpng-1.2.35.tar.gz
+			cd libpng-1.2.35/
+			./configure
+			make
+			su
+			make install
+
+			4. FreeType
+
+			tar -xvf freetype-2.1.10.tar.tar
+			cd freetype-2.1.10
+			./configure
+			make
+			su
+			make install
+
+			5. OpenSSL
+
+			tar -xvf openssl_0.9.8c.orig.tar.gz
+			cd openssl-0.9.8c
+			./config
+			make
+			make test
+			su
+			make install
+
+
+	b) Preparing supporting packages so GD and HS detects the include
+	files and link libraries.
+
+	## INCLUDE AREAS
+	cd /usr/include
+	ln -sf /home/autoprod/packages/zlib-1.2.3 zlib
+	ln -sf /home/autoprod/packages/libpng-1.2.35 png
+	ln -sf /home/autoprod/packages/openssl-0.9.8c/include/openssl/ openssl
+	ln -sf /home/autoprod/packages/jpeg-6b/ jpeg
+	ln -sf /home/autoprod/packages/gd-2.0.35/ gd
+
+	## LIBRARIES
+	cd /usr/local/lib
+	cp -rp * /usr/lib
+
+	## SPECIAL CASE, MUST COPY JPEG LIBRARY
+	cd /home/autoprod/packages/jpeg-6b
+	cp libjpeg.a /usr/lib
+
+
+	c) Building GD
+
+
+	tar -xvf gd-2.0.35.tar.gz
+	cd gd-2.0.35
+	./configure
+
+		If the supporting packages were installed
+		correctly, then the configuration summary for
+		GD should appear as follows
+
+		** Configuration summary for gd 2.0.35:
+		   Support for PNG library:          yes
+		   Support for JPEG library:         yes
+		   Support for Freetype 2.x library: yes
+		   Support for Fontconfig library:   no
+		   Support for Xpm library:          no
+		   Support for pthreads:             yes
+
+	## Modify gd_jpeg.c to point to jpeg include files
+	## Change the following:
+		#include "jpeglib.h"
+		#include "jerror.h"
+	## To the following:
+		#include <jpeg/jpeglib.h>
+		#include <jpeg/jerror.h>
+
+	make
+	
+	su
+	make install
+
+	## Copy the library files to /usr/lib
+	cd /usr/local/lib
+	cp -rp libgd* /usr/lib
+
+
+	d) Building HS/GD with SQL support
+
+	In the makefile.  For MySQL
+
+		CC = gcc
+
+		CFLAGS = -g -O -Wall -I. -I/usr/include -I/var/www/securebob/gd/gd-2.0.35
+
+		CDEFS =   -DAS_SQL -DAS_MYSQL -DAS_SSL -DAS_GD
+
+		LIBS = -lc -L/usr/lib/mysql -lmysqlclient -lz -lm -lssl -lcrypto -lgd -ljpeg
+
+	In the makefile, for SQLSERVER aka FreeTDS
+
+		CC = gcc
+
+		CFLAGS = -g -O -Wall 
+			-I. 
+			-I/usr/include 
+			-I/home/autoprod/packages/freetds-0.82/include 
+			-I/var/www/securebob/gd/gd-2.0.35
+
+		CDEFS = -DAS_SSL  -DAS_SQL -DAS_SQLSERVER -DAS_GD
+
+		LIBS = -lc -lm -lssl -lcrypto -L/home/autoprod/freetds-0.82/src/dblib/.libs -lsybdb
+
+
+
+Appendix B: Details on Installing FreeTDS for SQLSERVER support on UNIX machines
+
+	a) BUILDING FreeTDS
+
+		TDSVER=7.0
+		TDSDUMPCONFIG=$AUTOLOG/tdsconfig.log
+		TDSDUMP=$AUTOLOG/tdsdump.log
+
+		./configure  --with-tdsver=7.0
+
+
+		# In freetds-0.82/src/tds/config.c, we must force the version
+		# to 7.0
+		# Edit the file and look for the following
+	
+	        	/* And finally apply anything from the login structure */
+        		tds_config_login(connection, login);
+
+	        	if (opened) {
+        	        	connection->major_version = 7 ;   /* ADDED THIS LINE */
+                		connection->minor_version = 0 ;	  /* ADDED THIS LINE */
+
+	                	tdsdump_log(TDS_DBG_INFO1, "Final connection parameters:\n");
+
+
+		make
+
+		su
+		make install
+
+		cd src/dblib/.libs
+		cp -rp libsy* /usr/lib
+		cd src/ctlib/.libs
+		cp -rp libct* /usr/lib

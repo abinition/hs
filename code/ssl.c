@@ -10,6 +10,9 @@
 /* Modifications:
  *
  * $Log: ssl.c,v $
+ * Revision 1.27  2011-01-08 21:35:11  bergsma
+ * Add HMAC_SHA256
+ *
  * Revision 1.26  2010-06-26 06:34:28  bergsma
  * Typo
  *
@@ -551,8 +554,8 @@ void gHyp_ssl_digest ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     char
       digest[VALUE_SIZE+1],
       digestType[VALUE_SIZE+1],
-      text1[INTERNAL_VALUE_SIZE+1],
-      text2[INTERNAL_VALUE_SIZE+1] ;
+      text1[VALUE_SIZE+1],
+      text2[VALUE_SIZE+1] ;
 
     /* Assume success */
     gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
@@ -573,12 +576,12 @@ void gHyp_ssl_digest ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     else
       strcpy ( digestType, "SHA1" ) ;
 
-    if ( argCount == 2 ) {
+    if ( argCount >= 2 ) {
       /* Get the secondary text */
       pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
       n = gHyp_data_getStr ( pData,
                              text2,
-                             INTERNAL_VALUE_SIZE,
+                             VALUE_SIZE,
                              gHyp_data_getSubScript ( pData ),
                              TRUE ) ;
     }
@@ -589,12 +592,15 @@ void gHyp_ssl_digest ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
     n = gHyp_data_getStr ( pData,
                            text1,
-                           INTERNAL_VALUE_SIZE,
+                           VALUE_SIZE,
                            gHyp_data_getSubScript ( pData ),
                            TRUE ) ;
 
-    /* Get the SHA1 (or other) digest */
-    gHyp_sock_digest ( text1, text2, digest, digestType ) ;
+    if ( strcmp ( digestType, "SHA256" ) == 0 )
+      gHyp_sock_hmac256 ( text1, text2, digest ) ;
+    else
+      /* Get the SHA1 (or other) digest */
+      gHyp_sock_digest ( text1, text2, digest, digestType ) ;
 
     pResult = gHyp_data_new ( NULL ) ;
     gHyp_data_setStr ( pResult, digest ) ;
@@ -1622,6 +1628,9 @@ sData *gHyp_ssl_getData ( sData *pData, char *a, char *b, char *c )
   return pChild ;
 
 }
+
+
+
 
 /**********************
 

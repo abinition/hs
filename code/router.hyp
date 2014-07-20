@@ -1,6 +1,9 @@
 /* ROUTER.HYP
  *
  * $Log: router.hyp,v $
+ * Revision 1.6  2011-02-20 00:56:30  bergsma
+ * DST changes
+ *
  * Revision 1.5  2009-10-30 20:54:22  bergsma
  * Upgraded.
  *
@@ -164,14 +167,22 @@ DEATH_HANDLER()
 {
   text = { "%DEATH: signal received." } ;
   puts text ;
+  
+  /* Establish new death handler */
+  on_death return DEATH_HANDLER() ;  
 
-  /* Establish death timer for start of a new day */
+  /* Determine start of a new day */
   ansi_now = timestamp ;
   ansi_newDay = parsedate ( date()+":235959" ) + 2 ;
 
   secondsToDeath = ansi_newDay - ansi_now ;
+
+  if ( secondsToDeath <= 0 ) secondsToDeath = 1 ;
+  
+  /* Prior to V3.9.4, time till death could not exceed one day */
+  if ( version < "3.9.4" && secondsToDeath > 86400 ) secondsToDeath = 86400 ; 
+	
   lifetime ( secondsToDeath ) ;
-  on_death return DEATH_HANDLER() ;
 
   /* Start new log file for current date */
   logFileSpec = AUTOLOG + SEPARATOR + "router_" + date() + ".log" ;

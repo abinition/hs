@@ -31,6 +31,7 @@ CONNECT()
   /* TP methods */
   enable GET_EQPID_STATUS ;
   enable GET_FILE_FIELDS ;
+  enable SENDMAIL ;
 
   /* Enable timestamps */
   timestamp (1);
@@ -49,6 +50,33 @@ list MESSAGE_HANDLER()
 } ;
 on_message return MESSAGE_HANDLER() ;
 
+list SENDMAIL()
+{
+  /* Required tokens and values:
+   *
+   * SUBJECT
+   * DISTRIBUTION
+   * TEXT
+   *
+   */
+
+  if ( !exists ( SUBJECT ) || !count ( SUBJECT ) ||
+       !exists ( DISTRIBUTION ) || !count ( DISTRIBUTION ) ||
+       !exists ( TEXT ) || !count ( TEXT ) )
+    return { "%SENDMAIL: Invalid args ", args } ;
+
+  mailfile = "autolog:"+self(2)+".txt" ;
+  h = fopen( mailfile, "w");
+  if ( h ) {
+    fputs ( TEXT, h );
+    fclose h ;
+    str cmd = {"mail ",mailfile,
+                " /subject=\"",SUBJECT,"\"",
+                " \"@AUTORUN:",DISTRIBUTION,"\"" } ;
+    system ( cmd ); 
+  }
+  return "$ACK" ;
+};
 
 list GET_EQPID_STATUS()
 {
@@ -89,6 +117,14 @@ list GET_EQPID_STATUS()
   tbls.tablename ;
   LOCATION = trim equn.locationid ;
 
+  if ( !exists ( COMMENTS ) )
+    return DONE_GET_EQPID_STATUS ( trim eqps.status ) ;
+  
+  list COMMENTS = eqps.eqpscomment ;
+  int COMMENTCOUNT = eqps.commentcount ;
+  if ( COMMENTCOUNT == 0 ) COMMENTCOUNT = 1 ;
+  str COMMENTS[COMMENTCOUNT] ; 
+
   return DONE_GET_EQPID_STATUS ( trim eqps.status ) ;
 };
 
@@ -97,9 +133,12 @@ list DONE_GET_EQPID_STATUS( str TEXT )
   puts TEXT ;
   EXIT_FUNCTION() ;
   QUIT_FUNCTION() ;
-  undef LOCATION ;
-  undef EQPTYPE ;
-  undef EQPID ;
+  if ( exists EQPID ) undef EQPID ;
+  /*
+  if ( exists LOCATION ) undef LOCATION ;
+  if ( exists EQPTYPE ) undef EQPTYPE ;
+  if ( exists COMMENTS ) undef COMMENTS ;
+  */
   return TEXT ;
 };
 
@@ -168,64 +207,6 @@ list DONE_GET_FILE_FIELDS( str TEXT )
   undef FILE ;
   undef KEYNAME ;
   undef KEYVALUE ;
-  return TEXT ;
-};
-
-list GET_RUNNING_LOTIDS()
-{
-  /* Required tokens and values:
-   *
-   *   EQPID
-   *
-   * Reply Tokens:
-   *  LOTID
-   */
-
-  /* *****************************************************************
-   *                         INITIALIZE
-   *******************************************************************/
-  /* Check arguments */
-  if ( !exists (EQPID) || count (EQPID) == 0 ) {
-
-    /* Bad arguments */
-    return DONE_GET_RUNNING_LOTIDS ( {"%ARGS: Invalid arguments supplied"} ) ; 
-  }
-
-   /* Get location */
-   pclose "tbls" ;
-   puts {"...getting EQUN record for ",EQPID } ;
-   ret = pget ( "tbls.tblskey", "eq", "EQUN" + toupper(trim(EQPID)) ) ;
-   if ( !ret ) return DONE_GET_RUNNING_LOTIDS ( {"%PROMIS: no such equipment: ",EQPID });
-   tbls.tablename ;
-   LOCATION = trim equn.locationid ;
-
-   /* Get running lotids */
-   pexec("quit equip");
-   pcapture 1 ;
-   ret = pexec( "eq "+LOCATION+" i "+EQPID);
-   pcapture 0 ;
-   if ( !exists(_promis_data_))
-     return DONE_GET_RUNNING_LOTIDS ( {"%PROMIS: no _promis_data_" } ) ;
- 
-   str tok ;
-   LOTID = {} ;
-   n = count _promis_data_ ;
-   for ( i=0;i<n;i++ ) {
-     if ( i>3 ) {
-       tok = strtok ( _promis_data_[i] ) ;
-       if ( count ( tok ) == 3 ) LOTID = { LOTID, tok[0] } ;
-     }
-   }
-
-   return DONE_GET_RUNNING_LOTIDS("$ACK") ;
-} ;
-
-list DONE_GET_RUNNING_LOTIDS( str TEXT )
-{
-  puts TEXT ;
-  EXIT_FUNCTION() ;
-  QUIT_FUNCTION() ;
-  undef EQPID ;
   return TEXT ;
 };
 

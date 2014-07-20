@@ -10,6 +10,13 @@
 /* Modifications:
  * 
  * $Log: port.c,v $
+ * Revision 1.43  2011-02-24 23:55:34  bergsma
+ * Change some PROTOCOL debugs to DIAGNOSTIC debugs.
+ * Get HSDOM working.
+ *
+ * Revision 1.42  2011-01-08 21:38:24  bergsma
+ * Allow open to cross instance boundaries.
+ *
  * Revision 1.41  2009-08-11 21:19:07  bergsma
  * Fixed for ANSI C compatibility - some function names were too long....
  *
@@ -680,14 +687,19 @@ void gHyp_port_assign ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
         /* Check to see if the port is already assigned */
         pAIassigned = gHyp_concept_getInstForDeviceId ( pConcept, (sWORD) id ) ;
 
-        if ( pAIassigned ) {
+        if ( pAIassigned && pAIassigned != pAI ) {
           gHyp_util_logWarning ( "Device id %d was previously assigned to port %d by instance %s, deleting old assignment",
 			      (sWORD) id,
 			      gHyp_instance_getDeviceFd ( pAIassigned, (sWORD) id ),
 			      gHyp_instance_getTargetId ( pAIassigned ) ) ;
 	  gHyp_instance_deleteFd ( pAIassigned, gHyp_instance_getDeviceFd ( pAIassigned, (sWORD) id ) ) ;
 	}
-        
+        /*
+        gHyp_util_logInfo ( "Device id %d is assigned to port %d for instance %s",
+			      (sWORD) id,
+			      gHyp_instance_getDeviceFd ( pAI, (sWORD) id ),
+			      gHyp_instance_getTargetId ( pAI ) ) ;
+        */
         gHyp_instance_updateFd ( pAI, (SOCKET) portFd, (sWORD) id, NULL, FALSE ) ;
 
 	/* Make sure protocol is NONE */
@@ -1172,6 +1184,14 @@ static void lHyp_port_QE (	sInstance 	*pAI,
     gHyp_instance_warning ( pAI,STATUS_PORT, 
 			    "Device id %d is not assigned",
 			    id ) ;
+    status = FALSE ;
+  }
+  else if ( mode == MESSAGE_QUERY && pAI != pAIassigned ) {
+    gHyp_instance_warning ( pAI,STATUS_HTTP, 
+			    "Device id %d is assigned to %s, not %s",
+			    id,
+                            gHyp_instance_getTargetId(pAIassigned), 
+                            gHyp_instance_getTargetId(pAI)) ;
     status = FALSE ;
   }
   else 

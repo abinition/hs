@@ -14,6 +14,19 @@
  * Modified:
  *
  * $Log: sql.c,v $
+ * Revision 1.76  2011-12-24 01:42:12  bergsma
+ * Handle OCI_NO_DATA condition on UPDATE or INSERT statements.
+ *
+ * Revision 1.75  2011-07-03 16:36:56  bergsma
+ * gHyp_sock_usleep, not gHyp_util_usleep
+ *
+ * Revision 1.74  2011-06-09 22:31:40  bergsma
+ * Integrate ORACLE failover
+ *
+ * Revision 1.73  2011-01-08 21:42:56  bergsma
+ * New args to frame Variable functions.
+ * Increase in buffer size.
+ *
  * Revision 1.72  2010-05-28 18:08:43  bergsma
  * Fix for sql_datetime not entirely correct.
  *
@@ -306,9 +319,15 @@ struct oracle_t {
   OCIServer  *srvhp;
   OCIEnv     *envhp;
   OCIError   *errhp;
+  char       username[VALUE_SIZE+1];
+  char       password[VALUE_SIZE+1];
+  char       database[VALUE_SIZE+1];
 }  ;
 
 typedef struct oracle_t	sORACLE ;
+sORACLE *gsORACLE ;
+
+/*#define ORACLE_AUTO_RECONNECT 1*/
 
 #endif
 
@@ -441,6 +460,150 @@ static sb4 lHyp_sql_readLob ( dvoid *ctxp, CONST dvoid *bufxp, ub4 len, ub1 piec
   return OCI_CONTINUE;
 }
 
+/* Application Failover Callback */
+DWORD  gHyp_sql_ApplicationFailoverCallback(  dvoid           *pSvch,
+                                              dvoid           *pEnvh,
+                                              dvoid           *pFailoverContext,
+                                              ub4             FailoverType,
+                                              ub4             FailoverEvent )
+{
+
+
+  switch (FailoverEvent) {
+
+    case OCI_FO_BEGIN: {
+      sORACLE  *dbproc = gsORACLE ;
+
+#ifndef ORACLE_AUTO_RECONNECT
+      OCISvcCtx               *pLocSvch;
+      sword                   rc;
+#endif
+
+      gHyp_util_logWarning ("Fail Safe Oracle8 database is failing over ... Please stand by\n");
+      gHyp_util_logWarning ("Failover type was found to be %s\n",
+              ((FailoverType == OCI_FO_SESSION) ? "SESSION" :
+                (FailoverType == OCI_FO_SELECT) ? "SELECT" : "UNKNOWN!!"));
+      gHyp_util_logWarning ("Failover Context is : %s\n", 
+              pFailoverContext ? (CHAR *) pFailoverContext : "NULL POINTER!");
+
+      /*** START SECTION A ***
+      Earlier Oracle8/8i OCI releases make only one attempt to reconnect after a failure is detected.
+      OCI releases 8.0.6 and 8.1.6 or later contain enhancements to allow multiple reconnection attempts.
+      When using earlier OCI libraries, the application needs to ensure that sufficient time elapses so 
+      that when it returns from the failover callback function, the OCI library will be able to successfully
+      reconnect to the virtual server for the Oracle database.  A quick way to do this is to sleep a "reasonable" 
+      period of time to allow failover on the cluster to complete. A better solution (used below) is to write a loop 
+      in which the application repeatedly  attempts to reconnect to the database at the virtual server address and
+      returns either after making (and then disconnecting from) a successful connection or after a specified time 
+      interval. For the most recent OCI releases, you can simply add RETRIES and DELAY parameters to the 
+      FAILOVER_MODE clause in the TNSNAMES.ORA file and eliminate the need for a callback function.  
+      Begin loop that tries to connect to the failover database until successfully connected.
+      */ 
+
+#ifndef ORACLE_AUTO_RECONNECT
+
+      while (1) {
+          
+        /* Sleep for 10 seconds before we retry to connect to the failover database. */
+        gHyp_sock_usleep(10000);
+        gHyp_util_logWarning("Retrying to connect to failover database after waiting 10 seconds...\n");
+
+        rc = OCILogon(  pEnvh, 
+                            pEnvh, 
+                            &pLocSvch,
+                            dbproc->username, strlen(dbproc->username),
+                            dbproc->password, strlen(dbproc->password),
+                            dbproc->database, strlen(dbproc->database));
+
+        if (rc != OCI_SUCCESS) {
+          lHyp_sql_checkErr ( pEnvh, rc);
+        }
+        else {
+          gHyp_util_logWarning("Successfully reconnected to failover database\n");
+           lHyp_sql_checkErr ( pEnvh, OCILogoff(pLocSvch, pEnvh));
+          break;
+        }
+      }
+
+      /* If callback returns now immediately after reconnecting, the query that was executing may fail.
+       * To avoid possible failure, sleep for an arbitrary time of 10 seconds.
+       * This time period will vary from application to application.
+       */
+      gHyp_sock_usleep(10000);
+      /*** END SECTION A ***/
+#endif
+
+      break;
+    }
+
+
+    case OCI_FO_ABORT:
+      gHyp_util_logWarning("Failover aborted. Failover will not take place.\n");
+      break;
+
+    case OCI_FO_END:
+      gHyp_util_logWarning("Failover ended ... Resume services\n");
+      break;
+
+    case OCI_FO_REAUTH:
+      gHyp_util_logWarning("Failed over user? Resume services\n");
+      break;
+
+#ifdef ORACLE_AUTO_RECONNECT
+
+      /*** START SECTION B ***                  
+	Starting with  Oracle8 release 8.0.5, the preceding call to OCILogon and the associated logic of section A are no longer needed. 
+	Section A above can be commented out and Section B can be used instead. A new return code (currently 25410) tells OCI
+	to retry the database connection. Applications can determine what connection retry logic best makes sense (for example,. an 
+	exponential backoff in retry frequency, with retry attempts stopped after some number of unsuccessful attempts). The 
+        following sample code will retry indefinitely and should be modified appropriately for actual deployment. Also, consult the 
+	Oracle8/8i OCI documentation to verify the syntax and return values used by your OCI release.  For OCI releases 8.0.6 and 
+	8.1.6 and later, you can, as previously noted, include RETRIES and DELAY parameters in the FAILOVER_MODE clause in 
+	the TNSNAMES.ORA file and eliminate the need for a callback function.
+
+      ****/
+
+#endif
+     case OCI_FO_ERROR:
+	gHyp_util_logWarning("Reconnection attempt failed; waiting 10 seconds?");
+	gHyp_sock_usleep(10000);
+	gHyp_util_logWarning("Retrying to connect to failover database after waiting 10 seconds...\n");
+	return (25410);
+	break;
+
+      default :
+        gHyp_util_logWarning("Bad Failover Event: %d\n", FailoverEvent);
+        return -1; /* Error File Oracle Bug report */
+  }
+
+  return 0;
+}
+
+/* Registration of the Application Callback */ 
+
+DWORD lHyp_sql_RegisterApplicationFailoverCallback( dvoid      *pSrvh, 
+                                                    OCIError   *pErrh ) 
+{ 
+  OCIFocbkStruct  FailoverInfo;           /* Information for callback */ 
+ 
+  /* Allocate Memory for context and fill the information */ 
+ 
+  if ( !(FailoverInfo.fo_ctx = 
+        (dvoid *)malloc(strlen("Application Masking Failover Errors")))) 
+    return -1; 
+  strcpy((LPSTR)FailoverInfo.fo_ctx, "Application Masking Failover Errors"); 
+  FailoverInfo.callback_function = &gHyp_sql_ApplicationFailoverCallback; 
+         
+  /* Do the registration with OCI */ 
+  return OCIAttrSet(  pSrvh, 
+                      (ub4) OCI_HTYPE_SERVER,  
+                      (dvoid *) &FailoverInfo, 
+                      (ub4) 0,  
+                      (ub4) OCI_ATTR_FOCBK, 
+                      pErrh); 
+ 
+} /* end of RegisterApplicationFailoverCallback */ 
+
 #endif
 
 void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
@@ -499,7 +662,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       argCount = gHyp_parse_argCount ( pParse ) ;
 
     char
-      value[VALUE_SIZE+1],
+      value[MAX_INPUT_LENGTH+1],
       *pTableStr,
       *pRowStr,
       *pColStr,
@@ -604,7 +767,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
     status = TRUE ;
 
-    pStatus = gHyp_frame_createVariable ( pFrame, "_sql_status_" ) ;
+    pStatus = gHyp_frame_createVariable ( pAI, pFrame, "_sql_status_" ) ;
     gHyp_data_deleteValues ( pStatus ) ;
 
     if ( argCount < 2 || argCount > 5 )
@@ -662,7 +825,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
       valueLen = gHyp_data_getStr ( pResult,
                                     value,
-                                    VALUE_SIZE,
+                                    MAX_INPUT_LENGTH,
                                     context,
                                     isVector ) ;
 #ifdef AS_SQLSERVER
@@ -719,6 +882,9 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
 #elif AS_ORACLE
 
+/* AS_ORACLE_DO_PREPARE2 is general NOT defined so
+ * the first section here is what is done
+ */
 #ifndef AS_ORACLE_DO_PREPARE2
 
   /* Use OCIHandleAlloc/OCIStmtPrepare/OCIHandleFree  */
@@ -778,9 +944,18 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
   
   results = rc ;
 
-  if ( !isSelect ) rc = OCI_NO_DATA ;
+  if ( rc == OCI_NO_DATA ) {
 
-  if ( rc == OCI_SUCCESS ) 
+    /* ORACLE OCI_NO_DATA is a warning */
+
+    /* For SELECT statements, it means SUCCESS, but no data was fetched */
+    if ( isSelect ) rc = OCI_SUCCESS ;
+
+    /* For non select statements, it means failure */
+    else rc = OCI_ERROR ;
+
+  }
+  if ( rc == OCI_SUCCESS )
 
 #endif
       {
@@ -789,7 +964,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 	if ( pTableStr ) {
 
           /* List variables are created inside of pTable */
-          pTable = gHyp_frame_createVariable ( pFrame, pTableStr ) ;
+          pTable = gHyp_frame_createVariable ( pAI, pFrame, pTableStr ) ;
           gHyp_data_deleteValues ( pTable ) ;
 
         }
@@ -798,7 +973,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
           /* List variables are top-level variables. */
 
           /* Create or retrieve the "sqlargs" variable, and clear it of any values. */
-          pArgs = gHyp_frame_createVariable ( pFrame, "sqlargs" ) ;
+          pArgs = gHyp_frame_createVariable ( pAI, pFrame, "sqlargs" ) ;
           gHyp_data_deleteValues ( pArgs ) ;
         }
 	
@@ -885,7 +1060,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
                   if ( pTable == NULL ) {
 
                     /* List variables are created from the column names */
-                    pVariable = gHyp_frame_createVariable ( pFrame, colNames[i] ) ;
+                    pVariable = gHyp_frame_createVariable ( pAI, pFrame, colNames[i] ) ;
                     gHyp_data_deleteValues ( pVariable ) ;
                     gHyp_data_setVariable ( pVariable, colNames[i], TYPE_LIST ) ;
 
@@ -1971,7 +2146,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 		  }
 		}
 
-	        pAttr = gHyp_frame_createVariable ( pFrame, "_sqlattr_" ) ;
+	        pAttr = gHyp_frame_createVariable ( pAI, pFrame, "_sqlattr_" ) ;
                 gHyp_data_deleteValues ( pAttr ) ;
 		for ( i=0; i<numCols; i++ ) {
 
@@ -2515,6 +2690,13 @@ void gHyp_sql_open ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 				dbproc->errhp);
   lHyp_sql_checkErr ( dbproc->errhp, rc ) ;
 
+  /* Now register the Application Callback for this User Session *
+ 
+  if ( rc == OCI_SUCCESS )
+    rc = lHyp_sql_RegisterApplicationFailoverCallback(dbproc->svchp, dbproc->errhp );
+
+  lHyp_sql_checkErr ( dbproc->errhp, rc ) ; 
+  */
 
   if ( rc != OCI_SUCCESS ) {
     gHyp_instance_warning ( pAI, STATUS_SQL, "SQL connect to ORACLE failed");
@@ -2522,6 +2704,12 @@ void gHyp_sql_open ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
   }
   else {
      gHyp_util_logInfo ( "Connected to ORACLE as user %s", sql_username ) ;
+     /* Save the latest pointer for use with failover */
+     strcpy ( dbproc->username, sql_username ) ;
+     strcpy ( dbproc->password, sql_password ) ;
+     strcpy ( dbproc->database, sql_database ) ;
+     gsORACLE = dbproc ;
+
      gHyp_data_setHandle ( pResult, (void*) dbproc ) ;
   }
 

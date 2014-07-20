@@ -10,6 +10,21 @@
 /* Modifications: 
  *
  * $Log: cgi.c,v $
+ * Revision 1.60  2011-05-19 22:10:05  bergsma
+ * Add error message when no XML stream to parse.
+ *
+ * Revision 1.59  2011-02-24 23:55:34  bergsma
+ * Change some PROTOCOL debugs to DIAGNOSTIC debugs.
+ * Get HSDOM working.
+ *
+ * Revision 1.58  2011-02-24 05:12:27  bergsma
+ * Adjusting values for MAX_OUTPUT_LENGTH and MAX_INPUT_LENGTH
+ *
+ * Revision 1.56  2011-01-08 21:21:29  bergsma
+ * For url decoding/encoding, increased size from VALUE_SIZE to MAX_INPUT_ELEMENT.
+ * Added urlparse() function.
+ * Added better counting algorithm for blank elements between start and end tags in XML
+ *
  * Revision 1.55  2010-07-05 16:00:47  bergsma
  * Fix problem with NULL getenv
  *
@@ -351,9 +366,9 @@ void gHyp_cgi_urlstring ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       amp[2],
       decryptedLabel[TOKEN_SIZE+1],
       encryptedLabel[TOKEN_SIZE+1],
-      decryptedValue[VALUE_SIZE+1],
-      encryptedValue[VALUE_SIZE+1],
-      line[VALUE_SIZE+1] ;
+      decryptedValue[MAX_INPUT_LENGTH+1],
+      encryptedValue[MAX_INPUT_LENGTH+1],
+      line[MAX_STREAM_LENGTH+1] ;
 
     int
       n,
@@ -381,7 +396,7 @@ void gHyp_cgi_urlstring ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
       nv = gHyp_data_getStr ( pData, 
 			     decryptedValue, 
-			     VALUE_SIZE, 
+			     MAX_INPUT_LENGTH, 
 			     gHyp_data_getSubScript ( pData ), 
 			     TRUE ) ;
       nv = gHyp_util_urlEncode ( decryptedValue, nv, encryptedValue ) ;
@@ -400,6 +415,143 @@ void gHyp_cgi_urlstring ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
   }	
 }
 
+void gHyp_cgi_urlparse ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: urlparse ( string )
+   *	Returns the variables in a list
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	strin
+   *
+   * Modifications:
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+
+  else {
+
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+    
+   sData
+      *pData,
+      *pValue,
+      *pValue2,
+      *pVariable,
+      *pResult ;
+    
+    int
+      n,
+      context,
+      ss,
+      argCount = gHyp_parse_argCount ( pParse ) ;
+    
+    char
+      *pTokenName,
+      *pTokenValue,
+      *pChar,
+      value[MAX_INPUT_LENGTH+1] ;
+    
+    sLOGICAL
+      isVector ;
+
+    /* Assume success */	
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+     if ( argCount != 1 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+	"Invalid arguments. Usage: urlparse ( queryString )" ) ;
+
+
+    pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
+    pResult = gHyp_data_new ( NULL ) ;
+    gHyp_data_setVariable ( pResult, "_urlparse_", TYPE_STRING ) ;
+    isVector = (gHyp_data_getDataType( pData ) > TYPE_STRING ) ;
+    pValue = NULL ;
+    ss = gHyp_data_getSubScript ( pData ) ; context = -1 ;
+    while ( (pValue = gHyp_data_nextValue ( pData, 
+					    pValue, 
+					    &context,
+					    ss ) ) ) {
+      n = gHyp_data_getStr ( pValue, 
+			     value, 
+			     MAX_INPUT_LENGTH, 
+			     context, 
+			     isVector ) ;
+      
+      value[n] = '\0' ;
+      pTokenName = value ;
+
+      if ( context == 0 ) {
+
+        /* First value, skip past leading '?' */
+        if ( *pTokenName == '?' ) {
+          n-- ;
+          pTokenName++ ;
+        }
+      }
+      
+      while ( *pTokenName ) {
+
+	/* Look for '=' */
+	pTokenValue = strchr ( pTokenName, '=' ) ;
+	if ( !pTokenValue ) break ;
+
+	/* Make sure there is both a token and a value */
+	*pTokenValue = '\0' ;
+	gHyp_util_trim ( pTokenName ) ;
+	if ( strlen ( pTokenName ) == 0 ) break ;
+
+	/*gHyp_util_debug("Adding tokenname %s",pTokenName);*/
+        /* Get the token value */
+	pTokenValue++ ;
+		  
+	pChar = strchr ( pTokenValue, '&' ) ;
+	if ( pChar ) *pChar++ = '\0' ;
+	else pChar = pTokenValue + strlen ( pTokenValue ) ;
+
+	gHyp_util_trim ( pTokenValue ) ;
+
+	/*gHyp_util_debug("Adding tokenvalue %s",pTokenValue);*/
+	/*pVariable = gHyp_frame_createVariable ( pFrame, pTokenName ) ;*/
+        pVariable = gHyp_data_new ( NULL ) ;
+  	gHyp_data_setVariable ( pVariable, pTokenName, TYPE_STRING ) ;
+ 	pValue2 = gHyp_data_new ( NULL ) ;
+	if ( strlen ( pTokenValue ) > 0 ) {
+    	  gHyp_cgi_plusToSpace( pTokenValue );
+	  gHyp_cgi_unescapeUrl( pTokenValue );
+	  gHyp_data_setStr ( pValue2, pTokenValue ) ;
+	}
+	gHyp_data_append ( pVariable, pValue2 ) ;
+        gHyp_data_append ( pResult, pVariable ) ;
+
+	pTokenName = pChar ;
+      }
+    }
+    if ( context== -2 && ss != -1 ) {
+      gHyp_data_delete ( pResult ) ;
+      gHyp_instance_error ( pAI, STATUS_BOUNDS, 
+			    "Subscript '%s' is out of bounds in decode()",
+			    ss);
+    }
+    gHyp_stack_push ( pStack, pResult ) ;
+  }	
+}
 
 char *gHyp_cgi_parseXML ( char *pStream,
 			  char *pAnchor,
@@ -444,6 +596,9 @@ char *gHyp_cgi_parseXML ( char *pStream,
 #endif
     c,
     quote,
+#ifdef _DEBUG 
+    *pMemory,
+#endif
     *pTag,
     *pExpectedEndTag,
     *pTag2=NULL,
@@ -452,7 +607,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
     *pStr3,
     *pSearch,
     buffer[MAX_INPUT_LENGTH+1],
-    attr[TOKEN_SIZE+1],
+    attr[MAX_INPUT_LENGTH+1],
     tag[TOKEN_SIZE+1],
     tag2[TOKEN_SIZE+1],
     tag_lc[TOKEN_SIZE+1],
@@ -481,6 +636,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
     truncStrLen ;
 
   sLOGICAL
+    noTAG,
     tagged,
     found,
     inComment,
@@ -491,6 +647,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
     hasWS=FALSE,
     isLiteral=(isPRE||isSCR||isTXT),
     isFirstLine,
+    lastBlankLine,
     isLastLine,
     isChildLess,
     maybeReturnChildLess=FALSE,
@@ -506,29 +663,45 @@ char *gHyp_cgi_parseXML ( char *pStream,
  #define SEG_SIZE 20
 
   /* Get more data if necessary */
+#ifdef _DEBUG 
+  pMemory = pStream ;
+#endif
   pStream = gHyp_util_readStream (	pStream, pAnchor, ppEndOfStream,
 					&streamLen, pStreamData, 
 					ppValue, pContext, ss, isVector, 
 					pp ) ;
-
+#ifdef _DEBUG 
+  if ( pMemory != pStream ) 
+    gHyp_util_debug ( "Memory shift, %d bytes",streamLen ) ;
+#endif
+  if ( !pStream ) {
+    gHyp_instance_warning ( pAI, STATUS_XML, "No XML stream to parse");
+    return NULL ;
+  }
 
   /* Look for start tag, comment, or definition */
   pTag = NULL ;
   isEndTag = FALSE ;
   isChildLess = FALSE ;
   tagged = FALSE ;
+  noTAG = FALSE ;
   while ( !pTag ) {
 
-    /* Look for start of next tag or end of tag. */
-    pTag = strchr ( pStream, '<' ) ;
-    if ( !pTag ) {
-      /*
-       gHyp_instance_warning ( pAI, STATUS_XML, "No starting '<' found in XML stream, searching from [%.*s]",
+    do {
+
+      /* Look for start of next tag or end of tag. */
+      pTag = strchr ( pStream, '<' ) ;
+      if ( !pTag ) {
+        /*
+         gHyp_instance_warning ( pAI, STATUS_XML, "No starting '<' found in XML stream, searching from [%.*s]",
 			      SEG_SIZE,pStream );
-       */
-      return NULL ;
-    }
-    else {
+         return NULL ;
+         */
+        noTAG = TRUE ;
+        pTag = *ppEndOfStream ;
+      }
+      else
+        noTAG = FALSE ;
 
       /* Found something.  Grab the contents preceeding it. (or ignore it if there
        * is no parent, ie: this is the first call to the function and we haven't
@@ -538,6 +711,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
         
 	/*gHyp_util_debug("process %s",pTag);*/
 	isFirstLine = TRUE ;
+	lastBlankLine = FALSE ;
 	while ( pStream < pTag ) {
 
 	  /* When 'tagged' is TRUE, the pStream pointer is at the token of the next tag,
@@ -581,7 +755,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
 	  if ( strLen > (pTag-pStream) ) strLen = pTag - pStream ; 
 
           /* Need to know if this is the last line */
-	  isLastLine = ( pTag == pStream ) ;
+          isLastLine = noTAG ? FALSE : ( pTag == pStream );
 
           /* For zero length lines, we need to know if they count as elements */
 	  if ( strLen == 0 ) {
@@ -606,22 +780,22 @@ char *gHyp_cgi_parseXML ( char *pStream,
 	      0  0  1  1  not possible
 	      0  1  0  0  not possible
 	      0  1  0  1  not possible
-	      0  1  1  0  yes
-	      0  1  1  1  yes
-	      1  0  0  0  yes
-	      1  0  0  1  no
-	      1  0  1  0  no
-	      1  0  1  1  no
-	      1  1  0  0  yes
-	      1  1  0  1  yes 
-	      1  1  1  0  no
-	      1  1  1  1  no
+	      0  1  1  0  yes     <tag>__W__nl___</tag>
+	      0  1  1  1  yes     <tag>__W__</tag>
+	      1  0  0  0  yes     <tag>___nlnl___</tag>
+	      1  0  0  1  no      <tag>___nl</tag>
+	      1  0  1  0  no      <tag>nlnl___</tag>
+	      1  0  1  1  no      <tag>nl</tag>
+	      1  1  0  0  yes     <tag>__nl__W__nl___</tag>
+	      1  1  1  0  no      <tag>__W__nl___</tag>
+	      1  1  0  1  maybe   <tag>__nl__W__</tag>
+	      1  1  1  1  no      <tag>nl__W__</tag>
 
               *
 	      */
 
 	      if (   ( !hasNL && hasWS && isFirstLine && isLastLine ) ||
-		     ( hasNL && hasWS && !isFirstLine && isLastLine ) ||
+		     ( hasNL && hasWS && !isFirstLine && isLastLine && lastBlankLine ) ||
 		     ( !hasNL && hasWS && isFirstLine && !isLastLine ) ||
 		     ( hasNL && hasWS && !isFirstLine && !isLastLine ) ||
 		     ( hasNL && !hasWS && !isFirstLine && !isLastLine )
@@ -637,9 +811,11 @@ char *gHyp_cgi_parseXML ( char *pStream,
 	        gHyp_data_append ( pParentTag, pStrData ) ;
 	      }   
 	    }
+            lastBlankLine = TRUE ;
 	  }
-	  else {
+          else {
             /* Content with a clearly defined element */
+            lastBlankLine = FALSE ;
 	    strLen3 = strLen ;
 	    pStr3 = pStream ;
 
@@ -704,7 +880,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
 		/*strncpy ( pStr, pStr3, truncStrLen ) ;*/
 		memcpy ( pStr, pStr3, truncStrLen ) ;
 		pStr[truncStrLen] = '\0' ;
-
+                
 		/* Parse the string */
 		if ( !isSCR && !isPRE && !isTXT ) 
 		  strLen2 = gHyp_util_parseXML ( pStr ) ;
@@ -727,15 +903,20 @@ char *gHyp_cgi_parseXML ( char *pStream,
 	     * Make sure we update "pTag", because it can become invalid
 	     * if gHyp_util_readStream does a memmove or memcpy
 	     */
-	    i = pTag - pStream ;
+#ifdef _DEBUG 
+  pMemory = pStream ;
+#endif
+            i = pTag - pStream ;
 	    pStream = gHyp_util_readStream (  pStream, pAnchor, ppEndOfStream,
 					    &streamLen, pStreamData, 
 					    ppValue, pContext, ss, isVector, 
 					    pp ) ;
 	    pTag = pStream + i ;
+#ifdef _DEBUG 
+  if ( pMemory != pStream ) 
+    gHyp_util_debug ( "Memory shift, %d bytes",streamLen ) ;
 
-	    /*while ( *pStream == '\n' || *pStream == '\r' ) pStream++ ; */
-
+#endif
 	  }
 	  isFirstLine = FALSE ;
 	}
@@ -745,10 +926,22 @@ char *gHyp_cgi_parseXML ( char *pStream,
       pStream = pTag ;
 
       /* Get more data if necessary */
+#ifdef _DEBUG 
+  pMemory = pStream ;
+#endif
+      i = pTag - pStream ;
       pStream = gHyp_util_readStream (  pStream, pAnchor, ppEndOfStream,
 					    &streamLen, pStreamData, 
 					    ppValue, pContext, ss, isVector, 
 					    pp ) ;
+      pTag = pStream + i ;
+#ifdef _DEBUG 
+  if ( pMemory != pStream ) 
+    gHyp_util_debug ( "Memory shift, %d bytes",streamLen ) ;
+#endif
+    }
+    while ( noTAG ) ;
+
       /* Advance past '<' */
       pStream++ ;
       tagged = TRUE ;
@@ -962,14 +1155,21 @@ char *gHyp_cgi_parseXML ( char *pStream,
 	  pTag = NULL ;
 
           /* Get more data if necessary */
-	  pStream = gHyp_util_readStream (	pStream, pAnchor, ppEndOfStream,
+#ifdef _DEBUG 
+  pMemory = pStream ;
+#endif
+        pStream = gHyp_util_readStream (	pStream, pAnchor, ppEndOfStream,
 						&streamLen, pStreamData, 
 						ppValue, pContext, ss, isVector, 
 						pp ) ;
+#ifdef _DEBUG 
+  if ( pMemory != pStream ) 
+    gHyp_util_debug ( "Memory shift, %d bytes",streamLen ) ;
+#endif
 
 	}
       }
-    }
+
   }
 
   /* The pStream points to the first character of the tag name after the < or </,
@@ -1002,12 +1202,19 @@ char *gHyp_cgi_parseXML ( char *pStream,
      isPureXML = FALSE ;
      */
   }
-   /* Check if more of the stream is needed */
+
+#ifdef _DEBUG 
+  pMemory = pStream ;
+#endif
+  /* Check if more of the stream is needed */
   pStream = gHyp_util_readStream (	pStream, pAnchor, ppEndOfStream,
 					&streamLen, pStreamData, 
 					ppValue, pContext, ss, isVector, 
 					pp ) ;
-
+#ifdef _DEBUG 
+  if ( pMemory != pStream ) 
+    gHyp_util_debug ( "Memory shift, %d bytes",streamLen ) ;
+#endif
 
   if ( isEndTag ) {
 
@@ -1396,14 +1603,14 @@ char *gHyp_cgi_parseXML ( char *pStream,
       gHyp_data_append ( pTV, pChildTag ) ;
     }
     else {
-      pChildTag = gHyp_frame_createVariable ( pFrame, tag ) ;
+      pChildTag = gHyp_frame_createVariable ( pAI, pFrame, tag ) ;
       gHyp_data_deleteValues ( pChildTag ) ;
       /* If its a vector, convert it back to a string */
       gHyp_data_setVariable ( pChildTag, tag, TYPE_LIST ) ;
 
     }
     /* Create or retrieve the "xmlargs" variable, adding the new tag name. */
-    pArgs = gHyp_frame_createVariable ( pFrame, "xmlargs" ) ;
+    pArgs = gHyp_frame_createVariable ( pAI, pFrame, "xmlargs" ) ;
     if ( pArgs ) {
       pData = gHyp_data_new ( NULL ) ;
       gHyp_data_setReference ( pData, tag, NULL ) ;
@@ -1416,12 +1623,18 @@ char *gHyp_cgi_parseXML ( char *pStream,
     gHyp_data_append ( pParentTag, pChildTag ) ;
   }
 
+#ifdef _DEBUG 
+  pMemory = pStream ;
+#endif
   /* Check if more of the stream is needed */
   pStream = gHyp_util_readStream (	pStream, pAnchor, ppEndOfStream,
 					&streamLen, pStreamData, 
 					ppValue, pContext, ss, isVector, 
 					pp ) ;
-
+#ifdef _DEBUG 
+  if ( pMemory != pStream ) 
+    gHyp_util_debug ( "Memory shift, %d bytes",streamLen ) ;
+#endif
 
    /* Attributes are allowed until the end of the tag */
   allowAttributes = TRUE ;
@@ -1491,13 +1704,13 @@ char *gHyp_cgi_parseXML ( char *pStream,
 	}
       
         /* Found an attribute */
-	if ( attrLen > VALUE_SIZE ) {
+	if ( attrLen > MAX_INPUT_LENGTH ) {
           gHyp_instance_warning ( pAI, STATUS_XML,"Attribute name greater than %d characters, it has been truncated [%.*s]...[%.*s]",
-				 VALUE_SIZE, SEG_SIZE,MAX(pAnchor,pStream-SEG_SIZE),SEG_SIZE,pStream);
+				 MAX_INPUT_LENGTH, SEG_SIZE,MAX(pAnchor,pStream-SEG_SIZE),SEG_SIZE,pStream);
 
 	}
 
-	attrLen = MIN ( VALUE_SIZE, attrLen ) ;
+	attrLen = MIN ( MAX_INPUT_LENGTH, attrLen ) ;
         strncpy ( attr, pStream, attrLen ) ;
         attr[attrLen] = '\0' ;
 
@@ -1530,12 +1743,18 @@ char *gHyp_cgi_parseXML ( char *pStream,
 	  /* Get the attribute value */
 	  pStream++ ;
 
+#ifdef _DEBUG 
+  pMemory = pStream ;
+#endif
 	  /* Get more data if necessary */
 	  pStream = gHyp_util_readStream (  pStream, pAnchor, ppEndOfStream,
 					    &streamLen, pStreamData, 
 					    ppValue, pContext, ss, isVector, 
 					    pp ) ;
-
+#ifdef _DEBUG 
+  if ( pMemory != pStream ) 
+    gHyp_util_debug ( "Memory shift, %d bytes",streamLen ) ;
+#endif
 	  /* Span whitespace after "=" */
 	  span = strspn ( pStream, " \t\n\r" ) ;
           pStream += span ;
@@ -1569,12 +1788,18 @@ char *gHyp_cgi_parseXML ( char *pStream,
 	    pSearch = NULL ;
 	    while ( !terminated ) {
 
-	      /* Get more data if necessary */
+#ifdef _DEBUG 
+  pMemory = pStream ;
+#endif
+              /* Get more data if necessary */
 	      pStream = gHyp_util_readStream (  pStream, pAnchor, ppEndOfStream,
 					    &streamLen, pStreamData, 
 					    ppValue, pContext, ss, isVector, 
 					    pp ) ;
-
+#ifdef _DEBUG 
+  if ( pMemory != pStream ) 
+    gHyp_util_debug ( "Memory shift, %d bytes",streamLen ) ;
+#endif
 	      if ( pSearch == NULL ) pSearch = pStream ;
 
 	      pStr = strchr ( pSearch, quote ) ;
@@ -1722,7 +1947,7 @@ void gHyp_cgi_xmlData ( sData *pData, sInstance *pAI, sFrame *pFrame, sData *pTV
   pAnchor = pStream ;
   pEndOfStream = pStream ;
   pValue = NULL ;
-  gHyp_data_deleteValues ( gHyp_frame_createVariable ( pFrame, "xmlargs" ) ) ;
+  gHyp_data_deleteValues ( gHyp_frame_createVariable ( pAI, pFrame, "xmlargs" ) ) ;
 
   /*gHyp_util_debug("Content-type: text/html\n\n");*/
   while ( TRUE ) {
@@ -1827,7 +2052,7 @@ static int lHyp_cgi_init( sInstance *pAI, sFrame *pFrame )
 
   char
     *pEnv,
-    boundary[VALUE_SIZE+1] ;
+    boundary[MAX_INPUT_LENGTH+1] ;
 
   /* Default, no errors, no name/value pairs ("entries"): */
   giCgiErrno = CGIERR_NONE;
@@ -1999,17 +2224,17 @@ static int lHyp_cgi_init( sInstance *pAI, sFrame *pFrame )
 	pLine += lineLen ;
       }
       */
-      pContentData = gHyp_frame_createVariable ( gHyp_instance_frame(pAI), "_form_data_" ) ;
+      pContentData = gHyp_frame_createVariable ( pAI, gHyp_instance_frame(pAI), "_form_data_" ) ;
       gHyp_data_deleteValues ( pContentData ) ;	  
       gHyp_util_breakStream ( gzCgiQuery, cl, pContentData, TRUE ) ;
 
-      pParentTag = gHyp_frame_createVariable ( pFrame, "_http_form_" ) ;
+      pParentTag = gHyp_frame_createVariable ( pAI, pFrame, "_http_form_" ) ;
       gHyp_data_deleteValues ( pParentTag ) ;
 
       /* The first element will be the boundary */
       n = gHyp_data_getStr ( pContentData,
 			     boundary,
-			     VALUE_SIZE, 
+			     MAX_INPUT_LENGTH, 
 			     0,
 			     TRUE ) ;
        if ( n > 0 ) {
@@ -2030,7 +2255,6 @@ static int lHyp_cgi_init( sInstance *pAI, sFrame *pFrame )
       for (i = 0; i <= cl; i++)
         if (gzCgiQuery[i] == '&' || gzCgiQuery[i] == '\0')
 	  giCgiNumEntries++;
-    
     
       /* Allocate the space for that many structures: */
     
@@ -2195,7 +2419,7 @@ void gHyp_cgi_parse ( sInstance *pAI, sFrame *pFrame  )
     return ;
   }  
   /* Create or retrieve the "cgiargs" variable, clear it of any values. */
-  pArgs = gHyp_frame_createVariable ( pFrame, "cgiargs" ) ;
+  pArgs = gHyp_frame_createVariable ( pAI,  pFrame, "cgiargs" ) ;
   gHyp_data_deleteValues ( pArgs ) ;
   
   for (i = 0; i < giCgiNumEntries; i++) {
@@ -2204,7 +2428,7 @@ void gHyp_cgi_parse ( sInstance *pAI, sFrame *pFrame  )
     value = cgi_entries[i].val ;
     /*gHyp_util_debug("%s = '%s'", variable, value ) ;*/
     
-    pVariable = gHyp_frame_createVariable ( pFrame, variable ) ;
+    pVariable = gHyp_frame_createVariable ( pAI, pFrame, variable ) ;
     
     /* Store a reference to the variable in the "cgiargs" variable,
      * but only if that reference does not already exist 

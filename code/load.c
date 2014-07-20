@@ -10,6 +10,12 @@
  * Modifications:
  *
  *   $Log: load.c,v $
+ *   Revision 1.62  2011-07-03 16:35:19  bergsma
+ *   Added load_csv and csv
+ *
+ *   Revision 1.61  2011-01-08 21:36:32  bergsma
+ *   Added urlparse, indexof, jdescribe, jsdescribe, jfdescribe,
+ *
  *   Revision 1.60  2010-07-05 16:03:17  bergsma
  *   Allow input literals larger than 512 characters.
  *
@@ -383,6 +389,7 @@ void gHyp_load_new ()
   lHyp_load_newKey ( "tointernal" ,  gHyp_function_tointernal, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "encode" ,  gHyp_function_encode, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "decode" ,  gHyp_function_decode, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "urlparse" ,  gHyp_cgi_urlparse, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "urlstring" ,  gHyp_cgi_urlstring, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "urlencode" ,  gHyp_function_urlEncode, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "urldecode" ,  gHyp_function_urlDecode, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
@@ -392,6 +399,7 @@ void gHyp_load_new ()
   /* String functions, some like 'C' */
   lHyp_load_newKey ( "strlen" ,  gHyp_function_strlen, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "strloc" ,  gHyp_function_strloc, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "indexof" ,  gHyp_function_indexof, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "strext" ,  gHyp_function_strext, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "strtok" ,  gHyp_function_strtok, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "pack",	 gHyp_function_pack, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
@@ -420,6 +428,8 @@ void gHyp_load_new ()
   lHyp_load_newKey ( "echo" ,  gHyp_fileio_echo, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "load" ,  gHyp_fileio_load, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "load_binary" ,  gHyp_fileio_load_binary, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "load_csv" ,  gHyp_fileio_load_csv, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "csv" ,  gHyp_fileio_csv, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "checksum" ,  gHyp_fileio_checksum, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "crc32" ,  gHyp_fileio_crc32, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "round" ,  gHyp_function_round, TOKEN_TYPECAST, PRECEDENCE_UNARY ) ;
@@ -430,7 +440,14 @@ void gHyp_load_new ()
   lHyp_load_newKey ( "xfdescribe", gHyp_fileio_xfdescribe, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "xml", gHyp_cgi_xml, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "xparse" , gHyp_system_xparse, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
-  
+
+  /* JSON */
+  lHyp_load_newKey ( "jdescribe", gHyp_fileio_jdescribe, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "jsdescribe", gHyp_fileio_jsdescribe, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "jfdescribe", gHyp_fileio_jfdescribe, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  /*lHyp_load_newKey ( "json", gHyp_cgi_xml, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;*/
+  /*lHyp_load_newKey ( "jparse" , gHyp_system_jparse, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;*/
+
   /* SQL Interface */
   lHyp_load_newKey ( "sql_toexternal", gHyp_sql_toexternal, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "sql_datetime", gHyp_sql_datetime, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
@@ -529,6 +546,10 @@ void gHyp_load_new ()
 #ifdef AS_MAPI
   lHyp_load_newKey ( "mapi_register", gHyp_mapi_register, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "mapi_getPort", gHyp_mapi_getPort, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  /*
+  lHyp_load_newKey ( "mapi_map", gHyp_mapi_getDrive, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "mapi_unmap", gHyp_mapi_getDrive, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
+  */
 #endif
 
   /* Environment */

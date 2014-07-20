@@ -3,6 +3,9 @@
  * Modifications:
  *
  * $Log: function.h,v $
+ * Revision 1.16  2011-01-08 21:28:10  bergsma
+ * Expanded size of encrupted/decrypted buffers.
+ *
  * Revision 1.15  2009-08-19 14:32:30  bergsma
  * No such function _timestamp
  *
@@ -71,6 +74,7 @@ extern void    	gHyp_function_sender ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_function_strlen ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_function_pack ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_function_strloc ( sInstance*, sCode*, sLOGICAL ) ;
+extern void    	gHyp_function_indexof ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_function_strext ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_function_strtok ( sInstance*, sCode*, sLOGICAL ) ;
 extern void    	gHyp_function_time ( sInstance*, sCode*, sLOGICAL ) ;

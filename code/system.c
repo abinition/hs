@@ -11,6 +11,15 @@
  * Modifications:
  *
  *	$Log: system.c,v $
+ *	Revision 1.42  2011-02-24 05:12:27  bergsma
+ *	Adjusting values for MAX_OUTPUT_LENGTH and MAX_INPUT_LENGTH
+ *	
+ *	Revision 1.41  2011-02-20 00:52:41  bergsma
+ *	Use MAX_INPUT_LENGTH instead of MAX_OUTPUT_LENGHT for commands
+ *	
+ *	Revision 1.40  2011-01-08 21:44:35  bergsma
+ *	New args to frame Variable functions.
+ *	
  *	Revision 1.39  2010-03-05 06:08:46  bergsma
  *	Add -u option and AUTOHOST environment variable.
  *	
@@ -456,7 +465,7 @@ void gHyp_system_exec ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       *pStr,
       line[MAX_INPUT_LENGTH+1],
       value[VALUE_SIZE+1],
-      command[MAX_OUTPUT_LENGTH+1],
+      command[MAX_COMMAND_LENGTH+1],
       *pCmd,
       *pEndCmd ;
     
@@ -495,7 +504,7 @@ void gHyp_system_exec ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     /* Construct the message to be sent to the shell. */
     strcpy ( line, "" );
     pCmd = command ;
-    pEndCmd = pCmd + MAX_OUTPUT_LENGTH ;    
+    pEndCmd = pCmd + MAX_COMMAND_LENGTH ;    
     pResult = NULL ;
     isVector = ( gHyp_data_getDataType ( pData ) > TYPE_STRING ) ;
     ss = gHyp_data_getSubScript ( pData ) ; 
@@ -514,7 +523,7 @@ void gHyp_system_exec ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       if ( (pCmd + valueLen) > pEndCmd ) 
 	gHyp_instance_error ( pAI, STATUS_IO,
 			      "exec statement longer than %d characters \n",
-			      MAX_OUTPUT_LENGTH ) ;
+			      MAX_COMMAND_LENGTH ) ;
       sprintf ( pCmd, "%s", pStr ) ;
       pCmd += valueLen ;   
     }
@@ -532,7 +541,7 @@ void gHyp_system_exec ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       /* Create a pipe for receiving stdout from the child */
       if ( pipe( pfd ) < 0 ) 
         gHyp_util_sysError ( "Problem with pipe" ) ;
-#ifndef AS_TRUE64
+#ifndef AS_TRU64
       else if ( (pid = vfork ()) < 0 )
         gHyp_util_sysError ( "Problem with vfork" ) ;
 #else
@@ -645,7 +654,7 @@ void gHyp_system_system ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     char
       *pStr,
       value[VALUE_SIZE+1],
-      command[MAX_OUTPUT_LENGTH+1],
+      command[MAX_COMMAND_LENGTH+1],
       *pCmd,
       *pEndCmd ;
 
@@ -669,7 +678,7 @@ void gHyp_system_system ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
     /* Construct the message to be sent to the shell. */
     pCmd = command ;
-    pEndCmd = pCmd + MAX_OUTPUT_LENGTH ;    
+    pEndCmd = pCmd + MAX_COMMAND_LENGTH ;    
     pValue = NULL ;
     isVector = ( gHyp_data_getDataType ( pData ) > TYPE_STRING ) ;
     ss = gHyp_data_getSubScript ( pData ) ; 
@@ -688,7 +697,7 @@ void gHyp_system_system ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       if ( (pCmd + valueLen) > pEndCmd ) 
 	gHyp_instance_error ( pAI, STATUS_IO,
 			      "\n",
-			      MAX_OUTPUT_LENGTH ) ;
+			      MAX_COMMAND_LENGTH ) ;
       sprintf ( pCmd, "%s", pStr ) ;
       pCmd += valueLen ;   
     }
@@ -1443,7 +1452,7 @@ void gHyp_system_xparse ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       gHyp_instance_warning ( pAI, STATUS_FILE, 
 			      "Could not open file '%s'", pFileSpec ) ;
     else {
-      gHyp_data_deleteValues ( gHyp_frame_createVariable ( pFrame, "xmlargs" ) ) ;
+      gHyp_data_deleteValues ( gHyp_frame_createVariable ( pAI, pFrame, "xmlargs" ) ) ;
       gzStream[0] = '\0' ;
       pStream = gzStream ;
       pAnchor = pStream ;

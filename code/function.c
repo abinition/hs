@@ -10,6 +10,15 @@
  * Modifications:
  *
  *   $Log: function.c,v $
+ *   Revision 1.59  2011-06-09 22:32:29  bergsma
+ *   Allow bigger input size for strtok
+ *
+ *   Revision 1.58  2011-02-24 05:12:27  bergsma
+ *   Adjusting values for MAX_OUTPUT_LENGTH and MAX_INPUT_LENGTH
+ *
+ *   Revision 1.56  2011-01-08 21:28:10  bergsma
+ *   Expanded size of encrupted/decrypted buffers.
+ *
  *   Revision 1.55  2010-04-23 05:18:22  bergsma
  *   Increased buffer size for URLencode.
  *
@@ -776,7 +785,7 @@ void gHyp_function_strext ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       *pResult ;
     
     char
-      strVal[VALUE_SIZE+1],
+      strVal[MAX_INPUT_LENGTH+1],
       *pStr,
       *pSubStr ;
     
@@ -803,7 +812,7 @@ void gHyp_function_strext ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     pData = gHyp_stack_popRvalue ( pStack, pAI ) ; 
     stringLen = gHyp_data_getStr ( pData, 
 				   strVal, 
-				   VALUE_SIZE, 
+				   MAX_INPUT_LENGTH, 
 				   gHyp_data_getSubScript(pData),
 				   TRUE ) ;
     pStr = strVal ;
@@ -884,7 +893,7 @@ void gHyp_function_strlen ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       argCount = gHyp_parse_argCount ( pParse ) ;
     
     char
-      strVal[VALUE_SIZE+1] ;
+      strVal[MAX_INPUT_LENGTH+1] ;
 
     sLOGICAL
       isVector ;
@@ -908,7 +917,7 @@ void gHyp_function_strlen ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
       n = gHyp_data_getStr ( pValue, 
 			     strVal, 
-			     VALUE_SIZE, 
+			     MAX_INPUT_LENGTH, 
 			     context, 
 			     isVector ) ;
       N += n ;
@@ -969,8 +978,8 @@ void gHyp_function_pack ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     
     char
       *pStr,
-      strVal[VALUE_SIZE+1],
-      strVal2[VALUE_SIZE+1];
+      strVal[MAX_INPUT_LENGTH+1],
+      strVal2[MAX_INPUT_LENGTH+1];
 
     sLOGICAL
       isVector ;
@@ -997,11 +1006,11 @@ void gHyp_function_pack ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
       n = gHyp_data_getStr ( pValue, 
 			     strVal, 
-			     VALUE_SIZE, 
+			     MAX_INPUT_LENGTH, 
 			     context, 
 			     isVector ) ;
 
-      if ( N+n < VALUE_SIZE ) {
+      if ( N+n < MAX_INPUT_LENGTH ) {
 
 	/* Pack it */
 	memcpy ( (void*) pStr , strVal, n ) ;
@@ -1079,8 +1088,8 @@ void gHyp_function_strloc ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       *pResult ;
     
     char
-      strVal1[VALUE_SIZE+1],
-      strVal2[VALUE_SIZE+1],
+      strVal1[MAX_INPUT_LENGTH+1],
+      strVal2[MAX_INPUT_LENGTH+1],
       *pStr,
       *pStr1,
       *pStr2 ;
@@ -1098,7 +1107,7 @@ void gHyp_function_strloc ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     pData2 = gHyp_stack_popRvalue ( pStack, pAI ) ;
     n = gHyp_data_getStr ( pData2, 
 			   strVal2, 
-			   VALUE_SIZE, 
+			   MAX_INPUT_LENGTH, 
 			   gHyp_data_getSubScript(pData2),
 			   TRUE ) ;
     pStr2 = strVal2 ;
@@ -1106,7 +1115,7 @@ void gHyp_function_strloc ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     pData1 = gHyp_stack_popRvalue ( pStack, pAI ) ;
     n = gHyp_data_getStr ( pData1, 
 			   strVal1, 
-			   VALUE_SIZE, 
+			   MAX_INPUT_LENGTH, 
 			   gHyp_data_getSubScript(pData1),
 			   TRUE ) ;
     pStr1 = strVal1 ;
@@ -1120,6 +1129,83 @@ void gHyp_function_strloc ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
   }
 }
 
+void gHyp_function_indexof ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: indexof ( string, substring )
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+
+  else {
+
+    sStack 	
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+    
+    sData
+      *pData1,
+      *pData2,
+      *pResult ;
+    
+    char
+      strVal1[MAX_INPUT_LENGTH+1],
+      strVal2[MAX_INPUT_LENGTH+1],
+      *pStr,
+      *pStr1,
+      *pStr2 ;
+
+    int
+      n,
+      loc,
+      argCount = gHyp_parse_argCount ( pParse ) ;
+
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 2 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT,
+	"Invalid arguments. Usage: indexof ( string, substring )" ) ;
+
+    pData2 = gHyp_stack_popRvalue ( pStack, pAI ) ;
+    n = gHyp_data_getStr ( pData2, 
+			   strVal2, 
+			   MAX_INPUT_LENGTH, 
+			   gHyp_data_getSubScript(pData2),
+			   TRUE ) ;
+    pStr2 = strVal2 ;
+
+    pData1 = gHyp_stack_popRvalue ( pStack, pAI ) ;
+    n = gHyp_data_getStr ( pData1, 
+			   strVal1, 
+			   MAX_INPUT_LENGTH, 
+			   gHyp_data_getSubScript(pData1),
+			   TRUE ) ;
+    pStr1 = strVal1 ;
+
+    pStr = strstr ( pStr1, pStr2 ) ;
+    loc = pStr ? pStr - pStr1 : -1 ;
+
+    pResult = gHyp_data_new ( NULL ) ;
+    gHyp_data_setInt ( pResult , loc ) ;
+    gHyp_stack_push ( pStack, pResult ) ;
+  }
+}
 
 void gHyp_function_strtok ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
 {
@@ -1158,9 +1244,9 @@ void gHyp_function_strtok ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       *pResult ;
     
     char
-      value[VALUE_SIZE+1],
+      value[MAX_STREAM_LENGTH+1],
       separator[VALUE_SIZE+1],
-      strBuf[MAX_INPUT_LENGTH+1],
+      strBuf[MAX_STREAM_LENGTH+1],
       *pStr,
       *pBuf,
       *pValStart,
@@ -1207,7 +1293,7 @@ void gHyp_function_strtok ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
     /* Construct the string from the elements of the list */
     pBuf = strBuf ;
-    pBufEnd = pBuf + MAX_INPUT_LENGTH ;    
+    pBufEnd = pBuf + MAX_STREAM_LENGTH ;    
     pResult = NULL ;
     isVector = (gHyp_data_getDataType(pData) > TYPE_STRING ) ;
     ss = gHyp_data_getSubScript ( pData ) ; 
@@ -1218,7 +1304,7 @@ void gHyp_function_strtok ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 					     ss ))) {
       valueLen = gHyp_data_getStr ( pResult, 
 				    value, 
-				    VALUE_SIZE, 
+				    MAX_STREAM_LENGTH, 
 				    context, 
 				    isVector ) ;
       pStr = value ;
@@ -1226,7 +1312,7 @@ void gHyp_function_strtok ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       if ( (pBuf + valueLen) > pBufEnd ) 
 	gHyp_instance_error ( pAI, STATUS_IO,
 			      "Input string longer than %d characters \n",
-			      MAX_INPUT_LENGTH ) ;
+			      MAX_STREAM_LENGTH ) ;
       sprintf ( pBuf, "%s", pStr ) ;
       pBuf += valueLen ;   
     }
@@ -1412,8 +1498,8 @@ void gHyp_function_tolower ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       argCount = gHyp_parse_argCount ( pParse ) ;
     
     char
-      strVal[VALUE_SIZE+1],
-      strVal2[VALUE_SIZE+1],
+      strVal[MAX_INPUT_LENGTH+1],
+      strVal2[MAX_INPUT_LENGTH+1],
       *pStr ;
     
     sLOGICAL
@@ -1447,7 +1533,7 @@ void gHyp_function_tolower ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       else {
         n = gHyp_data_getStr ( pValue, 
 			     strVal, 
-			     VALUE_SIZE, 
+			     MAX_INPUT_LENGTH, 
 			     context, 
 			     isVector ) ;
         pStr = strVal ;
@@ -1513,8 +1599,8 @@ void gHyp_function_toupper ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       argCount = gHyp_parse_argCount ( pParse ) ;
     
     char
-      strVal[VALUE_SIZE+1],
-      strVal2[VALUE_SIZE+1],
+      strVal[MAX_INPUT_LENGTH+1],
+      strVal2[MAX_INPUT_LENGTH+1],
       *pStr ;
     
     sLOGICAL
@@ -1547,7 +1633,7 @@ void gHyp_function_toupper ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       else {
         n = gHyp_data_getStr ( pValue, 
 			     strVal, 
-			     VALUE_SIZE, 
+			     MAX_INPUT_LENGTH, 
 			     context, 
 			     isVector ) ;
         pStr = strVal ;
@@ -1613,8 +1699,8 @@ void gHyp_function_strip ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       argCount = gHyp_parse_argCount ( pParse ) ;
     
     char
-      strVal[VALUE_SIZE+1],
-      strVal2[VALUE_SIZE+1],
+      strVal[MAX_INPUT_LENGTH+1],
+      strVal2[MAX_INPUT_LENGTH+1],
       *pStr ;
     
     sLOGICAL
@@ -1647,7 +1733,7 @@ void gHyp_function_strip ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       else {
         n = gHyp_data_getStr ( pValue, 
 			     strVal, 
-			     VALUE_SIZE, 
+			     MAX_INPUT_LENGTH, 
 			     context, 
 			     isVector ) ;
         pStr = strVal ;
@@ -1716,8 +1802,8 @@ void gHyp_function_toexternal(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     
     char
       specialChars[VALUE_SIZE+1],
-      strVal[VALUE_SIZE+1],
-      strVal2[VALUE_SIZE*4+1],
+      strVal[MAX_INPUT_LENGTH+1],
+      strVal2[(MAX_INPUT_LENGTH*4)+1],
       *pStr ;
     
     sLOGICAL
@@ -1762,12 +1848,12 @@ void gHyp_function_toexternal(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       else {
         n = gHyp_data_getStr ( pValue, 
 			     strVal, 
-			     VALUE_SIZE, 
+			     MAX_INPUT_LENGTH, 
 			     context, 
 			     isVector ) ;
         pStr = strVal ;
         pValue2 = gHyp_data_new ( NULL ) ;
-        n = gHyp_util_unparseString ( strVal2, pStr, n, VALUE_SIZE*4, FALSE, FALSE, FALSE,specialChars ) ;
+        n = gHyp_util_unparseString ( strVal2, pStr, n, MAX_INPUT_LENGTH*4, FALSE, FALSE, FALSE,specialChars ) ;
         gHyp_data_setStr_n ( pValue2, strVal2, n ) ;
       }
 
@@ -1828,8 +1914,8 @@ void gHyp_function_tointernal(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       argCount = gHyp_parse_argCount ( pParse ) ;
     
     char
-      strVal[VALUE_SIZE+1],
-      strVal2[VALUE_SIZE+1],
+      strVal[MAX_INPUT_LENGTH+1],
+      strVal2[MAX_INPUT_LENGTH+1],
       *pStr ;
     
     sLOGICAL
@@ -1862,7 +1948,7 @@ void gHyp_function_tointernal(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       else {
         n = gHyp_data_getStr ( pValue, 
 			     strVal, 
-			     VALUE_SIZE, 
+			     MAX_INPUT_LENGTH, 
 			     context, 
 			     isVector ) ;
         pStr = strVal ;
@@ -1930,8 +2016,8 @@ void gHyp_function_trim ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       argCount = gHyp_parse_argCount ( pParse ) ;
     
     char
-      strVal[VALUE_SIZE+1],
-      strVal2[VALUE_SIZE+1],
+      strVal[MAX_INPUT_LENGTH+1],
+      strVal2[MAX_INPUT_LENGTH+1],
       *pStr ;
     
     sLOGICAL
@@ -1965,7 +2051,7 @@ void gHyp_function_trim ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
         n = gHyp_data_getStr ( pValue, 
 			     strVal, 
-			     VALUE_SIZE, 
+			     MAX_INPUT_LENGTH, 
 			     context, 
 			     isVector ) ;
         pStr = strVal ;
@@ -2033,8 +2119,8 @@ void gHyp_function_decode(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       argCount = gHyp_parse_argCount ( pParse ) ;
     
     char
-      encrypted[VALUE_SIZE+1],
-      decrypted[VALUE_SIZE+1],
+      encrypted[MAX_INPUT_LENGTH+1],
+      decrypted[MAX_INPUT_LENGTH+1],
       *pStr ;
     
     sLOGICAL
@@ -2058,7 +2144,7 @@ void gHyp_function_decode(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 					    ss ) ) ) {
         n = gHyp_data_getStr ( pValue, 
 			     encrypted, 
-			     VALUE_SIZE, 
+			     MAX_INPUT_LENGTH, 
 			     context, 
 			     isVector ) ;
         pStr = encrypted ;
@@ -2124,8 +2210,8 @@ void gHyp_function_encode(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       argCount = gHyp_parse_argCount ( pParse ) ;
     
     char
-      encrypted[VALUE_SIZE+1],
-      decrypted[VALUE_SIZE+1],
+      encrypted[MAX_INPUT_LENGTH+1],
+      decrypted[MAX_INPUT_LENGTH+1],
       *pStr ;
     
     sLOGICAL
@@ -2149,7 +2235,7 @@ void gHyp_function_encode(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 					    ss ) ) ) {
         n = gHyp_data_getStr ( pValue, 
 			     decrypted, 
-			     VALUE_SIZE, 
+			     MAX_INPUT_LENGTH, 
 			     context, 
 			     isVector ) ;
         pStr = encrypted ;
@@ -2216,8 +2302,8 @@ void gHyp_function_urlDecode(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       argCount = gHyp_parse_argCount ( pParse ) ;
     
     char
-      encrypted[VALUE_SIZE+1],
-      decrypted[VALUE_SIZE+1],
+      encrypted[MAX_INPUT_LENGTH+1],
+      decrypted[MAX_INPUT_LENGTH+1],
       *pStr ;
     
     sLOGICAL
@@ -2241,7 +2327,7 @@ void gHyp_function_urlDecode(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 					    ss ) ) ) {
         n = gHyp_data_getStr ( pValue, 
 			     encrypted, 
-			     VALUE_SIZE, 
+			     MAX_INPUT_LENGTH, 
 			     context, 
 			     isVector ) ;
         pStr = encrypted ;
@@ -2308,7 +2394,7 @@ void gHyp_function_urlEncode(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       argCount = gHyp_parse_argCount ( pParse ) ;
     
     char
-      encrypted[VALUE_SIZE+1],
+      encrypted[MAX_INPUT_LENGTH+1],
       decrypted[INTERNAL_VALUE_SIZE+1],
       *pStr ;
     
@@ -7989,7 +8075,7 @@ void gHyp_function_parseurl ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       argCount = gHyp_parse_argCount ( pParse ) ;
     
     char
-      name[VALUE_SIZE+1],
+      name[MAX_INPUT_LENGTH+1],
       *p,
       *after_access,
       *orig,
@@ -8011,7 +8097,7 @@ void gHyp_function_parseurl ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
     n = gHyp_data_getStr ( pData, 
 			   name, 
-			   VALUE_SIZE, 
+			   MAX_INPUT_LENGTH, 
 			   gHyp_data_getSubScript(pData),
 			   TRUE ) ;
 

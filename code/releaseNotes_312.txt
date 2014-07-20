@@ -1,7 +1,7 @@
 Release Notes HyperScript V3.1.2
 Modifications:
 $Log: releaseNotes_312.txt,v $
-Revision 1.2  2003/04/16 01:45:14  bergsma
+Revision 1.2  2003-04-16 01:45:14  bergsma
 Freeze 3.1.2.  Prepared for Form Factor.  The -n option is used to give
 hyperscripts on VMS a loopback channel as the means for incoming mailbox
 AST to notify hyperscipt of a message arrival, ie: to unblock the

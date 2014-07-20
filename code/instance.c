@@ -11,6 +11,68 @@
  * Modifications:
  *
  *	$Log: instance.c,v $
+ *	Revision 1.90  2012-03-24 00:30:43  bergsma
+ *	Comments
+ *	
+ *	Revision 1.89  2012-02-14 19:41:26  bergsma
+ *	Completed fix of ENQ contention
+ *	
+ *	Revision 1.88  2012-02-09 22:52:49  bergsma
+ *	Release candidate HS3.9.4-120209 - fix replyMessage[outgoingDepth]
+ *	
+ *	Revision 1.87  2012-01-29 21:32:41  bergsma
+ *	Remove debug statements
+ *	
+ *	Revision 1.86  2012-01-29 21:18:20  bergsma
+ *	Build 3.9.4 - 120202
+ *	
+ *	Revision 1.85  2012-01-17 05:33:49  bergsma
+ *	Production Release
+ *	
+ *	Revision 1.84  2012-01-16 16:53:46  bergsma
+ *	More fixes for enq contention in gHyp_instance_replyMessage
+ *	
+ *	Revision 1.83  2012-01-08 01:25:25  bergsma
+ *	More work on ENQ contention.
+ *	
+ *	Revision 1.82  2011-12-24 01:40:02  bergsma
+ *	Bug fixed for E500.
+ *	
+ *	Revision 1.81  2011-09-29 08:44:46  bergsma
+ *	Fix issue with replyMessage and ENQ contention
+ *	
+ *	Revision 1.80  2011-09-20 05:35:54  bergsma
+ *	Fixed problem with replyMessage occurring to early, also problem
+ *	with ENQ contention and resending when the message queue was empty.
+ *	
+ *	Revision 1.79  2011-09-02 21:12:16  bergsma
+ *	Comment
+ *	
+ *	Revision 1.78  2011-06-03 23:16:22  bergsma
+ *	Found the bug where two signals can be processed at the same time! Yeah.
+ *	
+ *	Revision 1.77  2011-04-10 17:23:56  bergsma
+ *	Add pAI->signal.tokenSignal, set to indicate a handler is ready to execute.
+ *	Prevents another handler from being readied for execution until the first one
+ *	has completed.
+ *	
+ *	Revision 1.76  2011-02-26 07:42:06  bergsma
+ *	no message
+ *	
+ *	Revision 1.75  2011-02-24 23:55:34  bergsma
+ *	Change some PROTOCOL debugs to DIAGNOSTIC debugs.
+ *	Get HSDOM working.
+ *	
+ *	Revision 1.74  2011-02-24 03:13:33  bergsma
+ *	Adjusting values for MAX_OUTPUT_LENGTH and MAX_INPUT_LENGTH
+ *	
+ *	Revision 1.73  2011-02-20 00:59:53  bergsma
+ *	Bug, couldn't reinvoke enabled methods if they were local in local mode.
+ *	
+ *	Revision 1.72  2010-12-31 06:55:20  bergsma
+ *	1. Fix problem with lifetime being > 1 day
+ *	2. Fix problem whereby conditions could be missed
+ *	
  *	Revision 1.71  2010-07-05 16:01:51  bergsma
  *	no message
  *	
@@ -309,6 +371,7 @@ struct reply_t {
   char		method[METHOD_SIZE+1] ;
   char		transactionID[FIELD_SIZE+1];
   int		timeoutTime ;
+  int           frameDepth ;
   sSecs	secs ;
 } ;
 
@@ -363,6 +426,7 @@ struct instance_t
     int		     conArg[MAX_SIGNALS] ;	/* The socket where the error occurred */
     int		     conArg2[MAX_SIGNALS] ;	/* The port number where the error occurred */
     int		     conArg3[MAX_SIGNALS] ;	/* The device id where the error occurred */
+    unsigned         tokenSignal ;              /* Set-cleared when any signal condition has occurred */
   } signal ;
 
   struct {
@@ -377,10 +441,10 @@ struct instance_t
     int		endQQ ;		/* Pointer to qq end */
     sAImsg	*current ;	/* Current mesage */
     sAImsg	*incoming ;	/* Incoming mesage */
-    sAImsg	*outgoing ;	/* Outgoing mesage */
-    sReply      *outgoingReply[MAX_REPLY_DEPTH];/* Reply message stack */
-    sReply      *incomingReply[MAX_REPLY_DEPTH];/* Reply message stack */
-    sAImsg	*rq[MAX_QUEUE_DEPTH]; /* Outstanding reply message queue */
+    sAImsg	*outgoing ;	/* Outgoing mesage */\
+    sReply      *outgoingReply[MAX_REPLY_DEPTH];/* Outgoing reply message stack */
+    sReply      *incomingReply[MAX_REPLY_DEPTH];/* Incoming reply message stack */
+    sAImsg	*rq[MAX_QUEUE_DEPTH]; /* Outstanding requeue message queue */
     sAImsg	*qq[MAX_QUEUE_DEPTH]; /* Outstanding query message queue */
     sSecs	inSecs ;
     sSecs	qqSecs[MAX_QUEUE_DEPTH] ; /* Secs attachment */
@@ -464,6 +528,7 @@ static void lHyp_instance_consumeMessage ( sInstance *pAI,
     isVector,
     isReply,
     isQuery,
+    isEvent,
     deleteMethodArgs ;
   
   char
@@ -481,6 +546,7 @@ static void lHyp_instance_consumeMessage ( sInstance *pAI,
   /* If the message mode is QUERY, initialize a list of REPLY tokens. */
   pAImsg = pAI->msg.incoming ;
   isQuery = gHyp_aimsg_isQuery ( pAImsg ) ;
+  isEvent = gHyp_aimsg_isEvent ( pAImsg ) ;
   if ( isQuery ) pReplyTV = gHyp_data_new ( "_replytv_" ) ;
   isReply = gHyp_aimsg_isReply ( pAImsg ) ;
 
@@ -498,7 +564,7 @@ static void lHyp_instance_consumeMessage ( sInstance *pAI,
     pMethodArgs = gHyp_method_getArgs ( pMethod ) ;
 
     /* Create or retrieve the "args" variable, and clear it of any values. */
-    pArgs = gHyp_frame_createVariable ( pAI->exec.pFrame, "args" ) ;
+    pArgs = gHyp_frame_createVariable ( pAI, pAI->exec.pFrame, "args" ) ;
     gHyp_data_deleteValues ( pArgs ) ;
     deleteMethodArgs = FALSE ;
 
@@ -507,11 +573,17 @@ static void lHyp_instance_consumeMessage ( sInstance *pAI,
     pMethodArgs = gHyp_data_new ( NULL ) ;
     deleteMethodArgs = TRUE ;
 
-    pArgs = gHyp_frame_createVariable ( pAI->exec.pFrame, "replyargs" ) ;
+    pArgs = gHyp_frame_createVariable ( pAI, pAI->exec.pFrame, "replyargs" ) ;
     gHyp_data_deleteValues ( pArgs ) ;
 
   }
-  /* Merge the argument values into the defined method args */
+  /*gHyp_util_debug ( gHyp_data_print ( pTV ) ) ;*/
+
+  /* Merge the argument values into the defined method args 
+   *
+   * Why is pReplyTV passed.  
+   * Because if we abort, we need to delete it, otherwise it will leak.
+   */
   pResult = gHyp_env_mergeData ( pMethodArgs, pTV, pAI, 0, FALSE, TRUE, FALSE, pReplyTV ) ;
   
   /* Process pResult .*/
@@ -535,7 +607,7 @@ static void lHyp_instance_consumeMessage ( sInstance *pAI,
 						"STATUS" ) ;
     else
       /* All other variables can be local or global */
-      pVariable = gHyp_frame_createVariable ( pAI->exec.pFrame, 
+      pVariable = gHyp_frame_createVariable ( pAI, pAI->exec.pFrame, 
 					      pVariableStr ) ;
 	
     gHyp_data_setReference ( pLvalue, pVariableStr, pVariable);
@@ -569,6 +641,21 @@ static void lHyp_instance_consumeMessage ( sInstance *pAI,
   gHyp_data_delete ( pLvalue ) ;
   if ( deleteMethodArgs ) gHyp_data_delete ( pMethodArgs ) ;
   
+  if ( isEvent || isQuery ) {
+
+    /* Initialize reply message - default to NULL - for event messages */
+    if ( pAI->msg.outgoingReply[outgoingDepth]->msg != NULL ) 
+      gHyp_aimsg_delete ( pAI->msg.outgoingReply[outgoingDepth]->msg ) ;
+    pAI->msg.outgoingReply[outgoingDepth]->msg = NULL ;
+    pAI->msg.outgoingReply[outgoingDepth]->frameDepth = gHyp_frame_depth ( pAI->exec.pFrame ) ;
+    pAI->msg.outgoingReply[pAI->msg.outgoingDepth]->secs.id = NULL_DEVICEID ;
+    pAI->msg.outgoingReply[pAI->msg.outgoingDepth]->secs.id = NULL_DEVICEID ;
+    pAI->msg.outgoingReply[pAI->msg.outgoingDepth]->secs.stream = -1 ;
+    pAI->msg.outgoingReply[pAI->msg.outgoingDepth]->secs.function = -1 ;
+    pAI->msg.outgoingReply[pAI->msg.outgoingDepth]->secs.TID = -1 ;
+    pAI->msg.outgoingReply[pAI->msg.outgoingDepth]->secs.SID = -1 ;
+  }
+
   if ( isQuery ) {
     
     /* Prepare the reply message */
@@ -581,20 +668,12 @@ static void lHyp_instance_consumeMessage ( sInstance *pAI,
     gHyp_aimsg_getTargetAddress ( pAImsg, sender ) ;
     gHyp_aimsg_getSenderAddress ( pAImsg, target ) ;
     
-    if ( guDebugFlags & DEBUG_PROTOCOL )
-      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
+    if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
 			   "diag : Storing outgoing reply for %s at depth %d", 
 			   gHyp_aimsg_method(pAImsg), outgoingDepth ) ;
-    
-    if ( pAI->msg.outgoingReply[outgoingDepth]->msg == NULL ) {
-      pAI->msg.outgoingReply[outgoingDepth]->msg = gHyp_aimsg_new() ;
-      pAI->msg.outgoingReply[pAI->msg.outgoingDepth]->secs.id = NULL_DEVICEID ;
-      pAI->msg.outgoingReply[pAI->msg.outgoingDepth]->secs.stream = -1 ;
-      pAI->msg.outgoingReply[pAI->msg.outgoingDepth]->secs.function = -1 ;
-      pAI->msg.outgoingReply[pAI->msg.outgoingDepth]->secs.TID = -1 ;
-      pAI->msg.outgoingReply[pAI->msg.outgoingDepth]->secs.SID = -1 ;
-    }
-    
+
+    pAI->msg.outgoingReply[outgoingDepth]->msg = gHyp_aimsg_new() ;
     gHyp_aimsg_initUnparse (	pAI->msg.outgoingReply[outgoingDepth]->msg,
 				target,
 				"reply",
@@ -857,6 +936,7 @@ void gHyp_instance_init ( sInstance *pAI,
     pReply->sender[0]	= '\0' ;
     pReply->method[0]	= '\0' ;
     pReply->transactionID[0]	= '\0' ;
+    pReply->frameDepth = -1 ;
     pReply->timeoutTime	= 0 ;
 
     pReply->secs.id	= NULL_DEVICEID ;
@@ -870,6 +950,7 @@ void gHyp_instance_init ( sInstance *pAI,
     pReply->sender[0]	= '\0' ;
     pReply->method[0]	= '\0' ;
     pReply->transactionID[0]	= '\0' ;
+    pReply->frameDepth = -1 ;
     pReply->timeoutTime	= 0 ;
 
     pReply->secs.id	= NULL_DEVICEID ;
@@ -885,7 +966,7 @@ void gHyp_instance_init ( sInstance *pAI,
   pAI->msg.outgoing = NULL ;
 
   /* The rq queue is where messages go if they get a requeue() 
-* The qq is the main message queue.
+   * The qq is the main message queue.
    */
   for ( i=0; i<MAX_QUEUE_DEPTH; i++ ) {
     pAI->msg.qq[i] = NULL ;
@@ -917,6 +998,7 @@ void gHyp_instance_init ( sInstance *pAI,
   pAI->signal.numCon = 0 ;
   pAI->signal.uMETHODCALL = 0 ;
   pAI->signal.uDEREFERENCE = 0 ;
+  pAI->signal.tokenSignal = 0 ;
 
   /* Establish signal handlers for environment level handlers. */
   pAI->signal.uIO = 0 ;
@@ -1105,7 +1187,7 @@ int gHyp_instance_nextEvent ( sInstance *pAI )
     wakeup;
 	  
   /* Check the sanity of each time */
-  farAndAway = (int) gsCurTime + MAX_ALARM_SECONDS + 1 ;
+  farAndAway = (int) gsCurTime + MAX_LIFETIME_SECONDS + 1 ;
 
   if ( pAI->exec.alarmTime != 0 ) {
     if ( pAI->exec.alarmTime < gsCurTime )
@@ -1118,7 +1200,7 @@ int gHyp_instance_nextEvent ( sInstance *pAI )
     if ( pAI->exec.deathTime < gsCurTime )
       pAI->exec.deathTime = gsCurTime ;
     else if ( pAI->exec.deathTime > farAndAway )
-      pAI->exec.deathTime = pAI->exec.createTime + MAX_LIFETIME_SECONDS  ;
+      pAI->exec.deathTime = gsCurTime + MAX_LIFETIME_SECONDS  ;
   }
 
   if ( pAI->exec.timeOutTime != 0 ) {
@@ -1142,11 +1224,11 @@ int gHyp_instance_nextEvent ( sInstance *pAI )
       pAI->exec.wakeTime = 0 ;
   }
 
-  alarmed = (int)   (pAI->exec.alarmTime ? pAI->exec.alarmTime : farAndAway );
-  death = (int)     (pAI->exec.deathTime ? pAI->exec.deathTime : farAndAway );
-  timeOut = (int)   (pAI->exec.timeOutTime ? pAI->exec.timeOutTime : farAndAway) ;
-  heartbeat = (int) (pAI->exec.beatTime ? pAI->exec.beatTime : farAndAway );
-  wakeup = (int)    (pAI->exec.wakeTime ? pAI->exec.wakeTime : farAndAway );
+  alarmed = (int)   (pAI->exec.alarmTime   ? pAI->exec.alarmTime   : farAndAway );
+  death = (int)     (pAI->exec.deathTime   ? pAI->exec.deathTime   : farAndAway );
+  timeOut = (int)   (pAI->exec.timeOutTime ? pAI->exec.timeOutTime : farAndAway );
+  heartbeat = (int) (pAI->exec.beatTime    ? pAI->exec.beatTime    : farAndAway );
+  wakeup = (int)    (pAI->exec.wakeTime    ? pAI->exec.wakeTime    : farAndAway );
 
   /* CLEAR IT */
   pAI->exec.eventType = 0 ;
@@ -1155,32 +1237,32 @@ int gHyp_instance_nextEvent ( sInstance *pAI )
 		
     /* The next event is a timeout */
     pAI->exec.eventTime = pAI->exec.timeOutTime ;
-    pAI->exec.eventType |= EVENT_TIMEOUT ;
+    pAI->exec.eventType = EVENT_TIMEOUT ;
   }
-  if ( alarmed <= death && alarmed <= timeOut && alarmed <= heartbeat && alarmed <= wakeup ) {
+  else if ( alarmed <= death && alarmed <= timeOut && alarmed <= heartbeat && alarmed <= wakeup ) {
 		
     /* The next event is an alarm */
     pAI->exec.eventTime = pAI->exec.alarmTime ;
-    pAI->exec.eventType |= EVENT_ALARM ;
+    pAI->exec.eventType = EVENT_ALARM ;
   }  
-  if ( death <= alarmed && death <= timeOut && death <= heartbeat && death <= wakeup ) {
+  else if ( death <= alarmed && death <= timeOut && death <= heartbeat && death <= wakeup ) {
       
     /* The next event is death. */
     pAI->exec.eventTime = pAI->exec.deathTime ;
-    pAI->exec.eventType |= EVENT_DEATH ;
+    pAI->exec.eventType = EVENT_DEATH ;
 
   }
-  if ( heartbeat <= alarmed && heartbeat <= timeOut && heartbeat <= death && heartbeat <= wakeup )  {
+  else if ( heartbeat <= alarmed && heartbeat <= timeOut && heartbeat <= death && heartbeat <= wakeup )  {
   
     /* Heartbeat is the 'next' event. */
     pAI->exec.eventTime = pAI->exec.beatTime ;
-    pAI->exec.eventType |= EVENT_HEARTBEAT ;
+    pAI->exec.eventType = EVENT_HEARTBEAT ;
   }
-  if ( wakeup <= heartbeat && wakeup <= alarmed && wakeup <= timeOut && wakeup <= death )  {
+  else if ( wakeup <= heartbeat && wakeup <= alarmed && wakeup <= timeOut && wakeup <= death )  {
  
     /* Wakup from sleep is the 'next' event. */
     pAI->exec.eventTime = pAI->exec.wakeTime ;
-    pAI->exec.eventType |= EVENT_WAKEUP ;
+    pAI->exec.eventType = EVENT_WAKEUP ;
   }
   
   /*gHyp_util_debug("Next event(s) is %x in %d seconds",
@@ -1258,6 +1340,7 @@ void  gHyp_instance_signalHangup ( sInstance *pAI, int sigarg, int sigarg2, int 
 {
   int n = pAI->signal.numHup ;
   if ( n < MAX_SIGNALS ) {
+    /*gHyp_util_debug("New HUP at [%d] s=%d x=%d id=%d",n,sigarg,sigarg2,sigarg3) ;*/
     pAI->signal.uHUP = 1 ;
     pAI->signal.hupArg[n] = sigarg ;
     pAI->signal.hupArg2[n] = sigarg2 ;
@@ -1271,6 +1354,7 @@ void  gHyp_instance_signalConnect ( sInstance *pAI, int sigarg, int sigarg2, int
   int n = pAI->signal.numCon ;
   if ( n < MAX_SIGNALS ) {
     pAI->signal.uCONNECT = 1 ;
+    /*gHyp_util_debug("New CON at [%d] s=%d x=%d id=%d",n,sigarg,sigarg2,sigarg3) ;*/
     pAI->signal.conArg[n]  = sigarg ;
     pAI->signal.conArg2[n] = sigarg2 ;
     pAI->signal.conArg3[n] = sigarg3 ;
@@ -1464,8 +1548,8 @@ int gHyp_instance_readReply ( sInstance *pAI )
        pAI->msg.incomingDepth > 0 &&
        pAI->msg.incomingReply[pAI->msg.incomingDepth-1]->msg != NULL ) {
     
-    if ( guDebugFlags & DEBUG_PROTOCOL )
-      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
+    if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
 			   "diag : Matched incoming reply at depth %d",
 			   pAI->msg.incomingDepth-1);
     
@@ -1487,9 +1571,9 @@ int gHyp_instance_readReply ( sInstance *pAI )
     /* Consume the REPLY message and resume execution after the query */
 
     
-    if ( guDebugFlags & DEBUG_PROTOCOL )
+    if ( guDebugFlags & DEBUG_DIAGNOSTICS )
       gHyp_util_logDebug ( 
-			  FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
+			  FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
 			  "diag : Consuming reply message at incoming depth %d",
 			  n ) ;
     
@@ -1537,15 +1621,15 @@ int gHyp_instance_readQueue ( sInstance* pAI )
     pAI->msg.qqSecs[n].TID = -1 ;
     pAI->msg.qqSecs[n].SID = -1 ; 
 
-    if ( guDebugFlags & DEBUG_PROTOCOL ) {
+    if ( guDebugFlags & DEBUG_DIAGNOSTICS ) {
       if ( gHyp_aimsg_isReply ( pAI->msg.incoming ) )
-	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
+	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
 			   "Found queued reply message(%d) '%s' for %s",
 			     pAI->msg.startQQ,
 			     gHyp_aimsg_method ( pAI->msg.incoming),
 			     pAI->msg.targetId ) ;
       else
-	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
+	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
 			     "Found queued event or query message(%d) '%s' for %s",
 			     pAI->msg.startQQ,
 			     gHyp_aimsg_method ( pAI->msg.incoming),
@@ -1648,6 +1732,11 @@ int gHyp_instance_readSignals ( sInstance *pAI )
   else if ( pAI->signal.uHUP ) {
     /* SIGHUP was received. */
     n = pAI->signal.numHup-1;
+    /*
+    gHyp_util_debug("Info HUP at [%d] s=%d x=%d id=%d",n,pAI->signal.hupArg[n], 
+	      pAI->signal.hupArg2[n], 
+	      pAI->signal.hupArg3[n] ) ;
+    */
     gHyp_instance_warning (	pAI, STATUS_HANGUP, 
 				"Hangup signal:%s: socket = %u, port = %u, id = %u, instance = %s",
 			        gHyp_util_timeStamp ( gsCurTime ),
@@ -1662,6 +1751,11 @@ int gHyp_instance_readSignals ( sInstance *pAI )
   else if ( pAI->signal.uCONNECT ) {
     /* A connect signal.  */
     n = pAI->signal.numCon-1;
+    /*
+    gHyp_util_debug("Info CON at [%d] s=%d x=%d id=%d",n,pAI->signal.conArg[n], 
+	      pAI->signal.conArg2[n], 
+	      pAI->signal.conArg3[n] ) ;
+    */
     gHyp_instance_warning (	pAI, STATUS_CONNECT,
 				"Connect signal:%s: socket = %u, port = %u, id = %u, instance = %s",
 			        gHyp_util_timeStamp ( gsCurTime ),
@@ -1687,10 +1781,10 @@ int gHyp_instance_readProcess ( sInstance *pAI )
     isF0,isS9,
     matchedReply,
     currentQuery,
-    okInstance,
+    okInstance=FALSE,
     okWildCard,
-    okTID,
-    okMethod,
+    okTID=FALSE,
+    okMethod=FALSE,
     isSECSmsg ;
 
   char
@@ -1780,7 +1874,7 @@ int gHyp_instance_readProcess ( sInstance *pAI )
 
   if ( guDebugFlags & DEBUG_PROTOCOL )
     gHyp_util_logDebug (FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
-			"diag : Target=%s, Sender=%s, Method=%s, TID=%s, isReply=%d, isSECS=%d",
+			"Target=%s, Sender=%s, Method=%s, TID=%s, isReply=%d, isSECS=%d",
 			targetPath,
 			senderPath, 
 			pMethodStr,
@@ -1826,9 +1920,9 @@ int gHyp_instance_readProcess ( sInstance *pAI )
 	okMethod = ( strcmp ( pMethodStr,
 			      pAI->msg.incomingReply[i]->method ) == 0) ;
       
-      if ( guDebugFlags & DEBUG_PROTOCOL )
-	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
-			    "diag : Matching %s=%s, %s=%s, %s=%s",
+      if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
+                            "diag: Matching %s=%s, %s=%s, %s=%s",
 			     senderPath, pAI->msg.incomingReply[i]->sender,
 			     pMethodStr,pAI->msg.incomingReply[i]->method,
 			     pTransactionID,pAI->msg.incomingReply[i]->transactionID ) ;
@@ -1846,23 +1940,23 @@ int gHyp_instance_readProcess ( sInstance *pAI )
 			    i,
 			    pAI->msg.incomingReply[i]->sender ) ;
 	
-	if ( guDebugFlags & DEBUG_PROTOCOL ) {
+	if ( guDebugFlags & DEBUG_DIAGNOSTICS ) {
 	  if ( currentQuery )
 	    gHyp_util_logDebug ( 
-	      FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
+	      FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
 	      "diag : Matched current reply %s at incoming depth %u",
 	      pMethodStr, i);
 	  else
 	    gHyp_util_logDebug ( 
-	      FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
+	      FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
 	      "diag : Matched lower reply %s at incoming depth %u",
 	      pMethodStr, i);
 	}
 	
 
-	if ( guDebugFlags & DEBUG_PROTOCOL )
-	  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
-			    "diag : Matched %s=%s, %s=%s, %s=%s",
+	if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+	  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
+			    "Matched %s=%s, %s=%s, %s=%s",
 			     senderPath, pAI->msg.incomingReply[i]->sender,
 			     pMethodStr,pAI->msg.incomingReply[i]->method,
 			     pTransactionID,pAI->msg.incomingReply[i]->transactionID ) ;
@@ -1892,8 +1986,9 @@ int gHyp_instance_readProcess ( sInstance *pAI )
  
     if ( !matchedReply ) {
       if ( !isS9 ) {
-	gHyp_util_logWarning ( "Reply '%s' message ignored, no match",
-				pMethodStr ) ;
+	gHyp_util_logWarning ( "Reply '%s' message ignored, no match, reason = %s",
+				pMethodStr,
+                                (!okTID?"TID mismatch":(!okMethod?"Method mismatch":(!okInstance?"Instance":"Unknown?"))) ) ;
 	/* To do: Send S9F3 (stream mismatch) or S9F5 (function mismatch) */
       }
       else
@@ -1995,8 +2090,8 @@ void gHyp_instance_incIncomingDepth ( sInstance *pAI )
 {
   pAI->msg.incomingDepth++ ;
   
-  if ( guDebugFlags & DEBUG_PROTOCOL )
-    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
+  if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
 			 "diag : incoming reply depth++ = %d",
 			 pAI->msg.incomingDepth );
   
@@ -2017,8 +2112,8 @@ void gHyp_instance_decIncomingDepth ( sInstance *pAI )
 {
   if ( pAI->msg.incomingDepth > 0 ) pAI->msg.incomingDepth-- ;
   
-  if ( guDebugFlags & DEBUG_PROTOCOL )
-    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
+  if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
 			 "proto: incoming reply depth-- = %d",
 			 pAI->msg.incomingDepth);
   
@@ -2028,8 +2123,8 @@ void gHyp_instance_incOutgoingDepth ( sInstance *pAI )
 {
   pAI->msg.outgoingDepth++ ;
   
-  if ( guDebugFlags & DEBUG_PROTOCOL )
-    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
+  if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
 			 "proto: outgoing reply depth++ = %d",
 			 pAI->msg.outgoingDepth);
     
@@ -2038,23 +2133,89 @@ void gHyp_instance_incOutgoingDepth ( sInstance *pAI )
 			 pAI->msg.outgoingDepth ) ;
     longjmp ( gsJmpStack[0], COND_FATAL ) ;
   }  
+
+  /* Clear the next level - ahead of itself ****************************
+  if ( pAI->msg.outgoingReply[pAI->msg.outgoingDepth]->msg ) {
+    gHyp_aimsg_delete ( pAI->msg.outgoingReply[pAI->msg.outgoingDepth]->msg ) ;
+    pAI->msg.outgoingReply[pAI->msg.outgoingDepth]->msg = NULL ;
+  }
+  pAI->msg.outgoingReply[pAI->msg.outgoingDepth]->frameDepth = -1 ;
   pAI->msg.outgoingReply[pAI->msg.outgoingDepth]->secs.id = NULL_DEVICEID ;
   pAI->msg.outgoingReply[pAI->msg.outgoingDepth]->secs.stream = -1 ;
   pAI->msg.outgoingReply[pAI->msg.outgoingDepth]->secs.function = -1 ;
   pAI->msg.outgoingReply[pAI->msg.outgoingDepth]->secs.TID = -1 ;
   pAI->msg.outgoingReply[pAI->msg.outgoingDepth]->secs.SID = -1 ;
-
+  ***********************************************************************/
 }
 
 void gHyp_instance_decOutgoingDepth ( sInstance *pAI )
 {
   if ( pAI->msg.outgoingDepth > 0 ) pAI->msg.outgoingDepth-- ;
   
-  if ( guDebugFlags & DEBUG_PROTOCOL )
-    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
+  if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
 			 "diag : outgoing reply depth-- = %d",
 			 pAI->msg.outgoingDepth);
   
+}
+
+sLOGICAL gHyp_instance_atCorrectDepth ( sInstance *pAI, char *pMethodStr, int frameDepth )
+{
+  /* Checks to see if gHyp_instance_replyMessage can be called to decrement the call-method level */
+
+  int outgoingDepth = pAI->msg.outgoingDepth - 1 ;
+  char *pMethodStr2 ;
+  char *NULLstring = "NULL" ;
+  int frameDepth2 ;
+
+  if ( outgoingDepth >= 0 &&
+       pAI->msg.outgoingReply[outgoingDepth]->msg != NULL ) {
+
+    /* Get the name of the method stored at the current depth */
+    pMethodStr2 = gHyp_aimsg_method ( pAI->msg.outgoingReply[outgoingDepth]->msg ) ;
+
+    /* Get the frame depth saved with the method we are looking to send out a reply. */
+    frameDepth2 = pAI->msg.outgoingReply[outgoingDepth]->frameDepth ;
+  }
+  else {
+    /* Make up dummy values */
+    pMethodStr2 = NULLstring ;
+    frameDepth2 = -1 ;
+  } 
+
+  /*gHyp_util_debug("Evaluating depth %d, %s==%s, frame %d==%d", outgoingDepth, pMethodStr, pMethodStr2, frameDepth, frameDepth2 ) ;*/
+
+  /* If we are already at depth 0, then there is no reply to send. */ 
+  if ( outgoingDepth < 0 ) return FALSE ;
+
+  /* If the frame depth saved in the reply message is higher than the
+   * current frame depth, then its ok to send out a reply for the current depth
+   */
+  if ( pAI->msg.outgoingReply[outgoingDepth]->frameDepth > frameDepth ) return TRUE ;
+
+  /* If the frame depth saved in the reply message is lower than the
+   * current frame depth, then its never ok to send out the reply
+   */
+  if ( pAI->msg.outgoingReply[outgoingDepth]->frameDepth < frameDepth ) return FALSE ;
+
+  /* The frame depths are equal. */
+
+  if ( strcmp ( pMethodStr, pMethodStr2 ) == 0 ) {
+    /* Methods match.  Ok to send reply */
+    /*gHyp_util_debug("Matched, %s == %s", pMethodStr, pMethodStr2 ) ;*/
+    return TRUE ;
+  }
+  else if ( pAI->msg.outgoingReply[outgoingDepth]->msg == NULL ) {
+    /* The method was an event message.  There is no method to match.  Return OK */
+    /*gHyp_util_debug("Event message, no reply", pMethodStr, pMethodStr2 ) ;*/
+    return TRUE ;
+  }
+  else
+    /* A mistmatch - return FALSE */
+    /*gHyp_util_debug("Mis-Matched, %s != %s", pMethodStr, pMethodStr2 ) ;*/
+
+  /* Whatever this is, its FALSE */
+  return FALSE ;
 }
 
 void gHyp_instance_secsReply ( sInstance *pAI, sData *pMethodData )
@@ -2080,20 +2241,17 @@ void gHyp_instance_secsReply ( sInstance *pAI, sData *pMethodData )
 	      pAI->msg.outgoingReply[outgoingDepth]->secs.stream, 
 	      pAI->msg.outgoingReply[outgoingDepth]->secs.function ) ;
 
-    if ( guDebugFlags & DEBUG_PROTOCOL ) {
-      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
+    if ( guDebugFlags & DEBUG_DIAGNOSTICS ) {
+      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
 			   "diag : Looking for outgoing secs reply %s at depth %d",
 			   value, outgoingDepth ) ;
-      gHyp_util_logDebug( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
-			 "Method data is %s",gHyp_data_print(pMethodData));
     }
 
     pLocalVariable = gHyp_data_getChildByName ( pMethodData, 
 						value ) ;
     if ( pLocalVariable ) {
 
-      pGlobalVariable = gHyp_frame_findRootVariable (  pAI->exec.pFrame, 
-						       value ) ;
+      pGlobalVariable = gHyp_frame_findRootVariable ( pAI->exec.pFrame, value ) ;
       if ( pGlobalVariable && pLocalVariable != pGlobalVariable ) {
       
 	/* Assign the data to the global variable */
@@ -2162,6 +2320,7 @@ sLOGICAL gHyp_instance_replyMessage ( sInstance *pAI, sData *pMethodData )
     id ;
 
   int
+    highWaterOutgoingDepth,
     outgoingDepth,
     nBytes=0,
     maxTries,
@@ -2191,17 +2350,22 @@ sLOGICAL gHyp_instance_replyMessage ( sInstance *pAI, sData *pMethodData )
   
   if ( pAI->msg.outgoingDepth < 1 ) return FALSE ;
 
-  
-  if ( guDebugFlags & DEBUG_PROTOCOL )
-    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
+  if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
 			 "diag : Looking for outgoing reply at depth %d",
 			 pAI->msg.outgoingDepth-1 ) ;
   
 
+  highWaterOutgoingDepth = pAI->msg.outgoingDepth ;
   gHyp_instance_decOutgoingDepth ( pAI ) ;
   outgoingDepth =  pAI->msg.outgoingDepth ;
   
-  /* Check for secs replies */
+  /* If the reply is SECS, assign the reply SECS message to 
+   * the variable - <SyF(x+1)> - and if it exists globally 
+   * (it's up to the program to make it beforehand), then it is 
+   * copied into that so that it will be found upon
+   * returning.
+   */
   gHyp_instance_secsReply ( pAI, pMethodData ) ;
 
   /* If the method completed was QUERY initiated, a REPLY is needed. */
@@ -2293,7 +2457,7 @@ sLOGICAL gHyp_instance_replyMessage ( sInstance *pAI, sData *pMethodData )
       }
       else {
 	contentLength = 0 ;
-	pValue = gHyp_fileio_describeData ( pAI, pVariable, ' ', FALSE, &contentLength ) ;
+	pValue = gHyp_fileio_describeData ( pAI, pVariable, ' ', FALSE, FALSE, &contentLength ) ;
       }
       gHyp_data_append ( pTV2, pValue ) ;
     }
@@ -2303,6 +2467,7 @@ sLOGICAL gHyp_instance_replyMessage ( sInstance *pAI, sData *pMethodData )
     /* Check to see if this is a secs message reply */
     if ( pAI->msg.outgoingReply[outgoingDepth]->secs.id != NULL_DEVICEID ) {
 
+      /* It is, setup the arguments for the reply message */
       id = pAI->msg.outgoingReply[outgoingDepth]->secs.id ;
       stream = pAI->msg.outgoingReply[outgoingDepth]->secs.stream ;
       function = pAI->msg.outgoingReply[outgoingDepth]->secs.function ;
@@ -2367,15 +2532,16 @@ sLOGICAL gHyp_instance_replyMessage ( sInstance *pAI, sData *pMethodData )
 	}
 	else if ( pSecs1 ) {
 	  
-	  /* If gHyp_secs1_outgoing returns 0, then the message has been
-	   * interrupted (an ENQ/ENQ contention).  We should try resending
-	   * the original message.
+	  /* If gHyp_secs1_outgoing returns 0, then the message will have been
+	   * interrupted (by an ENQ/ENQ contention).  We should try resending
+	   * the reply message again, after we have serviced the interrupting
+           * message.
 	   */
 	  
 	  nBytes = 0 ;
 	  maxTries = MAX_RESEND ;
 	  while ( nBytes == 0 && maxTries > 0 ) {
-	    
+          	    
 	    nBytes = gHyp_secs1_outgoing ( pSecs1, 
 					   pSecs2,
 					   pAI,
@@ -2395,19 +2561,28 @@ sLOGICAL gHyp_instance_replyMessage ( sInstance *pAI, sData *pMethodData )
 	    }
 	    else if ( nBytes == 0 ) {
 
-	      /* ENQ contention:  execute all pending conditions. */
+	      /* ENQ contention:  WE DIDN'T SEND THE REPLY MESSAGE!!!
+               * We'll that later.  For now, see what condition occurred (what
+               * message interrupted the send operation) and let it execute.
+               */
 
-	      /* We didn't send the reply, restore outgoing depth */
+	      /* Since we didn't send the reply, restore the outgoing depth */
 	      gHyp_instance_incOutgoingDepth ( pAI ) ;
 	      outgoingDepth =  pAI->msg.outgoingDepth ;
 
-	      /* Queue up the interrupted message.  TRUE means don't block. */
+	      /*gHyp_util_debug ( "ENQ contention at depth %d ",outgoingDepth ) ;*/
+
+	      /* Queue up the interrupted message.  
+               * TRUE means don't block, which means we are not executing select(),
+               * we are only fetching the incoming message from the queue and setting
+               * up for the message call.
+               */
 	      gHyp_instance_read ( pAI, TRUE ) ;
 
 	      do {
 		/* Setting STATE_QUERY here let's us execute the 
 		 * handler for the incoming message, which is
-		 * the Hyp_instance_handleMessageCall() function.
+		 * the gHyp_instance_handleMessageCall() function.
 		 * Setting FRAME_GLOBAL_TRUE let's us execute handlers.
 		 */
 		gHyp_frame_setGlobalFlag ( pAI->exec.pFrame, FRAME_GLOBAL_TRUE ) ;
@@ -2415,16 +2590,13 @@ sLOGICAL gHyp_instance_replyMessage ( sInstance *pAI, sData *pMethodData )
 	      }
 	      while ( gHyp_instance_parse ( pAI ) == COND_NORMAL ) ;
 	      
-	      gHyp_instance_decOutgoingDepth ( pAI ) ;
-	      outgoingDepth =  pAI->msg.outgoingDepth ;
-
 	      /* If the STATUS variable is TRUE, then resend the SECS reply
 	       * message that was interrupted by the ENQ contention.
 	       */
-	      pData = gHyp_frame_findRootVariable(pAI->exec.pFrame,"STATUS") ;
+	      pData = gHyp_frame_findRootVariable( pAI->exec.pFrame,"STATUS") ;
 	      
-	      if ( guDebugFlags & DEBUG_PROTOCOL )
-		gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
+	      if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+		gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
 				     "Checking re-send %s",
 				     gHyp_data_print ( pData ) ) ;
 	      
@@ -2432,37 +2604,61 @@ sLOGICAL gHyp_instance_replyMessage ( sInstance *pAI, sData *pMethodData )
 	      pSecs1 = (sSecs1*) gHyp_concept_getSocketObject ( pAI->exec.pConcept, 
 								secsFd, 
 								DATA_OBJECT_SECS1 ) ;
-	      if ( !pSecs1 ) resend = FALSE ;
-	      if ( resend ) {
-		
+	     
+              if ( resend && pSecs1 && pAI->msg.outgoingDepth > 0 ) {
+                
+                /* Let's try that again, shall we */
+  	        gHyp_instance_decOutgoingDepth ( pAI ) ;
+	        outgoingDepth =  pAI->msg.outgoingDepth ;
+
 		/* Print a helpful message */
 		gHyp_util_logInfo (
-		    "Re-sending interrupted S%dF%d reply message",
-		    stream, function ) ;
-		maxTries-- ;
+		  "Re-sending interrupted S%dF%d reply message at depth %d",
+		  stream, function,outgoingDepth  ) ;
+                /* One less try */
+                maxTries-- ;
 	      }
-	    }
-	  }
+              else /* Quit */
+                maxTries = 0 ;
+
+	    } /* nBytes == 0 */
+            else {
+              /* Successfully sent */
+	      if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+		gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
+				     "SECS reply successfully sent" ) ;
+              gHyp_aimsg_delete ( pAI->msg.outgoingReply[outgoingDepth]->msg ) ;
+              pAI->msg.outgoingReply[outgoingDepth]->msg = NULL ;
+              pAI->msg.outgoingReply[outgoingDepth]->secs.id = NULL_DEVICEID ;
+              pAI->msg.outgoingReply[outgoingDepth]->secs.stream = -1 ;
+              pAI->msg.outgoingReply[outgoingDepth]->secs.function = -1 ;
+              pAI->msg.outgoingReply[outgoingDepth]->secs.TID = -1 ;
+              pAI->msg.outgoingReply[outgoingDepth]->secs.SID = -1 ;
+	      
+            }
+	  }  /* End while */
 	}
       }
     }
     else {
+
       /* Not a secs reply message */
       gHyp_concept_route ( 
 	pAI->exec.pConcept, 
-	gHyp_aimsg_unparse(pAI->msg.outgoingReply[outgoingDepth]->msg) );
+	gHyp_aimsg_unparse(pAI->msg.outgoingReply[outgoingDepth]->msg) ) ;
+
+      gHyp_aimsg_delete ( pAI->msg.outgoingReply[outgoingDepth]->msg ) ;
+      pAI->msg.outgoingReply[outgoingDepth]->msg = NULL ;
+
     }  
-
-    gHyp_aimsg_delete ( pAI->msg.outgoingReply[outgoingDepth]->msg ) ;
-    pAI->msg.outgoingReply[outgoingDepth]->msg = NULL ;
-
-    pAI->msg.outgoingReply[outgoingDepth]->secs.id = NULL_DEVICEID ;
-    pAI->msg.outgoingReply[outgoingDepth]->secs.stream = -1 ;
-    pAI->msg.outgoingReply[outgoingDepth]->secs.function = -1 ;
-    pAI->msg.outgoingReply[outgoingDepth]->secs.TID = -1 ;
-    pAI->msg.outgoingReply[outgoingDepth]->secs.SID = -1 ;
-
+  
   }
+  /*
+  else {
+    gHyp_util_debug("no reply");
+  }
+  */
+
   /* The method variable that was put on the stack should be removed. */
   /*gHyp_stack_pop ( gHyp_frame_stack ( pAI->exec.pFrame )  ) ;*/
 
@@ -2506,9 +2702,9 @@ void gHyp_instance_setExpectedReply ( sInstance *pAI,
     incomingDepth = pAI->msg.incomingDepth - 1 ;
 
   
-  if ( guDebugFlags & DEBUG_PROTOCOL )
+  if ( guDebugFlags & DEBUG_DIAGNOSTICS )
     gHyp_util_logDebug ( 
-      FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
+      FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
       "diag : Setting expected reply for sender:method:tid %s:%s:%s at incoming depth %d",
       senderPath, method, transactionID, incomingDepth ) ;
   
@@ -2517,7 +2713,6 @@ void gHyp_instance_setExpectedReply ( sInstance *pAI,
   strcpy ( pAI->msg.incomingReply[incomingDepth]->transactionID, 
 	   transactionID ) ;
   pAI->msg.incomingReply[incomingDepth]->timeoutTime	= timeoutTime ;
-
   
   pAI->msg.incomingReply[incomingDepth]->secs.id = NULL_DEVICEID ;
   pAI->msg.incomingReply[incomingDepth]->secs.stream = -1 ;
@@ -2559,8 +2754,8 @@ void gHyp_instance_requeue ( sInstance* pAI )
 
     gHyp_instance_decOutgoingDepth ( pAI ) ;
 
-    if ( guDebugFlags & DEBUG_PROTOCOL )
-      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
+    if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
 			   "diag : Incoming message queued") ;
   }
   return ;
@@ -2634,8 +2829,8 @@ void gHyp_instance_setSecsReplyOut ( sInstance *pAI,
   gHyp_data_newVector ( pVariable, TYPE_BINARY, 1, TRUE ) ;
   gHyp_data_setVectorRaw ( pVariable, &i, 0 ) ;
 
-  if ( guDebugFlags & DEBUG_PROTOCOL )
-    gHyp_util_logDebug (FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
+  if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+    gHyp_util_logDebug (FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
 			"Created default secs reply variable '%s' at outgoing depth %d",
 			gHyp_data_print ( pVariable ),
 			outgoingDepth ) ;
@@ -2652,9 +2847,9 @@ void gHyp_instance_setSecsReplyIn ( sInstance *pAI,
   int
     incomingDepth = pAI->msg.incomingDepth - 1 ;
 
-  if ( guDebugFlags & DEBUG_PROTOCOL )
+  if ( guDebugFlags & DEBUG_DIAGNOSTICS )
     gHyp_util_logDebug ( 
-      FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
+      FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
       "diag : Setting SECS reply S%dF%d at incoming depth %d",
       stream, function, incomingDepth ) ;
 
@@ -2818,10 +3013,15 @@ sLOGICAL gHyp_instance_updateFd ( sInstance *pAI,
    * Fd to Id has a one to many relationship.
    * 
    * When the argument 'id' in not NULL_DEVICEID, then
-   * the id must match.
+   * the id must match. We give a new 'fd' to an
+   * existing 'id'
    *
    * When argument 'id' is NULL_DEVICEID, the the
-   * fd must match.
+   * fd must match.  This could be used to update
+   * the pSecs pointer for a SECS handle that did
+   * not have any id's assigned to it yet.
+   * But, this function is never called (as of 12/28/10)
+   * with id == NULL_DEVICE
    */
   int
     i ;
@@ -3599,7 +3799,7 @@ static sLOGICAL lHyp_instance_handleMethod ( sInstance * pAI )
   lineCount = 0 ;
 
   /* Create or retrieve the "args" variable, and clear it of any values. */
-  pArgs = gHyp_frame_createVariable ( pAI->exec.pFrame, "args" ) ;
+  pArgs = gHyp_frame_createVariable ( pAI, pAI->exec.pFrame, "args" ) ;
   gHyp_data_deleteValues ( pArgs ) ;
 
   /* Get next defined method argument */
@@ -3620,7 +3820,7 @@ static sLOGICAL lHyp_instance_handleMethod ( sInstance * pAI )
 	pVariable = gHyp_frame_findRootVariable ( pAI->exec.pFrame, 
 						  "STATUS" ) ;
       else 
-	pVariable = gHyp_frame_createVariable ( pAI->exec.pFrame, 
+	pVariable = gHyp_frame_createVariable ( pAI, pAI->exec.pFrame, 
 						pVariableStr ) ;
 
       gHyp_data_setReference ( pLvalue, pVariableStr, pVariable);
@@ -3877,8 +4077,7 @@ static sLOGICAL lHyp_instance_handleAlarm ( sInstance *pAI )
     gHyp_frame_setGlobalFlag ( pAI->exec.pFrame, FRAME_GLOBAL_TRUE ) ;
     
     /* The STATUS variable receives the handler's return status */
-    gHyp_frame_setMethodVariable ( 
-				  pAI->exec.pFrame,
+    gHyp_frame_setMethodVariable ( pAI->exec.pFrame,
 				  gHyp_frame_findRootVariable ( pAI->exec.pFrame, "STATUS" ) ) ;
     
     /* If local is set, then create local data */
@@ -4080,6 +4279,7 @@ static sLOGICAL lHyp_instance_handleHangup ( sInstance *pAI )
     status[VALUE_SIZE+1] ;
 
   int
+    i,
     n ;
 
   if ( pAI->signal.uHUP ) {
@@ -4087,13 +4287,25 @@ static sLOGICAL lHyp_instance_handleHangup ( sInstance *pAI )
     pAI->signal.numHup-- ;
     n = pAI->signal.numHup ;
     if ( n < 0 ) return FALSE ;
-
+    /*
+    gHyp_util_debug("HUP at [%d] s=%d x=%d id=%d",n,pAI->signal.hupArg[0], 
+	      pAI->signal.hupArg2[0], 
+	      pAI->signal.hupArg3[0] ) ;
+    */
     sprintf ( status, "%s %d %d %d", STATUS_HANGUP, 
-	      pAI->signal.hupArg[n], 
-	      pAI->signal.hupArg2[n], 
-	      pAI->signal.hupArg3[n] ) ; 
+	      pAI->signal.hupArg[0], 
+	      pAI->signal.hupArg2[0], 
+	      pAI->signal.hupArg3[0] ) ; 
     gHyp_instance_warning ( pAI,status,"Hangup signal for %s", pAI->msg.targetId );
+
+    /* If no signals left, turn off the flag */
     if ( n == 0 ) pAI->signal.uHUP = 0 ;
+
+    for ( i=0; i<n; i++ ) {
+      pAI->signal.hupArg[i] = pAI->signal.hupArg[i+1] ;
+      pAI->signal.hupArg2[i] = pAI->signal.hupArg2[i+1] ;
+      pAI->signal.hupArg3[i] = pAI->signal.hupArg3[i+1] ;
+    }
 
     pData = gHyp_frame_createRootVariable ( gHyp_instance_frame ( pAI ), "_hangup_status_" ) ;
     gHyp_data_deleteValues ( pData ) ;
@@ -4154,8 +4366,8 @@ static sLOGICAL lHyp_instance_handleHangup ( sInstance *pAI )
     pAI->exec.pFrame, 
     pAI->exec.handler[HANDLER_HANGUP].hypIndex ) ;   
 
-  /* Reset handler */
-  if ( n == 0 ) pAI->exec.handler[HANDLER_HANGUP].hypIndex = -1 ;
+  /* Reset handler */ 
+  pAI->exec.handler[HANDLER_HANGUP].hypIndex = -1 ;
 
       
   return TRUE ;
@@ -4173,6 +4385,7 @@ static sLOGICAL lHyp_instance_handleConnect ( sInstance *pAI )
     status[VALUE_SIZE+1] ;
 
   int
+    i,
     n ;
 
   if ( pAI->signal.uCONNECT ) {
@@ -4180,15 +4393,26 @@ static sLOGICAL lHyp_instance_handleConnect ( sInstance *pAI )
     pAI->signal.numCon-- ;
     n = pAI->signal.numCon ;
     if ( n < 0 ) return FALSE ;
-
+    /*
+    gHyp_util_debug("CON at [%d] s=%d x=%d id=%d",
+              n,
+              pAI->signal.conArg[0], 
+	      pAI->signal.conArg2[0], 
+	      pAI->signal.conArg3[0] ) ;
+    */
     sprintf ( status, "%s %d %d %d", STATUS_CONNECT, 
-	      pAI->signal.conArg[n], 
-	      pAI->signal.conArg2[n], 
-	      pAI->signal.conArg3[n] ) ; 
-    gHyp_instance_warning ( pAI,status,"Incoming connection signal for %s",
-      pAI->msg.targetId );
+	      pAI->signal.conArg[0], 
+	      pAI->signal.conArg2[0], 
+	      pAI->signal.conArg3[0] ) ; 
+    gHyp_instance_warning ( pAI,status,"Incoming connection signal for %s", pAI->msg.targetId );
+    /* If no signals left, turn off the flag */
     if ( n == 0 ) pAI->signal.uCONNECT = 0 ;
 
+    for ( i=0; i<n; i++ ) {
+      pAI->signal.conArg[i] = pAI->signal.conArg[i+1] ;
+      pAI->signal.conArg2[i] = pAI->signal.conArg2[i+1] ;
+      pAI->signal.conArg3[i] = pAI->signal.conArg3[i+1] ;
+    }
     pData = gHyp_frame_createRootVariable ( gHyp_instance_frame ( pAI ), "_connect_status_" ) ;
     gHyp_data_deleteValues ( pData ) ;
     pValue = gHyp_data_new ( NULL ) ;
@@ -4236,7 +4460,7 @@ static sLOGICAL lHyp_instance_handleConnect ( sInstance *pAI )
     pAI->exec.handler[HANDLER_CONNECT].hypIndex ) ;   
 
   /* Reset handler */
-  if ( n == 0 ) pAI->exec.handler[HANDLER_CONNECT].hypIndex = -1 ;
+  pAI->exec.handler[HANDLER_CONNECT].hypIndex = -1 ;
 
       
   return TRUE ;
@@ -4253,6 +4477,7 @@ static sLOGICAL lHyp_instance_handlePipe ( sInstance *pAI )
     status[VALUE_SIZE+1] ;
 
   int
+    i,
     n ;
 
   if ( pAI->signal.uPIPE ) {
@@ -4268,12 +4493,17 @@ static sLOGICAL lHyp_instance_handlePipe ( sInstance *pAI )
     if ( n < 0 ) return FALSE ;
 
     sprintf ( status, "%s %d %d %d", STATUS_PIPE, 
-	      pAI->signal.pipeArg[n], 
-	      pAI->signal.pipeArg2[n], 
-	      pAI->signal.pipeArg3[n] ) ; 
+	      pAI->signal.pipeArg[0], 
+	      pAI->signal.pipeArg2[0], 
+	      pAI->signal.pipeArg3[0] ) ; 
     gHyp_instance_warning ( pAI,status,"Pipe signal for %s", pAI->msg.targetId );
+    /* If no signals left, turn off the flag */
     if ( n == 0 ) pAI->signal.uPIPE = 0 ;
-
+    for ( i=0; i<n; i++ ) {
+      pAI->signal.pipeArg[i] = pAI->signal.pipeArg[i+1] ;
+      pAI->signal.pipeArg2[i] = pAI->signal.pipeArg2[i+1] ;
+      pAI->signal.pipeArg3[i] = pAI->signal.pipeArg3[i+1] ;
+    }
     pData = gHyp_frame_createRootVariable ( gHyp_instance_frame ( pAI ), "_pipe_status_" ) ;
     gHyp_data_deleteValues ( pData ) ;
     pValue = gHyp_data_new ( NULL ) ;
@@ -4335,7 +4565,7 @@ static sLOGICAL lHyp_instance_handlePipe ( sInstance *pAI )
 				 pAI->exec.handler[HANDLER_PIPE].hypIndex ) ;
 
   /* Reset handler */
-  if ( n == 0 ) pAI->exec.handler[HANDLER_PIPE].hypIndex = -1 ;
+  pAI->exec.handler[HANDLER_PIPE].hypIndex = -1 ;
       
   return TRUE ;
 }
@@ -4438,7 +4668,7 @@ static sLOGICAL lHyp_instance_handleMessageCall ( sInstance *pAI )
 
   if ( !gHyp_data_getBool ( pSTATUS, 0, TRUE ) ) {
 
-    gHyp_util_logWarning("Aborting message call");
+    gHyp_util_logWarning("Aborting message call - %s",gHyp_data_print(pSTATUS));
     gHyp_instance_decOutgoingDepth ( pAI ) ;
 
     return FALSE ;
@@ -4479,14 +4709,20 @@ static sLOGICAL lHyp_instance_handleMessageCall ( sInstance *pAI )
   if ( !gHyp_frame_isGlobalScope ( pAI->exec.pFrame ) ) {
     pMethodData = gHyp_data_new ( methodName ) ;
     gHyp_data_setHashed ( pMethodData, TRUE ) ;
-    if ( isLocalMethod ) gHyp_data_detach ( pMethodVariable ) ;
+
+    if ( isLocalMethod )
+      /* Create new local variable to retain return value of method */
+      /*gHyp_data_detach ( pMethodVariable ) ;*/
+      gHyp_data_append( pMethodData, gHyp_data_new ( methodName ) );
+
     gHyp_frame_setMethodData ( pAI->exec.pFrame, pMethodData );
   }
  
+  /*
   if ( isLocalMethod ) 
     gHyp_data_append( gHyp_frame_getMethodData(pAI->exec.pFrame),
 		      pMethodVariable);
-
+  */
 
   /* Set the data method to the variable that holds the pointer
    * to the method code. 
@@ -4530,10 +4766,19 @@ int gHyp_instance_parse ( sInstance * pAI )
   int
     condition = COND_SILENT ;
   
-  while ( ( pAI->exec.state == STATE_PARSE && 
-	    !gHyp_instance_isEND (pAI) ) ||
+  while ( pAI->signal.tokenSignal ||
+          ( pAI->exec.state == STATE_PARSE && !gHyp_instance_isEND (pAI) ) ||
 	  ( gHyp_frame_testGlobalFlag ( pAI->exec.pFrame, FRAME_GLOBAL_TRUE ) && 
 	    gHyp_instance_handleCondition(pAI) ) ) {
+
+    /* If a condition was detected in gHyp_instance_run after calling
+     * gHyp_instance_handleCondition, then tokenSignal was set and its 
+     * purpose is to prevent a second call to gHyp_instance_handleCondition 
+     * in cases when multiple signals are queued up.  
+     * We want to execute the signal's methods one at a time 
+     * in the order in they were received
+     */
+    pAI->signal.tokenSignal = 0 ;
 
     /* Get next instruction index and code */
     hypIndex = gHyp_frame_getHypIndex ( pAI->exec.pFrame ) ;
@@ -4586,23 +4831,43 @@ sLOGICAL gHyp_instance_isEND ( sInstance *pAI )
   return TRUE ;
 }
 
+static sLOGICAL hasCondition = 0 ;
 sLOGICAL gHyp_instance_handleCondition ( sInstance * pAI )
 {
   /*if ( ! gHyp_frame_testGlobalFlag ( pAI->exec.pFrame, FRAME_GLOBAL_TRUE ) )
     return FALSE ;
   else
   */
-  return (   	lHyp_instance_handleMessageInt  ( pAI ) ||
-		lHyp_instance_handleMethod      ( pAI ) ||
-		lHyp_instance_handleMessageCall ( pAI ) ||
-		lHyp_instance_handleError       ( pAI ) ||
-		lHyp_instance_handleDereference ( pAI ) ||
-		lHyp_instance_handlePipe        ( pAI ) ||
-		lHyp_instance_handleConnect     ( pAI ) ||
-		lHyp_instance_handleHangup      ( pAI ) ||
-		lHyp_instance_handleInterrupt   ( pAI ) ||
-		lHyp_instance_handleAlarm       ( pAI ) 
-	   ) ;
+
+  /* If a TRUE condition is waiting, then take it */
+  if ( hasCondition ) {
+    hasCondition = 0 ;
+    return TRUE ;
+  }
+  
+  /* Look for another condition */
+  hasCondition = (
+      lHyp_instance_handleMessageInt  ( pAI ) ||
+      lHyp_instance_handleMethod      ( pAI ) ||
+      lHyp_instance_handleMessageCall ( pAI ) ||
+      lHyp_instance_handleError       ( pAI ) ||
+      lHyp_instance_handleDereference ( pAI ) ||
+      lHyp_instance_handlePipe        ( pAI ) ||
+      lHyp_instance_handleConnect     ( pAI ) ||
+      lHyp_instance_handleHangup      ( pAI ) ||
+      lHyp_instance_handleInterrupt   ( pAI ) ||
+      lHyp_instance_handleAlarm       ( pAI ) 
+    ) ;
+
+  if ( !hasCondition ) return FALSE ;
+
+  /* Remember it! */
+  pAI->signal.tokenSignal = 1 ;
+
+  /* Clear condition */
+  hasCondition = 0 ;
+
+  return TRUE ;
 }
 
 int  gHyp_instance_run ( sInstance * pAIarg )
@@ -4634,11 +4899,12 @@ int  gHyp_instance_run ( sInstance * pAIarg )
 			 pAI->exec.state ) ;
   
   /* Interpret the pre-loaded HyperScript code - (parse and execute) */
-  while ( (hasCondition = gHyp_instance_handleCondition(pAI) ) ||
-          !(isEnd = gHyp_instance_isEND (pAI)) ||
-          pAI->exec.state == STATE_IDLE ||
-          pAI->exec.state == STATE_QUERY ||
-	  pAI->exec.state == STATE_SLEEP ) {
+  while ( pAI->signal.tokenSignal ||
+          ( (hasCondition = gHyp_instance_handleCondition(pAI)) ) ||
+          !(isEnd = gHyp_instance_isEND (pAI) ) ||
+          ( pAI->exec.state == STATE_IDLE ||
+            pAI->exec.state == STATE_QUERY ||
+	    pAI->exec.state == STATE_SLEEP ) ) {
   
     /* Parse (and possibly execute) the next token.
      * Returns immediately if not STATE_PARSE 

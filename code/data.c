@@ -11,6 +11,12 @@
  * Modifications:
  *
  * $Log: data.c,v $
+ * Revision 1.43  2011-05-21 05:39:05  bergsma
+ * Detected memory leak in newVector
+ *
+ * Revision 1.42  2011-03-14 01:07:54  bergsma
+ * Fix node_getnodebyattr
+ *
  * Revision 1.41  2010-05-27 03:57:06  bergsma
  * Handle references for data_buffer and data_bufferLen
  *
@@ -495,6 +501,8 @@ static void lHyp_data_newVector ( sData *pData,
   }
 
   if ( size < 1 ) return ;
+
+  if ( pData->p.value != NULL ) ReleaseMemory ( pData->p.value ) ;
 
   /* Create vector based on the data type. */
   switch ( dataType ) {
@@ -1357,6 +1365,8 @@ sData *gHyp_data_copy ( sData *pSrc )
 
   /* Don't AllocMemory for array sizes less than 1 */
   if ( pSrc->size < 1 ) return pDst ;
+
+  if ( pDst->p.value != NULL ) ReleaseMemory ( pDst->p.value ) ;
 
   /* Copy data based on the data type. */
   switch ( pSrc->dataType ) {
@@ -5659,25 +5669,26 @@ sData *gHyp_data_getNodeByAttr( sData *pData, char *attrName, char *attrValue, c
      * If there are more than one and if "correct" one is not younger than
      * the "incorrect one, we'll miss it.
      */
-    if( (pAttr = gHyp_data_getChildByName( pDescendent, attrName )) &&
+    pAttr = gHyp_data_getChildByName( pDescendent, attrName ) ;
+    if(  pAttr &&
          gHyp_data_getDataType( pAttr ) == TYPE_ATTR &&
-         gHyp_data_getTokenType( pAttr ) == TOKEN_VARIABLE )
-    {	 
+         gHyp_data_getTokenType( pAttr ) == TOKEN_VARIABLE ) {
+    	 
       /* gHyp_util_debug("attribute variable matches") ; */
       /* now check attribute's value */
-	  if( (pValue = gHyp_data_getValue( pAttr, 0, 0 )) ) {
-	    len = MIN ( VALUE_SIZE , gHyp_data_bufferLen ( pValue, 0 ) ) ;
-	    memcpy ( pValueBuffer, gHyp_data_buffer(pValue,0), len ) ;
-	    *(pValueBuffer + len) = '\0' ;
+      if( (pValue = gHyp_data_getValue( pAttr, 0, 0 )) ) {
+
+        len = MIN ( VALUE_SIZE , gHyp_data_bufferLen ( pValue, 0 ) ) ;
+	memcpy ( pValueBuffer, gHyp_data_buffer(pValue,0), len ) ;
+	*(pValueBuffer + len) = '\0' ;
         /* gHyp_util_debug("attribute value found: %s", pValueBuffer); */
-        if( strcmp( pValueBuffer, attrValue ) == 0 ){
+        if( strcmp( pValueBuffer, attrValue ) == 0 )
           /* gHyp_util_debug("attribute value matches") ; */
           return pDescendent ;
-		}
       }
     }
     /* END ATTRIBUTE COMPARISON */
-    /* recursionion through all the offspring of the current pDescendent */
+    /* recurse through all the offspring of the current pDescendent */
     if( (pTest = gHyp_data_getNodeByAttr( pDescendent, attrName, attrValue, pValueBuffer )) ) return pTest ;
     pDescendent = gHyp_data_getNextNode( pDescendent ) ;
   }

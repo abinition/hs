@@ -10,6 +10,55 @@
 /* Modifications: 
  *
  * $Log: frame.c,v $
+ * Revision 1.43  2012-03-24 00:30:33  bergsma
+ * Comments
+ *
+ * Revision 1.42  2012-02-14 19:41:26  bergsma
+ * Completed fix of ENQ contention
+ *
+ * Revision 1.41  2012-02-09 22:52:49  bergsma
+ * Release candidate HS3.9.4-120209 - fix replyMessage[outgoingDepth]
+ *
+ * Revision 1.40  2012-01-29 21:32:41  bergsma
+ * Remove debug statements
+ *
+ * Revision 1.39  2012-01-29 21:18:20  bergsma
+ * Build 3.9.4 - 120202
+ *
+ * Revision 1.38  2012-01-19 03:29:22  bergsma
+ * Debug statement
+ *
+ * Revision 1.37  2012-01-19 03:26:30  bergsma
+ * Reply message (gHyp_instance_replyMessage) goess too deep.
+ *
+ * Revision 1.36  2012-01-08 01:25:25  bergsma
+ * More work on ENQ contention.
+ *
+ * Revision 1.35  2011-12-24 01:39:42  bergsma
+ * Bug fixed for E500.
+ *
+ * Revision 1.34  2011-12-19 18:24:08  bergsma
+ * Solved problem with 'returnFromMessage;
+ *
+ * Revision 1.33  2011-09-20 05:35:54  bergsma
+ * Fixed problem with replyMessage occurring to early, also problem
+ * with ENQ contention and resending when the message queue was empty.
+ *
+ * Revision 1.32  2011-03-14 01:08:33  bergsma
+ * PROMIS variable access
+ *
+ * Revision 1.31  2011-03-06 21:42:47  bergsma
+ * Got to keep HS to default to 'global' mode when starting.
+ *
+ * Revision 1.30  2011-02-20 00:57:53  bergsma
+ * When replying, send all replies until gone.
+ *
+ * Revision 1.29  2011-01-08 21:26:09  bergsma
+ * Extra pAI arg in frame *Variable* functions.
+ * Default mode is now 'local' when HS starts up.
+ * Lookup of local variable always takes precedence over global variable,
+ * regardless of whether HS is in local or global modes.
+ *
  * Revision 1.28  2010-01-08 02:44:57  bergsma
  * Added ssl_md5(), enhanced ssl_digest.
  * Fixed urldecode, missing ":"
@@ -331,7 +380,10 @@ sFrame *gHyp_frame_new ( )
   
   /* Reset the frame, program ready */ 
   pFrame->pTempData = NULL ;
+
+  /* Wish I could make this FALSE, but too many scripts would fail */
   pFrame->globalScope = TRUE ;
+
   gHyp_frame_reset ( pFrame ) ;
   return pFrame ;
 }
@@ -408,60 +460,41 @@ void gHyp_frame_delete ( sFrame * pFrame )
 void gHyp_frame_swapRootMethodData ( sFrame *pFrameNew, sFrame *pFrameMain )
 {
   sLevel
-    *pLevelNew,
-    *pLevelMain ;
+    *pLevelMain,
+    *pLevelNew ;
 
   sData
+    *pTempData,
     *pMethodDataMain,
     *pMethodDataNew,
     *pMethodVariableMain,
     *pMethodVariableNew ;
 
-  /* 
-   * We need to give pFrameNew the root _main_ method data from pFrameMain.
-   * The pMethodVariable points to a root variable called _main_ which is
-   * shared by the two frames - they both were created in the mode as parents.
-   *
-   */
-  pLevelNew = pFrameNew->pLevel[0] ;
-  pMethodDataNew = pLevelNew->pMethodData ;
-  pMethodVariableNew = pLevelNew->pMethodVariable ;
+  /* Swap variables */
 
   pLevelMain = pFrameMain->pLevel[0] ;
   pMethodDataMain = pLevelMain->pMethodData ;
   pMethodVariableMain = pLevelMain->pMethodVariable ;
 
-  pLevelNew->pMethodData = pMethodDataMain ;
-  pLevelNew->pMethodVariable = pMethodVariableMain ;
-  pLevelMain->pMethodData = pMethodDataNew ;
-  pLevelMain->pMethodVariable = pMethodVariableNew ;
+  pLevelNew = pFrameNew->pLevel[0] ;
+  pMethodDataNew = pLevelNew->pMethodData ;
+  pMethodVariableNew = pLevelNew->pMethodVariable ;
 
-  /* Now pLevelMain has the correct method data.  Make sure we
-   * swap the pHyp pointer as well.
-   * Actually, just take it, cause the hyp area is not deleted
-   * by the instance - it is deleted when pMethodVariable is deleted.
-   */ 
+  pTempData = gHyp_data_new ( "_temp_" ) ;
+  gHyp_data_moveValues ( pTempData, pMethodDataMain ) ;
+
+  gHyp_data_moveValues ( pMethodDataMain, pMethodDataNew ) ;
+  gHyp_data_moveValues ( pMethodDataNew, pTempData ) ;
+
+  gHyp_data_delete ( pTempData ) ;
+
+  /* Move the hyp over as well to main. 
+   * We don't change the pointer on pLevelNew because the hyp 
+   * area is deleted with the pMethodVariable, never from 
+   * this pLevel, so its safe.
+   */
   pLevelMain->pHyp = pLevelNew->pHyp ;
-  
-  /* Juggle the hyp pointers as well
-  pLevelMain->globalFlags = pLevelNew->globalFlags ;
-  pLevelMain->statementType = pLevelNew->statementType ;
-  pLevelMain->state = pLevelNew->state  ;
-  pLevelMain->currentState = pLevelNew->currentState ;
-  pLevelMain->expectedState =  pLevelNew->expectedState ;
-  pLevelMain->hypIndex = pLevelNew->hypIndex - 1 ;
-  pLevelMain->statementIndex = pLevelNew->statementIndex ;
-  */
-  /*
-  pLevelMain->globalFlags = FRAME_GLOBAL_TRUE ;
-  pLevelMain->statementType = STATEMENT_PROGRAM ;
-  pLevelMain->state = STATE_EXECUTE ;
-  pLevelMain->currentState = G_STMT_EOS ;
-  pLevelMain->expectedState = G_PROGRAM_STMT ;
-  pLevelMain->hypIndex = 0 ;
-  pLevelMain->statementIndex = 0 ;
-  pLevelMain->branchIndex = -1 ;
-  */
+
   return ;
 }
 
@@ -569,7 +602,7 @@ sData *gHyp_frame_findLocalVariable ( sFrame *pFrame, char *pStr )
     */
    if ( pLevel->localFlags & FRAME_LOCAL_GLOBAL ) break ;
  
-   /* Look for the label name */
+   /* Look for the local name */
    pVariable = gHyp_data_getChildByName ( pLevel->pMethodData, pStr ) ;
    if ( pVariable ) break ;
 
@@ -603,9 +636,60 @@ sData *gHyp_frame_findRootVariable ( sFrame *pFrame, char *pStr )
   sLevel
     *pLevel ;
 
+  sData
+    *pVariable ;
+
+
   pLevel = pFrame->pLevel[0] ;
-  return gHyp_data_getChildByName ( pLevel->pMethodData, pStr ) ;
+  pVariable = gHyp_data_getChildByName ( pLevel->pMethodData, pStr ) ;
+
+  return pVariable ;
 }
+
+sData *gHyp_frame_findGlobalVariable ( sInstance *pAI, sFrame *pFrame, char *pStr ) 
+{
+  /* Description:
+   *
+   *	Return a pointer to the global root variable identified as 'pStr'.
+   *
+   * Arguments:
+   *
+   *	pFrame							[R]
+   *	- pointer to frame object
+   *
+   *	pStr							[R]
+   *	- variable name
+   *
+   * Return value:
+   *
+   *	Pointer to variable data object.
+   *
+   */
+
+  sLevel
+    *pLevel ;
+
+  sData
+    *pVariable ;
+
+  sInstance
+    *pConceptAI ;
+
+  pLevel = pFrame->pLevel[0] ;
+  pVariable = gHyp_data_getChildByName ( pLevel->pMethodData, pStr ) ;
+
+  if ( !pVariable ) {
+    /* If still not found, see if exists in the parent concept's space */
+    pConceptAI = gHyp_concept_getConceptInstance (gHyp_instance_getConcept(pAI)) ;
+    if ( pConceptAI !=NULL && pAI != pConceptAI )
+      pVariable = gHyp_frame_findGlobalVariable ( pAI,
+                                                gHyp_instance_frame(pConceptAI),
+					        pStr ) ;
+  }
+  
+  return pVariable ;
+}
+
 
 sData *gHyp_frame_findVariable ( sInstance* pAI, sFrame *pFrame, char *pStr  ) 
 {
@@ -632,12 +716,25 @@ sData *gHyp_frame_findVariable ( sInstance* pAI, sFrame *pFrame, char *pStr  )
   sData		
     *pVariable = NULL ;
 
+  int i = 0 ;
+
   sInstance
     *pConceptAI ;
 
-  int i = 0 ;
-
-  if ( !pFrame->globalScope )
+  /******  PLEASE READ!  
+   *
+   * Regardless of whether we are in local or global mode, always
+   * look for the variable in local scope first!
+   *
+   * This may affect past HS programs, where one may go into global
+   * mode and is reading a global variable when there is a local
+   * one already present.  The fix for these programs would be to
+   * undef the local variable first.
+   *
+   *
+   *  if ( !pFrame->globalScope )  
+   *
+   */
     /* Local is enabled. Try local variable lookup */
     pVariable = gHyp_frame_findLocalVariable ( pFrame, pStr ) ;  
   
@@ -648,11 +745,14 @@ sData *gHyp_frame_findVariable ( sInstance* pAI, sFrame *pFrame, char *pStr  )
 
   if ( !pVariable ) i++ ;
 
-  /* If not found under global conditions, then try local lookup. */
+  /* If not found under global conditions, then try local lookup. *
+   *
+   * NO LONGER NEEDED.  FIRST STATEMENT IN FUNCTION LOOKS FOR LOCAL VARIABLE
+   *
   if ( !pVariable && pFrame->globalScope ) 
     pVariable = gHyp_frame_findLocalVariable ( pFrame, pStr ) ;
-
   if ( !pVariable ) i++ ;
+  */
 
   if ( !pVariable ) {
     /* If still not found, see if exists in the parent concept's space */
@@ -662,6 +762,7 @@ sData *gHyp_frame_findVariable ( sInstance* pAI, sFrame *pFrame, char *pStr  )
 					        pStr ) ;
   }
   if ( !pVariable ) i++ ;
+
 
 #ifdef AS_PROMIS
 
@@ -676,13 +777,15 @@ sData *gHyp_frame_findVariable ( sInstance* pAI, sFrame *pFrame, char *pStr  )
   pVariable = gHyp_promis_getPROMIS ( pAI, pFrame, pStr, pVariable ) ;
 #endif
 
+  if ( !pVariable ) i++ ;
+
   /*if ( pVariable ) gHyp_util_debug("FOUND VARIABLE %s, STAGE = %d", 
 				   gHyp_data_print(pVariable), i ) ;
   */
   return pVariable ;
 }
 
-sData *gHyp_frame_createLocalVariable ( sFrame *pFrame, char *pStr) 
+sData *gHyp_frame_createLocalVariable ( sFrame *pFrame, char *pStr ) 
 {
   /* Description:
    *
@@ -802,7 +905,7 @@ sData *gHyp_frame_createRootVariable ( sFrame *pFrame, char * pStr )
   return pVariable ;
 }
 
-sData *gHyp_frame_createVariable ( sFrame *pFrame, char *pStr) 
+sData *gHyp_frame_createVariable ( sInstance *pAI, sFrame *pFrame, char *pStr) 
 {
   /* Description:
    *
@@ -829,7 +932,7 @@ sData *gHyp_frame_createVariable ( sFrame *pFrame, char *pStr)
     return gHyp_frame_createLocalVariable ( pFrame, pStr ) ;
 }
 
-sLOGICAL gHyp_frame_deleteRootVariable ( sFrame *pFrame, char * pStr ) 
+sLOGICAL gHyp_frame_deleteRootVariable ( sInstance *pAI, sFrame *pFrame, char * pStr ) 
 {
   /* Description:
    *
@@ -928,7 +1031,8 @@ sLOGICAL gHyp_frame_deleteLocalVariable ( sFrame *pFrame, char *pStr)
 }
 
 
-sLOGICAL gHyp_frame_deleteVariable ( sFrame *pFrame, 
+sLOGICAL gHyp_frame_deleteVariable ( sInstance *pAI,
+                                     sFrame *pFrame, 
 				     char* pStr ) 
 {
   /* Description:
@@ -949,11 +1053,22 @@ sLOGICAL gHyp_frame_deleteVariable ( sFrame *pFrame,
    *
    */
   sLOGICAL deleted = FALSE ;
+  sInstance
+    *pConceptAI ;
 
   if ( !pFrame->globalScope ) 
     deleted = gHyp_frame_deleteLocalVariable ( pFrame, pStr ) ;
   
-  if ( !deleted ) deleted = gHyp_frame_deleteRootVariable ( pFrame, pStr ) ; 
+  if ( !deleted ) deleted = gHyp_frame_deleteRootVariable ( pAI, pFrame, pStr ) ; 
+
+  if ( !deleted ) {
+    /* If still not found, see if exists in the parent concept's space */
+    pConceptAI = gHyp_concept_getConceptInstance (gHyp_instance_getConcept(pAI)) ;
+    if ( pConceptAI !=NULL && pAI != pConceptAI )
+      deleted = gHyp_frame_deleteRootVariable ( pConceptAI,
+                                                gHyp_instance_frame(pConceptAI),
+					        pStr ) ;
+  }
 
   return deleted ;
 }
@@ -986,7 +1101,10 @@ void gHyp_frame_setMethodData ( sFrame* pFrame, sData* pMethodData )
 				pFrame->depth,
 				gHyp_data_print ( pMethodData )) ;
 
-  if ( pLevel->pMethodData && ( pLevel->localFlags & FRAME_LOCAL_DATA ) )
+  /* Delete old local data if present */
+  if ( pLevel->pMethodData && 
+       pLevel->pMethodData != pMethodData &&
+       ( pLevel->localFlags & FRAME_LOCAL_DATA ) )
     gHyp_data_delete ( pLevel->pMethodData ) ;
 
   pLevel->pMethodData = pMethodData ;
@@ -1063,7 +1181,7 @@ void gHyp_frame_setMethodVariable ( sFrame *pFrame,
   return ;
 }
 
-sData *gHyp_frame_findRootMethodVar ( sFrame *pFrame, char *pStr ) 
+sData *gHyp_frame_findRootMethodVar ( sInstance *pAI, sFrame *pFrame, char *pStr ) 
 {
   sData 
     *pVariable ;
@@ -1098,13 +1216,9 @@ sData *gHyp_frame_findMethodVariable ( sFrame *pFrame, char *pStr, sInstance *pA
   if ( pAI != NULL ) {
     pConceptAI = gHyp_concept_getConceptInstance ( gHyp_instance_getConcept(pAI)) ;
     if ( pAI != pConceptAI ) 
-      return gHyp_frame_findRootMethodVar ( gHyp_instance_frame(pConceptAI),
+      return gHyp_frame_findRootMethodVar ( pAI, gHyp_instance_frame(pConceptAI),
 						    pStr ) ;
   }
-
-
-
-
   return NULL ;
 }
 
@@ -1896,7 +2010,8 @@ static void lHyp_frame_return ( sFrame *pFrame,
     *pResult,
     *pData,
     *pSTATUS,
-    *pLocalVariable ;
+    *pLocalVariable,
+    *pGlobalVariable ;
 
   sLOGICAL
     status = TRUE ;
@@ -1921,17 +2036,31 @@ static void lHyp_frame_return ( sFrame *pFrame,
   
   pResult = gHyp_data_new ( NULL ) ;      
   pMethodStr = gHyp_data_getLabel ( pMethodVariable ) ;
-  gHyp_data_setReference ( pResult, pMethodStr, pMethodVariable ) ;
+  pGlobalVariable = gHyp_frame_findGlobalVariable ( pAI, pFrame, pMethodStr ) ;
+  if ( pGlobalVariable && pGlobalVariable != pMethodVariable ) {
+    /*gHyp_util_debug("Found %s as root variable",pMethodStr);*/
+    gHyp_data_deleteValues ( pGlobalVariable ) ;
+    gHyp_data_setReference ( pResult, pMethodStr, pGlobalVariable ) ;
+  }
+  else
+    gHyp_data_setReference ( pResult, pMethodStr, pMethodVariable ) ;
 
   if ( pMethodData != pRootLevel->pMethodData ) {
 
     /* Returning under local conditions. */
+
+    /* Case A: An instance is running.
+     *         
+     * Case B: The parent is running.
+     */
 
     /* The method variable name will be present in the local data */ 	
     pLocalVariable = gHyp_data_getChildByName ( pMethodData, 
 						pMethodStr ) ;
     if ( pLocalVariable ) {
       
+      /*gHyp_util_debug("Found %s as local variable",pMethodStr);*/
+
       /* Assign the data from the local method variable to the global one. */
       if ( guDebugFlags & DEBUG_HEAP )
 	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_HEAP,
@@ -1984,7 +2113,47 @@ static void lHyp_frame_return ( sFrame *pFrame,
     }
     while ( gHyp_instance_parse ( pAI ) == COND_NORMAL ) ;
 
-    gHyp_instance_replyMessage ( pAI, pMethodData ) ;
+    /* The following loop used to be a single call to replyMessage.
+     * Now it resembles the code used for exit() or instantiate().
+     * That logic requires that all reply messages get sent that are
+     * outstanding.  
+     * 
+     * The previous failure to send one or more required reply message
+     * happened as follows:
+     * 1. Incoming S6F11, reply message S6F12 created at depth 0.
+     * 2. Outgoing S6F12, depth 0
+     *    a) ENQ contention - interrupted before S6F12 gets sent.
+     *    b) Another incoming S6F11 received, depth = 1
+     *       i)  Inside of the S6F11 method, we send a S2F41 query
+     *       ii) S2F42 reply is received
+     *    c) Now we send the S6F12 for the second S6F11, depth = 1
+     *    d) Now we send the S6F12 for the first S6F11, depth = 0
+     * 3. Back to idle.
+     * 
+     * There is a failure because the S6F12 from #1 never
+     * gets sent, because gHyp_instance_reply does not
+     * get called again. Why? Because at 2b)i), HS
+     * jumps back to a QUERY state, which is a longjmp to level 1.
+     * At that point, the return for 2a) is forgotten/lost.
+     * But, the outgoing reply depth remembers it!!  
+     * We can send the reply here.
+     * We must decrement the output depth until we match the 2a) depth.
+     *
+     * So, we call gHyp_instance_atCorrectDepth and stop when we reach the 
+     * correct depth.
+     * We always call replyMessage at least once.
+     */
+    if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
+			   "Returning from method %s",pMethodStr );
+  
+    while ( gHyp_instance_atCorrectDepth ( pAI, pMethodStr, pFrame->depth+1 ) ) {
+      /* Does the method (which HS is returning from) match what the current depth has stored?
+       * While Yes, we want to reply to this and then we are done.
+       * We keep testing and replying as long as we are above the correct depth.
+       */
+      if ( !gHyp_instance_replyMessage ( pAI, pMethodData ) ) break ;      
+    } 
   }
 
   pConcept = gHyp_instance_getConcept ( pAI ) ;
@@ -1997,7 +2166,6 @@ static void lHyp_frame_return ( sFrame *pFrame,
      * the lowest level of an idle state 
      */
 
-    /*gHyp_util_debug("LOW LEVEL RETURN");*/
     if ( guDebugFlags & DEBUG_FRAME )
       gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
 			   "frame: IDLE (longjmp to %d from frame %d)",
@@ -2021,7 +2189,7 @@ static void lHyp_frame_return ( sFrame *pFrame,
   else if ( giJmpLevel > 1 ) {
     /* Return from an internal method call or from a handler that was invoked while we
      * were executing tokens (gHyp_parse_expression).
-     * In this cases, we want to continue to EXECUTE.
+     * In this case, we want to continue to EXECUTE.
      */
     if ( guDebugFlags & DEBUG_FRAME )
       gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
@@ -2156,6 +2324,8 @@ static void lHyp_frame_return ( sFrame *pFrame,
     }
   }
   /* Exit swiftly */
+  /*gHyp_util_debug ( "(longjmp to %d from frame %d)", giJmpLevel, pFrame->depth );*/
+
   longjmp ( gsJmpStack[giJmpLevel], cond ) ;
  }
 

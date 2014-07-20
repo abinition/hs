@@ -10,6 +10,10 @@
  * Modifications:
  *
  *   $Log: parse.c,v $
+ *   Revision 1.12  2011-01-08 21:43:47  bergsma
+ *   JSON handling.
+ *   Operator dot function handling.
+ *
  *   Revision 1.11  2010-01-08 02:44:57  bergsma
  *   Added ssl_md5(), enhanced ssl_digest.
  *   Fixed urldecode, missing ":"
@@ -66,13 +70,13 @@
 struct parse_t
 {
   int		*expression ;			/* Infix expression */
+  sBYTE		*exprFlag ;                     /* Expression argument flag */
   char		exprView[MAX_TRACE_LENGTH+1] ;	/* Visual representation */
   int		exprCount ;			/* Expression count */
   int		maxExprCount ;			/* Water mark */
   int		prevExprRank ;			/* Previous expression rank */
   int		exprRank ;			/* Expression rank */
   int		argCount ;			/* Argument counter */
-  sBYTE		objArg ;			/* Object argument counter incrementer */
   int		listDepth ;			/* Depth of {} */
   int		expDepth ;			/* Depth of () */
   sLOGICAL	isMethodArgs ;			/* Definition of method args*/
@@ -84,7 +88,8 @@ struct parse_t
   char*		inputToken ;
   sBYTE		inputTokenType ;
   int		inputIndex ;
-  char		saveCurrentState ;
+  sBYTE		exprTokenType ;
+  sBYTE         saveCurrentState ;
   sCode*	saveInputCode;
   sBYTE		saveInputPrecedence ;
   sBYTE		saveExprTokenType ;
@@ -98,6 +103,7 @@ sParse *gHyp_parse_new ( )
   sParse * pParse = (sParse*) AllocMemory ( sizeof ( sParse ) ) ;
   assert ( pParse ) ;
   pParse->expression = (int *) AllocMemory ( sizeof ( int ) * giMaxExprSize ) ;
+  pParse->exprFlag = (sBYTE *) AllocMemory ( sizeof ( sBYTE ) * giMaxExprSize ) ;
   gHyp_parse_reset ( pParse ) ;
   pParse->saveInputCode = NULL ;
   return pParse ;
@@ -105,6 +111,7 @@ sParse *gHyp_parse_new ( )
 
 void gHyp_parse_delete ( sParse * pParse )
 {
+  ReleaseMemory ( pParse->exprFlag ) ;
   ReleaseMemory ( pParse->expression ) ;
   ReleaseMemory ( pParse ) ;
 }
@@ -116,7 +123,7 @@ void gHyp_parse_reset ( sParse* pParse )
   pParse->exprView[0] = '\0' ;
   pParse->exprRank = 0 ;
   pParse->argCount = 0 ;
-  pParse->objArg = 0 ;
+  pParse->exprFlag[0] = 0 ;
   pParse->listDepth = 0 ;
   pParse->expDepth = 0 ;
   pParse->isMethodArgs = FALSE ;
@@ -157,9 +164,34 @@ int gHyp_parse_expDepth ( sParse *pParse )
 
 int gHyp_parse_argCount ( sParse *pParse ) 
 {
-  int argCount = pParse->argCount + pParse->objArg ; 
+  /* Get counted arguments */
+  int 
+    argCount = pParse->argCount;
+
+  sBYTE 
+    dotArg = 0 ;
+
+  /* If the expression token is itself an argument (eg: an object function), 
+   * then add it as an argument.
+   */ 
+  if ( pParse->exprCount > 0 ) {
+    dotArg = ( pParse->exprFlag[pParse->exprCount] & EXPR_FUNCTION_CALL ) ; 
+    /* Clear the flag */
+    pParse->exprFlag[pParse->exprCount] = 0 ;
+  }
+
+  /* Add the implied extra arg from the .fn() call */
+  if ( dotArg ) {
+    if ( guDebugFlags & DEBUG_STACK )
+      gHyp_util_logDebug ( FRAME_DEPTH_NULL,
+			   DEBUG_STACK, 
+			   "argcf: +1" ) ;
+
+    argCount++ ;   
+  }
+
+  /* Init the argument count for the next call. */
   pParse->argCount = 1 ;
-  pParse->objArg = 0 ;
 
   if ( guDebugFlags & DEBUG_STACK )
     gHyp_util_logDebug ( FRAME_DEPTH_NULL,
@@ -188,6 +220,12 @@ sBYTE gHyp_parse_inputTokenType ( sParse *pParse )
 {
   return pParse->inputTokenType ;
 }
+
+sBYTE gHyp_parse_exprTokenType ( sParse *pParse ) 
+{
+  return pParse->exprTokenType ;
+}
+
 
 sLOGICAL gHyp_parse_isSubVariable ( sParse *pParse ) 
 {
@@ -242,6 +280,14 @@ sLOGICAL gHyp_parse_isMethodDeferred ( sParse *pParse )
 {
   return (sLOGICAL) (pParse->flag & PARSE_METHOD_DEFERRED) ;
 }
+
+sLOGICAL gHyp_parse_isConditional ( sParse *pParse , sHyp *pHyp ) 
+{
+  sCode *pExprCode = gHyp_hyp_code ( pHyp, pParse->expression[pParse->exprCount-1] ); 
+  sBYTE exprTokenType = gHyp_hyp_tokenType ( pExprCode ) ;
+  return (sLOGICAL) (exprTokenType == TOKEN_CONDITION ) ;
+}
+
 
 sLOGICAL gHyp_parse_isMethodDeprecated ( sParse *pParse ) 
 {
@@ -311,7 +357,15 @@ static char lHyp_parse_specialPrecedence ( 	sBYTE inputTokenType,
   case TOKEN_DEREF:
     inputPrecedence = PRECEDENCE_INPUT_DEREF ;
     break ;
+
+  case TOKEN_LITERAL:
+  case TOKEN_UNIDENTIFIED:
+  case TOKEN_CONSTANT:
+    inputPrecedence = PRECEDENCE_INPUT_OPERAND ;
+    break ;
   }
+
+
   return inputPrecedence ;
 }
 
@@ -573,6 +627,7 @@ void gHyp_parse_expression (	sParse 		*pParse,
     *pExprCode = NULL ;
   
   sBYTE
+    exprFlag=0,
     exprPrecedence = PRECEDENCE_EMPTY,
     exprTokenType = TOKEN_NULL ;
 
@@ -603,9 +658,10 @@ void gHyp_parse_expression (	sParse 		*pParse,
     /* Get expression information for token on end of expression */
     exprIndex = (int) pParse->expression [ pParse->exprCount - 1 ] ; 
     pExprCode = gHyp_hyp_code ( pHyp, exprIndex ); 
-    exprTokenType = gHyp_hyp_tokenType ( pExprCode ) ;
+    pParse->exprTokenType = exprTokenType = gHyp_hyp_tokenType ( pExprCode ) ;
     exprPrecedence = gHyp_hyp_precedence ( pExprCode ) ;
     exprToken = gHyp_hyp_token ( pExprCode ) ;
+    exprFlag = pParse->exprFlag[ pParse->exprCount - 1 ] ;
   }
 
   /* Case 1: short circuit handling */
@@ -654,7 +710,9 @@ void gHyp_parse_expression (	sParse 		*pParse,
   /* Case 3: Change input precedence as required. */
   inputPrecedence = lHyp_parse_specialPrecedence (	inputTokenType,
   							inputPrec ) ; 
-							
+
+  /* Case 3a: Change expression precedence as required */
+
   /* Case 4: The non-standard format "(function)" is converted to "function".
    *            Example:  (str) "123" ; --> str "123" ;
    */
@@ -672,7 +730,7 @@ void gHyp_parse_expression (	sParse 		*pParse,
        */
       exprIndex = (int) pParse->expression [ pParse->exprCount - 2 ] ; 
       pExprCode = gHyp_hyp_code ( pHyp, exprIndex );
-      exprTokenType = gHyp_hyp_tokenType ( pExprCode ) ;
+      pParse->exprTokenType = exprTokenType = gHyp_hyp_tokenType ( pExprCode ) ;
  
      if ( exprTokenType == TOKEN_BEXP && exprIndex == inputIndex - 2 ) {
 
@@ -682,6 +740,8 @@ void gHyp_parse_expression (	sParse 		*pParse,
 	 */
 	pParse->expression [ pParse->exprCount-2 ] = 
 	  pParse->expression [ pParse->exprCount-1 ] ;
+	pParse->exprFlag [ pParse->exprCount-2 ] = 
+	  pParse->exprFlag [ pParse->exprCount-1 ] ;
 	pParse->exprCount-- ;
 	pParse->maxExprCount = pParse->exprCount ;
 	if ( guDebugFlags & DEBUG_PARSE )
@@ -725,6 +785,7 @@ void gHyp_parse_expression (	sParse 		*pParse,
       exprIndex = (int) pParse->expression [ pParse->exprCount - 1 ] ; 
       pExprCode = gHyp_hyp_code ( pHyp, exprIndex ) ;
       exprPrecedence = gHyp_hyp_precedence ( pExprCode ) ;
+      exprFlag = pParse->exprFlag[ pParse->exprCount - 1 ] ;
     }
     else
       exprPrecedence = PRECEDENCE_EMPTY ;
@@ -736,12 +797,14 @@ void gHyp_parse_expression (	sParse 		*pParse,
        * Then we will add the '->' to the end to get '->a->'
        */
       pParse->expression [pParse->exprCount-1] = inputIndex ;
+      pParse->exprFlag [pParse->exprCount-1] = 0 ;
       pParse->expression [pParse->exprCount++] = exprIndex ;
     }
-    else
+    else {
       /* Just add "->" to end of expression */
+      pParse->exprFlag [pParse->exprCount] = 0 ;
       pParse->expression [pParse->exprCount++] = inputIndex ;
-    
+    }
     if ( guDebugFlags & DEBUG_INFIX_EXPR ) {
       i = pParse->exprCount*7 ;
       if ( i + 7 < MAX_TRACE_LENGTH )
@@ -757,17 +820,20 @@ void gHyp_parse_expression (	sParse 		*pParse,
    */
   if ( inputTokenType == TOKEN_BLIST ) pParse->listDepth++ ;
 
-  /* Case 7: Always initialize the argument count to zero when encountering a
+  /* Case 7: RANK ADJUSTMENTS.
+   * Always initialize the argument count to zero when encountering a
    * '(', '[', '{', or unary operator.
    */
-  if ( inputPrec == PRECEDENCE_LEFT || inputPrec == PRECEDENCE_UNARY ) {
+  if ( inputPrec == PRECEDENCE_LEFT || 
+       inputPrec == PRECEDENCE_UNARY  ||
+       inputTokenType == TOKEN_FUNCTION ) {
     pParse->argCount = 0 ;
     if ( guDebugFlags & DEBUG_STACK )
       gHyp_util_logDebug (	FRAME_DEPTH_NULL, DEBUG_STACK, 
 				"argc0: %d", pParse->argCount ) ;
   }
 
-  /* Case 7b. Two operands in succession */
+  /* Case 7b. Two operands in succession - unary unary */
   if ( exprTokenType == TOKEN_UNIDENTIFIED &&
        inputRank == RANK_OPERAND ) {
     /*gHyp_util_debug("Two operands in a row" ) ;*/
@@ -776,11 +842,58 @@ void gHyp_parse_expression (	sParse 		*pParse,
     pParse->exprRank &= ~1 ;
   }
 
-  /* Case 7c A function without the (). Pretend it had OPERAND rather than UNARY rank. */
-  if ( exprTokenType == TOKEN_FUNCTION &&
-       inputRank == RANK_BINARY ) {
-    /* gHyp_util_debug ( "Function without () in expression" ) ; */
-    pParse->exprRank |= 1 ;
+  /* Case 7c. Function precedence.  
+     * When used as operand.fn, fn is an operand.
+     * When used as fn operand, fn in an unary. */
+  if ( exprTokenType == TOKEN_FUNCTION ) {
+    /* For consecutive tokens only, not from expression reduction */
+    if ( exprIndex == (inputIndex-1) ) {
+      /* Some binary operator follows */
+      if ( inputRank == RANK_BINARY ) {
+        /* gHyp_util_debug ( "Function without () in expression" ) ; */
+        gHyp_hyp_setPrecedence ( pExprCode, PRECEDENCE_OPERAND ) ;
+        gHyp_hyp_setRank ( pExprCode, RANK_OPERAND ) ;
+        /* The operand sets the rank bit */
+        pParse->exprRank |= 1 ;
+      }
+      else if ( inputRank == RANK_OPEN ) {
+        /* Some open (), [], or {} */
+        /* gHyp_util_debug ( "Function with () in expression" ) ; */
+        gHyp_hyp_setPrecedence ( pExprCode, PRECEDENCE_UNARY ) ;
+        gHyp_hyp_setRank ( pExprCode, RANK_UNARY ) ;
+        /* The unary operator has cleared the rank bit */
+        pParse->exprRank &= ~1 ;
+      }
+    }
+    else {
+
+      /* Could be a deduced expression */
+      if ( exprFlag&EXPR_FUNCTION_CALL ) {
+
+        /* A fn used with an object, ie: obj.fn(...) */
+
+        if ( inputRank == RANK_BINARY ) {
+
+          /* An input token (binary operator) that must have fn executed, 
+           * so we must raise the precedence to ensure it.
+           */
+
+          /* gHyp_util_debug ( "Object function call" ) ; */
+          gHyp_hyp_setPrecedence ( pExprCode, PRECEDENCE_OPERAND ) ;
+          gHyp_hyp_setRank ( pExprCode, RANK_OPERAND ) ;
+          /* The operand sets the rank bit */
+          pParse->exprRank |= 1 ;
+        }
+      }
+    }
+  }
+
+  /* Case 7d.  A dot function. */
+  if ( exprTokenType == TOKEN_DOT && inputTokenType == TOKEN_FUNCTION ) {
+    /*gHyp_util_debug("dot function" ) ;*/
+    gHyp_hyp_setPrecedence ( pInputCode, PRECEDENCE_OPERAND ) ;
+    inputRank = RANK_OPERAND ;
+    gHyp_hyp_setRank ( pInputCode, inputRank ) ;
   }
 
   /* Case 8: Check the expression, keeping track of proper expression syntax.*/
@@ -793,7 +906,7 @@ void gHyp_parse_expression (	sParse 		*pParse,
   /* Case 9: The argument count will be at least 1 if an operand is encountered
    *         anywhere in the expression
    */
-  if ( inputRank == RANK_OPERAND ) {
+  if ( inputRank == RANK_OPERAND && inputTokenType != TOKEN_FUNCTION) {
     pParse->argCount = 1 ;
     if ( guDebugFlags & DEBUG_STACK )
       gHyp_util_logDebug (	FRAME_DEPTH_NULL, DEBUG_STACK, 
@@ -869,6 +982,7 @@ void gHyp_parse_loop (	sParse *pParse,
     *pLabel ;
 
   sBYTE
+    exprFlag=0,
     tokenType ;
 
   sData
@@ -892,7 +1006,7 @@ void gHyp_parse_loop (	sParse *pParse,
       
       /* Empty expression */
       exprPrecedence = PRECEDENCE_EMPTY ;
-      exprTokenType = TOKEN_NULL ;
+      pParse->exprTokenType = exprTokenType = TOKEN_NULL ;
       exprToken = NULL ;
     }
     else {
@@ -901,8 +1015,9 @@ void gHyp_parse_loop (	sParse *pParse,
       exprIndex = pParse->expression [ pParse->exprCount - 1 ] ; 
       pExprCode = gHyp_hyp_code ( pHyp, exprIndex );
       exprPrecedence = gHyp_hyp_precedence ( pExprCode ) ; 
-      exprTokenType = gHyp_hyp_tokenType ( pExprCode ) ;
+      pParse->exprTokenType = exprTokenType = gHyp_hyp_tokenType ( pExprCode ) ;
       exprToken = gHyp_hyp_token ( pExprCode ) ;
+      exprFlag = pParse->exprFlag [ pParse->exprCount - 1 ] ; 
     }
 
     /* Check for label definitions. */
@@ -911,7 +1026,7 @@ void gHyp_parse_loop (	sParse *pParse,
 		exprTokenType == TOKEN_UNIDENTIFIED ) {
 	
       /* Found "LABEL :". Define the label. */
-      pData = gHyp_frame_createVariable ( pFrame, exprToken ) ;
+      pData = gHyp_frame_createVariable ( pAI, pFrame, exprToken ) ;
       depth = gHyp_frame_depth( pFrame ) - 1 ;
       pLabel = gHyp_label_new() ;
       gHyp_label_setLabel ( pLabel, inputIndex, depth ) ;
@@ -933,7 +1048,11 @@ void gHyp_parse_loop (	sParse *pParse,
     }
 
     /* EVALUATE PRECEDENCE */
-    
+    if ( guDebugFlags & DEBUG_INFIX_EXPR ) 
+        gHyp_util_logDebug ( 	FRAME_DEPTH_NULL,  DEBUG_INFIX_EXPR,
+				"expr : (Input p=%d > Expr p=%d)?",
+				inputPrecedence, exprPrecedence ) ;
+       
     if ( inputPrecedence > exprPrecedence && isNormal ) {
 
       /* Input token has higher precedence than end expression token
@@ -957,6 +1076,20 @@ void gHyp_parse_loop (	sParse *pParse,
 				"expr : %s",
 				pParse->exprView ) ;
       }	
+
+      if ( pParse->flag & PARSE_OBJECT_CALL && 
+          inputTokenType == TOKEN_FUNCTION ) {
+
+        pParse->exprFlag[pParse->exprCount] |= EXPR_FUNCTION_CALL ;
+        exprFlag = pParse->exprFlag[pParse->exprCount] ;
+        /* IMPORTANT TO RESET the ARG COUNT HERE back to zero */
+        /*gHyp_util_debug("Resetting to 0");*/
+        pParse->argCount = 0 ; 
+
+      }
+      else 
+        exprFlag = pParse->exprFlag [ pParse->exprCount ] = 0 ;
+        
 
       pParse->expression [ pParse->exprCount++ ] = inputIndex ;
       pParse->maxExprCount = pParse->exprCount ;
@@ -1079,9 +1212,10 @@ void gHyp_parse_loop (	sParse *pParse,
 	/* 4.	If the expression token is an operand, then it could
 	 *	be a method call or a method definition providing
 	 *	the input token is a '('.
-	 *
 	 *	IF SO, WE MUST SAVE THE POSITION OF THE METHOD OPERAND
 	 *	SO THAT WE CAN DEFINE WHERE THE METHOD STARTS.
+         *
+         *      If the operand is preceeded by a ".", then it is a sub-variable.
 	 */
 	if (	exprTokenType  == TOKEN_UNIDENTIFIED ) {
 
@@ -1210,7 +1344,7 @@ void gHyp_parse_loop (	sParse *pParse,
 
 		      /*
 		      gHyp_util_logWarning (
-			"Deprecated method definition, use 'list %s () {...} ;' instead",
+			"Deprecated method definition, add ';' to end, format is: list %s () {...} ;",
 			gHyp_hyp_token ( pMethodCode ) ) ;
 		      */
 		      gHyp_frame_nextState ( pFrame, G_STMT_LIST ) ;
@@ -1374,13 +1508,18 @@ void gHyp_parse_loop (	sParse *pParse,
 
 	/* 9.	If the input token is a function and the expression token
 	 *	is a "dot", then set a flag
-	 *	thar will be detected when the function is executed.
+	 *	that will be detected when the function is executed.
 	 */
 	if (	inputTokenType == TOKEN_FUNCTION &&
-	  exprTokenType == TOKEN_DOT )  {
-	  pParse->objArg = 1 ;
+	        exprTokenType == TOKEN_DOT &&
+                pParse->exprCount > 1 )  {
+          /* Remember this flag at begining of the next iteration of the
+           * loop where the function is put on the end of the expression.
+           */
 	  pParse->flag |= PARSE_OBJECT_CALL ;
-	}
+          gHyp_hyp_setPrecedence ( pInputCode, PRECEDENCE_OPERAND ) ;
+          gHyp_hyp_setRank ( pInputCode, RANK_OPERAND ) ;
+        }
 
         /* 10.  If debug is set, then print out the expression */
 	if ( guDebugFlags & DEBUG_INFIX_EXPR ) {
@@ -1399,13 +1538,13 @@ void gHyp_parse_loop (	sParse *pParse,
 
 	  if ( i > 0 )
             gHyp_util_logDebug ( 	FRAME_DEPTH_NULL, DEBUG_INFIX_EXPR,
-					"expr : %s<%-5.5s>[%s ",
+					"expr : %s<%-5.5s][%s ",
 					pParse->exprView,
 					inputToken,
 					pParse->exprView+i+1 ) ;
  	  else
             gHyp_util_logDebug ( 	FRAME_DEPTH_NULL, DEBUG_INFIX_EXPR,
-					"expr : <%-5.5s>[%s ",
+					"expr : <%-5.5s][%s ",
 					inputToken,
 					pParse->exprView+1 ) ;
         }	

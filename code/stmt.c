@@ -10,6 +10,12 @@
  * Modifications:
  *
  *	$Log: stmt.c,v $
+ *	Revision 1.19  2011-02-20 00:53:11  bergsma
+ *	Use MAX_INPUT_LENGTH instead of MAX_OUTPUT_LENGHT for label
+ *	
+ *	Revision 1.18  2010-12-28 01:01:30  bergsma
+ *	Support for JSON arrarys [elem1,elem2,elem3,...]
+ *	
  *	Revision 1.17  2010-03-17 08:19:01  bergsma
  *	Fixed return statement when assigning same value to its method.
  *	
@@ -606,9 +612,9 @@ void gHyp_stmt_bList ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     char
       *pAttr,
       *pLabel,
-      newLabel[MAX_OUTPUT_LENGTH+1],
-      value[VALUE_SIZE+1],
-      value2[VALUE_SIZE+1] ;
+      newLabel[MAX_INPUT_LENGTH+1],
+      value[MAX_INPUT_LENGTH+1],
+      value2[MAX_INPUT_LENGTH+1] ;
 
     int
       os,
@@ -685,7 +691,8 @@ void gHyp_stmt_bList ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     if ( pValue &&
 	 gHyp_data_tokenType (pValue) == TOKEN_REFERENCE &&
 	 gHyp_data_getTokenType (pValue) == TOKEN_VARIABLE &&
-         /*(gHyp_data_getDataType (pValue) == TYPE_LIST ||
+         /* Support for ?
+         (gHyp_data_getDataType (pValue) == TYPE_LIST ||
           gHyp_data_getDataType (pValue) == TYPE_STRING) &&
 	 */
 	 gHyp_parse_isListCall ( pParse ) ) {
@@ -697,7 +704,7 @@ void gHyp_stmt_bList ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
         if ( gHyp_data_getDataType (pValue2) == TYPE_ATTR  &&
 	     gHyp_data_getTokenType(pValue2) == TOKEN_VARIABLE ) {
 
-	  len = MIN ( VALUE_SIZE , gHyp_data_bufferLen ( pValue2, 0 ) ) ;
+	  len = MIN ( MAX_INPUT_LENGTH , gHyp_data_bufferLen ( pValue2, 0 ) ) ;
 	  memcpy ( value, gHyp_data_buffer(pValue2,0), len ) ;
 	  value[len] = '\0' ;
 	  
@@ -715,7 +722,7 @@ void gHyp_stmt_bList ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
 	      if ( pChild ) {
 
-    	        len = MIN ( VALUE_SIZE , gHyp_data_bufferLen ( pChild, 0 ) ) ;
+    	        len = MIN ( MAX_INPUT_LENGTH , gHyp_data_bufferLen ( pChild, 0 ) ) ;
 	        memcpy ( value2, gHyp_data_buffer(pChild,0), len ) ;
   	        value2[len] = '\0' ;
 
@@ -846,60 +853,114 @@ void gHyp_stmt_bSub ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       *pStack = gHyp_frame_stack ( pFrame ) ;
     
     sData
+      *pValue,
+      *pList,
+      *pArg,
+      *pArgs,
       *pData,
       *pSubScript = NULL ;
 
+    char
+      *pLabel ;
+
     int
+      isVector,
       ss,
-      argCount = gHyp_parse_argCount ( pParse ) ;
+      context,
+      argCount;
+
+    argCount = gHyp_parse_argCount ( pParse ) ;
 
     /* Make sure the subscript value was specified. */
-    if ( argCount < 1 )
-      /* Empty subscript */
-      ss = -1 ;
-    else {
-
+    if ( argCount > 0 ) {
 
       /* If the subscript is a string, then pretend
        * we were using the dot syntax:
        *
        *  a["b"] is equivalent to a.b
        */
-      if ( gHyp_data_getDataType (gHyp_stack_peek(pStack)) == TYPE_STRING ) {
+      if ( argCount == 1 && gHyp_data_getDataType (gHyp_stack_peek(pStack)) == TYPE_STRING ) {
 	gHyp_operator_dot(pAI, pCode, isPARSE) ;
 	return ;
       }
-   
-      
-      /* Get the subscript */
-      pSubScript = gHyp_stack_popRvalue ( pStack, pAI );
 
+      if ( gHyp_parse_isIndexCall ( pParse ) ) {
 
+        /* Get the subscript */
+        pSubScript = gHyp_stack_popRvalue ( pStack, pAI );
 
-      /* Get the subscript value */	
-      ss = gHyp_data_getInt ( pSubScript, 
-			      gHyp_data_getSubScript ( pSubScript ),
-			      TRUE ) ;
-      if ( ss < 0 )
-        gHyp_instance_error ( 	pAI, STATUS_BOUNDS, 
+        /* Get the subscript value */	
+        ss = gHyp_data_getInt ( pSubScript, 
+			        gHyp_data_getSubScript ( pSubScript ),
+			        TRUE ) ;
+        if ( ss < 0 )
+          gHyp_instance_error ( pAI, STATUS_BOUNDS, 
 				"Subscript is not a positive integer" ) ;
-    }
 
-    /* If more than one argument, discard arguments 1 through argCount-1 */
-    for ( ; argCount > 1 ; argCount-- ) gHyp_stack_popRdata ( pStack, pAI ) ;
-    
-    if ( !gHyp_parse_isIndexCall ( pParse ) ) 
-      gHyp_instance_error ( 	pAI, STATUS_EXPRESSION, 
+        /* If more than one argument, discard arguments 1 through argCount-1 */
+        for ( ; argCount > 1 ; argCount-- ) gHyp_stack_popRdata ( pStack, pAI ) ;
+
+        /* Pop the data to subscript */
+        pData = gHyp_stack_popLvalue ( pStack, pAI ) ;
+
+        /* Apply the subscripts */
+        gHyp_data_setSubScript ( pData, ss ) ;
+
+        /* Put the data back on the stack with the subscript set */
+        gHyp_stack_push ( pStack, pData ) ;
+
+      }
+      else {
+
+        /* JSON subscripting */
+        /*
+        gHyp_instance_error ( 	pAI, STATUS_EXPRESSION, 
 				"No operand to subscript." ) ;
+        */
 
-    /* Pop the data to subscript */
-    pData = gHyp_stack_popLvalue ( pStack, pAI ) ;
+        /* Pop all the subscript elements, putting them in correct order. */
+        pArgs = gHyp_data_new ( "_tmp_" ) ;
+        gpsTempData = pArgs ;
+        while ( argCount-- ) {
+          pArg = gHyp_stack_popRdata2 ( pStack, pAI ) ;
+          gHyp_data_insert ( pArgs, pArg ) ;	
+        }
+        gpsTempData = NULL ;
 
-    /* Apply the subscript */
-    gHyp_data_setSubScript ( pData, ss ) ;
+        /* Look at the operand */
+        pData = gHyp_stack_peek ( pStack ) ;
 
-    /* Put the data back on the stack with the subscript set */
-    gHyp_stack_push ( pStack, pData ) ;
+        /* Create a new list of data from the arguments, 
+         * splicing all the values from each of the arguments into a new list
+         */  
+        pLabel = gHyp_data_getLabel ( pData ) ;
+        pList = gHyp_data_new ( "_json_" ) ;
+        isVector = ( gHyp_data_getDataType ( pArgs ) > TYPE_STRING ) ;
+        pArg = NULL ;    
+        ss = -1 ; context = -1 ;
+        while ( (pArg = gHyp_data_nextValue ( pArgs, pArg, &context, ss )) ) {
+          pValue = gHyp_data_copy ( pData ) ;
+          gHyp_data_setVariable ( pValue, pLabel, TYPE_LIST ) ;
+          /*
+          pValue2 = gHyp_data_copyAll ( pArg ) ;
+          gHyp_data_append ( pValue, pValue2 ) ;
+          */
+          gHyp_data_copyValues ( pValue, pArg ) ;
+          gHyp_data_append ( pList, pValue ) ;
+        }
+        gHyp_stack_push ( pStack, pList ) ;
+        gHyp_data_deleteValues ( pArgs ) ;
+        gHyp_data_delete ( pArgs ) ;
+      }
+    }
+    else {
+      /* Empty array [] */
+      if ( !gHyp_parse_isIndexCall ( pParse ) ) {
+        /* JSON subscripting - empty array [] */
+        pList = gHyp_data_new ( "_json_" ) ;
+        gHyp_stack_push ( pStack, pList ) ;
+      }
+    }
   }
 }
 

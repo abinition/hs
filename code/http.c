@@ -10,6 +10,13 @@
 /* Modifications:
  * 
  * $Log: http.c,v $
+ * Revision 1.36  2011-02-24 23:55:34  bergsma
+ * Change some PROTOCOL debugs to DIAGNOSTIC debugs.
+ * Get HSDOM working.
+ *
+ * Revision 1.35  2011-01-08 21:29:41  bergsma
+ * Assume URLEncoded is true by default
+ *
  * Revision 1.34  2010-05-05 04:55:41  bergsma
  * Added http_asctime
  *
@@ -870,7 +877,7 @@ void gHyp_http_assign ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       /* Check to see if the port is already assigned */
       pAIassigned = gHyp_concept_getInstForDeviceId ( pConcept, (sWORD) id ) ;
 
-      if ( pAIassigned ) {
+      if ( pAIassigned && pAIassigned != pAI ) {
         gHyp_util_logWarning ( "Device id %d was previously assigned to port %d by instance %s, deleting old assignment",
 			      (sWORD) id,
 			      gHyp_instance_getDeviceFd ( pAIassigned, (sWORD) id ),
@@ -878,6 +885,11 @@ void gHyp_http_assign ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 	gHyp_instance_deleteFd ( pAIassigned, gHyp_instance_getDeviceFd ( pAIassigned, (sWORD) id ) ) ;
       }
         
+      /*gHyp_util_logInfo ( "Device id %d is assigned to port %d for instance %s",
+			      (sWORD) id,
+			      gHyp_instance_getDeviceFd ( pAI, (sWORD) id ),
+			      gHyp_instance_getTargetId ( pAI ) ) ;
+      */
       gHyp_instance_updateFd ( pAI, (SOCKET) portFd, (sWORD) id, NULL, FALSE ) ;
 
       flags = gHyp_secs1_flags ( pHttp ) ;
@@ -1468,6 +1480,14 @@ static void lHyp_http_QE (	sInstance 	*pAI,
 			    id ) ;
     status = FALSE ;
   }
+  else if ( mode == MESSAGE_QUERY && pAI != pAIassigned ) {
+    gHyp_instance_warning ( pAI,STATUS_HTTP, 
+			    "Device id %d is assigned to %s, not %s",
+			    id,
+                            gHyp_instance_getTargetId(pAIassigned), 
+                            gHyp_instance_getTargetId(pAI)) ;
+    status = FALSE ;
+  }
   else 
     status = TRUE ;
 
@@ -1630,16 +1650,6 @@ static void lHyp_http_QE (	sInstance 	*pAI,
     }
 
     if ( pHttpData ) {
-
-      /*
-      pVariable = gHyp_data_getVariable ( pHttpData ) ;
-      contentLength = 0 ;
-
-      if ( pVariable ) 
-	pData = gHyp_fileio_describeData ( pAI, pVariable, ' ', TRUE, &contentLength ) ;
-      else
-	pData = gHyp_fileio_describeData ( pAI, pHttpData, ' ', TRUE, &contentLength ) ;			       
-      */
 
       /* Determine the content length of the data */
       pValue = NULL ;

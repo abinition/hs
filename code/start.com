@@ -3,6 +3,12 @@ $!
 $! Modifications:
 $!
 $! $Log: start.com,v $
+$! Revision 1.17  2011-03-06 21:44:28  bergsma
+$! no message
+$!
+$! Revision 1.16  2011-02-20 00:54:22  bergsma
+$! Comment and change Noauthorize to Authorize
+$!
 $! Revision 1.15  2006-01-23 17:42:42  bergsma
 $! Uppercase incoming argument P1
 $!
@@ -134,17 +140,20 @@ $     run sys$system:loginout -
                 /Output         = AUTOLOG:'target'.LOG -
                 /Uic            = 'automgr' -
                 /privs          = (NETMBX,TMPMBX,SYSNAM,DETACH) -
-                /noAuthorize -
+                /noAuthorize -  ! Do take from PQL_ resources, not from UID
                 /priority       = 4 -
-                /page_file      = 2000000 -
-                /working        = 2048 -
-                /maximum_Working= 4096 -                
-                /extent         = 8192 -                
-                /enqueue_limit  = 500 -
-                /io_direct      = 500 -
-                /io_buffer      = 500 -
-                /queue_limt     = 20 -
-                /ast_limit      = 100 -
+                /page_file      = 2000000 -    ! Max paging (pages)
+                /working        = 2048 -       ! Default working pages
+                /maximum_working_set = 4096 -  ! Max Pages
+                /file_limit     = 200 -   ! Max open files                
+                /extent         = 8192 -  ! Max physical memory size allowed (pages)           
+                /enqueue_limit  = 500 -   ! Max locks
+                /io_direct      = 500 -  ! Max direct i/o
+                /io_buffered    = 500 -  ! Max sys buffer i/o 
+                /queue_limit    = 20 -   ! Max timers
+                /ast_limit      = 100 -  ! Asynchronous traps
+                /job_table_quota= 0  -  ! Maximum allowed
+                /noswapping -           ! Try not to swap!
                 /buffer_limit   = 'buf_lim'
 $     set process/privilege=('cfc_oldprivs')
 $   else

@@ -10,6 +10,9 @@
  * Modifications:
  *
  * $Log: channel.c,v $
+ * Revision 1.8  2011-04-27 21:06:12  bergsma
+ * Print statement change.
+ *
  * Revision 1.7  2008-02-12 23:03:52  bergsma
  * V3.8.2 (compiled with VS C 2008)
  *
@@ -95,7 +98,7 @@ sChannel *gHyp_channel_new ( char *name,
 
 void gHyp_channel_close ( sChannel *pChannel ) 
 {
-  gHyp_util_logInfo ( "Closing connection (%d), flags=%x, target='%s', path=%s", 
+  gHyp_util_logInfo ( "Closing connection (%d), flags=%x, target='%s', path='%s'", 
 		      pChannel->fd, 
 		      pChannel->flags, 
 		      pChannel->target, 

@@ -3,6 +3,12 @@
 /* Modifications:
  * 
  * $Log: frame.h,v $
+ * Revision 1.5  2011-01-08 21:26:09  bergsma
+ * Extra pAI arg in frame *Variable* functions.
+ * Default mode is now 'local' when HS starts up.
+ * Lookup of local variable always takes precedence over global variable,
+ * regardless of whether HS is in local or global modes.
+ *
  * Revision 1.4  2003-01-12 10:14:12  bergsma
  * Removed getVariable (moved to data.h).
  * Added testLocalFlag, setLocalFlag, clearLocalFlag
@@ -27,21 +33,22 @@ extern int 		gHyp_frame_depth ( sFrame * ) ;
 extern void		gHyp_frame_setGlobalScope ( sFrame *, sLOGICAL ) ;
 extern sLOGICAL		gHyp_frame_isGlobalScope ( sFrame *) ;
 extern sData*		gHyp_frame_findRootVariable ( sFrame*, char* );
+extern sData*           gHyp_frame_findGlobalVariable ( sInstance *pAI, sFrame *pFrame, char *pStr ) ;
 extern sData*		gHyp_frame_findLocalVariable ( sFrame*, char* );
 extern sData*		gHyp_frame_findVariable ( sInstance*, sFrame*, char* );
 extern sData*		gHyp_frame_createRootVariable ( sFrame *, char* ) ;
 extern sData*		gHyp_frame_createLocalVariable ( sFrame *, char* ) ;
-extern sData*		gHyp_frame_createVariable ( sFrame *,char*);
-extern sLOGICAL		gHyp_frame_deleteLocalVariable (sFrame *,char*);
-extern sLOGICAL		gHyp_frame_deleteRootVariable (sFrame *,char*);
-extern sLOGICAL		gHyp_frame_deleteVariable (sFrame *,char*);
+extern sData*		gHyp_frame_createVariable (sInstance*, sFrame *,char*);
+extern sLOGICAL		gHyp_frame_deleteLocalVariable ( sFrame *,char*);
+extern sLOGICAL		gHyp_frame_deleteRootVariable (sInstance*,sFrame *,char*);
+extern sLOGICAL		gHyp_frame_deleteVariable (sInstance*,sFrame *,char*);
 extern void 		gHyp_frame_setMethodData ( sFrame *, sData* ) ;
 extern sData*		gHyp_frame_getMethodData ( sFrame * ) ;
 extern void		gHyp_frame_swapRootMethodData ( sFrame *pFrame1, sFrame *pFrame2 ) ;
 extern sData*		gHyp_frame_getRootMethodData ( sFrame * ) ;
 extern void 		gHyp_frame_setMethodVariable ( sFrame *, sData* ) ;
 extern sData*		gHyp_frame_getMethodVariable ( sFrame * ) ;
-extern sData*		gHyp_frame_findRootMethodVar ( sFrame *pFrame, char *pStr ) ;
+extern sData*		gHyp_frame_findRootMethodVar ( sInstance *pAI, sFrame *pFrame, char *pStr ) ;
 extern sData*		gHyp_frame_findMethodVariable ( sFrame *, char*, sInstance* ) ; 
 extern sParse*		gHyp_frame_parse ( sFrame *pFrame ) ;
 extern sStack*		gHyp_frame_stack ( sFrame *pFrame ) ;

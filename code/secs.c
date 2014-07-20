@@ -11,6 +11,12 @@
  * Modifications:
  *
  * $Log: secs.c,v $
+ * Revision 1.30  2011-02-20 00:56:07  bergsma
+ * Move statement into loop for parse for ENQ contention
+ *
+ * Revision 1.29  2011-01-08 21:38:24  bergsma
+ * Allow open to cross instance boundaries.
+ *
  * Revision 1.28  2009-09-28 05:24:40  bergsma
  * secs_query_raw and secs_event_raw were not working
  *
@@ -1126,7 +1132,7 @@ void gHyp_secs_assign ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     /* Check to see if the port is already assigned */
     pAIassigned = gHyp_concept_getInstForDeviceId ( pConcept, (sWORD) id ) ;
 
-    if ( pAIassigned ) {
+    if ( pAIassigned && pAIassigned != pAI ) {
       gHyp_util_logWarning ( "Device id %d was previously assigned to port %d by instance %s, deleting old assignment",
 			      (sWORD) id,
 			      gHyp_instance_getDeviceFd ( pAIassigned, (sWORD) id ),
@@ -1136,12 +1142,20 @@ void gHyp_secs_assign ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
         
     if ( status ) {
  
+
+      /*
+      gHyp_util_logInfo ( "Device id %d is assigned to port %d for instance %s",
+			      (sWORD) id,
+			      gHyp_instance_getDeviceFd ( pAI, (sWORD) id ),
+			      gHyp_instance_getTargetId ( pAI ) ) ;
+      */
       pSecs2 = gHyp_secs2_new ( ) ;
       status = gHyp_instance_updateFd ( pAI, 
 					secsFd, 
 					id,
 					pSecs2, 
 					rBit ) ;
+
       /* In case the pSecs1 device was opened with port_open or http_open */
       if ( pSecs1 ) {
         flags = gHyp_secs1_flags ( pSecs1 ) ;
@@ -1454,6 +1468,16 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
 			    id ) ;
     status = FALSE ;
   }
+  else if ( pAI != pAIassigned ) {
+    gHyp_instance_warning ( pAI,STATUS_HTTP, 
+			    "Device id %d is assigned to %s, not %s",
+			    id,
+                            gHyp_instance_getTargetId(pAIassigned), 
+                            gHyp_instance_getTargetId(pAI)) ;
+    status = FALSE ;
+  }
+  else
+    status = TRUE ;
 
   if ( status ) {
 
@@ -1571,13 +1595,18 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
 
 	else if ( nBytes == 0 ) {
 
-	  /* Some condition occurred, execute all pending conditions. */
-	  gHyp_frame_setGlobalFlag ( pFrame, FRAME_GLOBAL_TRUE ) ;
-	  do {
+          /* ENQ contention likely occurred, execute all pending conditions. */
+
+	  /* Move the next stmt into loop so that multiple conditions can be handled
+             gHyp_frame_setGlobalFlag ( pFrame, FRAME_GLOBAL_TRUE ) ;
+	  */
+
+          do {
 	    /* Setting STATE_QUERY here let's us execute the 
 	     * handler for the incoming message, which is
 	     * the gHyp_instance_handleMessageCall() function.
   	     */
+ 	    gHyp_frame_setGlobalFlag ( pFrame, FRAME_GLOBAL_TRUE ) ;
 	    gHyp_instance_setState ( pAI, STATE_QUERY ) ;
 	  }
 	  while ( gHyp_instance_parse ( pAI ) == COND_NORMAL ) ;

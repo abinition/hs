@@ -10,6 +10,18 @@
  * Modifications:
  *
  *	$Log: tcp.c,v $
+ *	Revision 1.36  2012-04-03 20:59:39  bergsma
+ *	Comments
+ *	
+ *	Revision 1.35  2011-05-30 17:06:58  bergsma
+ *	Increase TCP listen 'backlog' argument from 5 to 10.
+ *	
+ *	Revision 1.34  2011-02-20 00:51:55  bergsma
+ *	Don't create alias if blank string
+ *	
+ *	Revision 1.33  2011-01-08 21:34:40  bergsma
+ *	TRUE64 is really TRU64
+ *	
  *	Revision 1.32  2010-01-08 02:44:57  bergsma
  *	Added ssl_md5(), enhanced ssl_digest.
  *	Fixed urldecode, missing ":"
@@ -298,6 +310,8 @@ sAlias *gHyp_tcp_newAlias ( char *alias )
   strcpy ( pAlias->alias, alias ) ;
   pAlias->host[0] = '\0' ;
   pAlias->addr[0] = '\0' ;
+
+  /*gHyp_util_debug("HASH for %s",alias);*/
   return pAlias ;
 }
 
@@ -462,6 +476,8 @@ sLOGICAL gHyp_tcp_resolveHost ( char* pHost, char *pAddr )
     doAlias = FALSE ;
  
   /* Initialize result */
+  addr[0] = '\0' ;
+  host[0] = '\0' ;
   strcpy ( pAddr, pHost ) ;
 
   /*inAddrForm = ( (inet_aton ( pHost, &inp ) ) != 0 ) ; */
@@ -552,7 +568,7 @@ sLOGICAL gHyp_tcp_resolveHost ( char* pHost, char *pAddr )
       /* Create or update the alias entries so everything points to 
        * the resolved ip address 
        * */
-      pAlias = gHyp_tcp_createAlias ( host, addr ) ;
+      if ( host[0] ) pAlias = gHyp_tcp_createAlias ( host, addr ) ;
 
       if ( strcmp ( pHost, addr ) != 0 ) gHyp_tcp_createAlias ( pHost, addr ) ;
       if ( strcmp ( host, addr  ) != 0 ) gHyp_tcp_createAlias ( addr, addr ) ;
@@ -667,6 +683,13 @@ SOCKET gHyp_tcp_request ( char* pHost, int port )
   gHyp_signal_unblock ( SIGALRM ) ;
   alarm ( CONNECT_TIMEOUT ) ;
   gsSocketToCancel = giSocket ;
+  /* Longjmp out of here if a SIG* happens while blocking.
+   * Only done when making TCP connection request, and only
+   * if SIGALRM is defined.  In other words, during the blocking
+   * call of waiting for the connection, most incoming SIG*
+   * signals will interrupt it and cause the connection request
+   * to fail and return here with status==INVALID_SOCKET
+   */
   if ( (jmpVal = setjmp ( gsJmpOverride )) ) return INVALID_SOCKET ;
 #endif
 
@@ -1097,7 +1120,7 @@ sLOGICAL gHyp_tcp_sendmsg ( char *pClient, char *pService, SOCKET sendfd, int po
   } control_un;
   struct cmsghdr *cmptr;
 
-#ifndef AS_TRUE64
+#ifndef AS_TRU64
   msg.msg_control = control_un.control;
   msg.msg_controllen = sizeof(control_un.control);
 
@@ -1238,7 +1261,7 @@ SOCKET gHyp_tcp_recvmsg ( int s, int *pport )
   } control_un;
   struct cmsghdr *cmptr;
 
-#ifndef AS_TRUE64
+#ifndef AS_TRU64
   msg.msg_control = control_un.control;
   msg.msg_controllen = sizeof(control_un.control);
 #else
@@ -1262,7 +1285,7 @@ SOCKET gHyp_tcp_recvmsg ( int s, int *pport )
 
   }
 
-#ifndef AS_TRUE64
+#ifndef AS_TRU64
   if ( (cmptr=CMSG_FIRSTHDR(&msg)) != NULL &&
        cmptr->cmsg_len == CMSG_LEN(sizeof(int) ) ) {
 
@@ -1277,7 +1300,7 @@ SOCKET gHyp_tcp_recvmsg ( int s, int *pport )
      port |= (((unsigned int)(buf[3])) & 0x0ff);
      *pport = port ;
 
-#ifndef AS_TRUE64
+#ifndef AS_TRU64
     }
     else {
 
@@ -1341,7 +1364,7 @@ SOCKET gHyp_tcp_makeUNIX ( char *pService )
     return INVALID_SOCKET ;		
   }
   
-  if ( ( listen ( s, 5 ) ) == SOCKET_ERROR ) {
+  if ( ( listen ( s, 10 ) ) == SOCKET_ERROR ) {
     gHyp_util_sysError ( "Failed to listen on unix socket" ) ;
     gHyp_sock_close ( s, SOCKET_UNIX, pService, "" ) ;
     return INVALID_SOCKET ;
@@ -1435,6 +1458,7 @@ SOCKET gHyp_tcp_checkInboundUNIX ( SOCKET s )
     }
   }
   /* Done with pathname now */
+  gHyp_util_logInfo ( "Removing '%s'",sock.sun_path ) ;
   unlink ( sock.sun_path ) ;
 
   return ns ;

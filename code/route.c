@@ -11,6 +11,9 @@
  * Modifications:
  *
  * $Log: route.c,v $
+ * Revision 1.17  2011-01-08 21:42:06  bergsma
+ * New args to fileio_describeData
+ *
  * Revision 1.16  2008-02-12 23:18:38  bergsma
  * VS 2008 update
  *
@@ -419,9 +422,9 @@ static void lHyp_route_QE (	sInstance 	*pAI,
       pVariable = gHyp_data_getVariable ( pToken ) ;
       contentLength = 0 ;
       if ( pVariable ) 
-	pValue = gHyp_fileio_describeData ( pAI, pVariable, ' ', FALSE, &contentLength ) ;
+	pValue = gHyp_fileio_describeData ( pAI, pVariable, ' ', FALSE, FALSE, &contentLength ) ;
       else
-	pValue = gHyp_fileio_describeData ( pAI, pToken, ' ', FALSE, &contentLength ) ;			       
+	pValue = gHyp_fileio_describeData ( pAI, pToken, ' ', FALSE, FALSE, &contentLength ) ;			       
       gHyp_data_insert ( pTV, pValue ) ;
     }
 
