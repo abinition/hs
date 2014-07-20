@@ -15,6 +15,15 @@
  * Modifications:
  *
  * $Log: hs.c,v $
+ * Revision 1.54  2013-05-15 16:42:09  bergsma
+ * Fix memory issue with gpEnv/joutput
+ *
+ * Revision 1.53  2013-02-24 22:37:03  bergsma
+ * Add firsttime call into lHyp_hs_output
+ *
+ * Revision 1.52  2013-01-02 19:08:56  bergsma
+ * Comments
+ *
  * Revision 1.51  2011-02-24 23:55:34  bergsma
  * Change some PROTOCOL debugs to DIAGNOSTIC debugs.
  * Get HSDOM working.
@@ -286,20 +295,22 @@ static void lHyp_hs_jeval ( char *token )
 
 
 static char output[MAX_STREAM_LENGTH+1];
+static jstring joutput = NULL ;
 static void lHyp_hs_output ( char *token )
 {
-  jstring joutput ;
   strcpy ( output, token ) ;
   if ( gpEnv == NULL ) return ;
-  joutput = (*gpEnv)->NewStringUTF(gpEnv, output );
+  if ( joutput == NULL ) joutput = (*gpEnv)->NewStringUTF(gpEnv, output );
   (*gpEnv)->CallVoidMethod( gpEnv, gpObject, gpMID_output, joutput );
 
   /* The following call has been problematic, causing fatal
    * dumps of the HS.DLL.  Commenting it is not right, but
    * does seem to prevent crashes.  
-   * 
+   *
+   * Since output is static, it doesn't need to be allocated/released 
+   *
+  (*gpEnv)->ReleaseStringUTFChars(gpEnv, joutput, output ) ;
    */
-  (*gpEnv) ->ReleaseStringUTFChars(gpEnv, joutput, output ) ;
 }
 
 void gHyp_hs_output ( char *token )
@@ -556,7 +567,15 @@ JNIEXPORT jstring JNICALL Java_HyperScript2_hs(JNIEnv *env, jobject obj, jstring
 	/* Check to see if we are going back for more input */
         if ( gpAI == gpAImain &&
 	     gHyp_concept_returnToStdIn ( gpsConcept ) &&
-	     gHyp_instance_getState ( gpAImain ) != STATE_QUERY ) {
+	     gHyp_instance_getState ( gpAImain ) != STATE_QUERY 
+             
+           /* but not IDLE or SLEEP, see lHyp_frame_return(), where
+            * parse can force them out of their states.
+            *
+           && gHyp_instance_getState ( gpAImain ) != STATE_IDLE 
+           && gHyp_instance_getState ( gpAImain ) != STATE_SLEEP 
+           */ 
+         ) {
       
           /* HyperScript finished running */
           giJmpLevel = -1 ;	/* Disallow longjmp */
@@ -1189,7 +1208,14 @@ int main ( int argc, char * argv[] )
       
       if ( gpAI == gpAImain &&
            gHyp_concept_returnToStdIn ( gpsConcept ) &&
-           gHyp_instance_getState ( gpAImain ) != STATE_QUERY ) {
+           gHyp_instance_getState ( gpAImain ) != STATE_QUERY 
+           /* but not IDLE or SLEEP, see lHyp_frame_return(), where
+            * parse can force them out of their states.
+            *
+           && gHyp_instance_getState ( gpAImain ) != STATE_IDLE 
+           && gHyp_instance_getState ( gpAImain ) != STATE_SLEEP 
+           */ 
+         ) {
                 
         /* See if more input can be loaded into the program */
         pFrame = gHyp_instance_frame ( gpAImain ) ;

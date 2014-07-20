@@ -10,6 +10,10 @@
  * Modifications:
  *
  * $Log: channel.c,v $
+ * Revision 1.9  2012-10-20 18:45:24  bergsma
+ * Add another argument (targetId) to channel_new so that properly
+ * formated ABORTmessages can be sent to the router.
+ *
  * Revision 1.8  2011-04-27 21:06:12  bergsma
  * Print statement change.
  *
@@ -50,6 +54,7 @@ struct channel_t
 {
   char		target[TARGET_SIZE+1] ;
   char		path[MAX_PATH_SIZE+1] ;
+  char          targetId[OBJECT_SIZE+1];
   short		flags ;
   SOCKET	fd ;
   OVERLAPPED	overlapped ;
@@ -72,6 +77,7 @@ struct channel_t
 
 sChannel *gHyp_channel_new ( char *name,
 			     char *path,
+                             char *targetId,
 			     short flags,
 			     SOCKET fd )
 {
@@ -81,6 +87,7 @@ sChannel *gHyp_channel_new ( char *name,
 
   pChannel= (sChannel*) AllocMemory ( sizeof ( sChannel ) ) ;
   strcpy ( pChannel->target, name ) ;
+  strcpy ( pChannel->targetId, targetId ) ;
   strcpy ( pChannel->path, path ) ;
   pChannel->flags = flags ;
   pChannel->buf[0] = '\0' ;
@@ -123,6 +130,11 @@ void gHyp_channel_delete ( sChannel * pChannel )
 #endif
   ReleaseMemory ( pChannel ) ;
   return ;
+}
+
+char* gHyp_channel_targetId ( sChannel *pChannel )
+{
+  return pChannel->targetId ;
 }
 
 char* gHyp_channel_target ( sChannel *pChannel )

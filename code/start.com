@@ -3,6 +3,16 @@ $!
 $! Modifications:
 $!
 $! $Log: start.com,v $
+$! Revision 1.20  2012-07-20 16:37:44  bergsma
+$! Keep priority at 4
+$!
+$! Revision 1.19  2011-10-17 11:01:32  bergsma
+$! Use NoAuth in favor of Auth
+$!
+$! Revision 1.18  2011-10-04 09:08:39  bergsma
+$! Use /Authorize instead of /NoAuthorize.
+$! Add ALTPRI to passed privilege.
+$!
 $! Revision 1.17  2011-03-06 21:44:28  bergsma
 $! no message
 $!
@@ -139,9 +149,9 @@ $     run sys$system:loginout -
                 /Input          = _AR:'target'.COM -
                 /Output         = AUTOLOG:'target'.LOG -
                 /Uic            = 'automgr' -
-                /privs          = (NETMBX,TMPMBX,SYSNAM,DETACH) -
-                /noAuthorize -  ! Do take from PQL_ resources, not from UID
-                /priority       = 4 -
+                /privs          = (NETMBX,TMPMBX,SYSNAM,DETACH,ALTPRI) -
+                /noAuthorize -     ! (Do-auth)/(do not-noauth) take from PQL_ resources, not from UID
+                /priority       = 4 -           ! They are important, so up it!!!  
                 /page_file      = 2000000 -    ! Max paging (pages)
                 /working        = 2048 -       ! Default working pages
                 /maximum_working_set = 4096 -  ! Max Pages

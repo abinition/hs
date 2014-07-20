@@ -11,6 +11,31 @@
  * Modifications:
  *
  *	$Log: instance.c,v $
+ *	Revision 1.96  2013-05-15 16:43:30  bergsma
+ *	Comment
+ *	
+ *	Revision 1.95  2013-02-05 23:53:58  bergsma
+ *	Call gHyp_instance_nextEvent when SLEEP is reset.
+ *	
+ *	Revision 1.94  2013-01-30 22:20:10  bergsma
+ *	When  coming out of sleep, one must set the instance state to PARSE.
+ *	
+ *	Revision 1.93  2013-01-02 19:16:12  bergsma
+ *	Reset PIPE and HANGUP handlers only if none are stacked.
+ *	Do not re-issue gHyp_instance_read after returning to SLEEP, QUERY,
+ *	or IDLE states unless ALL conditions have first been serviced, this prevents
+ *	messages that have just arrived from being abandoned in favor of new
+ *	messages just coming in.
+ *	When doing a "sleep 0", an instance must perform a quick poll
+ *	(gHyp_instance_read), then reset its wake timer and allow any incoming
+ *	messages to be processed.
+ *	
+ *	Revision 1.92  2012-08-11 00:16:42  bergsma
+ *	Allow higher amount of time to get past DEATH signal.
+ *	
+ *	Revision 1.91  2012-05-01 17:50:59  bergsma
+ *	Added debug statement.
+ *	
  *	Revision 1.90  2012-03-24 00:30:43  bergsma
  *	Comments
  *	
@@ -483,7 +508,7 @@ static void lHyp_instance_consumeMessage ( sInstance *pAI,
 {
   /* Description:
    *
-   *	When a message arrives invokes a method to execute, the tokens
+   *	When a message arrives and invokes a method to execute, the tokens
    *	and values of the message must be consumed before the method
    *	executes.  A list of the tokens consumed is stored in the 
    *	variable 'args'.
@@ -605,11 +630,12 @@ static void lHyp_instance_consumeMessage ( sInstance *pAI,
       /* Special case: STATUS must be set as a global variable */
       pVariable = gHyp_frame_findRootVariable ( pAI->exec.pFrame, 
 						"STATUS" ) ;
-    else
-      /* All other variables can be local or global */
-      pVariable = gHyp_frame_createVariable ( pAI, pAI->exec.pFrame, 
+    else {
+      pVariable = gHyp_frame_findVariable ( pAI, pAI->exec.pFrame, pVariableStr ) ; 
+      if ( !pVariable )
+        pVariable = gHyp_frame_createVariable ( pAI, pAI->exec.pFrame, 
 					      pVariableStr ) ;
-	
+    }
     gHyp_data_setReference ( pLvalue, pVariableStr, pVariable);
 	
     /* Store a reference to the variable in the "args" variable */
@@ -1015,7 +1041,7 @@ void gHyp_instance_init ( sInstance *pAI,
   strcpy ( pAI->msg.targetId, targetId ) ;
   gHyp_instance_setTargetPath ( pAI, targetPath ) ;
   sprintf (	message, 
-		"|%s|event|_main_|%s|%s|%s||STATUS|$ACKNOWLEDGE||DEBUG|0|||", 
+		"|%s|event|_main_|%s|%s|%s||STATUS|$ACKNOWLEDGE||DEBUG|0||console|1|||", 
 		targetPath, 
 		targetPath,
 		gHyp_util_random8(),
@@ -1648,12 +1674,17 @@ int gHyp_instance_readQueue ( sInstance* pAI )
     pAI->msg.startQQ++ ;
     if ( pAI->msg.startQQ >= MAX_QUEUE_DEPTH ) pAI->msg.startQQ = 0 ;
     
+    /* OK to call this, it just makes sure any read has a timeout of zero,
+     * in which case this requeued message will be processed.
+     */
+    gHyp_instance_signalMsg( pAI ) ;
+
     return COND_NORMAL ;
   }
 
   /* Check for requeued messages, but only if we are not in a QUERY state */
   if ( pAI->exec.state != STATE_QUERY &&
-       pAI->msg.rq[pAI->msg.startRQ] != NULL) {
+       pAI->msg.rq[pAI->msg.startRQ] != NULL ) {
     
     n = pAI->msg.startRQ ;
     if ( pAI->msg.incoming ) gHyp_aimsg_delete ( pAI->msg.incoming ) ;
@@ -1682,6 +1713,12 @@ int gHyp_instance_readQueue ( sInstance* pAI )
     /* Advance start of queue */
     pAI->msg.startRQ++ ;
     if ( pAI->msg.startRQ >= MAX_QUEUE_DEPTH ) pAI->msg.startRQ = 0 ;
+
+    /* OK to call this, it just makes sure any read has a timeout of zero,
+     * in which case this requeued message will be processed.
+     */
+    gHyp_instance_signalMsg( pAI ) ;
+
     return COND_NORMAL ;
   }
 
@@ -1808,7 +1845,7 @@ int gHyp_instance_readProcess ( sInstance *pAI )
 
   if ( !pAI->msg.incoming ) return COND_SILENT ;
 
-  /* Flag there's a message in pAI->msg.incoming */	
+  /* Clear the flag that there's a message in pAI->msg.incoming */	
   pAI->signal.uMSG = 0 ;
   
   /* The incoming message header items for target and sender have not been altered in
@@ -2212,7 +2249,7 @@ sLOGICAL gHyp_instance_atCorrectDepth ( sInstance *pAI, char *pMethodStr, int fr
   }
   else
     /* A mistmatch - return FALSE */
-    /*gHyp_util_debug("Mis-Matched, %s != %s", pMethodStr, pMethodStr2 ) ;*/
+    gHyp_instance_warning(pAI,"Mis-Matched, %s != %s", pMethodStr, pMethodStr2 ) ;
 
   /* Whatever this is, its FALSE */
   return FALSE ;
@@ -2562,7 +2599,7 @@ sLOGICAL gHyp_instance_replyMessage ( sInstance *pAI, sData *pMethodData )
 	    else if ( nBytes == 0 ) {
 
 	      /* ENQ contention:  WE DIDN'T SEND THE REPLY MESSAGE!!!
-               * We'll that later.  For now, see what condition occurred (what
+               * We'll do that later.  For now, see what condition occurred (what
                * message interrupted the send operation) and let it execute.
                */
 
@@ -2572,7 +2609,7 @@ sLOGICAL gHyp_instance_replyMessage ( sInstance *pAI, sData *pMethodData )
 
 	      /*gHyp_util_debug ( "ENQ contention at depth %d ",outgoingDepth ) ;*/
 
-	      /* Queue up the interrupted message.  
+	      /* Queue up the interrupting message.  
                * TRUE means don't block, which means we are not executing select(),
                * we are only fetching the incoming message from the queue and setting
                * up for the message call.
@@ -2756,7 +2793,7 @@ void gHyp_instance_requeue ( sInstance* pAI )
 
     if ( guDebugFlags & DEBUG_DIAGNOSTICS )
       gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
-			   "diag : Incoming message queued") ;
+			   "diag : Incoming message transfered to requeue") ;
   }
   return ;
 }
@@ -3918,7 +3955,7 @@ static sLOGICAL lHyp_instance_handleMethod ( sInstance * pAI )
 
 static sLOGICAL lHyp_instance_handleDereference ( sInstance * pAI )
 {    
-  /*char segment[41] ;*/
+  char segment[41] ;
 
   if ( !pAI->signal.uDEREFERENCE ) return FALSE ;
   pAI->signal.uDEREFERENCE = 0  ;
@@ -3933,7 +3970,7 @@ static sLOGICAL lHyp_instance_handleDereference ( sInstance * pAI )
   pAI->exec.state = STATE_PARSE ;
   gHyp_frame_setGlobalFlag ( pAI->exec.pFrame, FRAME_GLOBAL_TRUE ) ;
 
-  /*
+ 
   if ( guDebugFlags & DEBUG_DIAGNOSTICS ) {
     gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
 			 "diag : Handling dereference : %s",
@@ -3942,7 +3979,7 @@ static sLOGICAL lHyp_instance_handleDereference ( sInstance * pAI )
 			  pAI->exec.handler[HANDLER_DEREFERENCE].hypIndex,
 			  segment, 40 ) ) ;
   }
-  */
+  
 
   /* Set program counter to begin executing at the dereference statement. */
   gHyp_frame_setHyp ( pAI->exec.pFrame, 
@@ -4014,7 +4051,7 @@ static sLOGICAL lHyp_instance_handleAlarm ( sInstance *pAI )
     
     /* Allow a few more seconds - enough to get through the handler. */
     gsCurTime = time ( NULL ) ; 
-    pAI->exec.deathTime = gsCurTime + 5 ;
+    pAI->exec.deathTime = gsCurTime + DEATH_GRACE_PERIOD ;
     gHyp_instance_nextEvent ( pAI ) ;
     
     gHyp_frame_newStmt ( pAI->exec.pFrame,
@@ -4366,8 +4403,8 @@ static sLOGICAL lHyp_instance_handleHangup ( sInstance *pAI )
     pAI->exec.pFrame, 
     pAI->exec.handler[HANDLER_HANGUP].hypIndex ) ;   
 
-  /* Reset handler */ 
-  pAI->exec.handler[HANDLER_HANGUP].hypIndex = -1 ;
+  /* Reset handler - but only if there are no more hangup signals stacked */
+  if ( pAI->signal.uHUP == 0 ) pAI->exec.handler[HANDLER_HANGUP].hypIndex = -1 ;
 
       
   return TRUE ;
@@ -4564,8 +4601,8 @@ static sLOGICAL lHyp_instance_handlePipe ( sInstance *pAI )
   gHyp_frame_setStatementIndex ( pAI->exec.pFrame, 
 				 pAI->exec.handler[HANDLER_PIPE].hypIndex ) ;
 
-  /* Reset handler */
-  pAI->exec.handler[HANDLER_PIPE].hypIndex = -1 ;
+  /* Reset handler - but only if there are no more pipe signals stacked */
+  if ( pAI->signal.uPIPE == 0 ) pAI->exec.handler[HANDLER_PIPE].hypIndex = -1 ;
       
   return TRUE ;
 }
@@ -4659,7 +4696,6 @@ static sLOGICAL lHyp_instance_handleMessageCall ( sInstance *pAI )
   /* If this is handler invoked message, i.e. from a query, then the
    * STATUS variable may have been set FALSE by a message handler.
    */
-  /*if ( pAI->exec.state == STATE_QUERY || pAI->exec.state == STATE_SLEEP  ) {*/
 
   pSTATUS = gHyp_frame_findRootVariable ( pAI->exec.pFrame, "STATUS" ) ;
   if ( guDebugFlags & DEBUG_DIAGNOSTICS )
@@ -4948,9 +4984,38 @@ int  gHyp_instance_run ( sInstance * pAIarg )
 	  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
 			       "%s returning to SLEEP state",pAI->msg.targetId ) ;
       }
-      cond = gHyp_instance_read ( pAI, FALSE ) ;
-      if ( cond <= 0 ) break ;
-    } 
+
+      /* If an instance that could go back to a SLEEP, IDLE, or QUERY state
+       * still has an outstanding condition to handle, then don't to the
+       * gHyp_instance_read until the conditions are fully handled
+       */
+      if (  !pAI->signal.tokenSignal &&
+            !(hasCondition = gHyp_instance_handleCondition(pAI))
+          ) { 
+
+        /* Look for a signal or an incoming message */
+        cond = gHyp_instance_read ( pAI, FALSE ) ;
+
+        /* For COND_SILENT, COND_ERROR, or COND_FATAL, we stop parsing, 
+         * we exit out, then maybe load another instance to parse/run
+         */
+        if ( cond <= 0 ) break ;
+
+        /* If we are awaking from a sleep, break out and maybe let
+         * another instance run.
+         */
+        if ( pAI->exec.eventType & EVENT_WAKEUP ) {
+          pAI->exec.wakeTime = 0;
+	  gHyp_instance_nextEvent ( pAI ) ;
+          if ( guDebugFlags & DEBUG_DIAGNOSTICS ) 
+	     gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
+			       "%s awakening from SLEEP state",pAI->msg.targetId ) ;
+	  gHyp_instance_setState ( pAI, STATE_PARSE ) ;
+          break ;
+        }
+        
+      }
+    }
     else if ( pAI->exec.state == STATE_DEREFERENCE ) {
 
       /* After a dereference ends, set the state back to PARSE. */

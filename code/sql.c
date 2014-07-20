@@ -14,6 +14,15 @@
  * Modified:
  *
  * $Log: sql.c,v $
+ * Revision 1.80  2013-01-02 19:10:43  bergsma
+ * CVS Issues
+ *
+ * Revision 1.78  2012-08-11 00:15:04  bergsma
+ * Add AS_ORACLE_COMMIT_ON_SUCCESS
+ *
+ * Revision 1.77  2012-07-23 03:59:33  bergsma
+ * Enclose ORACLE Failover Callback as AS_ORA_CALLBACK
+ *
  * Revision 1.76  2011-12-24 01:42:12  bergsma
  * Handle OCI_NO_DATA condition on UPDATE or INSERT statements.
  *
@@ -460,6 +469,7 @@ static sb4 lHyp_sql_readLob ( dvoid *ctxp, CONST dvoid *bufxp, ub4 len, ub1 piec
   return OCI_CONTINUE;
 }
 
+#ifdef AS_ORA_CALLBACK
 /* Application Failover Callback */
 DWORD  gHyp_sql_ApplicationFailoverCallback(  dvoid           *pSvch,
                                               dvoid           *pEnvh,
@@ -605,6 +615,7 @@ DWORD lHyp_sql_RegisterApplicationFailoverCallback( dvoid      *pSrvh,
 } /* end of RegisterApplicationFailoverCallback */ 
 
 #endif
+#endif
 
 void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 {
@@ -700,7 +711,8 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     char msg[MAX_OUTPUT_LENGTH+1] ;
 
     sLOGICAL
-	isSelect ;
+	isSelect,
+        isCommit ;
 #endif
 
 #ifdef AS_SQL
@@ -854,6 +866,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
     /* See if the first token is a "select" */
     isSelect = FALSE ;
+    isCommit = FALSE ;
     pSQL += strspn ( pSQL, " \t\n\r" ) ;
     if ( pSQL < pEndSQL ) {
       n = strcspn ( pSQL, " \t\n\r" ) ;
@@ -862,6 +875,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 	value[n] = '\0' ;
 	gHyp_util_lowerCase ( value, n ) ;
 	isSelect = ( strcmp ( value, "select" ) == 0 ) ;
+	isCommit = ( strcmp ( value, "commit" ) == 0 ) ;
       }
     }
     
@@ -885,14 +899,16 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 /* AS_ORACLE_DO_PREPARE2 is general NOT defined so
  * the first section here is what is done
  */
+  rc = OCI_SUCCESS ; 
+
 #ifndef AS_ORACLE_DO_PREPARE2
 
   /* Use OCIHandleAlloc/OCIStmtPrepare/OCIHandleFree  */
-   
+
   /* Create handle for the statement */ 
   /*gHyp_util_debug("Creating first stmt handle.");*/
-  rc = OCIHandleAlloc(	(dvoid *) dbproc->envhp, 
-			(dvoid **) &stmthp, 
+  rc = OCIHandleAlloc(  (dvoid *) dbproc->envhp, 
+  			(dvoid **) &stmthp, 
 			OCI_HTYPE_STMT,
 			(size_t) 0,
 			(dvoid **) 0);
@@ -927,9 +943,14 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
 #endif
 
-  orientation = isSelect ? OCI_DESCRIBE_ONLY : OCI_COMMIT_ON_SUCCESS /*OCI_DEFAULT */ ;
-  /*gHyp_util_debug("Executing first stmt");*/
-  if ( rc == OCI_SUCCESS )
+#ifdef AS_ORACLE_COMMIT_ON_SUCCESS
+  orientation = isSelect ? OCI_DESCRIBE_ONLY : (isCommit ? OCI_COMMIT_ON_SUCCESS : OCI_DEFAULT ) ;
+#else
+  orientation = isSelect ? OCI_DESCRIBE_ONLY : OCI_COMMIT_ON_SUCCESS ;
+#endif
+
+  if ( rc == OCI_SUCCESS ) {
+    /*gHyp_util_debug("Executing first stmt");*/
     rc = OCIStmtExecute(
 			dbproc->svchp, 
 			stmthp,
@@ -940,8 +961,9 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 			(OCISnapshot *) NULL, 
 			orientation ) ;
 
-  lHyp_sql_checkErr (	dbproc->errhp, rc ) ;
-  
+    lHyp_sql_checkErr (	dbproc->errhp, rc ) ;
+  }
+
   results = rc ;
 
   if ( rc == OCI_NO_DATA ) {
@@ -955,7 +977,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     else rc = OCI_ERROR ;
 
   }
-  if ( rc == OCI_SUCCESS )
+  if ( rc == OCI_SUCCESS && isSelect )
 
 #endif
       {
@@ -1929,7 +1951,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 			dbproc->svchp, 
 			stmthp,
 			dbproc->errhp,
-			(ub4) 0, 
+                        (ub4) 0, 
 			(ub4) 0,
 			(CONST OCISnapshot *) NULL, 
 			(OCISnapshot *) NULL, 
@@ -1937,7 +1959,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 			/*OCI_STMT_SCROLLABLE_READONLY) ;*/
 
 		lHyp_sql_checkErr ( dbproc->errhp, rc ) ;
-		
+
                 rows = 0 ;
 
 		/*orientation = OCI_FETCH_NEXT ;*/
@@ -2271,6 +2293,8 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
 #endif
 
+    }
+
 #ifdef AS_ORACLE
       if ( stmthp ) { 
 
@@ -2291,11 +2315,6 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 #endif
       }
 #endif
-
-
-
-
-    }
 
 #endif    /* from AS_SQL way up above  */
 
@@ -2998,7 +3017,7 @@ void gHyp_sql_toexternal(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     if ( context== -2 && ss != -1 ) {
       gHyp_data_delete ( pResult ) ;
       gHyp_instance_error ( pAI, STATUS_BOUNDS, 
-			    "Subscript '%s' is out of bounds in sql_toexternal()",
+			    "Subscript '%d' is out of bounds in sql_toexternal()",
 			    ss);
     }
     if ( isEmpty ) {
@@ -3131,7 +3150,7 @@ void gHyp_sql_datetime ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       if ( context== -2 && ss != -1 ) {
         gHyp_data_delete ( pResult ) ;
         gHyp_instance_error ( pAI, STATUS_BOUNDS, 
-			    "Subscript '%s' is out of bounds in sql_datetime()",
+			    "Subscript '%d' is out of bounds in sql_datetime()",
 			    ss);
       }
       gHyp_stack_push ( pStack, pResult ) ;

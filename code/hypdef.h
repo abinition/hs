@@ -11,12 +11,44 @@
 #define __HYPDEF_H_
 
 #define 	VERSION_HYPERSCRIPT	    "3.9.4"
-#define 	VERSION_BUILD		    "120212"
-#define 	VERSION_HYPERSCRIPT_BUILD   "3.9.4-120212"
+#define 	VERSION_BUILD		    "131131"
+#define 	VERSION_HYPERSCRIPT_BUILD   "3.9.4-131131"
 
 /* Modification history:
  *
  * $Log: hypdef.h,v $
+ * Revision 1.147  2013-05-21 17:46:26  bergsma
+ * Add secs_map & secp_unmap.  Deal with 64-bit systems where long and
+ * int datatypes are 32 bit.  HS long,ulong,and int are 32 bit.
+ *
+ * Revision 1.146  2013-05-15 16:42:31  bergsma
+ * Fix memory issue with gpEnv/joutput
+ *
+ * Revision 1.145  2013-02-14 07:03:59  bergsma
+ * HS3.9.4-130214
+ *
+ * Revision 1.144  2013-02-06 04:11:30  bergsma
+ * HS.3.9.4-130204
+ *
+ * Revision 1.143  2013-01-08 00:59:39  bergsma
+ * Endianess fix for map/unmap
+ *
+ * Revision 1.142  2013-01-01 22:32:39  bergsma
+ * 3.9.4-130101
+ *
+ * Revision 1.140  2012-08-11 00:16:16  bergsma
+ * V3.9.4 120810
+ *
+ * Revision 1.139  2012-07-20 16:36:58  bergsma
+ * Increased MAX_CONNECT_TRIES from 3 to 5.
+ * Version 3.9.4-120707
+ *
+ * Revision 1.138  2012-06-03 15:09:52  bergsma
+ * Let strtok have its own 2KB of memory.  For PROMIS tlog.
+ *
+ * Revision 1.137  2012-05-01 17:52:41  bergsma
+ * New buiild 120430
+ *
  * Revision 1.136  2012-02-14 19:41:26  bergsma
  * Completed fix of ENQ contention
  *
@@ -500,10 +532,11 @@
 #define		MAX_LIFETIME_SECONDS	MAX_ALARM_SECONDS * 7
 #define		MAX_TIMEOUT_SECONDS	MAX_ALARM_SECONDS
 #define		MAX_SLEEP_SECONDS	MAX_ALARM_SECONDS
-#define		MAX_CONNECT_TRIES	3
+#define		MAX_CONNECT_TRIES	5
 #define		MAX_RESEND		3	
 #define		MAX_REWAIT		1000
 #define		RETRY_INTERVAL		2
+#define         DEATH_GRACE_PERIOD      30
 #define		FRAME_DEPTH_NULL	MAX_FRAME_DEPTH+1
 #define		MAX_SIGNALS		8
 #define		MAX_PROMIS_RESULT_SIZE	256
@@ -608,6 +641,7 @@
 #define		MAX_OUTPUT_LENGTH	512   /* Easy short lines to read */
 #define		MAX_LOG_LENGTH		1024  /* Must be > MAX_OUTPUT_LENGTH */
 #define		MAX_STREAM_LENGTH	5120  /* Through pipes, like for jeval */
+#define		MAX_STRTOK_LENGTH      20480  /* Internal only */
 #define		MAX_COMMAND_LENGTH	2048  /* Editor's like vi don't want > 2048 */
 #define		MAX_TRACE_LENGTH	132   /* For program listings */
 

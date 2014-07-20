@@ -54,6 +54,9 @@ CONNECT()
   lifetime ( 600 ) ;
 
   instantiate ( ) ;
+  
+  global LABEL ;
+  
   if ( self(1) == "" ) FAIL() ;
   KEY = { "Manual", "Abort", "Data", "^Recipe", "Begin", "Load", "Text" } ;
   METHOD = { "DISCONNECT", "ABORT", "DATA", "SETUP", 
@@ -535,6 +538,7 @@ BEGIN()
 
   TEXT = "Testing goto statement" ;
   event ( promis, "MESSAGE", { &TEXT } ) ;
+  global;
   goto LABEL ;
 }
 
@@ -575,7 +579,7 @@ LABEL:
   on_error ERROR() ;
   puts ( 1, 2, 3, 4 ) ;
 
-put 99 ;
+  put 99 ;
   //if ( STATUS != "%ARGUMENT" ) FAIL();
 
   on_error FAIL() ;
@@ -591,6 +595,7 @@ put 99 ;
   alarm ( 5 ) ;
   idle() ;
 }
+
 	
 ERROR()
 {

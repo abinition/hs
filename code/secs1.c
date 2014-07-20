@@ -11,6 +11,9 @@
  * Modifications:
  *
  *   $Log: secs1.c,v $
+ *   Revision 1.101  2013-04-07 00:33:57  bergsma
+ *   Watch out for error conditions when we have a savebuf
+ *
  *   Revision 1.100  2012-02-09 22:53:59  bergsma
  *   Dealing with PIPE.  First time, second time, third and beyond.
  *
@@ -1439,13 +1442,8 @@ static int lHyp_secs1_incoming ( sSecs1 *pSecs1,
 	/* Have previous blocks been received? */
 	if ( pHeader ) {
 
-
-	  /* A header exists, thus a message may already be in progress. 
-     * - Primary messages can always interrupt messages in progress.
-     * - Any message type can always interrupt a secondary message in progress.
-     * - Any message type can always interrupt a message whose last block has been received.
-     */
-    if ( header.isPrimaryMsg || !pHeader->isPrimaryMsg || pHeader->isLastBlock ) {
+	  /* A header exists, thus a message is already in progress. */
+	  if ( header.isPrimaryMsg || !pHeader->isPrimaryMsg ) {
 
 	    /* Just reset secsII buffer. Start over. */
 	    gHyp_secs2_resetBuf ( pSecs2, SECS_INCOMING ) ;
@@ -2977,11 +2975,12 @@ int gHyp_secs1_rawIncoming ( sSecs1 *pPort, sConcept *pConcept, sInstance *pAI, 
 			     0, /* 0 means read already completed, just get result */
 			     &pPort->nBytes,
   			     &pPort->overlapped,
-			     pPort->pSSL) +
+			     pPort->pSSL) 
+			     +
 			     pPort->savebuflen ;
 
-    /* Watch out for zero byte reads when we have a savebuf condition */
-    if ( pPort->savebuflen == giNbytes ) giNbytes = 0 ;
+    /* Watch out for error conditions when we have a savebuf */
+    if ( pPort->savebuflen >= giNbytes ) giNbytes = 0 ;
     pPort->savebuflen = 0 ;
   }
 

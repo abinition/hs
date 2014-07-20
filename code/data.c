@@ -11,6 +11,19 @@
  * Modifications:
  *
  * $Log: data.c,v $
+ * Revision 1.47  2013-01-03 21:20:32  bergsma
+ * Correct bounds checking on floating point to integer conversions.
+ *
+ * Revision 1.46  2013-01-03 00:46:07  bergsma
+ * Change 2147483647 to decimal.
+ *
+ * Revision 1.45  2013-01-02 19:08:35  bergsma
+ * Better test for floating point numbers.
+ * Do no allow overflow when down-converting from float to int.
+ *
+ * Revision 1.44  2012-07-20 16:33:22  bergsma
+ * In support of "long double", use %Lf format instead of %lf.
+ *
  * Revision 1.43  2011-05-21 05:39:05  bergsma
  * Detected memory leak in newVector
  *
@@ -2395,7 +2408,8 @@ double gHyp_data_getDouble ( sData *pData, int ss, sLOGICAL recurse )
 
     /* All of string - see if it converts to an float - otherwise its 0.0 */
     j = strlen ( pValue->pStrVal ) ;
-    if ( strspn ( pValue->pStrVal, "0123456789.eE+-" ) == (size_t) j ) {
+    if ( gHyp_util_maybeDouble ( pValue->pStrVal ) ) { 
+      /*strspn ( pValue->pStrVal, "0123456789.eE+-" ) == (size_t) j ) {*/
       if ( sscanf ( pValue->pStrVal, "%lf", &d ) != 1 ) d = 0.0 ;
     }
     else if ( j == 1 )
@@ -3078,11 +3092,14 @@ sData* gHyp_data_getAll ( sData 	*pData,
 	h = (void*) sl ;
       }
     }
-    else if ( strspn ( pValue->pStrVal, "0123456789.eE+-" ) == (size_t) j ) {
+    else if ( gHyp_util_maybeDouble ( pValue->pStrVal ) ) { 
+      /*strspn ( pValue->pStrVal, "0123456789.eE+-" ) == (size_t) j ) { */
       if ( sscanf ( pValue->pStrVal, "%lf", &d ) != 1 ) d = 0.0 ;
-      i = (int) d ;
-      u = (unsigned long) d ;
-      h = (void*)(int) d ;
+      if ( d <= 2147483647.0 && d >= -2147483648.0 ) {
+        i = (int) d ;
+        u = (unsigned long) d ;
+        h = (void*)(int) d ;
+      }
     }
     else if ( j == 1 ) {
       /* Single character strings are taken as chars */
@@ -3248,17 +3265,21 @@ sData* gHyp_data_getAll ( sData 	*pData,
     f = *(pValue->p.fValue+ss) ;
     d = (double) f ;
     strLen = sprintf ( pStr, "%.7g", f ) ;
-    i = (int) f ;
-    u = (unsigned long) f ;
-    h = (void*) (unsigned long) f ;
+    if ( f <= 2147483647.0 && f >= -2147483648.0 ) {
+        i = (int) f ;
+        u = (unsigned long) f ;
+        h = (void*) (unsigned long) f ;
+    }
     break ;
     
   case TYPE_DOUBLE :
     d = *(pValue->p.dValue+ss) ;
     strLen = sprintf ( pStr, "%.7g", d ) ;
-    i = (int) d ;
-    u = (unsigned long) d ;
-    h = (void*) (unsigned long) d ;
+    if ( d <= 2147483647.0 && d >= -2147483648.0 ) {
+      i = (int) d ;
+      u = (unsigned long) d ;
+      h = (void*) (unsigned long) d ;
+    }
     break ;
     
   case TYPE_HANDLE :
@@ -4316,7 +4337,7 @@ void gHyp_data_setToken ( sData *pData, char *pStr )
 
   unsigned long 
     ul,
-    o,
+    o, 
     x ;
 
   double
@@ -4429,7 +4450,8 @@ void gHyp_data_setToken ( sData *pData, char *pStr )
       }
     }
     
-    maybeDouble = ( strspn ( pStr, "0123456789.eE+-" ) == (size_t) len ) ;
+    maybeDouble = gHyp_util_maybeDouble ( pStr ) ; 
+      /*( strspn ( pStr, "0123456789.eE+-" ) == (size_t) len ) ;*/
     
     if ( maybeDouble ) {
       

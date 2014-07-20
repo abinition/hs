@@ -5,6 +5,9 @@ $!
 $! Modifications:
 $!
 $!	$Log: ccc.com,v $
+$!	Revision 1.5  2011-10-17 11:01:59  bergsma
+$!	Itanium Support
+$!	
 $!	Revision 1.4  2005-03-14 16:55:58  bergsma
 $!	Part of 3.5-0
 $!	
@@ -40,7 +43,9 @@ $ if f$search ("sys$system:cxx$compiler.exe") .nes. ""
 $ then 
 $ 
 $   options == options + ",AS_CXX"
-$   ccc :== cxx	/nowarn/debug/object/list/noopt/define=('options')
+$   ccc :== cxx	/nowarn/debug/object/list/noopt/define=('options')/FLOAT=G_FLOAT/member_align
+$
+
 $   
 $   open/write opt hs.opt
 $     write opt "''runlib'"

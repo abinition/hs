@@ -1,6 +1,15 @@
 /* ROUTER.HYP
  *
  * $Log: router.hyp,v $
+ * Revision 1.9  2012-09-09 21:50:26  bergsma
+ * Add integrity check
+ *
+ * Revision 1.8  2011-05-19 22:12:31  bergsma
+ * Add puts stmt
+ *
+ * Revision 1.7  2011-04-27 21:22:36  bergsma
+ * Allow multiple hangups
+ *
  * Revision 1.6  2011-02-20 00:56:30  bergsma
  * DST changes
  *
@@ -31,10 +40,6 @@ init()
 {
   puts { "Initializing ",self() } ;
 
-  poll ;
-
-  //quiet 1 ;
-
   puts "Setting heap multiplier to 2 for all children, (-xx)" ;
   setheap 2 ;
 
@@ -53,10 +58,11 @@ init()
   ansi_newDay = parsedate( date()+":235959" ) + 2 ;
 
   secondsToDeath = ansi_newDay - ansi_now ;
+  if ( secondsToDeath <= 0 ) secondsToDeath = 1 ;
   lifetime ( secondsToDeath ) ;
 
   /* Start new log file for current date */
-  logFileSpec = AUTOLOG + SEPARATOR + "router_" + date() + ".log" ;
+  logFileSpec = AUTOLOG_FILE ( "router_" + date() + ".log" ) ;
 
   puts { "Creating new logfile", logFileSpec } ;
   puts { "------------ END OF LOG -------------------" } ;
@@ -147,19 +153,25 @@ INTERRUPT_HANDLER()
 
 PIPE_HANDLER()
 {
+  on_pipe return PIPE_HANDLER() ;
   text = { "%PIPE: signal received." } ;
   DONE ( text ) ;
 }
 
 HANGUP_HANDLER()
 {
+  on_hangup return HANGUP_HANDLER() ;
   text = { "%HANGUP: signal received." } ;
-  DONE ( text ) ;
+  puts text ;
+  /* Allow it */
+  return "$ACK" ;
 }
 
 TIMEOUT_HANDLER()
 {
   text = { "%TIMEOUT: signal received." } ;
+
+  /* Do not abort query */
   return "$ACK" ;
 }
 
@@ -174,18 +186,20 @@ DEATH_HANDLER()
   /* Determine start of a new day */
   ansi_now = timestamp ;
   ansi_newDay = parsedate ( date()+":235959" ) + 2 ;
-
   secondsToDeath = ansi_newDay - ansi_now ;
-
   if ( secondsToDeath <= 0 ) secondsToDeath = 1 ;
   
   /* Prior to V3.9.4, time till death could not exceed one day */
   if ( version < "3.9.4" && secondsToDeath > 86400 ) secondsToDeath = 86400 ; 
+
+  puts {"ansi_now is ",ansi_now," or ",asctime(ansi_now)};
+  puts {"ansi_newDay is ",ansi_newDay," or ",asctime(ansi_newDay)};
+  puts {"SecondsToDeath = ",secondsToDeath};
 	
   lifetime ( secondsToDeath ) ;
 
   /* Start new log file for current date */
-  logFileSpec = AUTOLOG + SEPARATOR + "router_" + date() + ".log" ;
+  logFileSpec = AUTOLOG_FILE ( "router_" + date() + ".log" ) ;
 
   puts { "Creating new logfile", logFileSpec } ;
   puts { "------------ END OF LOG -------------------" } ;
@@ -194,6 +208,12 @@ DEATH_HANDLER()
 
   return ;
 }
+
+INTEGRITY_CHECK( str SECRET )
+{
+  event ( sender(), "INTEGRITY_CHECK", {&SECRET} ) ;
+}
+enable INTEGRITY_CHECK ;
 
 
 list SENDMAIL( str reason )

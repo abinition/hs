@@ -11,6 +11,12 @@
  * Modifications:
  *
  *	$Log: promis.c,v $
+ *	Revision 1.40  2013-05-15 16:44:33  bergsma
+ *	Remove spurious '\'
+ *	
+ *	Revision 1.39  2013-01-08 00:56:04  bergsma
+ *	Comment to remind that PROMIS DB data types are BIG ENDIAN
+ *	
  *	Revision 1.38  2011-03-14 01:11:08  bergsma
  *	no message
  *	
@@ -578,6 +584,8 @@ static int lHyp_promis_parseRecord ( sData *pTV,
 
   struct tm 
     *pstm ;
+
+  /* NOTE: PROMIS DataBase datatypes are in BIG ENDIAN FORMAT */
 
   i = 0 ;
   while ( i < numFields ) {
@@ -1772,6 +1780,7 @@ sLOGICAL gHyp_promis_hs (	sDescr*		token_d,
     result[VALUE_SIZE+1] ;
 
   int
+    hypIndex,
     i,j,
     stat,
     resultLen = *pResultLen ;
@@ -1952,10 +1961,11 @@ sLOGICAL gHyp_promis_hs (	sDescr*		token_d,
 
     /* Load from stream. */
     pHyp = gHyp_frame_getHyp ( gHyp_instance_frame ( gpAI ) ) ;
+    hypIndex = gHyp_hyp_getHypCount ( pHyp ) ;
     pStream = gHyp_load_fromStream ( gpAI, pHyp, stream, lineCount ) ;
  
     /* If load was fatal, (-1) then quit */
-    if ( pStream == NULL ) { 
+    if ( !pStream || *pStream ) { 
 
       aeqSsp_autoMan_closeFiles ( ) ;
       gHyp_promis_cleanFields ( -1 ) ;
@@ -1963,6 +1973,23 @@ sLOGICAL gHyp_promis_hs (	sDescr*		token_d,
       gpsConcept = NULL ; 
       *pIsHSenabled = giIsHSenabled = FALSE ;
       return FALSE ;
+    }
+    if ( resultLen != 0 ) {
+      /* A pexec() caused an INISTRING, a suggested token
+       * from PROMIS to be used in the the current prompt.
+       *
+       * The token is returned from GETTOKEN or INQUIRE in 
+       * the form:
+       *
+       *      {_promis_tokens_="token";}
+       *
+       * It has to be executed like a dereference so that
+       * it doesn't add to the program space.
+       */
+      /*gHyp_util_debug("Deref from operator");*/
+      gHyp_instance_setDerefHandler ( gpAI, 
+				      hypIndex, 
+				      pHyp ) ;
     }
   }
 
@@ -1997,7 +2024,7 @@ sLOGICAL gHyp_promis_hs (	sDescr*		token_d,
       }
     }
     resultLen = j ;
-    result[resultLen] = '\0' ;\
+    result[resultLen] = '\0' ;
     pStack = gHyp_frame_stack ( gHyp_instance_frame ( gpAI ) ) ;
     pData = gHyp_stack_pop ( pStack ) ;
     gHyp_data_setStr_n ( pData, result, resultLen ) ;

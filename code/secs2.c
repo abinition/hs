@@ -10,6 +10,9 @@
  * Modifications:
  *
  * $Log: secs2.c,v $
+ * Revision 1.17  2013-01-08 00:55:41  bergsma
+ * Comment to remind that SECS II data types are BIG ENDIAN
+ *
  * Revision 1.16  2009-10-22 15:57:54  bergsma
  * Solve problem with ENQ contention during SECS 1 Reply.
  * This was for the MAP-4 at Siliconix
@@ -279,6 +282,8 @@ static char* lHyp_secs2_parse ( char *pBuf,
     ub,   
     bo,
     bi ;
+
+  /* NOTE: SECS data types are in BIG ENDIAN format */
 
   /* The item format must always be the first byte in pBuf */
   s2h.itemFormat = *pBuf & 0xFC ;

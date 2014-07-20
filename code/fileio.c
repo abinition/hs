@@ -11,6 +11,16 @@
  * Modifications:
  *
  *	$Log: fileio.c,v $
+ *	Revision 1.74  2013-05-15 16:41:26  bergsma
+ *	Support JSON array format []
+ *	
+ *	Revision 1.73  2013-02-14 23:10:03  bergsma
+ *	For any type other than the default 'list', add the datatype attribute
+ *	for XML output - what is now included is 'str' datatype.
+ *	
+ *	Revision 1.72  2013-02-14 07:02:25  bergsma
+ *	For xsdescribe, make sure \n comes after each element in a list.
+ *	
  *	Revision 1.71  2012-02-09 22:53:23  bergsma
  *	Unintialized vars.
  *	
@@ -760,7 +770,13 @@ static int lHyp_fileio_describe2 ( sData *pParent,
 			        gHyp_data_getInt ( pParent, parentContext, TRUE ) ) ;
 	}
 	else {
-	  newOffset = sprintf ( newOutput,
+	  if ( pResult ) 
+		newOffset = sprintf ( newOutput,
+			      "%s%s\n", 
+			      gHyp_data_getLabel ( pParent ),
+			      suffixStr ) ;
+	  else
+		newOffset = sprintf ( newOutput,
 			      "%s%s", 
 			      gHyp_data_getLabel ( pParent ),
 			      suffixStr ) ;
@@ -879,7 +895,7 @@ static int lHyp_fileio_describe2 ( sData *pParent,
 	    }
 	  }
 
-	  if ( parentDataType > TYPE_STRING && parentTokenType == TOKEN_VARIABLE ) 
+	  if ( parentDataType >= TYPE_STRING && parentTokenType == TOKEN_VARIABLE ) 
 	   
 	    newOffset = sprintf ( newOutput,
 				"<%s datatype=\"%s\"",
@@ -942,29 +958,43 @@ static int lHyp_fileio_describe2 ( sData *pParent,
 	  strcpy ( value2, gHyp_data_getLabel( pParent ) ) ;
 	
         if ( isJSON ) {
-          if ( gHyp_data_getCount ( pParent ) == 1 || gHyp_data_getDataType ( pParent ) == TYPE_ATTR )
+          if ( gHyp_data_getDataType ( pParent ) == TYPE_ATTR ||
+		( gHyp_data_getCount ( pParent ) == 1 && 
+		  ( gHyp_data_getDataType ( pParent ) > TYPE_STRING || 
+		    gHyp_data_getTokenType ( gHyp_data_getFirst(pParent) ) != TOKEN_VARIABLE ) ) ) {
+	    /* Cases:
+	     * 1. An attribute is always "attribute": "value"
+	     * 2. The value is a single literal (a non-variable)
+	     */
 	    newOffset = sprintf ( newOutput,
                              "\"%s\" : ",
 			     value2 ) ;
-          else
-            newOffset = sprintf ( newOutput,
-                              "\"%s\" : {",
+	  }
+	  else {
+	    /* Expand it out.  For arrays, safe to use [], othewise {} */
+	    if ( gHyp_data_getDataType ( pParent ) > TYPE_ATTR )
+		newOffset = sprintf ( newOutput,
+                              "\"%s\" : [",
 			     value2 ) ;
+	    else
+		newOffset = sprintf ( newOutput,
+			     "\"%s\" : {",
+			     value2 ) ;
+          }
         }
         else {
-	  if ( isParentDynamic ) {
+	  /* Not JSON */
+	  if ( isParentDynamic )
 	    newOffset = sprintf ( newOutput,
 			     "%s '%s' = {",
 			     gzaType[parentDataType],
 			     value2 ) ;
-	  }
-	  else {
+	  else
 	    newOffset = sprintf ( newOutput, 
 			     "%s '%s'[%u] = {",
 			     gzaType[parentDataType],
 			     value2,
 			     size ) ;
-	  }
         }
       }
 
@@ -1305,11 +1335,22 @@ static int lHyp_fileio_describe2 ( sData *pParent,
 	  outputLen = strlen ( pOutput ) ;
 	}
 	
-        if ( isJSON && ((gHyp_data_getCount(pParent)==1) || (gHyp_data_getDataType ( pParent ) == TYPE_ATTR)) )
-          tmpOutputLen = sprintf ( tmpOutput, "%s", suffixStr ) ;
-        else
-          tmpOutputLen = sprintf ( tmpOutput, "}%s", suffixStr ) ;
-
+	if ( isJSON ) {
+	  if ( gHyp_data_getDataType ( pParent ) == TYPE_ATTR ||
+		( gHyp_data_getCount ( pParent ) == 1 && 
+		  ( gHyp_data_getDataType ( pParent ) > TYPE_STRING || 
+		    gHyp_data_getTokenType ( gHyp_data_getFirst(pParent) ) != TOKEN_VARIABLE ) ) )
+	    tmpOutputLen = sprintf ( tmpOutput, "%s", suffixStr ) ;
+	  else {
+	    if ( gHyp_data_getDataType ( pParent ) > TYPE_ATTR )
+		tmpOutputLen = sprintf ( tmpOutput, "]%s", suffixStr ) ;
+	    else
+		tmpOutputLen = sprintf ( tmpOutput, "}%s", suffixStr ) ;
+	  }
+	}
+	else {
+	  tmpOutputLen = sprintf ( tmpOutput, "}%s", suffixStr ) ;
+	}
 	strcat ( newOutput, tmpOutput ) ;
 	newOffset += tmpOutputLen ;
 	tmpOutputLen = 0 ;

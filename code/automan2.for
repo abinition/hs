@@ -37,6 +37,9 @@
 ! Modifications:
 !
 !    $Log: automan2.for,v $
+!    Revision 1.3  2011-06-09 22:31:59  bergsma
+!    Remove "err=999" on format statement
+!
 !    Revision 1.2  2003-01-16 14:32:07  bergsma
 !    V3.1.0
 !    Added Modification tags.
@@ -970,7 +973,8 @@
 	      endif
 
 	      ! Convert
-	      read( convertStr(:convertStrLen), '(F14.7)', err=999 ) realVal
+	      !!!read( convertStr(:convertStrLen), '(F14.7)', err=999 ) realVal
+	      read( convertStr(:convertStrLen), '(F14.7)' ) realVal
 
 	      if ( datatype .eq. TST__REALVALUE ) then
 

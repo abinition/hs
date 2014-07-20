@@ -10,6 +10,44 @@
 /* Modifications: 
  *
  * $Log: cgi.c,v $
+ * Revision 1.72  2013-02-18 22:38:41  bergsma
+ * For scripts tags with empty lines, prevent spinning.
+ *
+ * Revision 1.71  2013-02-18 20:22:26  bergsma
+ * Unless datatype is explicity put into XML. don't process TYPE_LIST
+ *
+ * Revision 1.70  2013-02-18 19:00:01  bergsma
+ * When converting a "datatype", dom't forget to skip over the attribute.
+ *
+ * Revision 1.69  2013-02-15 09:49:21  bergsma
+ * Smarter XML, use getToken to convert to natural values when parsing
+ * XML.
+ *
+ * Revision 1.68  2013-02-14 23:11:29  bergsma
+ * Only if the requested datatype is NOT "str", then XML parse considers
+ * elements within a tag as tokens,
+ *
+ * Revision 1.67  2013-02-14 07:03:12  bergsma
+ * When parsing an XML list, get the token values,
+ *
+ * Revision 1.66  2013-02-06 01:02:31  bergsma
+ * Arg lost!!!
+ *
+ * Revision 1.65  2013-01-28 02:35:59  bergsma
+ * Fix bug where abrupt end-of-stream in XML causes traceback.
+ *
+ * Revision 1.64  2013-01-08 21:13:54  bergsma
+ * Undo fix to do with <A datatype="long"></A> case.
+ *
+ * Revision 1.63  2012-09-09 21:50:05  bergsma
+ * Correct misreading of datatype="long" when there are no entries!
+ *
+ * Revision 1.62  2012-07-20 16:32:46  bergsma
+ * Fix bug with cgiEntries where value contains an "=" sign
+ *
+ * Revision 1.61  2012-05-01 17:49:00  bergsma
+ * Replace getToken_okDash with getToken_okDashDot
+ *
  * Revision 1.60  2011-05-19 22:10:05  bergsma
  * Add error message when no XML stream to parse.
  *
@@ -546,7 +584,7 @@ void gHyp_cgi_urlparse ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     if ( context== -2 && ss != -1 ) {
       gHyp_data_delete ( pResult ) ;
       gHyp_instance_error ( pAI, STATUS_BOUNDS, 
-			    "Subscript '%s' is out of bounds in decode()",
+			    "Subscript '%d' is out of bounds in decode()",
 			    ss);
     }
     gHyp_stack_push ( pStack, pResult ) ;
@@ -614,7 +652,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
     tag2_lc[TOKEN_SIZE+3] ;
 
   sBYTE
-    reqType = TYPE_LIST ;
+    reqType = TYPE_NULL ;
 
   int
     dataType,
@@ -650,6 +688,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
     lastBlankLine,
     isLastLine,
     isChildLess,
+    hasVariable,
     maybeReturnChildLess=FALSE,
     skipAttr,
     terminated ;
@@ -699,6 +738,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
          */
         noTAG = TRUE ;
         pTag = *ppEndOfStream ;
+	if ( !pTag ) break ;
       }
       else
         noTAG = FALSE ;
@@ -942,166 +982,182 @@ char *gHyp_cgi_parseXML ( char *pStream,
     }
     while ( noTAG ) ;
 
-      /* Advance past '<' */
-      pStream++ ;
-      tagged = TRUE ;
+    /* Advance past '<' */
+    pStream++ ;
+    tagged = TRUE ;
 
-      if ( !*pStream ) {
+    if ( !*pStream ) {
 	gHyp_instance_warning ( pAI, STATUS_XML, "Unexpected end of stream encountered at [%.*s]  ",
 				SEG_SIZE,MAX(pAnchor,pStream-SEG_SIZE));
         return NULL ;
-      }
+    }
 
-      isEndTag = ( *pStream == '/' ) ;
-      if ( isEndTag ) pStream++ ;
+    isEndTag = ( *pStream == '/' ) ;
+    if ( isEndTag ) pStream++ ;
 
-      /* Extract the tag name */
-      tagLen = gHyp_util_getToken_okDash ( pStream ) ;
+    /* Extract the tag name */
+    tagLen = gHyp_util_getToken_okDashDot ( pStream ) ;
 
-      /* A tagLen of zero means that there was not a valid tag name.
-       * A tagLen of greater than 0 is the length of the tag name.
-       * If an end tag, we must see if what we are expecting..
-       * If a comment tag, we must find the end that looks like '-->'
-       * If a definition tag, we only need to find the first '>'
-       */
-      if ( tagLen > 0 ) {
+    /* A tagLen of zero means that there {was not a valid tag name.
+     * A tagLen of greater than 0 is the length of the tag name.
+     * If an end tag, we must see if what we are expecting..
+     * If a comment tag, we must find the end that looks like '-->'
+     * If a definition tag, we only need to find the first '>'
+     */
+    if ( tagLen > 0 ) {
 
-	strncpy ( tag, pStream, tagLen ) ;
-	tag[tagLen] = '\0' ;
+      strncpy ( tag, pStream, tagLen ) ;
+      tag[tagLen] = '\0' ;
 
-	/* For script and style and textarea, we must have a matching </script> or </style> 
+      /* For script and style and textarea, we must have a matching </script> or </style> 
 	 * in order to accept the tag.
 	 * For pre tag, we can only accept tags beloging to the preContent list.
 	 * Therefore, if we are anything but SCRIPT or STYLE or TEXTAREA or PRE, we 
 	 * must process the tag.
 	 */
-	if ( isPRE ) {
-	  sprintf ( tag_lc, "/%s/", tag ) ;
-	  gHyp_util_lowerCase ( tag_lc, tagLen ) ;
-	  if ( strstr ( preContent, tag_lc ) ) break ;
-	  if ( strcmp ( "/pre/", tag_lc ) == 0 && isEndTag ) break ;
-	}
-
-	if ( !isSCR && !isTXT && !isPRE) break ;
-
-	/* SCRIPT and STYLE and TEXTAREA tags can have no INNER tags 
-	 * PRE can only have preContent tags
-	 */
-	pTag2 = gHyp_data_getLabel ( pParentTag ) ;
-
-	if ( isEndTag && strcmp ( tag, pTag2 ) == 0 ) {
-
-	  pStream += tagLen ;
-          if ( *pStream != '>' ) {
-	    gHyp_instance_warning ( pAI, STATUS_XML, "Invalid end tag, expecting '>' [%.*s]...[%.*s]",
-				 SEG_SIZE,MAX(pAnchor,pStream-SEG_SIZE),SEG_SIZE,pStream);
-	    return NULL ;
-	  }
-	  pStream++ ;
-	  *pIsEndTag = TRUE ;
-
-	  /* <SCRIPT> <STYLE>  <TEXTAREA> <PRE> tags should never get converted to <tag /> */
-	  if ( isSCR || isTXT || isPRE ) {
-	    pData = gHyp_data_getLast ( pParentTag ) ;
-	    if ( pData && gHyp_data_getDataType ( pData ) == TYPE_ATTR ) {
-	      pData = gHyp_data_new ( NULL ) ;
-	      gHyp_data_append( pParentTag, pData ) ;
-	    }
-	  }
-	  return pStream ;
-	}
-	pTag = NULL ;
-	continue ;
+      if ( isPRE ) {
+	sprintf ( tag_lc, "/%s/", tag ) ;
+	gHyp_util_lowerCase ( tag_lc, tagLen ) ;
+	if ( strstr ( preContent, tag_lc ) ) break ;
+	if ( strcmp ( "/pre/", tag_lc ) == 0 && isEndTag ) break ;
       }
 
-      /* Check for end tags, comments and XML definitions */
-      inComment = ( strstr ( pStream, "!--" ) == pStream ) ;
-      inDefinition = ( *pStream == '?' || *pStream == '!' ) ;
+      if ( !isSCR && !isTXT && !isPRE) break ;
 
-      if ( !inComment && !inDefinition ) {
-	if ( !isSCR && !isTXT )
-	  gHyp_instance_warning ( pAI, STATUS_XML, "Unexpected tag, skipping [%.*s]",
+      /* SCRIPT and STYLE and TEXTAREA tags can have no INNER tags 
+       * PRE can only have preContent tags
+       */
+      pTag2 = gHyp_data_getLabel ( pParentTag ) ;
+
+      if ( isEndTag && strcmp ( tag, pTag2 ) == 0 ) {
+
+	pStream += tagLen ;
+        if ( *pStream != '>' ) {
+	  gHyp_instance_warning ( pAI, STATUS_XML, "Invalid end tag, expecting '>' [%.*s]...[%.*s]",
+				 SEG_SIZE,MAX(pAnchor,pStream-SEG_SIZE),SEG_SIZE,pStream);
+	  return NULL ;
+	}
+	pStream++ ;
+	*pIsEndTag = TRUE ;
+
+	/* <SCRIPT> <STYLE>  <TEXTAREA> <PRE> tags should never get converted to <tag /> */
+	if ( isSCR || isTXT || isPRE ) {
+	  pData = gHyp_data_getLast ( pParentTag ) ;
+	  if ( pData && gHyp_data_getDataType ( pData ) == TYPE_ATTR ) {
+	    pData = gHyp_data_new ( NULL ) ;
+	    gHyp_data_append( pParentTag, pData ) ;
+	  }
+	}
+	return pStream ;
+      }
+      pTag = NULL ;
+      continue ;
+    }
+
+    /* Check for end tags, comments and XML definitions */
+    inComment = ( strstr ( pStream, "!--" ) == pStream ) ;
+    inDefinition = ( *pStream == '?' || *pStream == '!' ) ;
+
+    if ( !inComment && !inDefinition ) {
+      if ( !isSCR && !isTXT )
+	gHyp_instance_warning ( pAI, STATUS_XML, "Unexpected tag, skipping [%.*s]",
 				 SEG_SIZE,MAX(pAnchor,pStream-SEG_SIZE));
-	pTag = NULL ;
+      pTag = NULL ;
+    }
+    else {
+
+      /* Find end of comment or end of definition */
+      if ( inComment ) 
+	pTag = strstr ( pStream, "-->" ) ;
+      else
+	pTag = strchr ( pStream, '>' ) ;
+
+      if ( !pTag ) {
+	if ( inComment )
+	  gHyp_instance_warning ( pAI, STATUS_XML, "No comment end found in XML stream [%.*s]",
+				      SEG_SIZE,pAnchor);
+	else
+	  gHyp_instance_warning ( pAI, STATUS_XML,"No end of defintion found XML stream [%.*s]",
+				   SEG_SIZE,pAnchor);
+	return NULL ;
       }
       else {
 
-	/* Find end of comment or end of definition */
+	/* End of comment of definition. 
+	 * For script and style and textarea tags, the comments are included verbatim.
+	 */
+
+	/* Step out of comment or definition */  
+	pStr = pStream-1; 
+	tagged = FALSE ;
 	if ( inComment ) 
-	  pTag = strstr ( pStream, "-->" ) ;
+	  pStream = pTag + 3 ; 
 	else
-	  pTag = strchr ( pStream, '>' ) ;
+	  pStream = pTag + 1 ;
 
- 	if ( !pTag ) {
-	  if ( inComment )
-	    gHyp_instance_warning ( pAI, STATUS_XML, "No comment end found in XML stream [%.*s]",
-				      SEG_SIZE,pAnchor);
-	  else
-	    gHyp_instance_warning ( pAI, STATUS_XML,"No end of defintion found XML stream [%.*s]",
-				   SEG_SIZE,pAnchor);
-	  return NULL ;
-	}
-	else {
+        if ( isSCR || isTXT ) {
 
-	  /* End of comment of definition. 
-	   * For script and style and textarea tags, the comments are included verbatim.
-	   */
+          /* The content must be taken literal */
 
-	  /* Step out of comment or definition */  
-	  pStr = pStream-1; 
-	  tagged = FALSE ;
-	  if ( inComment ) 
-	    pStream = pTag + 3 ; 
-	  else
-	    pStream = pTag + 1 ;
+	  /*gHyp_util_debug("processing %s",pTag);*/
+	  while ( pStr < pStream ) {
 
-          if ( isSCR || isTXT ) {
+            /* If at the end of a line, step over it, but only one line */
+	    if ( *pStr == '\n' )
+	      pStr += ( *(pStr+1) == '\r' ) ? 2 : 1 ;
+	    else if ( *pStream == '\r' )
+	      pStr += ( *(pStr+1) == '\n' ) ? 2 : 1 ;
 
-            /* The content must be taken literal */
+	    /* Span the contents of the next line, getting its length */
+	    strLen = strcspn ( pStr, "\n\r" ) ;
 
-	    /*gHyp_util_debug("processing %s",pTag);*/
-	    while ( pStr < pStream ) {
+            /* The total length cannot be past the end of the content */
+	    if ( strLen > (pStream-pStr) ) strLen = pStream - pStr ;
 
-              /* If at the end of a line, step over it, but only one line */
-	      if ( *pStr == '\n' )
-	        pStr += ( *(pStr+1) == '\r' ) ? 2 : 1 ;
-	      else if ( *pStream == '\r' )
-	        pStr += ( *(pStr+1) == '\n' ) ? 2 : 1 ;
+            /* If there is content, break it up further if necessary */
+            if ( strLen > 0 ) {
 
-	      /* Span the contents of the next line, getting its length */
-	      strLen = strcspn ( pStr, "\n\r" ) ;
+	      strLen3 = strLen ;
+	      pStr3 = pStr ;
+	      while ( strLen3 > 0 ) {
 
-              /* The total length cannot be past the end of the content */
-	      if ( strLen > (pStream-pStr) ) strLen = pStream - pStr ;
+		truncStrLen = MIN ( INTERNAL_VALUE_SIZE, strLen3 ) ;
+		if ( truncStrLen > 0 ) {
 
-              /* If there is content, break it up further if necessary */
-              if ( strLen > 0 ) {
+		  if ( truncStrLen == INTERNAL_VALUE_SIZE && strLen3 > INTERNAL_VALUE_SIZE ) {
 
-	        strLen3 = strLen ;
-	        pStr3 = pStr ;
-	        while ( strLen3 > 0 ) {
+		    /* Let's not cut words in half if we can help
+		     * it. Make the string a little shorter if we find a space
+		     * between non-spaces.
+		     * Start at the end of the string, search backwards over
+		     * non-spaces until we find a space.  If so, and its
+		     * not the beginning of the string, then we split the
+		     * string.
+		     * 
+		     */
+		    pStr2 = pStr+truncStrLen ;
 
-		  truncStrLen = MIN ( INTERNAL_VALUE_SIZE, strLen3 ) ;
-		  if ( truncStrLen > 0 ) {
+		    while ( pStr2 > pStr ) {
 
-		    if ( truncStrLen == INTERNAL_VALUE_SIZE && strLen3 > INTERNAL_VALUE_SIZE ) {
+		      c = *pStr2 ;
+		      /* If we find a space, split the string right here. */
+		      if ( c == ' ' ) break ;
+		      pStr2-- ;
+		    }
 
-		      /* Let's not cut words in half if we can help
-		       * it. Make the string a little shorter if we find a space
-		       * between non-spaces.
-		       * Start at the end of the string, search backwards over
-		       * non-spaces until we find a space.  If so, and its
-		       * not the beginning of the string, then we split the
-		       * string.
-		       * 
-		       */
+		    /* Adjust truncStrLen if necessary */
+		    if ( pStr2 - pStr > 0 ) {
+		      truncStrLen = pStr2 - pStr ;
+		    }
+		    else {
+		      /* Look for comma */
 		      pStr2 = pStr+truncStrLen ;
 
 		      while ( pStr2 > pStr ) {
 
 		        c = *pStr2 ;
-		        /* If we find a space, split the string right here. */
-		        if ( c == ' ' ) break ;
+		        /* If we find a comma, split the string right here. */
+		        if ( c == ',' ) break ;
 		        pStr2-- ;
 		      }
 
@@ -1109,67 +1165,54 @@ char *gHyp_cgi_parseXML ( char *pStream,
 		      if ( pStr2 - pStr > 0 ) {
 		        truncStrLen = pStr2 - pStr ;
 		      }
-		      else {
-		        /* Look for comma */
-		        pStr2 = pStr+truncStrLen ;
-
-		        while ( pStr2 > pStr ) {
-
-		          c = *pStr2 ;
-		          /* If we find a comma, split the string right here. */
-		          if ( c == ',' ) break ;
-		          pStr2-- ;
-		        }
-
-		        /* Adjust truncStrLen if necessary */
-		        if ( pStr2 - pStr > 0 ) {
-		          truncStrLen = pStr2 - pStr ;
-		        }
-		      }
 		    }
-
-		    pStr2 = (char*) AllocMemory ( truncStrLen + 1 ) ;
-		    assert ( pStr2 ) ;
-
-		    strncpy ( pStr2, pStr3, truncStrLen ) ;
-		    pStr2[truncStrLen] = '\0' ;
-  
-		    pStrData = gHyp_data_new ( NULL ) ;
-		    gHyp_data_setStr_n ( pStrData, pStr2, truncStrLen ) ;
-
-		    ReleaseMemory ( pStr2 ) ;
-		    gHyp_data_append ( pParentTag, pStrData ) ;
 		  }
-		  strLen3 -= truncStrLen ;
-		  pStr3 += truncStrLen ;
-	        }
-	        pStr += strLen ;
-	      }
-            }
-	  }
 
-	  if ( isEndTag )
-	    gHyp_instance_warning ( pAI, STATUS_XML, "Unexpected end tag, skipping [%.*s]...[%.*s]",
+		  pStr2 = (char*) AllocMemory ( truncStrLen + 1 ) ;
+		  assert ( pStr2 ) ;
+
+		  strncpy ( pStr2, pStr3, truncStrLen ) ;
+		  pStr2[truncStrLen] = '\0' ;
+  
+		  pStrData = gHyp_data_new ( NULL ) ;
+		  gHyp_data_setStr_n ( pStrData, pStr2, truncStrLen ) ;
+
+		  ReleaseMemory ( pStr2 ) ;
+		  gHyp_data_append ( pParentTag, pStrData ) ;
+		}
+		strLen3 -= truncStrLen ;
+		pStr3 += truncStrLen ;
+	      }
+	      pStr += strLen ;
+	    }
+	    else {
+		pStr += strspn ( pStr, "\n\r" ) ;
+	    }
+          }
+	}
+
+
+	if ( isEndTag )
+	  gHyp_instance_warning ( pAI, STATUS_XML, "Unexpected end tag, skipping [%.*s]...[%.*s]",
 		  		  SEG_SIZE,MAX(pAnchor,pTag-SEG_SIZE),SEG_SIZE,pTag);
 
-	  pTag = NULL ;
+	pTag = NULL ;
 
-          /* Get more data if necessary */
+        /* Get more data if necessary */
 #ifdef _DEBUG 
-  pMemory = pStream ;
+	pMemory = pStream ;
 #endif
         pStream = gHyp_util_readStream (	pStream, pAnchor, ppEndOfStream,
 						&streamLen, pStreamData, 
 						ppValue, pContext, ss, isVector, 
 						pp ) ;
 #ifdef _DEBUG 
-  if ( pMemory != pStream ) 
-    gHyp_util_debug ( "Memory shift, %d bytes",streamLen ) ;
+	if ( pMemory != pStream ) 
+	  gHyp_util_debug ( "Memory shift, %d bytes",streamLen ) ;
 #endif
 
-	}
       }
-
+    }
   }
 
   /* The pStream points to the first character of the tag name after the < or </,
@@ -1185,11 +1228,9 @@ char *gHyp_cgi_parseXML ( char *pStream,
   strncpy ( tag, pStream, tagLen ) ;
   tag[tagLen] = '\0' ;
   
-  /*
-  if ( strcmp ( tag, "var1value" ) == 0 ) {
-    gHyp_util_debug("Processing %s",tag);
-  }
-  */
+
+  /*gHyp_util_debug("Processing %s",tag);*/
+
 
   strcpy ( tag_lc, tag ) ;
   gHyp_util_lowerCase ( tag_lc, tagLen ) ;
@@ -1249,54 +1290,83 @@ char *gHyp_cgi_parseXML ( char *pStream,
 
       pStream++ ;
 
-      
-      if ( requestedType != TYPE_LIST ) {
+      if ( requestedType != TYPE_NULL ) {
 
 	skipAttr = TRUE ;
 
-	/* Example <y datatype="float">1 2 3</y> */
+	/* Examples: 
+	 *	<x datatype="list">String 99 1.23e45 0x3f 0o037</x>
+	 *	<y datatype="float">1 2 3</y> 
+	 *	<z datatype="str">A list of strings\nseparated by newline</z>
+	 */
   
-	/* Extract the contents, first as tokens */
-	pSrc = gHyp_data_new ( "_vector_" ) ;
+	/* If any of the children are variables, then don't use gettoken */
 	pValue = NULL ;
 	sss = -1; context = -1 ;
+	hasVariable = FALSE ;
 	while ( (pValue = gHyp_data_nextValue ( pParentTag, 
 						  pValue, 
 						  &context,
 						  sss ) ) ) {
-
 	  /* Skip over the attr */
 	  if ( skipAttr && gHyp_data_getDataType ( pValue ) == TYPE_ATTR ) continue ;
 	  skipAttr = FALSE ;
-
-	  /* Get the buffer contents */
-	  n = gHyp_data_getStr (	pValue, 
-					buffer, 
-					MAX_INPUT_LENGTH, 
-					context, 
-					FALSE  ) ;
-
-	  /* Parse each element into separate tokens */
-	  gHyp_fileio_getTokens ( buffer, pSrc ) ;
+	  if ( gHyp_data_getTokenType ( pValue ) == TOKEN_VARIABLE ) {
+		hasVariable = TRUE ;
+		break ;
+	  }
 	}
 
-	/* Now assign pSrc back to pParentTag */
-	pLvalue = gHyp_data_new ( NULL ) ;
-	gHyp_data_setReference (  pLvalue, 
-				    gHyp_data_getLabel ( pParentTag ),
-	  			    pParentTag ) ;
-	pResult = gHyp_type_assign( pAI,
-				      gHyp_instance_frame ( pAI ),
-				      pLvalue,
-				      pSrc,
-				      requestedType,
-				      FALSE,  
-				      FALSE  ) ; 
-	gHyp_data_delete ( pResult ) ;
-	gHyp_data_delete ( pLvalue ) ;
-	gHyp_data_delete ( pSrc ) ;
+	if ( !hasVariable ) {
 
+		/* Extract the contents, first as tokens */
+		pSrc = gHyp_data_new ( "_vector_" ) ;
 
+		skipAttr = TRUE ;
+		pValue = NULL ;
+		sss = -1; context = -1 ;
+		while ( (pValue = gHyp_data_nextValue ( pParentTag, 
+						  pValue, 
+						  &context,
+						  sss ) ) ) {
+
+		  /* Skip over the attr */
+		  if ( skipAttr && gHyp_data_getDataType ( pValue ) == TYPE_ATTR ) continue ;
+		  skipAttr = FALSE ;
+
+		  /* Get the buffer contents */
+		  n = gHyp_data_getStr (	pValue, 
+						buffer, 
+						MAX_INPUT_LENGTH, 
+						context, 
+						FALSE  ) ;
+
+		  if ( requestedType != TYPE_STRING )
+		    /* Parse each element into separate tokens */
+		    gHyp_fileio_getTokens ( buffer, pSrc ) ;
+		  else
+		    gHyp_data_append ( pSrc, gHyp_data_copy ( pValue ) );
+		    
+		}
+
+		/* Now assign pSrc back to pParentTag */
+		pLvalue = gHyp_data_new ( NULL ) ;
+		gHyp_data_setReference (  pLvalue, 
+					    gHyp_data_getLabel ( pParentTag ),
+		  			    pParentTag ) ;
+		pResult = gHyp_type_assign( pAI,
+					      gHyp_instance_frame ( pAI ),
+					      pLvalue,
+					      pSrc,
+					      requestedType,
+					      FALSE,  
+					      FALSE  ) ; 
+		gHyp_data_delete ( pResult ) ;
+
+		gHyp_data_delete ( pLvalue ) ;
+		gHyp_data_delete ( pSrc ) ;
+
+	}
       }
 
       *pIsEndTag = TRUE ;
@@ -1444,7 +1514,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
 	    if ( isEndTag ) {
 	      /* It's what we want, hoping for the reversed tag */
 	      pStr++ ;
-	      tag2Len = gHyp_util_getToken_okDash ( pStr ) ;
+	      tag2Len = gHyp_util_getToken_okDashDot ( pStr ) ;
 	      if ( tag2Len > 0 ) break ;
 	      pTag2 = NULL ;
 	      break ;
@@ -1693,7 +1763,7 @@ char *gHyp_cgi_parseXML ( char *pStream,
       if ( allowAttributes && !isSCR && !isTXT ) {
 
         /* Pull out attributes value */
-        attrLen = gHyp_util_getToken_okDash ( pStream ) ;
+        attrLen = gHyp_util_getToken_okDashDot ( pStream ) ;
         if ( attrLen <= 0 ) {
           gHyp_instance_warning ( pAI, STATUS_XML, "Invalid attribute name [%.*s]...[%.*s]",
 				 SEG_SIZE,MAX(pAnchor,pStream-SEG_SIZE),SEG_SIZE,pStream);
@@ -2144,6 +2214,8 @@ static int lHyp_cgi_init( sInstance *pAI, sFrame *pFrame )
 	/* Verify that we got as much data as we expected: */
 	if (n != (unsigned) cl)
 	  giCgiErrno = CGIERR_CONTENT_LENGTH_DISCREPANCY;
+	else
+          gzCgiQuery[cl] = '\0' ;
 
       }
     }
@@ -2250,9 +2322,8 @@ static int lHyp_cgi_init( sInstance *pAI, sFrame *pFrame )
        *   allocate space for? (They should be separated by "&"'s) 
        */
     
-      giCgiNumEntries = 0;
-    
-      for (i = 0; i <= cl; i++)
+      giCgiNumEntries = gzCgiQuery[0] == '\0' ? 0 : 1 ;
+      for (i = 1; i < cl; i++)
         if (gzCgiQuery[i] == '&' || gzCgiQuery[i] == '\0')
 	  giCgiNumEntries++;
     
@@ -2266,30 +2337,30 @@ static int lHyp_cgi_init( sInstance *pAI, sFrame *pFrame )
       }
     
       /* Grab each name/value pair: */
-      giCgiNumEntries = 0;
+      n = 0;
     
       /* (Begin with the first half of the first pair): */
       if ( gzCgiQuery[0] != '\0' && gzCgiQuery[0] != '&' )
         cgi_entries[0].name = gzCgiQuery;
     
       /* Go through the entire string of characters: */
-      for (i = 0; i <= cl; i++) {
+      for (i = 0; i < cl; i++) {
       
         if (gzCgiQuery[i] == '&') {
 	
 	  /* "&" represents the end of a name/value pair: */	  
-	  cgi_entries[giCgiNumEntries].name = gzCgiQuery + i + 1;
+	  cgi_entries[n].name = gzCgiQuery + i + 1;
 	  gzCgiQuery[i] = '\0';
 	}
-        else if (gzCgiQuery[i] == '=') {
+        else if (gzCgiQuery[i] == '=' && n < giCgiNumEntries ) {
 	
 	  /* "=" is the end of the name half of a name/value pair: */	  
-	  cgi_entries[giCgiNumEntries].val = gzCgiQuery + i + 1;
+	  cgi_entries[n].val = gzCgiQuery + i + 1;
 	
 	  /*  lHyp_cgi_plusToSpace(cgi_entries[giCgiNumEntries].val);
 	   *   lHyp_cgi_unescapeUrl(cgi_entries[giCgiNumEntries].val); 
 	   */
-	  giCgiNumEntries++;
+	  n++;
 	
 	  gzCgiQuery[i] = '\0';
 	}

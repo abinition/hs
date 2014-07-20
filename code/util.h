@@ -3,6 +3,12 @@
  * Modifications:
  *
  * $Log: util.h,v $
+ * Revision 1.21  2013-01-02 19:09:19  bergsma
+ * Added gHyp_util_maybeDouble
+ *
+ * Revision 1.20  2012-05-01 17:49:51  bergsma
+ * Add okDashDot
+ *
  * Revision 1.19  2010-02-01 22:27:18  bergsma
  * Builld 100130, HS 3.9.0
  *
@@ -95,6 +101,7 @@ extern sLOGICAL 	gHyp_util_isIdentifier ( char* ) ;
 extern int 		gHyp_util_getToken ( char*, sLOGICAL ) ;
 extern int 		gHyp_util_getToken_okDash ( char* ) ;
 extern int 		gHyp_util_getToken_okDot ( char* ) ;
+extern int 		gHyp_util_getToken_okDashDot ( char* ) ;
 extern sLOGICAL 	gHyp_util_match ( char *, char * ) ;
 extern void		gHyp_util_gethostname ( char * ) ;
 extern void 		gHyp_util_getprocessname ( char * ) ;
@@ -126,3 +133,4 @@ extern char *gHyp_util_readStream (  char *pStream,
 extern void gHyp_util_breakStream ( char *buffer, int bufLen, sData *pParent, sLOGICAL isLineBased ) ;
 extern int gHyp_util_breakStringForMsg( char *buffer, int bufLen, int maxBufLen ) ;
 extern char *gHyp_util_memmem(const void *buf, const void *pattern, size_t buflen, size_t len) ;
+extern sLOGICAL gHyp_util_maybeDouble ( char *token ) ;

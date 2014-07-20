@@ -29,6 +29,7 @@ CONNECT()
   enable MESSAGE ;
 
   /* TP methods */
+  enable ENTERDATA ;
   enable GET_EQPID_STATUS ;
   enable GET_FILE_FIELDS ;
   enable SENDMAIL ;
@@ -152,12 +153,26 @@ list GET_FILE_FIELDS()
    *
    * Reply Tokens:
    *   <fieldname> - optional
+   *
+   *
+   * Example call:
+   *
+   *  FILE = "actl" ;
+   *  KEYNAME  = "lotid" ;
+   *  KEYVALUE = "B12345.1" ;
+   *
+   *  // Let's say we want LOCATION, RECPID, stage, and StateEntryTime
+   *  args = { &FILE, &KEYNAME, &KEYVALUE, "LOCATION", "RECPID", "stage", "StateEntryTime" } ;
+   *  ret = query ( "tp_batch", "GET_FILE_FIELDS", args ) ;
+   *   
+   *   
    */
 
   /* *****************************************************************
    *                         INITIALIZE
    *******************************************************************/
   /* Check arguments */
+  puts "inside GET_FILE_FIELDS";
   if ( !exists (FILE)     || count (FILE) == 0 ||
        !exists (KEYNAME)  || count (KEYNAME) == 0 ||
        !exists (KEYVALUE) || count (KEYVALUE) == 0 ) {
@@ -165,39 +180,60 @@ list GET_FILE_FIELDS()
     /* Bad arguments */
     return DONE_GET_FILE_FIELDS ( {"%ARGS: Invalid arguments supplied"} ) ; 
   }
-
+  
   str promis_file = trim tolower FILE ;
   ret = popen promis_file ;
 
-  if ( !ret ) return DONE_GET_FILE_FIELDS ( 
+  if ( !ret ) return DONE_GET_FILE_FIELDS (
         {"%FILE: Could not open PROMIS file ",promis_file});
 
   str promis_key = promis_file + "." + tolower KEYNAME ;
 
-  str promis_key_value = trim pack str KEYVALUE ;
-
-  ret = pget ( promis_key, "eq", promis_key_value ) ;
-  if ( !ret )  return DONE_GET_FILE_FIELDS ( 
-        {"Could not get key ",promis_key," for value ",promis_key_value});
+  str promis_key_value = /*trim*/ str KEYVALUE; /*trim pack str KEYVALUE ;*/
+  if ( count promis_key_value == 0 || promis_key_value == "" ) 
+    promis_key_value = " " ;
+  puts {"Retrieving ",promis_key," == ",promis_key_value } ;
+  if ( exists GE ) {
+    ret = pget ( promis_key, "ge", promis_key_value ) ;
+    undef GE;
+  } 
+  else {
+    ret = pget ( promis_key, "eq", promis_key_value ) ;
+  }
+  if ( !ret )  {
+    /* undef anything from the previous call */
+    n = count args ;
+    for ( i=3; i<n; i++ ) {
+      str fieldname = args[i] ;
+      if ( exists *fieldname ) {
+        undef *fieldname;
+        puts {"undef ", fieldname};
+      }
+    }
+    return DONE_GET_FILE_FIELDS (
+        {"%FILE: Could not get key ",promis_key," for value ",promis_key_value});
+  }
 
   n = count args ;
+
   for ( i=0; i<n; i++ ) {
 
     str fieldname = args[i] ;
 
-    if ( count (*fieldname) == 0 ) {
+    /*if ( count (*fieldname) == 0 ) {*/
 
       str promis_field = promis_file + "." + trim tolower fieldname ;
-
+      puts {"Searching for ",promis_field};
       if ( exists ( *promis_field ) ) {
         *fieldname = trim *promis_field ;
       }
-    }
+    /*}*/
   }
+  pclose promis_file ;
+
 
    return DONE_GET_FILE_FIELDS("$ACK") ;
 } ;
-
 
 list DONE_GET_FILE_FIELDS( str TEXT )
 {
@@ -210,6 +246,260 @@ list DONE_GET_FILE_FIELDS( str TEXT )
   return TEXT ;
 };
 
+/***************************************************************************
+*  ENTERDATA - GENERAL PURPOSE
+***************************************************************************/
+ENTERDATA( str LOTID, str DATA_ARRAY ) 
+{  
+  ENTERDATA="$ACK";
+  /* Data comes in pairs, {D1, V1, D2, V2, D3, V3} */
+  int DATA_COUNT = count DATA_ARRAY ;
+  int DATA_INDEX ;
+  str dataPrompt = DATA_ARRAY[0] ;
+  str dataValue = DATA_ARRAY[1] ;
+  str nextDataPrompt ;
+  
+  /* Select "enter lot data" */
+  pclose("actl");
+  popen("actl");
+  pget("actl.lotid","ge",LOTID);
+  str location = actl.location;
+  pclose("actl");
+  if ( !(stat=TRANSACT (
+          "Passive attach "+LOTID,
+          "quit oper pass "+location,
+          "Function"
+          ) ) ) 
+    return DONE_ENTERDATA( stat ) ;
+
+  if ( !(stat=TRANSACT (
+          "Start data collection",
+          "quit oper enter",
+          "Enter RUNNING lot id or RETURN to view all lots"
+          ) ) )
+     return DONE_ENTERDATA ( stat ) ;
+     
+  /* If there is more than one dcop in the recipe, then it will ask which one.
+  * We always pick the first one.
+  * If there is only one left to do, then we'll get the alternate prompt, 
+  * "Enter RETURN to start data entry".  If we don't get that, its an error.
+  */
+  if ( !(stat=TRANSACT (
+          "Enter Lot Data",
+          LOTID,
+          "Operation for data entry",
+          "Enter RETURN to start data entry",
+          "Enter RUNNING lot id"    ) ) ) {
+
+    /* Only one DCOP left. 
+    * Two possibilities, either we got the second expect string or not 
+    */
+    if ( stat != "%Enter RETURN to start data entry" &&
+         stat != "%Enter RUNNING lot id" )
+       return DONE_ENTERDATA ( stat ) ;
+     
+    if ( stat == "%Enter RUNNING lot id" ) {
+      puts {"No data collection available for lot ",LOTID,", exiting"};
+      result = pexec "EXIT" ;
+      puts result ;
+      return DONE_ENTERDATA ( "$ACK" ) ;
+   }
+    
+    if ( !(stat=TRANSACT (
+            "Starting data entry",
+            "",
+            "Use automatic item selection",
+            dataPrompt ) ) ) {
+      
+      /* If there is more than one item, we say yes to automatic */
+      if ( stat != ("%"+dataPrompt) ) 
+     return DONE_ENTERDATA ( stat ) ;
+     
+    }
+    else {
+      
+      /* Say yes to automatic item selection.  The expected prompt
+      * will then be the first data prompt.
+      */
+      if ( !(stat=TRANSACT (
+              "Use automatic item selection",
+              "Y",
+              dataPrompt ) ) )
+        return DONE_ENTERDATA ( stat ) ;
+        }
+  }
+  else {
+
+    /* More than one choice of DCOP, always choose the first one. */
+    if ( !(stat=TRANSACT (
+            "DCOP 1",
+            "1",
+            "Enter RETURN to start data entry" ) ) ) 
+     return DONE_ENTERDATA ( stat ) ;
+     
+    /* Input selection "1".
+    * The expected prompt is "Enter RETURN to start data entry",
+    * unless thee is more than one item in the DCOP, in which case
+    * it could be the alternate prompt "Use automatic item selection".
+    */
+    if ( !(stat=TRANSACT (
+            "Operation for data entry",
+            "",
+            "Use automatic item selection",
+            dataPrompt ) ) ) {
+      
+      /* If there is more than one item, we say yes to automatic */
+      if ( stat != ("%"+dataPrompt) ) 
+     return DONE_ENTERDATA ( stat ) ;
+     
+    }
+    else {     
+      
+      /* Say yes to automatic item selection.  The expected prompt
+      * will then be the first data prompt.
+      */
+      if ( !(stat=TRANSACT (
+              "Use automatic item selection",
+              "Y",
+              dataPrompt ) ) ) 
+     return DONE_ENTERDATA ( stat ) ;
+        }
+  }
+  puts "...now input the data";
+  /* Now input the data */
+  DATA_INDEX = 0 ;
+  while ( DATA_INDEX < DATA_COUNT ) {
+    
+    dataPrompt = DATA_ARRAY[DATA_INDEX] ;
+    dataValue  = DATA_ARRAY[DATA_INDEX+1] ;
+    nextDataPrompt = (DATA_INDEX<(DATA_COUNT-2)) ? DATA_ARRAY[DATA_INDEX+2] : "Function" ; 
+    
+    puts {"PROMPT: ",dataPrompt};
+    puts {"DATA: ",dataValue} ;
+    puts {"NEXT PROMPT: ",nextDataPrompt } ;
+    puts {"...DATA_INDEX=",DATA_INDEX};    
+    if ( !(stat=TRANSACT (
+            dataPrompt,
+            dataValue,
+            nextDataPrompt,
+            "Function",
+            "Is that value correct?"
+            ) ) ) {
+      puts {"...got stat=", stat};
+      if ( stat == "%Function" ) break ;
+      else if ( stat == "%Is that value correct?" ) {
+        if ( !(stat=TRANSACT (
+                "Yes, the value is correct",
+                "Y",
+                nextDataPrompt,
+                "Function" ) ) ) {        
+          puts {"...got stat=", stat};
+          if ( stat == "%Function" ) break ;
+          else return DONE_ENTERDATA ( stat ) ;
+        }
+      }
+      else return DONE_ENTERDATA ( stat ) ;
+    }
+    
+    DATA_INDEX = DATA_INDEX + 2 ;
+  }
+  puts "...done entering data";
+  return DONE_ENTERDATA("$ACK") ;
+} ;
+DONE_ENTERDATA ( str TEXT ) 
+{
+  puts "...inside DONE_ENTERDATA";
+  puts TEXT ;
+  EXIT_FUNCTION() ;
+  QUIT_FUNCTION() ;
+  if ( exists ( LOTID ) ) undef LOTID ;
+  return TEXT ;
+}
+/***************************************************************************
+*  E N T E R D A T A - N O N E
+***************************************************************************/
+ENTERDATA_NONE( str LOTID )
+{  
+  /**********************************************/
+  if ( !(stat=TRANSACT (
+          "There is a Data Collection Operation",
+          "quit oper enter",
+          "Enter RUNNING lot id or RETURN to view all lots"
+          ) ) )
+     return DONE_ENTERDATA_NONE ( stat ) ;
+     
+  /**********************************************/
+  if ( !(stat=TRANSACT (
+          "Enter Lot Data",
+          LOTID,
+          "Enter RETURN to start data entry, or NONE,LATER"
+          ) ) )
+     return DONE_ENTERDATA_NONE ( stat ) ;
+     
+  /**********************************************/
+  if ( !(stat=TRANSACT (
+          "Entering NONE",
+          "NONE",
+          "Function"
+          ) ) )
+     return DONE_ENTERDATA_NONE ( stat ) ;
+     
+  /**********************************************/
+  return "$ACK" ;
+} ;
+DONE_ENTERDATA_NONE ( str TEXT ) 
+{
+  puts TEXT ;
+  EXIT_FUNCTION() ;
+  QUIT_FUNCTION() ;
+  if ( exists ( LOTID ) ) undef LOTID ;
+  return TEXT ;
+}
+/***************************************************************************
+*
+*  T H E  T R A N S A C T  E N G I N E
+*
+***************************************************************************/  
+
+/* The heart of how embedded/HS works in conjuction with a PROMIS menu function.
+   This little gem of a method helps in the writing of the expect scripts.
+ */
+ 
+list TRANSACT ( str title, str command, str expected, str expected2="%", str expected3="%" )
+{
+  /* Up to three different expected results.
+   *
+   */
+  puts {"[",title,"]"} ;
+  pcapture 1 ;
+  result = pexec command ;
+  pcapture 0 ;
+  PROMIS_RESPONSE = _promis_data_ ;
+  resultLen = strlen result ;
+  expectStr = expected ;
+  /*
+  puts toexternal result ;
+  puts toexternal expected ;
+  */
+  
+  /* If we get the first expected sting, then all is well */
+  if ( strloc ( result, expectStr ) != resultLen ) return "$ACK" ;
+  
+  /* If we get either of the expected strings 2 and 3, return a special warning */
+  if ( expected2 != "%" && strloc ( result, expected2 ) != resultLen ) return ("%"+expected2) ;
+  if ( expected3 != "%" && strloc ( result, expected3 ) != resultLen ) return ("%"+expected3) ;
+  
+  /* Otherwise, we didn't get what was expected, print it out and return the string we got */
+  puts {"---------------------------------------------"};
+  puts {"+ function: ",title};
+  puts {"+ feeding: ",command};
+  puts {"+ response: ",PROMIS_RESPONSE};
+  puts {"+ expecting: ",expectStr};
+  puts {"+ got: ",result};
+  puts {"---------------------------------------------"};
+  
+  return ("%" + trim(result) ) ; 
+} ;
 
 EXIT_FUNCTION()
 {

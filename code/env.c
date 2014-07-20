@@ -10,6 +10,22 @@
 /* Modifications:
  *
  * $Log: env.c,v $
+ * Revision 1.51  2013-05-21 17:50:21  bergsma
+ * Windows does not know about stdint include file.
+ *
+ * Revision 1.50  2013-05-21 17:46:26  bergsma
+ * Add secs_map & secp_unmap.  Deal with 64-bit systems where long and
+ * int datatypes are 32 bit.  HS long,ulong,and int are 32 bit.
+ *
+ * Revision 1.49  2013-01-14 18:26:35  bergsma
+ * When doing 'map', use gHyp_util_getRaw over getInt, getDouble, etc
+ *
+ * Revision 1.48  2013-01-08 00:56:48  bergsma
+ * Endianess was reversed for both map and unmap.
+ *
+ * Revision 1.47  2012-05-01 17:49:38  bergsma
+ * Special merge case, allow labels with dots and dashes.
+ *
  * Revision 1.46  2011-03-14 01:07:54  bergsma
  * Fix node_getnodebyattr
  *
@@ -1259,6 +1275,19 @@ static sData* lHyp_env_map ( sData *pDst,
   dstTokenType = gHyp_data_getTokenType ( pDst ) ;
   dstDataType =  gHyp_data_getDataType ( pDst ) ;
   dstDataLen = gHyp_data_dataLen ( pDst ) ;
+
+  /* When mapping to a HS int, long, or ulong, this is
+   * always 32 bits (4 bytes).  
+   * In the case where the compile sets a long/ulong/int at 64 bits,
+   * we must override and say its really 4 bytes!!!
+   */
+#ifdef AS_UNIX
+  if (	dstDataType == TYPE_INTEGER ||
+	dstDataType == TYPE_LONG ||
+	dstDataType == TYPE_ULONG )
+    dstDataLen = sizeof ( int32_t ) ;
+#endif
+
   isVectorDst = ( dstTokenType == TOKEN_VARIABLE && dstDataType > TYPE_STRING ) ;
   ssd = gHyp_data_getSubScript ( pDst ) ; 
   pNextDstValue = pDst ;
@@ -1288,7 +1317,7 @@ static sData* lHyp_env_map ( sData *pDst,
     for ( j=0; j<numElements; j++ ) {
 
       if ( !pStream) return pResult ;
-      if ( isLittleEndian ) {
+      if ( !isLittleEndian ) {
 
 	pBuf = pStream ;
         for ( i=dstDataLen-1; i>=0; i-- ) endian.x.b[i] = *pBuf++ ;
@@ -1462,6 +1491,100 @@ void gHyp_env_map ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
     if ( argCount != 2 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
 	"Invalid arguments. Usage: map ( destination, source )" ) ;
+
+    pSrc = gHyp_stack_popRdata ( pStack, pAI ) ;
+    pSrcData = gHyp_data_getVariable ( pSrc ) ;
+    if ( !pSrcData ) pSrcData = pSrc ;
+    
+    pDst = gHyp_stack_popRdata ( pStack, pAI ) ;
+    pDstData = gHyp_data_getVariable ( pDst ) ;
+    if ( !pDstData ) pDstData = pDst ;
+
+    gzStream[0] = '\0' ;
+    pStream = gzStream ;
+    pAnchor = pStream ;	
+    pEndOfStream = pStream ;
+    pValue = NULL ;
+    contextSrc = -1 ;
+    ss = gHyp_data_getSubScript ( pSrcData ) ;
+    isVectorSrc = ( gHyp_data_getDataType ( pSrcData ) > TYPE_STRING ) ;
+    pResult = lHyp_env_map (  pDstData,
+			      &pStream,
+			      &pAnchor,
+			      &pEndOfStream,
+			      pSrcData,
+			      &pValue,
+			      &contextSrc,
+			      ss,
+			      isVectorSrc,
+			      pAI,
+			      isLittleEndian,
+			      0) ;
+
+    gHyp_stack_push ( pStack, pResult ) ;
+  }
+}
+
+void gHyp_env_secs_map ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: secs_map ( variable, variable )
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   * Modifications:
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+  
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+    
+  else {
+ 
+    sStack 	
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+
+    sData
+      *pValue,
+      *pSrc,
+      *pSrcData,
+      *pDstData,
+      *pDst,
+      *pResult ;
+
+    char
+      *pStream,
+      *pAnchor,
+      *pEndOfStream ;
+
+    int
+      ss,
+      contextSrc,
+      argCount = gHyp_parse_argCount ( pParse ) ;
+    
+    sLOGICAL
+      isVectorSrc,
+      /* SECS is big Endian, so if we are little Endian, we must swap bytes */ 
+      isLittleEndian = ( gHyp_util_isLittleEndian() ? 0 : 1 ) ;
+
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 2 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+	"Invalid arguments. Usage: secs_map ( destination, source )" ) ;
 
     pSrc = gHyp_stack_popRdata ( pStack, pAI ) ;
     pSrcData = gHyp_data_getVariable ( pSrc ) ;
@@ -1676,7 +1799,7 @@ static void lHyp_env_unmap ( sData *pResult,
 	case TYPE_HEX :
 	  endian.x.ul = 
 	    (unsigned long) gHyp_data_getRaw ( pParent, parentContext, isParentVector ) ;
-	  if ( isLittleEndian ) 
+	  if ( !isLittleEndian ) 
 	    for ( j=3; j>=0; j-- ) *pBuf++ = endian.x.b[j] ; 
 	  else
 	    for ( j=0; j<4; j++ ) *pBuf++ = endian.x.b[j] ;
@@ -1686,7 +1809,7 @@ static void lHyp_env_unmap ( sData *pResult,
 	case TYPE_OCTAL :
 	  endian.x.ul = 
 	    (unsigned long) gHyp_data_getRaw ( pParent, parentContext, isParentVector ) ;
-	  if ( isLittleEndian ) 
+	  if ( !isLittleEndian ) 
 	    for ( j=3; j>=0; j-- ) *pBuf++ = endian.x.b[j] ; 
 	  else
 	    for ( j=0; j<4; j++ ) *pBuf++ = endian.x.b[j] ;
@@ -1696,7 +1819,7 @@ static void lHyp_env_unmap ( sData *pResult,
 	case TYPE_UNICODE :
 	  endian.x.us = 
 	    (unsigned short) gHyp_data_getRaw ( pParent, parentContext, isParentVector ) ;
-	  if ( isLittleEndian ) 
+	  if ( !isLittleEndian ) 
 	    for ( j=1; j>=0; j-- ) *pBuf++ = endian.x.b[j] ; 
 	  else
 	    for ( j=0; j<2; j++ ) *pBuf++ = endian.x.b[j] ;
@@ -1706,7 +1829,7 @@ static void lHyp_env_unmap ( sData *pResult,
 	case TYPE_SHORT :
 	  endian.x.ss = 
 	    (short) gHyp_data_getRaw ( pParent, parentContext, isParentVector ) ;
-	  if ( isLittleEndian ) 
+	  if ( !isLittleEndian ) 
 	    for ( j=1; j>=0; j-- ) *pBuf++ = endian.x.b[j] ; 
 	  else
 	    for ( j=0; j<2; j++ ) *pBuf++ = endian.x.b[j] ;
@@ -1716,7 +1839,7 @@ static void lHyp_env_unmap ( sData *pResult,
 	case TYPE_USHORT :
 	  endian.x.us = 
 	    (unsigned short) gHyp_data_getRaw ( pParent, parentContext, isParentVector ) ;
-	  if ( isLittleEndian ) 
+	  if ( !isLittleEndian ) 
 	    for ( j=1; j>=0; j-- ) *pBuf++ = endian.x.b[j] ; 
 	  else
 	    for ( j=0; j<2; j++ ) *pBuf++ = endian.x.b[j] ;
@@ -1726,8 +1849,9 @@ static void lHyp_env_unmap ( sData *pResult,
 	case TYPE_INTEGER :
 	case TYPE_LONG :
 	  endian.x.sl = 
-	    (long) gHyp_data_getInt ( pParent, parentContext, isParentVector ) ;
-	  if ( isLittleEndian ) 
+	  (long) gHyp_data_getRaw ( pParent, parentContext, isParentVector ) ;
+	  /*(long) gHyp_data_getInt ( pParent, parentContext, isParentVector ) ;*/
+	  if ( !isLittleEndian ) 
 	    for ( j=3; j>=0; j-- ) *pBuf++ = endian.x.b[j] ; 
 	  else
 	    for ( j=0; j<4; j++ ) *pBuf++ = endian.x.b[j] ;
@@ -1737,7 +1861,7 @@ static void lHyp_env_unmap ( sData *pResult,
 	case TYPE_ULONG :
 	  endian.x.ul = 
 	    (unsigned long) gHyp_data_getRaw ( pParent, parentContext, isParentVector ) ;
-	  if ( isLittleEndian ) 
+	  if ( !isLittleEndian ) 
 	    for ( j=3; j>=0; j-- ) *pBuf++ = endian.x.b[j] ; 
 	  else
 	    for ( j=0; j<4; j++ ) *pBuf++ = endian.x.b[j] ;
@@ -1746,8 +1870,9 @@ static void lHyp_env_unmap ( sData *pResult,
 	  
 	case TYPE_FLOAT :
 	  endian.x.f = 
-	    (float) gHyp_data_getDouble ( pParent, parentContext, isParentVector ) ;
-	  if ( isLittleEndian ) 
+	    /*(float) gHyp_data_getDouble ( pParent, parentContext, isParentVector ) ;*/
+	    (float) gHyp_data_getRaw ( pParent, parentContext, isParentVector ) ;
+	  if ( !isLittleEndian ) 
 	    for ( j=3; j>=0; j-- ) *pBuf++ = endian.x.b[j] ; 
 	  else
 	    for ( j=0; j<4; j++ ) *pBuf++ = endian.x.b[j] ;
@@ -1757,8 +1882,9 @@ static void lHyp_env_unmap ( sData *pResult,
 	  
 	case TYPE_DOUBLE :
 	  endian.x.d = 
-	    (double) gHyp_data_getDouble ( pParent, parentContext, isParentVector ) ;
-	  if ( isLittleEndian ) 
+	    /*(double) gHyp_data_getDouble ( pParent, parentContext, isParentVector ) ;*/
+	    (double) gHyp_data_getRaw ( pParent, parentContext, isParentVector ) ;
+	  if ( !isLittleEndian ) 
 	    for ( j=7; j>=0; j-- ) *pBuf++ = endian.x.b[j] ; 
 	  else
 	    for ( j=0; j<8; j++ ) *pBuf++ = endian.x.b[j] ;
@@ -1843,6 +1969,74 @@ void gHyp_env_unmap ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     context = -1 ;
     ss = gHyp_data_getSubScript ( pData ) ;
     pResult = gHyp_data_new ( "_unmap_" ) ;
+    lHyp_env_unmap (	pResult,
+	  		pData,
+			ss,
+			isLittleEndian) ;
+
+    gHyp_stack_push ( pStack, pResult ) ;
+  }
+}
+
+void gHyp_env_secs_unmap ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: secs_unmap ( variable )
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   * Modifications:
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+  
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+    
+  else {
+ 
+    sStack 	
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+
+    sData
+      *pVariable,
+      *pData,
+      *pResult ;
+
+    int
+      ss,
+      context,
+      argCount = gHyp_parse_argCount ( pParse ) ;
+
+    sLOGICAL
+      /* SECS is big Endian, so if we are little Endian, we must swap bytes */ 
+      isLittleEndian = ( gHyp_util_isLittleEndian() ? 0 : 1 ) ;
+
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 1 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+	"Invalid arguments. Usage: secs_unmap ( source )" ) ;
+
+    pData = gHyp_stack_popRdata ( pStack, pAI ) ;
+    if ( (pVariable = gHyp_data_getVariable ( pData ) ) )
+      pData = pVariable ;
+
+    context = -1 ;
+    ss = gHyp_data_getSubScript ( pData ) ;
+    pResult = gHyp_data_new ( "_secs_unmap_" ) ;
     lHyp_env_unmap (	pResult,
 	  		pData,
 			ss,
@@ -2282,8 +2476,9 @@ sData* gHyp_env_mergeData ( sData *pDst,
     labelLen = strlen ( pLabel ) ;
 
     if ( isMsgMerge &&
-         !gHyp_load_isKey ( pLabel ) &&  
-	 gHyp_util_getToken_okDot ( pLabel ) != labelLen ) {
+         !gHyp_load_isKey ( pLabel ) && 
+	 gHyp_util_getToken_okDot  ( pLabel ) != labelLen &&
+         gHyp_util_getToken_okDash ( pLabel ) != labelLen ) {
 
 
       /* SPECIAL CASE:  Merge called from instance_consumeMessage. */

@@ -10,6 +10,19 @@
  * Modifications:
  *
  *	$Log: util.c,v $
+ *	Revision 1.83  2013-02-18 22:38:04  bergsma
+ *	In util_gettoken, check for negative valued *pChar.
+ *	
+ *	Revision 1.82  2013-01-08 00:55:03  bergsma
+ *	gHyp_util_maybeDouble needed fixing
+ *	
+ *	Revision 1.81  2013-01-02 19:09:19  bergsma
+ *	Added gHyp_util_maybeDouble
+ *	
+ *	Revision 1.79  2012-05-01 17:48:19  bergsma
+ *	Add getToken_OKDashDot.
+ *	For OKDot, allow DIGIT after dot.
+ *	
  *	Revision 1.78  2011-02-24 03:12:55  bergsma
  *	Fix bug in gHyp_util_readStream
  *	
@@ -1284,7 +1297,7 @@ static int lHyp_util_getToken ( char *pStr, sLOGICAL isUnaryOk, sLOGICAL isDashO
     dotDecimalMask = 0 ;
     isIdentifier = FALSE ;
   }
-  else if ( isdigit ( *pChar ) ) {
+  else if ( *pChar > 0 && isdigit ( *pChar ) ) {
     /* Token is the start of an integer.
      * Identifiers are not allowed to start with a digit.
      */ 
@@ -1296,7 +1309,7 @@ static int lHyp_util_getToken ( char *pStr, sLOGICAL isUnaryOk, sLOGICAL isDashO
     /* If the number starts with a 0x or 0o, then it becomes a hex or octal */
     if ( *pChar == '0' ) expectState |= (LEX_HEX | LEX_OCTAL | LEX_UNICODE ) ;
   }
-  else if ( isalpha ( *pChar ) || *pChar == '_' || *pChar == '$' ) {
+  else if ( *pChar > 0 && (isalpha ( *pChar ) || *pChar == '_' || *pChar == '$' ) ) {
     /* Token is the start of an identifier */
     expectState = LEX_ALPHA | LEX_DIGIT | LEX_UBAR | colonMask | dashMask | dotMask ;
     /* The identifier so far is valid, and is one char long */
@@ -1415,25 +1428,13 @@ static int lHyp_util_getToken ( char *pStr, sLOGICAL isUnaryOk, sLOGICAL isDashO
       validLen = 0 ;
     }
 
-    else if ( ( isalpha ( *pChar ) && ( expectState & LEX_ALPHA ) ) ||
-              ( *pChar == '_' && ( expectState & LEX_UBAR ) ) ||
-              ( *pChar == '$' && ( expectState & LEX_DOLLAR ) ) ) {
-
-      /* Continue an identifier.
-       * Can have more underbars, '$'.
-       */               
-      expectState = LEX_ALPHA | LEX_DIGIT | LEX_UBAR | LEX_DOLLAR | colonMask | dashMask | dotMask ;
-      /* If it wasn't valid before, it is now */
-      validLen = scanLen ;
-    }
-
     else if ( *pChar == '.' && ( expectState & LEX_DOT ) ) {
 
       if ( expectState & LEX_ALPHA ) {
         /* Continue a valid identifier which allows '.' 
          * Don't allow a digit to start or another dot or a dash !
          */
-        expectState = LEX_ALPHA | LEX_UBAR | LEX_DOLLAR ;
+        expectState = LEX_ALPHA | LEX_UBAR | LEX_DOLLAR | LEX_DIGIT ;
 
         /* Its not valid unless we get at least another digit */
         partialLen = scanLen - 1 ;
@@ -1446,6 +1447,18 @@ static int lHyp_util_getToken ( char *pStr, sLOGICAL isUnaryOk, sLOGICAL isDashO
         dotDecimalMask = 0 ;
         validLen = scanLen ;
       } 
+    }
+
+    else if ( ( isalpha ( *pChar ) && ( expectState & LEX_ALPHA ) ) ||
+              ( *pChar == '_' && ( expectState & LEX_UBAR ) ) ||
+              ( *pChar == '$' && ( expectState & LEX_DOLLAR ) ) ) {
+
+      /* Continue an identifier.
+       * Can have more underbars, '$'.
+       */               
+      expectState = LEX_ALPHA | LEX_DIGIT | LEX_UBAR | LEX_DOLLAR | colonMask | dashMask | dotMask ;
+      /* If it wasn't valid before, it is now */
+      validLen = scanLen ;
     }
 
     else {
@@ -1509,6 +1522,11 @@ int gHyp_util_getToken_okDash ( char *pStr )
 int gHyp_util_getToken_okDot ( char *pStr )
 {
   return lHyp_util_getToken ( pStr, FALSE, FALSE, TRUE ) ;
+}
+
+int gHyp_util_getToken_okDashDot ( char *pStr )
+{
+  return lHyp_util_getToken ( pStr, FALSE, TRUE, TRUE ) ;
 }
 
 sLOGICAL gHyp_util_isIdentifier ( char *pStr )
@@ -3216,5 +3234,53 @@ char *gHyp_util_memmem(const void *buf, const void *pattern, size_t buflen, size
       return NULL;
 }
 
+sLOGICAL gHyp_util_maybeDouble ( char *token ) {
+
+	sLOGICAL maybeDouble ;
+	char *exponent ;
+	int exponentLen ;
+	long sl ;
+
+
+	/* Check for overflow 
+	 * float 1.175494351 E – 38 to 3.402823466 E + 38
+	 * double 2.2250738585072014 E – 308 to 1.7976931348623158 E + 308
+	 * long double (same as double)
+	 */
+	maybeDouble = strspn ( token, "0123456789.eE+-" ) == strlen ( token ) ;
+	if ( maybeDouble ) {
+
+		/* All the right characters..  Extract number past E */
+		exponent = strchr ( token, 'e' ) ;
+		if ( !exponent ) exponent = strchr ( token, 'E' ) ;
+
+                if ( !exponent ) return maybeDouble ;
+
+		if ( exponent && *(exponent+1) ) {
+
+			/* There's at least 1 digit past the E */
+			exponent++ ;
+			exponentLen = strlen ( exponent ) ;
+
+			/* Span the digits and sign, and there must be at least one digit */
+			if ( strspn ( exponent, "0123456789+-." ) == exponentLen &&
+			     strspn ( exponent, "+-." ) != exponentLen ) {
+		
+			        /* Maybe an integer or decimal */
+				if ( sscanf ( exponent, "%ld", (unsigned long*) &sl ) == 1 ) {
+
+					/* A valid integer mantissa. Validate the range */
+#ifdef AS_GFLOAT
+                                  if ( sl >= -38 && sl <= 38 ) return maybeDouble ;
+#else
+                                  if ( sl >= -308 && sl <= 308 ) return maybeDouble ;
+#endif
+                                }
+			}
+		}
+	}
+	return FALSE ;
+
+}
 
   

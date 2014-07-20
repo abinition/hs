@@ -721,22 +721,8 @@ sData *gHyp_frame_findVariable ( sInstance* pAI, sFrame *pFrame, char *pStr  )
   sInstance
     *pConceptAI ;
 
-  /******  PLEASE READ!  
-   *
-   * Regardless of whether we are in local or global mode, always
-   * look for the variable in local scope first!
-   *
-   * This may affect past HS programs, where one may go into global
-   * mode and is reading a global variable when there is a local
-   * one already present.  The fix for these programs would be to
-   * undef the local variable first.
-   *
-   *
-   *  if ( !pFrame->globalScope )  
-   *
-   */
-    /* Local is enabled. Try local variable lookup */
-    pVariable = gHyp_frame_findLocalVariable ( pFrame, pStr ) ;  
+  /* See if variable exists locally */
+  pVariable = gHyp_frame_findLocalVariable ( pFrame, pStr ) ;  
   
   if ( !pVariable ) i++ ;
 

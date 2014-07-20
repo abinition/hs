@@ -11,6 +11,12 @@
  * Modifications:
  *
  *	$Log: type.c,v $
+ *	Revision 1.32  2013-01-02 19:10:10  bergsma
+ *	CVS Issues
+ *	
+ *	Revision 1.29  2012-05-01 17:51:21  bergsma
+ *	Comment
+ *	
  *	Revision 1.28  2011-02-24 05:12:27  bergsma
  *	Adjusting values for MAX_OUTPUT_LENGTH and MAX_INPUT_LENGTH
  *	
@@ -678,9 +684,8 @@ sData *gHyp_type_assign ( sInstance *pAI,
 				variable ) ;
 
 	}
-	/*
-	*gHyp_util_debug("Cannot resolve variable '%s', attempting dereference ",variable);
-	*/
+	
+        /*gHyp_util_debug("Cannot resolve variable '%s', attempting dereference ",variable);*/
 	gHyp_instance_setDerefHandler ( pAI, hypIndex, pHyp ) ;
 	gHyp_frame_setGlobalFlag ( pFrame, FRAME_GLOBAL_DOTCREATE ) ;
 
@@ -2277,6 +2282,89 @@ void gHyp_type_list ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     if ( argCount != 1 ) 
       gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
 			    "Invalid arguments. Usage: list ( value )" ) ;
+     
+
+    /* Assume just a temporary result */
+
+    if ( lHyp_type_isVariableDef ( pParse, pStack ) ) {
+
+      /* It is a variable definition and initialization. */
+      isSubVariable = ( gHyp_parse_listDepth ( pParse ) > 0 ||
+			gHyp_parse_isMethodArgs  ( pParse ) ) ;
+      pLvalue = gHyp_stack_popLvalue ( pStack, pAI ) ;
+      pResult = gHyp_type_assign ( pAI,
+				   pFrame,
+				   pLvalue,
+				   NULL,	/* No assignment data */
+				   TYPE_LIST,
+				   isSubVariable, FALSE ) ;
+    }
+    else {
+
+      /* It is a typecast conversion. */
+      pRvalue = gHyp_stack_popRvalue ( pStack, pAI ) ;
+      pResult = gHyp_type_assign ( pAI,
+				   pFrame,
+				   NULL,	/* No assignment variable */
+				   pRvalue,
+				   TYPE_LIST,
+				   FALSE, FALSE ) ;
+    }
+    gHyp_stack_push ( pStack, pResult ) ;
+  }
+}
+
+void gHyp_type_var ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+{
+  /* Description:
+   *
+   *	PARSE or EXECUTE the built-in function: var ( value )
+   *	Returns the var representation of value, otherwise returns 0.
+   *
+   * Arguments:
+   *
+   *	pAI							[R]
+   *	- pointer to instance object
+   *
+   *	pCode							[R]
+   *	- pointer to code object
+   *
+   * Return value:
+   *
+   *	none
+   *
+   * Modifications:
+   *
+   */
+  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
+  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+
+  if ( isPARSE )
+  
+    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+    
+  else {
+ 
+    sData
+      *pRvalue,
+      *pLvalue,
+      *pResult ;
+
+    sStack
+      *pStack = gHyp_frame_stack ( pFrame ) ;
+    
+    int
+      argCount = gHyp_parse_argCount ( pParse ) ;
+    
+    sLOGICAL
+      isSubVariable ;
+    
+    /* Assume success */	
+    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+
+    if ( argCount != 1 ) 
+      gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+			    "Invalid arguments. Usage: var ( value )" ) ;
      
 
     /* Assume just a temporary result */

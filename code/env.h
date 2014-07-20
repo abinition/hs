@@ -2,6 +2,10 @@
  * Modifications:
  *
  * $Log: env.h,v $
+ * Revision 1.14  2013-05-21 17:46:26  bergsma
+ * Add secs_map & secp_unmap.  Deal with 64-bit systems where long and
+ * int datatypes are 32 bit.  HS long,ulong,and int are 32 bit.
+ *
  * Revision 1.13  2007-09-03 06:24:08  bergsma
  * No newlines at end of file
  *
@@ -104,3 +108,5 @@ extern void	gHyp_env_node_nextfirstcousin ( sInstance*, sCode*, sLOGICAL ) ;
 extern void	gHyp_env_node_prevlastcousin ( sInstance*, sCode*, sLOGICAL ) ;
 extern void	gHyp_env_node_getnodebyattr ( sInstance*, sCode*, sLOGICAL ) ;
 extern void	gHyp_env_node_getnodebyname ( sInstance*, sCode*, sLOGICAL ) ;
+extern void	gHyp_env_secs_map ( sInstance*, sCode*, sLOGICAL ) ;
+extern void	gHyp_env_secs_unmap ( sInstance*, sCode*, sLOGICAL ) ;

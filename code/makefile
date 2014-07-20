@@ -85,7 +85,8 @@ CC = gcc
 #CC = g++
 #CC = insure 
 CFLAGS = -g -O -Wall -I. -I/usr/include
-CDEFS =   -DAS_SQL -DAS_MYSQL -DAS_MEMTRACK -DAS_SSL -DAS_GD
+###CDEFS =   -DAS_SQL -DAS_MYSQL -DAS_MEMTRACK -DAS_SSL -DAS_GD
+CDEFS =   -DAS_SQL -DAS_MYSQL -DAS_GD
 #CPPFLAGS=-I/usr/kerberos/include LDFLAGS=-L/usr/kerberos/lib
 LIBS = -lc -lm -lssl -lcrypto -lgd -ljpeg -L/usr/lib/mysql -lmysqlclient
 #LIBS = -lc -L/usr/lib/mysql -lmysqlclient -lz -lm -lssl -lcrypto

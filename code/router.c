@@ -10,6 +10,9 @@
 /* Modifications: 
  *
  * $Log: router.c,v $
+ * Revision 1.35  2013-03-26 17:45:10  bergsma
+ * Fix bug (VMS) where target mailbox was prematurely created for CONNECT.
+ *
  * Revision 1.34  2010-07-05 16:04:01  bergsma
  * Create client mailboxes when CONNECT messages.
  *
@@ -675,17 +678,14 @@ int gHyp_router_message ( sConcept *pConcept,
 	gHyp_concept_openReader ( pConcept ) ; 
 
         /* Look for a socket already created for the specified target */
-        if ( isConnect ) 
-          pTargetData = gHyp_sock_createClient ( pClients, targetClient, targetId, FALSE ) ;
-        else
-          pTargetData = gHyp_sock_findClient ( pClients, targetClient, targetId ) ;
+        pTargetData = gHyp_sock_findClient ( pClients, targetClient, targetId ) ;
 
 	/* Try to execute a script file if the message is CONNECT and
 	 * the socket does not exist.
 	 */
         if ( isConnect && isEventOrQuery && pTargetData == NULL ) {
 
-	  /* If a target file exits, execute it. */
+	  /* If a target file exists, execute it. */
 	  if ( !pTargetData ) 
  	    pTargetData = gHyp_sock_findHYP ( pClients, targetClient, targetId, 
 					      pMsg, gpsAImsg, &isRouted) ;

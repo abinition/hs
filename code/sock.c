@@ -11,6 +11,28 @@
  * Modifications:
  *
  *	$Log: sock.c,v $
+ *	Revision 1.119  2013-01-22 21:26:48  bergsma
+ *	Add WIN_LEAN_AND_MEAN
+ *	
+ *	Revision 1.118  2013-01-03 17:50:37  bergsma
+ *	Eliminate some compiler warnings
+ *	
+ *	Revision 1.117  2013-01-02 19:11:44  bergsma
+ *	CVS Issues
+ *	
+ *	Revision 1.115  2012-10-20 18:45:24  bergsma
+ *	Add another argument (targetId) to channel_new so that properly
+ *	formated ABORTmessages can be sent to the router.
+ *	
+ *	Revision 1.114  2012-08-30 18:04:43  bergsma
+ *	Changes to ssl setState and getState for V 1.0 of openssl
+ *	
+ *	Revision 1.113  2012-08-17 20:08:14  bergsma
+ *	Updates to ssl_getState and ssl_setState
+ *	
+ *	Revision 1.112  2012-07-20 16:34:13  bergsma
+ *	changes to ssl_setstate and ssl_getstate to support openssl v1.0.1c
+ *	
  *	Revision 1.111  2012-04-03 20:59:38  bergsma
  *	Comments
  *	
@@ -436,6 +458,7 @@
 #endif
 
 #ifdef AS_WINDOWS
+#define W32_LEAN_AND_MEAN 
 #include <io.h>
 #include <winsock2.h>
 #define EWOULDBLOCK WSAEWOULDBLOCK
@@ -1679,6 +1702,7 @@ void *gHyp_sock_ctxInit( char *certFile, char *keyFile, char *password )
     SSL_library_init();
     SSL_load_error_strings();
     SSLeay_add_ssl_algorithms();
+    OpenSSL_add_all_digests();
 
     /*meth = SSLv23_server_method();*/
 
@@ -1692,7 +1716,7 @@ void *gHyp_sock_ctxInit( char *certFile, char *keyFile, char *password )
    * - SSLv3_method for SSL3
    * - TLSv1_method for TLS1
    */
-  meth = SSLv23_method ();
+  meth = (SSL_METHOD *) SSLv23_method ();
   ctx  = SSL_CTX_new ( meth );
 
   if ( ctx == NULL ) {
@@ -1882,8 +1906,14 @@ sData *gHyp_sock_getSSLstate( sSSL *pSSL  )
   EVP_MD 
     *evp_md = NULL ;
 
+  EVP_MD_CTX
+    *evp_digest = NULL ;
+
   SSL3_BUFFER 
     *ssl3_buf = NULL;  /* s3->rbuf and s3->wbuf */
+
+  SSL3_RECORD 
+    *ssl3_rec = NULL;  /* s3->rrec and s3->wrec */
 
   SSL_SESSION 
     *session = NULL;
@@ -1911,9 +1941,18 @@ sData *gHyp_sock_getSSLstate( sSSL *pSSL  )
   gHyp_data_newVectorSrc ( pChild, TYPE_INTEGER, 1, FALSE,  &ssl->type ) ;
   gHyp_data_append ( pParent, pChild ) ;
 
+  /* Skip method, these are standard */
+  /* Skip rbio,wbio,bbio, these are empty or null */
+
   pChild = gHyp_data_new ( "rwstate" ) ;
   gHyp_data_newVectorSrc ( pChild, TYPE_INTEGER, 1, FALSE,  &ssl->rwstate ) ;
   gHyp_data_append ( pParent, pChild ) ;
+
+  pChild = gHyp_data_new ( "in_handshake" ) ;
+  gHyp_data_newVectorSrc ( pChild, TYPE_INTEGER, 1, FALSE,  &ssl->in_handshake ) ;
+  gHyp_data_append ( pParent, pChild ) ;
+
+  /* handshake_func is default ssl3_accept(ssl_st*) */
 
   pChild = gHyp_data_new ( "server" ) ;
   gHyp_data_newVectorSrc ( pChild, TYPE_INTEGER, 1, FALSE,  &ssl->server ) ;
@@ -1939,13 +1978,21 @@ sData *gHyp_sock_getSSLstate( sSSL *pSSL  )
   gHyp_data_newVectorSrc ( pChild, TYPE_INTEGER, 1, FALSE,  &ssl->rstate ) ;
   gHyp_data_append ( pParent, pChild ) ;
 
-  /*
+  /* init_buf seems to be null, but here's how to initialize it, if it needs to be available */
+  /****************
   BUF_MEM *init_buf;	* buffer used during init *
   void *init_msg;	* pointer to handshake message body, set by ssl3_get_message() *
   int init_num;		* amount read/written *
   int init_off;		* amount read/written *
-  */
+  *******************/
 
+  /* packet and packet_len seem to be temp variables.
+   * packet_len can be zero, in which case we don't care about it.
+   */
+
+  /* The s2 structure is not used.  It is NULL */
+
+  /* The SSL3_STATE s3 structure is important */
   pChild = gHyp_data_new ( "s3" ) ;
 
   ssl3_state = ssl->s3 ;
@@ -1965,6 +2012,10 @@ sData *gHyp_sock_getSSLstate( sSSL *pSSL  )
 			    FALSE,  &ssl3_state->read_sequence ) ;
     gHyp_data_append ( pChild, pData ) ;
 
+    pData = gHyp_data_new ( "read_mac_secret_size" ) ;
+    gHyp_data_newVectorSrc ( pData, TYPE_INTEGER, 1, FALSE,  &ssl3_state->read_mac_secret_size ) ;
+    gHyp_data_append ( pChild, pData ) ;
+
     pData = gHyp_data_new ( "read_mac_secret" ) ;
     gHyp_data_newVectorSrc (  pData, TYPE_BINARY, sizeof(ssl3_state->read_mac_secret), 
 			    FALSE,  &ssl3_state->read_mac_secret ) ;
@@ -1973,6 +2024,10 @@ sData *gHyp_sock_getSSLstate( sSSL *pSSL  )
     pData = gHyp_data_new ( "write_sequence" ) ;
     gHyp_data_newVectorSrc (  pData, TYPE_BINARY, sizeof(ssl3_state->write_sequence), 
 			    FALSE,  &ssl3_state->write_sequence ) ;
+    gHyp_data_append ( pChild, pData ) ;
+
+    pData = gHyp_data_new ( "write_mac_secret_size" ) ;
+    gHyp_data_newVectorSrc ( pData, TYPE_INTEGER, 1, FALSE,  &ssl3_state->write_mac_secret_size ) ;
     gHyp_data_append ( pChild, pData ) ;
 
     pData = gHyp_data_new ( "write_mac_secret" ) ;
@@ -1996,6 +2051,10 @@ sData *gHyp_sock_getSSLstate( sSSL *pSSL  )
 
     pData = gHyp_data_new ( "empty_fragment_done" ) ;
     gHyp_data_newVectorSrc ( pData, TYPE_INTEGER, 1, FALSE,  &ssl3_state->empty_fragment_done ) ;
+    gHyp_data_append ( pChild, pData ) ;
+
+    pData = gHyp_data_new ( "init_extra" ) ;
+    gHyp_data_newVectorSrc ( pData, TYPE_INTEGER, 1, FALSE,  &ssl3_state->init_extra ) ;
     gHyp_data_append ( pChild, pData ) ;
 
     pData = gHyp_data_new ( "rbuf" ) ;
@@ -2047,12 +2106,210 @@ sData *gHyp_sock_getSSLstate( sSSL *pSSL  )
     }
     gHyp_data_append ( pChild, pData ) ;
 
+
+    pData = gHyp_data_new ( "rrec" ) ;
+    ssl3_rec = &ssl3_state->rrec ;
+
+    if ( ssl3_rec ) {
+
+      pValue = gHyp_data_new ( "data" ) ;
+      gHyp_data_newVectorSrc (  pValue, TYPE_BINARY, ssl3_rec->length, 
+			    FALSE,  &ssl3_rec->data+ssl3_rec->off ) ;
+      gHyp_data_append ( pData, pValue ) ;
+
+      pValue = gHyp_data_new ( "type" ) ;
+      gHyp_data_newVectorSrc ( pValue, TYPE_INTEGER, 1, FALSE,  &ssl3_rec->type ) ;
+      gHyp_data_append ( pData, pValue ) ;
+
+      pValue = gHyp_data_new ( "length" ) ;
+      gHyp_data_newVectorSrc ( pValue, TYPE_INTEGER, 1, FALSE,  &ssl3_rec->length ) ;
+      gHyp_data_append ( pData, pValue ) ;
+
+      pValue = gHyp_data_new ( "off" ) ;
+      gHyp_data_newVectorSrc ( pValue, TYPE_INTEGER, 1, FALSE,  &ssl3_rec->off ) ;
+      gHyp_data_append ( pData, pValue ) ;
+
+      pValue = gHyp_data_new ( "epoch" ) ;
+      gHyp_data_newVectorSrc ( pValue, TYPE_INTEGER, 1, FALSE,  &ssl3_rec->epoch ) ;
+      gHyp_data_append ( pData, pValue ) ;
+    }
+    gHyp_data_append ( pChild, pData ) ;
+
+
+    pData = gHyp_data_new ( "wrec" ) ;
+    ssl3_rec = &ssl3_state->wrec ;
+
+    if ( ssl3_rec ) {
+
+      pValue = gHyp_data_new ( "data" ) ;
+      gHyp_data_newVectorSrc (  pValue, TYPE_BINARY, ssl3_rec->length, 
+			    FALSE,  &ssl3_rec->data+ssl3_rec->off ) ;
+      gHyp_data_append ( pData, pValue ) ;
+
+      pValue = gHyp_data_new ( "type" ) ;
+      gHyp_data_newVectorSrc ( pValue, TYPE_INTEGER, 1, FALSE,  &ssl3_rec->type ) ;
+      gHyp_data_append ( pData, pValue ) ;
+
+      pValue = gHyp_data_new ( "length" ) ;
+      gHyp_data_newVectorSrc ( pValue, TYPE_INTEGER, 1, FALSE,  &ssl3_rec->length ) ;
+      gHyp_data_append ( pData, pValue ) ;
+
+      pValue = gHyp_data_new ( "off" ) ;
+      gHyp_data_newVectorSrc ( pValue, TYPE_INTEGER, 1, FALSE,  &ssl3_rec->off ) ;
+      gHyp_data_append ( pData, pValue ) ;
+
+      pValue = gHyp_data_new ( "epoch" ) ;
+      gHyp_data_newVectorSrc ( pValue, TYPE_INTEGER, 1, FALSE,  &ssl3_rec->epoch ) ;
+      gHyp_data_append ( pData, pValue ) ;
+    }
+    gHyp_data_append ( pChild, pData ) ;
+
+
+    pData = gHyp_data_new ( "alert_fragment_len" ) ;
+    gHyp_data_newVectorSrc ( pData, TYPE_INTEGER, 1, FALSE,  &ssl3_state->alert_fragment_len ) ;
+    gHyp_data_append ( pChild, pData ) ;
+
+    pData = gHyp_data_new ( "alert_fragment" ) ;
+    gHyp_data_newVectorSrc (  pData, TYPE_BINARY, sizeof(ssl3_state->alert_fragment), 
+			    FALSE,  &ssl3_state->alert_fragment ) ;
+    gHyp_data_append ( pChild, pData ) ;
+
+    pData = gHyp_data_new ( "handshake_fragment_len" ) ;
+    gHyp_data_newVectorSrc ( pData, TYPE_INTEGER, 1, FALSE,  &ssl3_state->handshake_fragment_len ) ;
+    gHyp_data_append ( pChild, pData ) ;
+
+    pData = gHyp_data_new ( "handshake_fragment" ) ;
+    gHyp_data_newVectorSrc (  pData, TYPE_BINARY, sizeof(ssl3_state->handshake_fragment), 
+			    FALSE,  &ssl3_state->handshake_fragment ) ;
+    gHyp_data_append ( pChild, pData ) ;
+
+    pData = gHyp_data_new ( "wnum" ) ;
+    gHyp_data_newVectorSrc ( pData, TYPE_INTEGER, 1, FALSE,  &ssl3_state->wnum ) ;
+    gHyp_data_append ( pChild, pData ) ;
+
+    pData = gHyp_data_new ( "wpend_tot" ) ;
+    gHyp_data_newVectorSrc ( pData, TYPE_INTEGER, 1, FALSE,  &ssl3_state->wpend_tot ) ;
+    gHyp_data_append ( pChild, pData ) ;
+
+    pData = gHyp_data_new ( "wpend_type" ) ;
+    gHyp_data_newVectorSrc ( pData, TYPE_INTEGER, 1, FALSE,  &ssl3_state->wpend_type ) ;
+    gHyp_data_append ( pChild, pData ) ;
+
+    pData = gHyp_data_new ( "wpend_ret" ) ;
+    gHyp_data_newVectorSrc ( pData, TYPE_INTEGER, 1, FALSE,  &ssl3_state->wpend_ret ) ;
+    gHyp_data_append ( pChild, pData ) ;
+
+    pData = gHyp_data_new ( "wpend_buf" ) ;
+    gHyp_data_newVectorSrc (  pData, TYPE_BINARY, (int) ssl3_state->wpend_tot, 
+			    FALSE,  (void*) &ssl3_state->wpend_buf ) ;
+    gHyp_data_append ( pChild, pData ) ;
+
+    evp_digest = (EVP_MD_CTX*) *(ssl3_state->handshake_dgst) ;
+
+    if ( evp_digest ) {
+
+      pData = gHyp_data_new ( "handshake_dgst" ) ;
+      evp_md = (EVP_MD*) evp_digest->digest ;
+
+      if ( evp_md ) {
+
+        pValue = gHyp_data_new ( "type" ) ;
+        gHyp_data_newVectorSrc ( pValue, TYPE_INTEGER, 1, FALSE,  &evp_md->type ) ;
+        gHyp_data_append ( pData, pValue ) ;
+    
+        pValue = gHyp_data_new ( "pkey_type" ) ;
+        gHyp_data_newVectorSrc ( pValue, TYPE_INTEGER, 1, FALSE,  &evp_md->pkey_type ) ;
+        gHyp_data_append ( pData, pValue ) ;
+
+        pValue = gHyp_data_new ( "md_size" ) ;
+        gHyp_data_newVectorSrc ( pValue, TYPE_INTEGER, 1, FALSE,  &evp_md->md_size ) ;
+        gHyp_data_append ( pData, pValue ) ;
+
+        pValue = gHyp_data_new ( "flags" ) ;
+        gHyp_data_newVectorSrc ( pValue, TYPE_INTEGER, 1, FALSE,  &evp_md->flags ) ;
+        gHyp_data_append ( pData, pValue ) ;
+
+        pValue = gHyp_data_new ( "required_pkey_type" ) ;
+        gHyp_data_newVectorSrc ( pValue, TYPE_BINARY, sizeof(evp_md->required_pkey_type), FALSE,  &evp_md->required_pkey_type ) ;
+        gHyp_data_append ( pData, pValue ) ;
+
+        pValue = gHyp_data_new ( "block_size" ) ;
+        gHyp_data_newVectorSrc ( pValue, TYPE_INTEGER, 1, FALSE,  &evp_md->block_size ) ;
+        gHyp_data_append ( pData, pValue ) ;
+
+        pValue = gHyp_data_new ( "ctx_size" ) ;
+        gHyp_data_newVectorSrc ( pValue, TYPE_INTEGER, 1, FALSE,  &evp_md->ctx_size ) ;
+        gHyp_data_append ( pData, pValue ) ;
+      }
+      gHyp_data_append ( pChild, pData ) ;
+
+      pData = gHyp_data_new ( "engine" ) ;
+      gHyp_data_newVectorSrc ( pData, TYPE_BINARY, 1, FALSE,  &evp_digest->engine ) ;
+      gHyp_data_append ( pChild, pData ) ;
+
+      pData = gHyp_data_new ( "flags" ) ;
+      gHyp_data_newVectorSrc ( pData, TYPE_INTEGER, 1, FALSE,  &evp_digest->flags ) ;
+      gHyp_data_append ( pChild, pData ) ;
+
+      /********  md_data is not NULL */
+      pData = gHyp_data_new ( "md_data" ) ;
+      gHyp_data_newVectorSrc ( pData, TYPE_BINARY, evp_md->md_size, FALSE, evp_digest->md_data ) ;
+      gHyp_data_append ( pChild, pData ) ;
+
+    }
+
+    /* Missing 
+      change_cipher_spec
+      warn_alert
+      fatal_alert
+      alert_dispatch
+      send_alert
+      renegotiate
+      total_renegotations
+      num_renegotiations
+    */
+
     pData = gHyp_data_new ( "in_read_app_data" ) ;
     gHyp_data_newVectorSrc ( pData, TYPE_INTEGER, 1, FALSE,  &ssl3_state->in_read_app_data ) ;
+    gHyp_data_append ( pChild, pData ) ;
+
+
+    pData = gHyp_data_new ( "previous_client_finished_len" ) ;
+    gHyp_data_newVectorSrc ( pData, TYPE_BYTE, 1, FALSE,  &ssl3_state->previous_client_finished_len ) ;
+    gHyp_data_append ( pChild, pData ) ;
+
+    pData = gHyp_data_new ( "previous_client_finished" ) ;
+    gHyp_data_newVectorSrc (  pData, TYPE_BINARY, sizeof(ssl3_state->previous_client_finished), 
+			    FALSE,  &ssl3_state->previous_client_finished ) ;
+    gHyp_data_append ( pChild, pData ) ;
+
+    pData = gHyp_data_new ( "previous_server_finished_len" ) ;
+    gHyp_data_newVectorSrc ( pData, TYPE_BYTE, 1, FALSE,  &ssl3_state->previous_server_finished_len ) ;
+    gHyp_data_append ( pChild, pData ) ;
+
+    pData = gHyp_data_new ( "previous_server_finished" ) ;
+    gHyp_data_newVectorSrc (  pData, TYPE_BINARY, sizeof(ssl3_state->previous_server_finished), 
+			    FALSE,  &ssl3_state->previous_server_finished ) ;
+    gHyp_data_append ( pChild, pData ) ;
+
+    /* Let's hope "tmp" is not needed, if so there's a bunch of stuff
+     * cert_verify_md, finish_md, peer_finish_md, etc..... 
+     *
+     *
+     */
+
+    pData = gHyp_data_new ( "send_connection_binding" ) ;
+    gHyp_data_newVectorSrc ( pData, TYPE_INTEGER, 1, FALSE,  &ssl3_state->send_connection_binding ) ;
+    gHyp_data_append ( pChild, pData ) ;
+
+    pData = gHyp_data_new ( "next_proto_neg_seen" ) ;
+    gHyp_data_newVectorSrc ( pData, TYPE_INTEGER, 1, FALSE,  &ssl3_state->next_proto_neg_seen ) ;
     gHyp_data_append ( pChild, pData ) ;
   }
 
   gHyp_data_append ( pParent, pChild ) ;
+
+  /* We don't need "d1" */
 
   pChild = gHyp_data_new ( "read_ahead" ) ;
   gHyp_data_newVectorSrc ( pChild, TYPE_INTEGER, 1, FALSE,  &ssl->read_ahead ) ;
@@ -2060,6 +2317,10 @@ sData *gHyp_sock_getSSLstate( sSSL *pSSL  )
 
   pChild = gHyp_data_new ( "hit" ) ;
   gHyp_data_newVectorSrc ( pChild, TYPE_INTEGER, 1, FALSE,  &ssl->hit ) ;
+  gHyp_data_append ( pParent, pChild ) ;
+
+  pChild = gHyp_data_new ( "mac_flags" ) ;
+  gHyp_data_newVectorSrc ( pChild, TYPE_INTEGER, 1, FALSE,  &ssl->mac_flags ) ;
   gHyp_data_append ( pParent, pChild ) ;
 
 #if 0
@@ -2164,37 +2425,59 @@ sData *gHyp_sock_getSSLstate( sSSL *pSSL  )
 
 
   pChild = gHyp_data_new ( "read_hash" ) ;
-  evp_md = (EVP_MD*) ssl->read_hash ;
 
-  if ( evp_md ) {
+  evp_digest = (EVP_MD_CTX*) ssl->read_hash ;
 
-    pData = gHyp_data_new ( "type" ) ;
-    gHyp_data_newVectorSrc ( pData, TYPE_INTEGER, 1, FALSE,  &evp_md->type ) ;
-    gHyp_data_append ( pChild, pData ) ;
+  if ( evp_digest ) {
+
+    pData = gHyp_data_new ( "digest" ) ;
+    evp_md = (EVP_MD*) ssl->read_hash->digest ;
+
+    if ( evp_md ) {
+
+      pValue = gHyp_data_new ( "type" ) ;
+      gHyp_data_newVectorSrc ( pValue, TYPE_INTEGER, 1, FALSE,  &evp_md->type ) ;
+      gHyp_data_append ( pData, pValue ) ;
     
-    pData = gHyp_data_new ( "pkey_type" ) ;
-    gHyp_data_newVectorSrc ( pData, TYPE_INTEGER, 1, FALSE,  &evp_md->pkey_type ) ;
+      pValue = gHyp_data_new ( "pkey_type" ) ;
+      gHyp_data_newVectorSrc ( pValue, TYPE_INTEGER, 1, FALSE,  &evp_md->pkey_type ) ;
+      gHyp_data_append ( pData, pValue ) ;
+
+      pValue = gHyp_data_new ( "md_size" ) ;
+      gHyp_data_newVectorSrc ( pValue, TYPE_INTEGER, 1, FALSE,  &evp_md->md_size ) ;
+      gHyp_data_append ( pData, pValue ) ;
+
+      pValue = gHyp_data_new ( "flags" ) ;
+      gHyp_data_newVectorSrc ( pValue, TYPE_INTEGER, 1, FALSE,  &evp_md->flags ) ;
+      gHyp_data_append ( pData, pValue ) ;
+
+      pValue = gHyp_data_new ( "required_pkey_type" ) ;
+      gHyp_data_newVectorSrc ( pValue, TYPE_BINARY, sizeof(evp_md->required_pkey_type), FALSE,  &evp_md->required_pkey_type ) ;
+      gHyp_data_append ( pData, pValue ) ;
+
+      pValue = gHyp_data_new ( "block_size" ) ;
+      gHyp_data_newVectorSrc ( pValue, TYPE_INTEGER, 1, FALSE,  &evp_md->block_size ) ;
+      gHyp_data_append ( pData, pValue ) ;
+
+      pValue = gHyp_data_new ( "ctx_size" ) ;
+      gHyp_data_newVectorSrc ( pValue, TYPE_INTEGER, 1, FALSE,  &evp_md->ctx_size ) ;
+      gHyp_data_append ( pData, pValue ) ;
+    }
     gHyp_data_append ( pChild, pData ) ;
 
-    pData = gHyp_data_new ( "md_size" ) ;
-    gHyp_data_newVectorSrc ( pData, TYPE_INTEGER, 1, FALSE,  &evp_md->md_size ) ;
+    pData = gHyp_data_new ( "engine" ) ;
+    gHyp_data_newVectorSrc ( pData, TYPE_BINARY, 1, FALSE,  &evp_digest->engine ) ;
     gHyp_data_append ( pChild, pData ) ;
 
     pData = gHyp_data_new ( "flags" ) ;
-    gHyp_data_newVectorSrc ( pData, TYPE_INTEGER, 1, FALSE,  &evp_md->flags ) ;
+    gHyp_data_newVectorSrc ( pData, TYPE_INTEGER, 1, FALSE,  &evp_digest->flags ) ;
     gHyp_data_append ( pChild, pData ) ;
 
-    pData = gHyp_data_new ( "required_pkey_type" ) ;
-    gHyp_data_newVectorSrc ( pData, TYPE_BINARY, sizeof(evp_md->required_pkey_type), FALSE,  &evp_md->required_pkey_type ) ;
+  /********  md_data is usually NULL *
+    pData = gHyp_data_new ( "md_data" ) ;
+    gHyp_data_newVectorSrc ( pData, TYPE_BINARY, evp_md->md_size, FALSE, evp_digest->md_data ) ;
     gHyp_data_append ( pChild, pData ) ;
-
-    pData = gHyp_data_new ( "block_size" ) ;
-    gHyp_data_newVectorSrc ( pData, TYPE_INTEGER, 1, FALSE,  &evp_md->block_size ) ;
-    gHyp_data_append ( pChild, pData ) ;
-
-    pData = gHyp_data_new ( "ctx_size" ) ;
-    gHyp_data_newVectorSrc ( pData, TYPE_INTEGER, 1, FALSE,  &evp_md->ctx_size ) ;
-    gHyp_data_append ( pChild, pData ) ;
+  *********/
   }
   gHyp_data_append ( pParent, pChild ) ;
 
@@ -2288,37 +2571,59 @@ sData *gHyp_sock_getSSLstate( sSSL *pSSL  )
   gHyp_data_append ( pParent, pChild ) ;
 
   pChild = gHyp_data_new ( "write_hash" ) ;
-  evp_md = (EVP_MD*) ssl->write_hash ;
 
-  if ( evp_md ) {
+  evp_digest = (EVP_MD_CTX*) ssl->write_hash ;
 
-    pData = gHyp_data_new ( "type" ) ;
-    gHyp_data_newVectorSrc ( pData, TYPE_INTEGER, 1, FALSE,  &evp_md->type ) ;
-    gHyp_data_append ( pChild, pData ) ;
+  if ( evp_digest ) {
+
+    pData = gHyp_data_new ( "digest" ) ;
+    evp_md = (EVP_MD*) ssl->write_hash->digest ;
+
+    if ( evp_md ) {
+
+      pValue = gHyp_data_new ( "type" ) ;
+      gHyp_data_newVectorSrc ( pValue, TYPE_INTEGER, 1, FALSE,  &evp_md->type ) ;
+      gHyp_data_append ( pData, pValue ) ;
     
-    pData = gHyp_data_new ( "pkey_type" ) ;
-    gHyp_data_newVectorSrc ( pData, TYPE_INTEGER, 1, FALSE,  &evp_md->pkey_type ) ;
+      pValue = gHyp_data_new ( "pkey_type" ) ;
+      gHyp_data_newVectorSrc ( pValue, TYPE_INTEGER, 1, FALSE,  &evp_md->pkey_type ) ;
+      gHyp_data_append ( pData, pValue ) ;
+
+      pValue = gHyp_data_new ( "md_size" ) ;
+      gHyp_data_newVectorSrc ( pValue, TYPE_INTEGER, 1, FALSE,  &evp_md->md_size ) ;
+      gHyp_data_append ( pData, pValue ) ;
+
+      pValue = gHyp_data_new ( "flags" ) ;
+      gHyp_data_newVectorSrc ( pValue, TYPE_INTEGER, 1, FALSE,  &evp_md->flags ) ;
+      gHyp_data_append ( pData, pValue ) ;
+
+      pValue = gHyp_data_new ( "required_pkey_type" ) ;
+      gHyp_data_newVectorSrc ( pValue, TYPE_BINARY, sizeof(evp_md->required_pkey_type), FALSE,  &evp_md->required_pkey_type ) ;
+      gHyp_data_append ( pData, pValue ) ;
+
+      pValue = gHyp_data_new ( "block_size" ) ;
+      gHyp_data_newVectorSrc ( pValue, TYPE_INTEGER, 1, FALSE,  &evp_md->block_size ) ;
+      gHyp_data_append ( pData, pValue ) ;
+
+      pValue = gHyp_data_new ( "ctx_size" ) ;
+      gHyp_data_newVectorSrc ( pValue, TYPE_INTEGER, 1, FALSE,  &evp_md->ctx_size ) ;
+      gHyp_data_append ( pData, pValue ) ;
+    }
     gHyp_data_append ( pChild, pData ) ;
 
-    pData = gHyp_data_new ( "md_size" ) ;
-    gHyp_data_newVectorSrc ( pData, TYPE_INTEGER, 1, FALSE,  &evp_md->md_size ) ;
+    pData = gHyp_data_new ( "engine" ) ;
+    gHyp_data_newVectorSrc ( pData, TYPE_BINARY, 1, FALSE,  &evp_digest->engine ) ;
     gHyp_data_append ( pChild, pData ) ;
 
     pData = gHyp_data_new ( "flags" ) ;
-    gHyp_data_newVectorSrc ( pData, TYPE_INTEGER, 1, FALSE,  &evp_md->flags ) ;
+    gHyp_data_newVectorSrc ( pData, TYPE_INTEGER, 1, FALSE,  &evp_digest->flags ) ;
     gHyp_data_append ( pChild, pData ) ;
 
-    pData = gHyp_data_new ( "required_pkey_type" ) ;
-    gHyp_data_newVectorSrc ( pData, TYPE_BINARY, sizeof(evp_md->required_pkey_type), FALSE,  &evp_md->required_pkey_type ) ;
+  /********  md_data is usually NULL *
+    pData = gHyp_data_new ( "md_data" ) ;
+    gHyp_data_newVectorSrc ( pData, TYPE_BINARY, evp_md->md_size, FALSE, evp_digest->md_data ) ;
     gHyp_data_append ( pChild, pData ) ;
-
-    pData = gHyp_data_new ( "block_size" ) ;
-    gHyp_data_newVectorSrc ( pData, TYPE_INTEGER, 1, FALSE,  &evp_md->block_size ) ;
-    gHyp_data_append ( pChild, pData ) ;
-
-    pData = gHyp_data_new ( "ctx_size" ) ;
-    gHyp_data_newVectorSrc ( pData, TYPE_INTEGER, 1, FALSE,  &evp_md->ctx_size ) ;
-    gHyp_data_append ( pChild, pData ) ;
+  *********/
   }
   gHyp_data_append ( pParent, pChild ) ;
 
@@ -2468,13 +2773,26 @@ sData *gHyp_sock_getSSLstate( sSSL *pSSL  )
 
   pChild = gHyp_data_new ( "filterbio" ) ;
   {
-
     pData = gHyp_data_new ( "num_read" ) ;
     gHyp_data_newVectorSrc ( pData, TYPE_INTEGER, 1, FALSE,  &pSSL->filterBio->num_read ) ;
     gHyp_data_append ( pChild, pData ) ;
 
     pData = gHyp_data_new ( "num_write" ) ;
     gHyp_data_newVectorSrc ( pData, TYPE_INTEGER, 1, FALSE,  &pSSL->filterBio->num_write ) ;
+    gHyp_data_append ( pChild, pData ) ;
+
+  }
+  gHyp_data_append ( pParent, pChild ) ;
+
+
+  pChild = gHyp_data_new ( "nextbio" ) ;
+  {
+    pData = gHyp_data_new ( "num_read" ) ;
+    gHyp_data_newVectorSrc ( pData, TYPE_INTEGER, 1, FALSE,  &pSSL->filterBio->next_bio->num_read ) ;
+    gHyp_data_append ( pChild, pData ) ;
+
+    pData = gHyp_data_new ( "num_write" ) ;
+    gHyp_data_newVectorSrc ( pData, TYPE_INTEGER, 1, FALSE,  &pSSL->filterBio->next_bio->num_write ) ;
     gHyp_data_append ( pChild, pData ) ;
 
   }
@@ -2505,8 +2823,14 @@ sLOGICAL gHyp_sock_setSSLstate ( sSSL *pSSL, sData *pSSLdata, sSSL *pSSLORIG)
   EVP_MD 
     *evp_md = NULL ;
 
+  EVP_MD_CTX
+    *evp_digest = NULL ;
+
   SSL3_BUFFER 
     *ssl3_buf = NULL;  /* s3->rbuf and s3->wbuf */
+
+  SSL3_RECORD 
+    *ssl3_rec = NULL;  /* s3->rrec and s3->wrec */
 
   SSL_SESSION 
     *session = NULL;
@@ -2515,18 +2839,25 @@ sLOGICAL gHyp_sock_setSSLstate ( sSSL *pSSL, sData *pSSLdata, sSSL *pSSLORIG)
     *ssl3_state = NULL ;
 
   int
-    ssl3_buf_len ;
+    version,
+    ssl3_buf_len,
+    ssl3_rec_len,
+    ssl3_wpend_tot,
+    md_size ;
 
   sLOGICAL
-    DO_DEBUG = 0,
+    DO_DEBUG = 1,
     DO_MAIN = 1,
     DO_CIPHER = 1,
     DO_CIPHER_INIT = 1,
+    DO_BIO = 0,
+    DO_S3 = 1,
+      DO_HASH = 1,
+      DO_WPEND = 0,
+      DO_HANDSHAKE = 0,
+      DO_REC = 0,
     DO_SESSION = 1,
     DO_SESSION_DI = 0,
-    DO_S3 = 1,
-    DO_BIO = 0,
-    DO_HASH = 1,
     DO_REHANDSHAKE = 0;
 
   ssl = pSSL->ssl ;
@@ -2536,23 +2867,25 @@ sLOGICAL gHyp_sock_setSSLstate ( sSSL *pSSL, sData *pSSLdata, sSSL *pSSLORIG)
   /*=============================================================*/
   if ( DO_BIO ) {
 
-  pData = gHyp_ssl_getData ( pSSLdata, "inbio", "num_read", "" ) ;
-  pSSL->inBio->num_read = gHyp_data_getInt( pData, 0, TRUE ) ;
+    /* Transfering the BIO data does not seem to provide any benifit */
 
-  pData = gHyp_ssl_getData ( pSSLdata, "inbio", "num_write", "" ) ;
-  pSSL->inBio->num_write = gHyp_data_getInt( pData, 0, TRUE ) ;
-  
-  pData = gHyp_ssl_getData ( pSSLdata, "filterbio", "num_read", "" ) ;
-  pSSL->filterBio->num_read = gHyp_data_getInt( pData, 0, TRUE ) ;
-  
-  pData = gHyp_ssl_getData ( pSSLdata, "filterbio", "num_write", "" ) ;
-  pSSL->filterBio->num_write = gHyp_data_getInt( pData, 0, TRUE ) ;
-  
-  pData = gHyp_ssl_getData ( pSSLdata, "outbio", "num_read", "" ) ;
-  pSSL->outBio->num_read = gHyp_data_getInt( pData, 0, TRUE ) ;
-  
-  pData = gHyp_ssl_getData ( pSSLdata, "outbio", "num_write", "" ) ;
-  pSSL->outBio->num_write = gHyp_data_getInt( pData, 0, TRUE ) ;
+    pData = gHyp_ssl_getData ( pSSLdata, "inbio", "num_read", "" ) ;
+    pSSL->inBio->num_read = gHyp_data_getInt( pData, 0, TRUE ) ;
+
+    pData = gHyp_ssl_getData ( pSSLdata, "inbio", "num_write", "" ) ;
+    pSSL->inBio->num_write = gHyp_data_getInt( pData, 0, TRUE ) ;
+    
+    pData = gHyp_ssl_getData ( pSSLdata, "filterbio", "num_read", "" ) ;
+    pSSL->filterBio->num_read = gHyp_data_getInt( pData, 0, TRUE ) ;
+    
+    pData = gHyp_ssl_getData ( pSSLdata, "filterbio", "num_write", "" ) ;
+    pSSL->filterBio->num_write = gHyp_data_getInt( pData, 0, TRUE ) ;
+
+    pData = gHyp_ssl_getData ( pSSLdata, "outbio", "num_read", "" ) ;
+    pSSL->outBio->num_read = gHyp_data_getInt( pData, 0, TRUE ) ;
+    
+    pData = gHyp_ssl_getData ( pSSLdata, "outbio", "num_write", "" ) ;
+    pSSL->outBio->num_write = gHyp_data_getInt( pData, 0, TRUE ) ;
 
   }
   /*=============================================================*/
@@ -2563,18 +2896,30 @@ sLOGICAL gHyp_sock_setSSLstate ( sSSL *pSSL, sData *pSSLdata, sSSL *pSSLORIG)
   if ( DO_MAIN ) {
 
   pData = gHyp_ssl_getData ( pSSLdata, "version", "", "" ) ;
-  ssl->version = gHyp_data_getInt( pData, 0, TRUE ) ;
- 
-  if (ssl->version == TLS1_VERSION)
-    ssl->method = TLSv1_server_method();
-  else
-    ssl->method = SSLv3_server_method();
+  version = gHyp_data_getInt( pData, 0, TRUE ) ;
+
+  if ( ssl->version != version ) {
+    
+    ssl->version = version ;
+
+    if (ssl->version == SSL3_VERSION )
+      ssl->method = SSLv3_server_method();
+    else if ( ssl->version == TLS1_VERSION )
+      ssl->method = TLSv1_server_method();
+    else if ( ssl->version == TLS1_1_VERSION ) 
+      ssl->method = TLSv1_1_server_method();
+    else if ( ssl->version == TLS1_2_VERSION )
+      ssl->method = TLSv1_2_server_method();
+  }
 
   pData = gHyp_ssl_getData ( pSSLdata, "type", "", "" ) ;
   ssl->type = gHyp_data_getInt( pData, 0, TRUE ) ;
 
   pData = gHyp_ssl_getData ( pSSLdata, "rwstate", "", "" ) ;
   ssl->rwstate = gHyp_data_getInt( pData, 0, TRUE ) ;
+
+  pData = gHyp_ssl_getData ( pSSLdata, "in_handshake", "", "" ) ;
+  ssl->in_handshake = gHyp_data_getInt( pData, 0, TRUE ) ;
 
   pData = gHyp_ssl_getData ( pSSLdata, "server", "", "" ) ;
   ssl->server = gHyp_data_getInt( pData, 0, TRUE ) ;
@@ -2624,6 +2969,9 @@ sLOGICAL gHyp_sock_setSSLstate ( sSSL *pSSL, sData *pSSLdata, sSSL *pSSLORIG)
   pData = gHyp_ssl_getData ( pSSLdata, "client_version",  "", "" ) ;
   ssl->client_version = gHyp_data_getInt( pData, 0, TRUE ) ;
 
+  /* the session_id_context is used to ensure sessions are only reused
+   * in the appropriate context 
+   */
   pData = gHyp_ssl_getData ( pSSLdata, "sid_ctx_length",  "", "" ) ;
   ssl->sid_ctx_length = gHyp_data_getInt( pData, 0, TRUE ) ;
 
@@ -2634,181 +2982,182 @@ sLOGICAL gHyp_sock_setSSLstate ( sSSL *pSSL, sData *pSSLdata, sSSL *pSSLORIG)
 
   }
   /*=============================================================*/
-
-
   /*=============================================================*/
   if ( DO_CIPHER ) {
 
-  /* READ CIPHER CONTEXT */
+    /* These are the ones being used, the ones in SSL_SESSION are
+     * the ones to be 'copied' into these ones 
+     */
 
-  if ( ssl->enc_read_ctx ) {
+    /* READ CIPHER CONTEXT */
+    if ( ssl->enc_read_ctx ) {
 
-    EVP_CIPHER_CTX_cleanup ( ssl->enc_read_ctx ) ;
-    /*OPENSSL_free ( ssl->enc_read_ctx ) ;*/
-    ssl->enc_read_ctx = NULL ;
-  }
+      EVP_CIPHER_CTX_cleanup ( ssl->enc_read_ctx ) ;
+      /*OPENSSL_free ( ssl->enc_read_ctx ) ;*/
+      ssl->enc_read_ctx = NULL ;
+    }
 
-  if ( !ssl->enc_read_ctx ) {
+    if ( !ssl->enc_read_ctx ) {
 
-    if ( DO_DEBUG ) gHyp_util_debug("Allocating new read cipher context");
-    ssl->enc_read_ctx = (EVP_CIPHER_CTX *) OPENSSL_malloc ( sizeof(EVP_CIPHER_CTX) ) ;
+      if ( DO_DEBUG ) gHyp_util_debug("Allocating new read cipher context");
+      ssl->enc_read_ctx = (EVP_CIPHER_CTX *) OPENSSL_malloc ( sizeof(EVP_CIPHER_CTX) ) ;
 
-  }
+    }
 
-  evp_cipher_ctx = ssl->enc_read_ctx ;
-  if ( !evp_cipher_ctx ) 
-    return gHyp_util_logWarning ( "No cipher read context" ) ;
+    evp_cipher_ctx = ssl->enc_read_ctx ;
+    if ( !evp_cipher_ctx ) 
+      return gHyp_util_logWarning ( "No cipher read context" ) ;
 
-  if ( DO_CIPHER_INIT ) {
-    /* This resets cipher, oiv, iv, key_len, and cipher_data */
-    if ( DO_DEBUG ) gHyp_util_debug("Initializing new read cipher context");
-    EVP_CIPHER_CTX_init( evp_cipher_ctx );
-  }
+    if ( DO_CIPHER_INIT ) {
+      /* This resets cipher, oiv, iv, key_len, and cipher_data */
+      if ( DO_DEBUG ) gHyp_util_debug("Initializing new read cipher context");
+      EVP_CIPHER_CTX_init( evp_cipher_ctx );
+    }
 
-  pData = gHyp_ssl_getData ( pSSLdata, "enc_read_ctx","encrypt","" );
-  evp_cipher_ctx->encrypt = gHyp_data_getInt ( pData, 0, TRUE ) ;
+    pData = gHyp_ssl_getData ( pSSLdata, "enc_read_ctx","encrypt","" );
+    evp_cipher_ctx->encrypt = gHyp_data_getInt ( pData, 0, TRUE ) ;
 
-  pData = gHyp_ssl_getData ( pSSLdata, "enc_read_ctx","buf_len","" );
-  evp_cipher_ctx->buf_len = gHyp_data_getInt ( pData, 0, TRUE ) ;
+    pData = gHyp_ssl_getData ( pSSLdata, "enc_read_ctx","buf_len","" );
+    evp_cipher_ctx->buf_len = gHyp_data_getInt ( pData, 0, TRUE ) ;
 
-  pData = gHyp_ssl_getData ( pSSLdata, "enc_read_ctx","oiv","" );
-  memcpy( evp_cipher_ctx->oiv,
-	  gHyp_data_buffer ( pData, 0 ),
-	  gHyp_data_bufferLen ( pData, 0 ) ) ;
-
-  pData = gHyp_ssl_getData ( pSSLdata, "enc_read_ctx","iv","" );
-  memcpy( evp_cipher_ctx->iv, 
-	  gHyp_data_buffer ( pData, 0 ),
-	  gHyp_data_bufferLen ( pData, 0 ) ) ;
-
-  
-  pData = gHyp_ssl_getData ( pSSLdata, "enc_read_ctx","buf","" );
-  memcpy( evp_cipher_ctx->buf,
-	  gHyp_data_buffer ( pData, 0 ),
-	  gHyp_data_bufferLen ( pData, 0 ) ) ;
-
-  pData = gHyp_ssl_getData ( pSSLdata, "enc_read_ctx","num","" );
-  evp_cipher_ctx->num = gHyp_data_getInt ( pData, 0, TRUE ) ;
-
-  pData = gHyp_ssl_getData ( pSSLdata, "enc_read_ctx","key_len","" );
-  evp_cipher_ctx->key_len = gHyp_data_getInt ( pData, 0, TRUE ) ;
-
-  pData = gHyp_ssl_getData ( pSSLdata, "enc_read_ctx","flags","" );
-  evp_cipher_ctx->flags = gHyp_data_getInt ( pData, 0, TRUE ) ;
-
-  pData = gHyp_ssl_getData ( pSSLdata, "enc_read_ctx","cipher_data","" );
-  
-  if ( !evp_cipher_ctx->cipher_data ) {
-
-    if ( DO_DEBUG ) gHyp_util_debug("Allocating new read cipher data of %d bytes",gHyp_data_bufferLen ( pData, 0 ));
-    evp_cipher_ctx->cipher_data = (void *)OPENSSL_malloc(gHyp_data_bufferLen ( pData, 0 ));
-
-  }
-
-  memcpy (  (sBYTE*) evp_cipher_ctx->cipher_data,
+    pData = gHyp_ssl_getData ( pSSLdata, "enc_read_ctx","oiv","" );
+    memcpy( evp_cipher_ctx->oiv,
 	    gHyp_data_buffer ( pData, 0 ),
 	    gHyp_data_bufferLen ( pData, 0 ) ) ;
-	    
 
-  pData = gHyp_ssl_getData ( pSSLdata, "enc_read_ctx","final_used","" );
-  evp_cipher_ctx->final_used = gHyp_data_getInt ( pData, 0, TRUE ) ;
-
-  pData = gHyp_ssl_getData ( pSSLdata, "enc_read_ctx","block_mask","" );
-  evp_cipher_ctx->block_mask = gHyp_data_getInt ( pData, 0, TRUE ) ;
-
-  pData = gHyp_ssl_getData ( pSSLdata, "enc_read_ctx","final","" );
-  memcpy( evp_cipher_ctx->final,
-	  gHyp_data_buffer ( pData, 0 ),
-	  gHyp_data_bufferLen ( pData, 0 ) ) ;
+    pData = gHyp_ssl_getData ( pSSLdata, "enc_read_ctx","iv","" );
+    memcpy( evp_cipher_ctx->iv, 
+	    gHyp_data_buffer ( pData, 0 ),
+	    gHyp_data_bufferLen ( pData, 0 ) ) ;
 
     
-  pData = gHyp_ssl_getData ( pSSLdata, "enc_read_ctx","cipher","nid" );
-  if ( !evp_cipher_ctx->cipher ) {
-    if ( DO_DEBUG ) gHyp_util_debug("Creating new read cipher by nid %d",gHyp_data_getInt ( pData, 0, TRUE ));
-    evp_cipher_ctx->cipher = EVP_get_cipherbynid( gHyp_data_getInt ( pData, 0, TRUE )  ) ;
-  }
-
-  /* WRITE CIPHER CONTEXT */
-
-  if ( ssl->enc_write_ctx ) {
-    EVP_CIPHER_CTX_cleanup ( ssl->enc_write_ctx ) ;
-    /*OPENSSL_free ( ssl->enc_write_ctx ) ;*/
-    ssl->enc_write_ctx = NULL ;
-  }
-
-  if ( !ssl->enc_write_ctx ) {
-    if ( DO_DEBUG ) gHyp_util_debug("Allocating new write cipher context");
-    ssl->enc_write_ctx = (EVP_CIPHER_CTX *) OPENSSL_malloc ( sizeof(EVP_CIPHER_CTX) ) ;
-  }
-
-  evp_cipher_ctx = ssl->enc_write_ctx ;
-  if ( !evp_cipher_ctx ) 
-    return gHyp_util_logWarning ( "No cipher write context" ) ;
-  
-  if ( DO_CIPHER_INIT ) {
-    if ( DO_DEBUG ) gHyp_util_debug("Initializing write cipher context");
-    EVP_CIPHER_CTX_init( evp_cipher_ctx );
-  }
-
-  pData = gHyp_ssl_getData ( pSSLdata, "enc_write_ctx","encrypt","" );
-  evp_cipher_ctx->encrypt = gHyp_data_getInt ( pData, 0, TRUE ) ;
-
-  pData = gHyp_ssl_getData ( pSSLdata, "enc_write_ctx","buf_len","" );
-  evp_cipher_ctx->buf_len = gHyp_data_getInt ( pData, 0, TRUE ) ;
-
-
-  pData = gHyp_ssl_getData ( pSSLdata, "enc_write_ctx","oiv","" );
-  memcpy( evp_cipher_ctx->oiv,
-	  gHyp_data_buffer ( pData, 0 ),
-	  gHyp_data_bufferLen ( pData, 0 ) ) ;
-
-  pData = gHyp_ssl_getData ( pSSLdata, "enc_write_ctx","iv","" );
-  memcpy( evp_cipher_ctx->iv, 
-	  gHyp_data_buffer ( pData, 0 ),
-	  gHyp_data_bufferLen ( pData, 0 ) ) ;
-
-  pData = gHyp_ssl_getData ( pSSLdata, "enc_write_ctx","buf","" );
-  memcpy( evp_cipher_ctx->buf,
-	  gHyp_data_buffer ( pData, 0 ),
-	  gHyp_data_bufferLen ( pData, 0 ) ) ;
-
-  pData = gHyp_ssl_getData ( pSSLdata, "enc_write_ctx","num","" );
-  evp_cipher_ctx->num = gHyp_data_getInt ( pData, 0, TRUE ) ;
-
-  pData = gHyp_ssl_getData ( pSSLdata, "enc_write_ctx","key_len","" );
-  evp_cipher_ctx->key_len = gHyp_data_getInt ( pData, 0, TRUE ) ;
-
-  pData = gHyp_ssl_getData ( pSSLdata, "enc_write_ctx","flags","" );
-  evp_cipher_ctx->flags = gHyp_data_getInt ( pData, 0, TRUE ) ;
-
-  pData = gHyp_ssl_getData ( pSSLdata, "enc_write_ctx","cipher_data","" );
-  if ( !evp_cipher_ctx->cipher_data ) {
-    if ( DO_DEBUG ) gHyp_util_debug("Allocating new write cipher data of %d bytes",gHyp_data_bufferLen ( pData, 0 ));
-    evp_cipher_ctx->cipher_data = (void *)OPENSSL_malloc(gHyp_data_bufferLen ( pData, 0 ));
-  }
-  
-  memcpy (  (sBYTE*) evp_cipher_ctx->cipher_data,
+    pData = gHyp_ssl_getData ( pSSLdata, "enc_read_ctx","buf","" );
+    memcpy( evp_cipher_ctx->buf,
 	    gHyp_data_buffer ( pData, 0 ),
 	    gHyp_data_bufferLen ( pData, 0 ) ) ;
+
+    pData = gHyp_ssl_getData ( pSSLdata, "enc_read_ctx","num","" );
+    evp_cipher_ctx->num = gHyp_data_getInt ( pData, 0, TRUE ) ;
+
+    pData = gHyp_ssl_getData ( pSSLdata, "enc_read_ctx","key_len","" );
+    evp_cipher_ctx->key_len = gHyp_data_getInt ( pData, 0, TRUE ) ;
+
+    pData = gHyp_ssl_getData ( pSSLdata, "enc_read_ctx","flags","" );
+    evp_cipher_ctx->flags = gHyp_data_getInt ( pData, 0, TRUE ) ;
+
+    pData = gHyp_ssl_getData ( pSSLdata, "enc_read_ctx","cipher_data","" );
+    
+    if ( !evp_cipher_ctx->cipher_data ) {
+
+      if ( DO_DEBUG ) gHyp_util_debug("Allocating new read cipher data ,of %d bytes",gHyp_data_bufferLen ( pData, 0 ));
+      evp_cipher_ctx->cipher_data = (void *)OPENSSL_malloc(gHyp_data_bufferLen ( pData, 0 ));
+
+    }
+
+    memcpy (  (sBYTE*) evp_cipher_ctx->cipher_data,
+	      gHyp_data_buffer ( pData, 0 ),
+	      gHyp_data_bufferLen ( pData, 0 ) ) ;
   	    
-  pData = gHyp_ssl_getData ( pSSLdata, "enc_write_ctx","final_used","" );
-  evp_cipher_ctx->final_used = gHyp_data_getInt ( pData, 0, TRUE ) ;
 
-  pData = gHyp_ssl_getData ( pSSLdata, "enc_write_ctx","block_mask","" );
-  evp_cipher_ctx->block_mask = gHyp_data_getInt ( pData, 0, TRUE ) ;
+    pData = gHyp_ssl_getData ( pSSLdata, "enc_read_ctx","final_used","" );
+    evp_cipher_ctx->final_used = gHyp_data_getInt ( pData, 0, TRUE ) ;
 
-  pData = gHyp_ssl_getData ( pSSLdata, "enc_write_ctx","final","" );
-  memcpy( evp_cipher_ctx->final,
-	  gHyp_data_buffer ( pData, 0 ),
-	  gHyp_data_bufferLen ( pData, 0 ) ) ;
+    pData = gHyp_ssl_getData ( pSSLdata, "enc_read_ctx","block_mask","" );
+    evp_cipher_ctx->block_mask = gHyp_data_getInt ( pData, 0, TRUE ) ;
+
+    pData = gHyp_ssl_getData ( pSSLdata, "enc_read_ctx","final","" );
+    memcpy( evp_cipher_ctx->final,
+	    gHyp_data_buffer ( pData, 0 ),
+	    gHyp_data_bufferLen ( pData, 0 ) ) ;
+
+      
+    pData = gHyp_ssl_getData ( pSSLdata, "enc_read_ctx","cipher","nid" );
+    if ( !evp_cipher_ctx->cipher ) {
+      if ( DO_DEBUG ) gHyp_util_debug("Creating new read cipher by nid %d",gHyp_data_getInt ( pData, 0, TRUE ));
+      evp_cipher_ctx->cipher = EVP_get_cipherbynid( gHyp_data_getInt ( pData, 0, TRUE )  ) ;
+    }
+
+    /* WRITE CIPHER CONTEXT */
+
+    if ( ssl->enc_write_ctx ) {
+      EVP_CIPHER_CTX_cleanup ( ssl->enc_write_ctx ) ;
+      /*OPENSSL_free ( ssl->enc_write_ctx ) ;*/
+      ssl->enc_write_ctx = NULL ;
+    }
+
+    if ( !ssl->enc_write_ctx ) {
+      if ( DO_DEBUG ) gHyp_util_debug("Allocating new write cipher context");
+      ssl->enc_write_ctx = (EVP_CIPHER_CTX *) OPENSSL_malloc ( sizeof(EVP_CIPHER_CTX) ) ;
+    }
+
+    evp_cipher_ctx = ssl->enc_write_ctx ;
+    if ( !evp_cipher_ctx ) 
+      return gHyp_util_logWarning ( "No cipher write context" ) ;
+    
+    if ( DO_CIPHER_INIT ) {
+      if ( DO_DEBUG ) gHyp_util_debug("Initializing write cipher context");
+      EVP_CIPHER_CTX_init( evp_cipher_ctx );
+    }
+
+    pData = gHyp_ssl_getData ( pSSLdata, "enc_write_ctx","encrypt","" );
+    evp_cipher_ctx->encrypt = gHyp_data_getInt ( pData, 0, TRUE ) ;
+
+    pData = gHyp_ssl_getData ( pSSLdata, "enc_write_ctx","buf_len","" );
+    evp_cipher_ctx->buf_len = gHyp_data_getInt ( pData, 0, TRUE ) ;
 
 
-  pData = gHyp_ssl_getData ( pSSLdata, "enc_write_ctx","cipher","nid" );
-  if ( !evp_cipher_ctx->cipher ) {
-    if ( DO_DEBUG ) gHyp_util_debug("Creating new write cipher by nid %d",gHyp_data_getInt ( pData, 0, TRUE ));
-    evp_cipher_ctx->cipher = EVP_get_cipherbynid( gHyp_data_getInt ( pData, 0, TRUE )  ) ;
-  }
-  
+    pData = gHyp_ssl_getData ( pSSLdata, "enc_write_ctx","oiv","" );
+    memcpy( evp_cipher_ctx->oiv,
+	    gHyp_data_buffer ( pData, 0 ),
+	    gHyp_data_bufferLen ( pData, 0 ) ) ;
+
+    pData = gHyp_ssl_getData ( pSSLdata, "enc_write_ctx","iv","" );
+    memcpy( evp_cipher_ctx->iv, 
+	    gHyp_data_buffer ( pData, 0 ),
+	    gHyp_data_bufferLen ( pData, 0 ) ) ;
+
+    pData = gHyp_ssl_getData ( pSSLdata, "enc_write_ctx","buf","" );
+    memcpy( evp_cipher_ctx->buf,
+	    gHyp_data_buffer ( pData, 0 ),
+	    gHyp_data_bufferLen ( pData, 0 ) ) ;
+
+    pData = gHyp_ssl_getData ( pSSLdata, "enc_write_ctx","num","" );
+    evp_cipher_ctx->num = gHyp_data_getInt ( pData, 0, TRUE ) ;
+
+    pData = gHyp_ssl_getData ( pSSLdata, "enc_write_ctx","key_len","" );
+    evp_cipher_ctx->key_len = gHyp_data_getInt ( pData, 0, TRUE ) ;
+
+    pData = gHyp_ssl_getData ( pSSLdata, "enc_write_ctx","flags","" );
+    evp_cipher_ctx->flags = gHyp_data_getInt ( pData, 0, TRUE ) ;
+
+    pData = gHyp_ssl_getData ( pSSLdata, "enc_write_ctx","cipher_data","" );
+    if ( !evp_cipher_ctx->cipher_data ) {
+      if ( DO_DEBUG ) gHyp_util_debug("Allocating new write cipher data of %d bytes",gHyp_data_bufferLen ( pData, 0 ));
+      evp_cipher_ctx->cipher_data = (void *)OPENSSL_malloc(gHyp_data_bufferLen ( pData, 0 ));
+    }
+    
+    memcpy (  (sBYTE*) evp_cipher_ctx->cipher_data,
+	      gHyp_data_buffer ( pData, 0 ),
+	      gHyp_data_bufferLen ( pData, 0 ) ) ;
+    	    
+    pData = gHyp_ssl_getData ( pSSLdata, "enc_write_ctx","final_used","" );
+    evp_cipher_ctx->final_used = gHyp_data_getInt ( pData, 0, TRUE ) ;
+
+    pData = gHyp_ssl_getData ( pSSLdata, "enc_write_ctx","block_mask","" );
+    evp_cipher_ctx->block_mask = gHyp_data_getInt ( pData, 0, TRUE ) ;
+
+    pData = gHyp_ssl_getData ( pSSLdata, "enc_write_ctx","final","" );
+    memcpy( evp_cipher_ctx->final,
+	    gHyp_data_buffer ( pData, 0 ),
+	    gHyp_data_bufferLen ( pData, 0 ) ) ;
+
+
+    pData = gHyp_ssl_getData ( pSSLdata, "enc_write_ctx","cipher","nid" );
+    if ( !evp_cipher_ctx->cipher ) {
+      if ( DO_DEBUG ) gHyp_util_debug("Creating new write cipher by nid %d",gHyp_data_getInt ( pData, 0, TRUE ));
+      evp_cipher_ctx->cipher = EVP_get_cipherbynid( gHyp_data_getInt ( pData, 0, TRUE )  ) ;
+    }
+    
 
   }
   /*=============================================================*/
@@ -2816,146 +3165,351 @@ sLOGICAL gHyp_sock_setSSLstate ( sSSL *pSSL, sData *pSSLdata, sSSL *pSSLORIG)
   /*=============================================================*/
   if ( DO_HASH ) {
 
-  
-  pData = gHyp_ssl_getData ( pSSLdata, "read_hash","type","" );
-  if ( !ssl->read_hash ) {
-    if ( DO_DEBUG ) gHyp_util_debug("Allocating new read hash of nid %d",gHyp_data_getInt ( pData, 0, TRUE));
-    ssl->read_hash = EVP_get_digestbynid( gHyp_data_getInt ( pData, 0, TRUE ) ) ;
-  }
+    /* As with enc_read_ctx and enc_write_ctx, the read_hash and 
+     * write hash are the ones being used, the ones in SSL_SESSION are
+     * the ones to be 'copied' into these ones.
+     *
+     * It seems important that we manage these structures, however
+     * if they are not present, the SSL infrastructure appears to
+     * reconstruct them automatically.
+     */
 
-  evp_md = (EVP_MD*) ssl->read_hash ;
-  if ( !evp_md ) return gHyp_util_logWarning ( "No read hash" ) ;
+    pData = gHyp_ssl_getData ( pSSLdata, "read_hash","digest","type" );
+    if ( !ssl->read_hash ) {
+      if ( DO_DEBUG ) gHyp_util_debug("Creating new read hash from nid %d",gHyp_data_getInt ( pData, 0, TRUE ));
+      ssl->read_hash = EVP_MD_CTX_create() ;
+      EVP_DigestInit_ex( ssl->read_hash, EVP_get_digestbynid( gHyp_data_getInt(pData,0,TRUE)), NULL);
+    }
 
-  pData = gHyp_ssl_getData ( pSSLdata, "write_hash","type","" );
-  if ( !ssl->write_hash ) {
-    if ( DO_DEBUG ) gHyp_util_debug("Creating new write hash from nid %d",gHyp_data_getInt ( pData, 0, TRUE ));
-    ssl->write_hash = EVP_get_digestbynid( gHyp_data_getInt ( pData, 0, TRUE )  ) ;
-  }
+    evp_digest = (EVP_MD_CTX*) ssl->read_hash ;
+    if ( !evp_digest ) return gHyp_util_logWarning ( "No read hash" ) ;
 
-  evp_md = (EVP_MD*) ssl->write_hash ;
-  if ( !evp_md ) return gHyp_util_logWarning ( "No write hash" ) ;
+    evp_md = (EVP_MD*) evp_digest->digest ;
+    if ( !evp_md ) return gHyp_util_logWarning ( "No read hash digest" ) ;
 
+    pData = gHyp_ssl_getData ( pSSLdata, "write_hash","digest","type" );
+    if ( !ssl->write_hash ) {
+      if ( DO_DEBUG ) gHyp_util_debug("Creating new write hash from nid %d",gHyp_data_getInt ( pData, 0, TRUE ));
+      ssl->write_hash = EVP_MD_CTX_create() ;
+      EVP_DigestInit_ex( ssl->write_hash, EVP_get_digestbynid( gHyp_data_getInt(pData,0,TRUE)), NULL);
+    }
 
+    evp_digest = (EVP_MD_CTX*) ssl->write_hash ;
+    if ( !evp_digest ) return gHyp_util_logWarning ( "No write hash" ) ;
+
+    evp_md = (EVP_MD*) evp_digest->digest ;
+    if ( !evp_md ) return gHyp_util_logWarning ( "No write hash digest" ) ;
   }
   /*=============================================================*/
 
   /*=============================================================*/
   if ( DO_S3 ) {
 
-  /* S3 STATE */
+    /* S3 STATE */
 
-  /*if ( !ssl->s3) ssl3_new(ssl);*/
-  ssl3_state = ssl->s3 ;
-  if ( !ssl3_state ) 
-    return gHyp_util_logWarning ( "Could not initialize ssl-s3 state" );
+    /*if ( !ssl->s3) ssl3_new(ssl);*/
+    ssl3_state = ssl->s3 ;
+    if ( !ssl3_state ) 
+      return gHyp_util_logWarning ( "Could not initialize ssl->s3 state" );
 
-  pData = gHyp_ssl_getData ( pSSLdata, "s3", "flags", "" ) ;
-  ssl3_state->flags = gHyp_data_getInt ( pData, 0, TRUE ) ;
+    pData = gHyp_ssl_getData ( pSSLdata, "s3", "flags", "" ) ;
+    ssl3_state->flags = gHyp_data_getInt ( pData, 0, TRUE ) ;
 
-  pData = gHyp_ssl_getData ( pSSLdata, "s3", "delay_buf_pop_ret", "" ) ;
-  ssl3_state->delay_buf_pop_ret = gHyp_data_getInt ( pData, 0, TRUE ) ;
+    pData = gHyp_ssl_getData ( pSSLdata, "s3", "delay_buf_pop_ret", "" ) ;
+    ssl3_state->delay_buf_pop_ret = gHyp_data_getInt ( pData, 0, TRUE ) ;
 
-  pData = gHyp_ssl_getData ( pSSLdata, "s3",  "read_sequence",	"" ) ;
-  memcpy ( ssl3_state->read_sequence, 
-	   gHyp_data_buffer ( pData, 0 ),
-	   gHyp_data_bufferLen ( pData, 0 ) ) ;
-
-
-  pData = gHyp_ssl_getData ( pSSLdata, "s3",  "read_mac_secret", "" ) ;
-  memcpy ( ssl3_state->read_mac_secret, 
-	   gHyp_data_buffer ( pData, 0 ),
-	   gHyp_data_bufferLen ( pData, 0 ) ) ;
-
-  
-  pData = gHyp_ssl_getData ( pSSLdata, "s3",  "write_sequence",	"" ) ;
-  memcpy ( ssl3_state->write_sequence, 
-	   gHyp_data_buffer ( pData, 0 ),
-	   gHyp_data_bufferLen ( pData, 0 ) ) ;
-
-
-  pData = gHyp_ssl_getData ( pSSLdata, "s3",  "write_mac_secret", "" ) ;
-  memcpy ( ssl3_state->write_mac_secret, 
-	   gHyp_data_buffer ( pData, 0 ),
-	   gHyp_data_bufferLen ( pData, 0 ) ) ;
-
-  pData = gHyp_ssl_getData ( pSSLdata, "s3",  "server_random","" ) ;
-  memcpy ( ssl3_state->server_random, 
-	   gHyp_data_buffer ( pData, 0 ),
-	   gHyp_data_bufferLen ( pData, 0 ) ) ;
-
-  pData = gHyp_ssl_getData ( pSSLdata, "s3",  "client_random", "" ) ;
-  memcpy ( ssl3_state->client_random, 
-	   gHyp_data_buffer ( pData, 0 ),
-	   gHyp_data_bufferLen ( pData, 0 ) ) ;
-
-  pData = gHyp_ssl_getData ( pSSLdata, "s3",  "need_empty_fragments", "" ) ;
-  ssl3_state->need_empty_fragments = gHyp_data_getInt ( pData, 0, TRUE ) ;
-
-  pData = gHyp_ssl_getData ( pSSLdata, "s3",  "empty_fragment_done", "" ) ;
-  ssl3_state->empty_fragment_done = gHyp_data_getInt ( pData, 0, TRUE ) ;
-
-  /* S3 State Read Buf */
-
-  ssl3_buf = (SSL3_BUFFER*) &ssl->s3->rbuf ;
-  if ( !ssl3_buf ) return gHyp_util_logWarning ( "No ssl->s3->rbuf" ) ;
-
-  pData = gHyp_ssl_getData ( pSSLdata, "s3", "rbuf", "len" ) ;
-  ssl3_buf_len	= gHyp_data_getInt ( pData, 0, TRUE ) ;
-
-  if ( ssl3_buf->len == 0 && !ssl3_buf->buf ) {
-    /* No rbuf, allocate one */
-    if ( DO_DEBUG ) gHyp_util_debug("Initializing new ssl3 rbuf of %d bytes",ssl3_buf_len);
-    ssl3_buf->buf = OPENSSL_malloc ( ssl3_buf_len ) ;
-  }
-
-  ssl3_buf->len	= ssl3_buf_len ;
-
-  pData = gHyp_ssl_getData ( pSSLdata, "s3", "rbuf", "offset" ) ;
-  ssl3_buf->offset = gHyp_data_getInt ( pData, 0, TRUE ) ;
-
-  pData = gHyp_ssl_getData ( pSSLdata, "s3", "rbuf", "left" ) ;
-  ssl3_buf->left = gHyp_data_getInt ( pData, 0, TRUE ) ;
-
-  if ( ssl3_buf->left > 0 ) {
-    if ( DO_DEBUG ) gHyp_util_debug("S3 RBUF left = %d",ssl3_buf->left ) ;
-    pData = gHyp_ssl_getData ( pSSLdata, "s3", "rbuf", "buf" ) ;
-    memcpy ( ssl3_buf->buf+ssl3_buf->offset, 
+    pData = gHyp_ssl_getData ( pSSLdata, "s3",  "read_sequence", "" ) ;
+    memcpy ( ssl3_state->read_sequence, 
 	     gHyp_data_buffer ( pData, 0 ),
-	     ssl3_buf->left ) ;
-  }
+	     gHyp_data_bufferLen ( pData, 0 ) ) ;
 
-  /* S3 State Write Buf */
-  ssl3_buf = (SSL3_BUFFER*) &ssl->s3->wbuf ;
-  if ( !ssl3_buf ) return gHyp_util_logWarning ( "No ssl->s3->wbuf" ) ;
+    pData = gHyp_ssl_getData ( pSSLdata, "s3", "read_mac_secret_size", "" ) ;
+    ssl3_state->read_mac_secret_size = gHyp_data_getInt ( pData, 0, TRUE ) ;
 
-  pData = gHyp_ssl_getData ( pSSLdata, "s3", "wbuf", "len" ) ;
-  ssl3_buf_len	= gHyp_data_getInt ( pData, 0, TRUE ) ;
-
-  if ( ssl3_buf->len == 0 && !ssl3_buf->buf ) {
-    /* No wbuf, allocate one */
-    if ( DO_DEBUG ) gHyp_util_debug("Initializing new ssl3 wbuf of %d bytes",ssl3_buf_len);
-    ssl3_buf->buf = OPENSSL_malloc ( ssl3_buf_len ) ;
-  }
-
-  ssl3_buf->len	= ssl3_buf_len ;
-
-  pData = gHyp_ssl_getData ( pSSLdata, "s3", "wbuf", "offset" ) ;
-  ssl3_buf->offset = gHyp_data_getInt ( pData, 0, TRUE ) ;
- 
-  pData = gHyp_ssl_getData ( pSSLdata, "s3", "wbuf", "left" ) ;
-  ssl3_buf->left = gHyp_data_getInt ( pData, 0, TRUE ) ;
-
-  if ( ssl3_buf->left > 0 ) {
-    if ( DO_DEBUG ) gHyp_util_debug("S3 wbuf left = %d",ssl3_buf->left ) ;
-    pData = gHyp_ssl_getData ( pSSLdata, "s3", "wbuf", "buf" ) ;
-    memcpy ( ssl3_buf->buf+ssl3_buf->offset, 
+    pData = gHyp_ssl_getData ( pSSLdata, "s3",  "read_mac_secret", "" ) ;
+    memcpy ( ssl3_state->read_mac_secret, 
 	     gHyp_data_buffer ( pData, 0 ),
-	     ssl3_buf->left ) ;
-  }
+	     gHyp_data_bufferLen ( pData, 0 ) ) ;
 
-  pData = gHyp_ssl_getData ( pSSLdata, "s3", "in_read_app_data", "" ) ;
-  ssl3_state->in_read_app_data = gHyp_data_getInt ( pData, 0, TRUE ) ;
+    
+    pData = gHyp_ssl_getData ( pSSLdata, "s3",  "write_sequence",	"" ) ;
+    memcpy ( ssl3_state->write_sequence, 
+	     gHyp_data_buffer ( pData, 0 ),
+	     gHyp_data_bufferLen ( pData, 0 ) ) ;
 
+    pData = gHyp_ssl_getData ( pSSLdata, "s3", "write_mac_secret_size", "" ) ;
+    ssl3_state->write_mac_secret_size = gHyp_data_getInt ( pData, 0, TRUE ) ;
+
+    pData = gHyp_ssl_getData ( pSSLdata, "s3",  "write_mac_secret", "" ) ;
+    memcpy ( ssl3_state->write_mac_secret, 
+	     gHyp_data_buffer ( pData, 0 ),
+	     gHyp_data_bufferLen ( pData, 0 ) ) ;
+
+    pData = gHyp_ssl_getData ( pSSLdata, "s3",  "server_random","" ) ;
+    memcpy ( ssl3_state->server_random, 
+	     gHyp_data_buffer ( pData, 0 ),
+	     gHyp_data_bufferLen ( pData, 0 ) ) ;
+
+    pData = gHyp_ssl_getData ( pSSLdata, "s3",  "client_random", "" ) ;
+    memcpy ( ssl3_state->client_random, 
+	     gHyp_data_buffer ( pData, 0 ),
+	     gHyp_data_bufferLen ( pData, 0 ) ) ;
+
+    pData = gHyp_ssl_getData ( pSSLdata, "s3",  "need_empty_fragments", "" ) ;
+    ssl3_state->need_empty_fragments = gHyp_data_getInt ( pData, 0, TRUE ) ;
+
+    pData = gHyp_ssl_getData ( pSSLdata, "s3",  "empty_fragment_done", "" ) ;
+    ssl3_state->empty_fragment_done = gHyp_data_getInt ( pData, 0, TRUE ) ;
+
+    pData = gHyp_ssl_getData ( pSSLdata, "s3",  "init_extra", "" ) ;
+    ssl3_state->init_extra = gHyp_data_getInt ( pData, 0, TRUE ) ;
+
+    /* S3 State Read Buf */
+
+    ssl3_buf = (SSL3_BUFFER*) &ssl->s3->rbuf ;
+    if ( !ssl3_buf ) return gHyp_util_logWarning ( "No ssl->s3->rbuf" ) ;
+
+    pData = gHyp_ssl_getData ( pSSLdata, "s3", "rbuf", "len" ) ;
+    ssl3_buf_len	= gHyp_data_getInt ( pData, 0, TRUE ) ;
+
+    if ( ssl3_buf_len > 0 && !ssl3_buf->buf ) {
+      /* No rbuf, allocate one */
+      if ( DO_DEBUG ) gHyp_util_debug("Initializing new ssl3 rbuf of %d bytes",ssl3_buf_len);
+      ssl3_buf->buf = OPENSSL_malloc ( ssl3_buf_len ) ;
+    }
+
+    ssl3_buf->len	= ssl3_buf_len ;
+
+    pData = gHyp_ssl_getData ( pSSLdata, "s3", "rbuf", "offset" ) ;
+    ssl3_buf->offset = gHyp_data_getInt ( pData, 0, TRUE ) ;
+
+    pData = gHyp_ssl_getData ( pSSLdata, "s3", "rbuf", "left" ) ;
+    ssl3_buf->left = gHyp_data_getInt ( pData, 0, TRUE ) ;
+
+    if ( ssl3_buf->left > 0 ) {
+      if ( DO_DEBUG ) gHyp_util_debug("S3 RBUF left = %d",ssl3_buf->left ) ;
+      pData = gHyp_ssl_getData ( pSSLdata, "s3", "rbuf", "buf" ) ;
+      memcpy ( ssl3_buf->buf+ssl3_buf->offset, 
+	       gHyp_data_buffer ( pData, 0 ),
+	       ssl3_buf->left ) ;
+    }
+
+    /* S3 State Write Buf */
+    ssl3_buf = (SSL3_BUFFER*) &ssl->s3->wbuf ;
+    if ( !ssl3_buf ) return gHyp_util_logWarning ( "No ssl->s3->wbuf" ) ;
+
+    pData = gHyp_ssl_getData ( pSSLdata, "s3", "wbuf", "len" ) ;
+    ssl3_buf_len	= gHyp_data_getInt ( pData, 0, TRUE ) ;
+
+    if ( ssl3_buf_len > 0 && !ssl3_buf->buf ) {
+      /* No wbuf, allocate one */
+      if ( DO_DEBUG ) gHyp_util_debug("Initializing new ssl3 wbuf of %d bytes",ssl3_buf_len);
+      ssl3_buf->buf = OPENSSL_malloc ( ssl3_buf_len ) ;
+    }
+    ssl3_buf->len	= ssl3_buf_len ;
+
+    pData = gHyp_ssl_getData ( pSSLdata, "s3", "wbuf", "offset" ) ;
+    ssl3_buf->offset = gHyp_data_getInt ( pData, 0, TRUE ) ;
+   
+    pData = gHyp_ssl_getData ( pSSLdata, "s3", "wbuf", "left" ) ;
+    ssl3_buf->left = gHyp_data_getInt ( pData, 0, TRUE ) ;
+
+    if ( ssl3_buf->left > 0 ) {
+      if ( DO_DEBUG ) gHyp_util_debug("S3 wbuf left = %d",ssl3_buf->left ) ;
+      pData = gHyp_ssl_getData ( pSSLdata, "s3", "wbuf", "buf" ) ;
+      memcpy ( ssl3_buf->buf+ssl3_buf->offset, 
+	       gHyp_data_buffer ( pData, 0 ),
+	       ssl3_buf->left ) ;
+    }
+    /*=============================================================*/
+
+    /*=============================================================*/
+
+    if ( DO_REC ) {
+
+      /* S3 State Write Rec */
+      ssl3_rec = (SSL3_RECORD*) &ssl->s3->wrec ;
+      if ( !ssl3_rec ) return gHyp_util_logWarning ( "No ssl->s3->wrec" ) ;
+
+      pData = gHyp_ssl_getData ( pSSLdata, "s3", "wrec", "length" ) ;
+      ssl3_rec_len	= gHyp_data_getInt ( pData, 0, TRUE ) ;
+
+      if ( ssl3_rec_len > 0 && !ssl3_rec->data ) {
+        /* No wrec, allocate one */
+        if ( DO_DEBUG ) gHyp_util_debug("Initializing new ssl3 wrec of %d bytes",ssl3_rec_len);
+        ssl3_rec->data = OPENSSL_malloc ( ssl3_rec_len ) ;
+        ssl3_rec->input = ssl3_rec->data ;
+      }
+      ssl3_rec->length = ssl3_rec_len ;
+
+      pData = gHyp_ssl_getData ( pSSLdata, "s3", "wrec", "off" ) ;
+      ssl3_rec->off = gHyp_data_getInt ( pData, 0, TRUE ) ;
+     
+      pData = gHyp_ssl_getData ( pSSLdata, "s3", "wrec", "type" ) ;
+      ssl3_rec->type = gHyp_data_getInt ( pData, 0, TRUE ) ;
+
+      pData = gHyp_ssl_getData ( pSSLdata, "s3", "wrec", "epoch" ) ;
+      ssl3_rec->epoch = gHyp_data_getInt ( pData, 0, TRUE ) ;
+
+      /*
+      if ( ssl3_rec->length > 0 ) {
+        if ( DO_DEBUG ) gHyp_util_debug("S3 wrec length = %d",ssl3_rec->length ) ;
+        pData = gHyp_ssl_getData ( pSSLdata, "s3", "wrec", "data" ) ;
+        memcpy ( ssl3_rec->data+ssl3_rec->off, 
+	         gHyp_data_buffer ( pData, 0 ),
+	         ssl3_rec->length ) ;
+      }
+      */
+
+      /* S3 State Read Rec */
+      ssl3_rec = (SSL3_RECORD*) &ssl->s3->rrec ;
+      if ( !ssl3_rec ) return gHyp_util_logWarning ( "No ssl->s3->rrec" ) ;
+
+      pData = gHyp_ssl_getData ( pSSLdata, "s3", "rrec", "length" ) ;
+      ssl3_rec_len	= gHyp_data_getInt ( pData, 0, TRUE ) ;
+
+      if ( ssl3_rec_len > 0 && !ssl3_rec->data ) {
+        /* No wrec, allocate one */
+        if ( DO_DEBUG ) gHyp_util_debug("Initializing new ssl3 rrec of %d bytes",ssl3_rec_len);
+        ssl3_rec->data = OPENSSL_malloc ( ssl3_rec_len ) ;
+        ssl3_rec->input = ssl3_rec->data ;
+      }
+
+      ssl3_rec->length = ssl3_rec_len ;
+
+      pData = gHyp_ssl_getData ( pSSLdata, "s3", "rrec", "off" ) ;
+      ssl3_rec->off = gHyp_data_getInt ( pData, 0, TRUE ) ;
+     
+      pData = gHyp_ssl_getData ( pSSLdata, "s3", "rrec", "type" ) ;
+      ssl3_rec->type = gHyp_data_getInt ( pData, 0, TRUE ) ;
+
+      pData = gHyp_ssl_getData ( pSSLdata, "s3", "rrec", "epoch" ) ;
+      ssl3_rec->epoch = gHyp_data_getInt ( pData, 0, TRUE ) ;
+
+      if ( ssl3_rec->length > 0 ) {
+        if ( DO_DEBUG ) gHyp_util_debug("S3 rrec length = %d",ssl3_rec->length ) ;
+        pData = gHyp_ssl_getData ( pSSLdata, "s3", "rrec", "data" ) ;
+        memcpy ( ssl3_rec->data+ssl3_rec->off, 
+	         gHyp_data_buffer ( pData, 0 ),
+	         ssl3_rec->length ) ;
+      }
+    }
+    /*=============================================================*/
+
+    /*=============================================================*/
+
+    if ( DO_WPEND ) {
+
+      pData = gHyp_ssl_getData ( pSSLdata, "s3", "wnum", "" ) ;
+      ssl3_state->wnum = gHyp_data_getInt ( pData, 0, TRUE ) ;
+
+      pData = gHyp_ssl_getData ( pSSLdata, "s3", "wpend_type", "" ) ;
+      ssl3_state->wpend_type = gHyp_data_getInt ( pData, 0, TRUE ) ;
+
+      pData = gHyp_ssl_getData ( pSSLdata, "s3", "wpend_ret", "" ) ;
+      ssl3_state->wpend_ret = gHyp_data_getInt ( pData, 0, TRUE ) ;
+      
+      pData = gHyp_ssl_getData ( pSSLdata, "s3", "wpend_tot", "" ) ;
+      ssl3_wpend_tot = gHyp_data_getInt ( pData, 0, TRUE ) ;
+
+      if ( ssl3_wpend_tot > 0 && !ssl3_state->wpend_buf ) {
+        if ( DO_DEBUG ) gHyp_util_debug("Initializing new ssl3 wpend_buf of %d bytes",ssl3_wpend_tot);
+        ssl3_state->wpend_buf = OPENSSL_malloc ( ssl3_wpend_tot ) ;
+      }
+
+      ssl3_state->wpend_tot = ssl3_wpend_tot ;
+
+      if ( ssl3_wpend_tot > 0 ) {
+        if ( DO_DEBUG ) gHyp_util_debug("S3 wpend_buf length = %d",ssl3_wpend_tot ) ;
+        pData = gHyp_ssl_getData ( pSSLdata, "s3", "wpend_buf", "" ) ;
+        memcpy ( ssl3_state->wpend_buf, 
+	         gHyp_data_buffer ( pData, 0 ),
+	         ssl3_wpend_tot ) ;
+      }
+    }
+    /*=============================================================*/
+
+    /*=============================================================*/
+    if ( DO_HANDSHAKE ) {
+
+      if ( DO_DEBUG ) gHyp_util_debug("handshake digest");
+      pData = gHyp_ssl_getData ( pSSLdata, "s3", "handshake_fragment_len", "" ) ;
+      ssl3_state->handshake_fragment_len = gHyp_data_getInt ( pData, 0, TRUE ) ;
+
+      pData = gHyp_ssl_getData ( pSSLdata, "s3",  "handshake_fragment", "" ) ;
+      memcpy ( ssl3_state->handshake_fragment, 
+	       gHyp_data_buffer ( pData, 0 ),
+	       gHyp_data_bufferLen ( pData, 0 ) ) ;
+
+      /**** Handshake digest *****/
+      pData = gHyp_ssl_getData ( pSSLdata, "s3","handshake_dgst","type" );
+      if ( !ssl3_state->handshake_dgst || !(*ssl3_state->handshake_dgst) ) {
+        if ( DO_DEBUG ) gHyp_util_debug("Allocating new handshake digest of nid %d",gHyp_data_getInt ( pData, 0, TRUE));
+        evp_digest = EVP_get_digestbynid( gHyp_data_getInt ( pData, 0, TRUE ) ) ;
+        if ( DO_DEBUG ) gHyp_util_debug("Setting new handshake digest");
+        ssl3_state->handshake_dgst = &evp_digest ;
+      }
+
+      evp_digest = (EVP_MD_CTX*) *(ssl3_state->handshake_dgst) ;
+      if ( !evp_digest ) return gHyp_util_logWarning ( "No handshake digest" ) ;
+
+      evp_md = (EVP_MD*) evp_digest->digest ;
+      if ( !evp_md ) return gHyp_util_logWarning ( "No handshake digest evp" ) ;
+
+        if ( DO_DEBUG ) gHyp_util_debug("Load MD data");
+      /* Load md_data */
+      pData = gHyp_ssl_getData ( pSSLdata, "s3", "handshake_dgst", "md_size" ) ;
+      md_size = gHyp_data_getInt ( pData, 0, TRUE ) ;
+
+      /*
+      if ( md_size > 0 ) {
+        if ( DO_DEBUG ) gHyp_util_debug("S3 handshake digest md_data length = %d",md_size ) ;
+        pData = gHyp_ssl_getData ( pSSLdata, "s3", "handshake_dgst", "md_data" ) ;
+        memcpy ( evp_digest->md_data, 
+	         gHyp_data_buffer ( pData, 0 ),
+	         md_size ) ;
+      }
+      evp_md->md_size = md_size ;
+      */
+    }
+
+    /*=============================================================*/
+
+    /*=============================================================*/
+
+    pData = gHyp_ssl_getData ( pSSLdata, "s3", "alert_fragment_len", "" ) ;
+    ssl3_state->alert_fragment_len = gHyp_data_getInt ( pData, 0, TRUE ) ;
+
+    pData = gHyp_ssl_getData ( pSSLdata, "s3",  "alert_fragment", "" ) ;
+    memcpy ( ssl3_state->alert_fragment, 
+	     gHyp_data_buffer ( pData, 0 ),
+	     gHyp_data_bufferLen ( pData, 0 ) ) ;
+
+    pData = gHyp_ssl_getData ( pSSLdata, "s3", "in_read_app_data", "" ) ;
+    ssl3_state->in_read_app_data = gHyp_data_getInt ( pData, 0, TRUE ) ;
+
+    pData = gHyp_ssl_getData ( pSSLdata, "s3", "previous_client_finished_len", "" ) ;
+    ssl3_state->previous_client_finished_len = gHyp_data_getInt ( pData, 0, TRUE ) ;
+    
+    pData = gHyp_ssl_getData ( pSSLdata, "s3",  "previous_client_finished", "" ) ;
+    memcpy ( ssl3_state->previous_client_finished, 
+	     gHyp_data_buffer ( pData, 0 ),
+	     gHyp_data_bufferLen ( pData, 0 ) ) ;
+
+    pData = gHyp_ssl_getData ( pSSLdata, "s3", "previous_server_finished_len", "" ) ;
+    ssl3_state->previous_server_finished_len = gHyp_data_getInt ( pData, 0, TRUE ) ;
+    
+    pData = gHyp_ssl_getData ( pSSLdata, "s3",  "previous_server_finished", "" ) ;
+    memcpy ( ssl3_state->previous_server_finished, 
+	     gHyp_data_buffer ( pData, 0 ),
+	     gHyp_data_bufferLen ( pData, 0 ) ) ;
+
+    pData = gHyp_ssl_getData ( pSSLdata, "s3", "send_connection_binding", "" ) ;
+    ssl3_state->send_connection_binding = gHyp_data_getInt ( pData, 0, TRUE ) ;
+    
+    pData = gHyp_ssl_getData ( pSSLdata, "s3", "next_proto_neg_seen", "" ) ;
+    ssl3_state->next_proto_neg_seen = gHyp_data_getInt ( pData, 0, TRUE ) ;
+    
   }
   /*=============================================================*/
 
@@ -2967,106 +3521,102 @@ sLOGICAL gHyp_sock_setSSLstate ( sSSL *pSSL, sData *pSSLdata, sSSL *pSSLORIG)
     gHyp_sock_setSessionObject ( pSSL, pData );
 
   }
+
   if ( DO_SESSION ) {
 
-  /* SESSION */
+    /* SESSION */
 
-  if ( !ssl->session ) {
-    if ( DO_DEBUG ) gHyp_util_debug("Allocating new session");
-    ssl->session = (SSL_SESSION *) OPENSSL_malloc ( sizeof ( SSL_SESSION ) ) ;
+    if ( !ssl->session ) {
+      if ( DO_DEBUG ) gHyp_util_debug("Allocating new session");
+      ssl->session = (SSL_SESSION *) OPENSSL_malloc ( sizeof ( SSL_SESSION ) ) ;
+      session = (SSL_SESSION*) ssl->session ;
+      memset ( session, 0, sizeof ( SSL_SESSION ) ) ;
+    }
+
     session = (SSL_SESSION*) ssl->session ;
-    memset ( session, 0, sizeof ( SSL_SESSION ) ) ;
-  }
 
-  session = (SSL_SESSION*) ssl->session ;
+    pData = gHyp_ssl_getData ( pSSLdata, "session", "ssl_version", "" ) ;
+    session->ssl_version = gHyp_data_getInt( pData, 0, TRUE ) ;
 
-  pData = gHyp_ssl_getData ( pSSLdata, "session", "ssl_version", "" ) ;
-  session->ssl_version = gHyp_data_getInt( pData, 0, TRUE ) ;
+    pData = gHyp_ssl_getData ( pSSLdata, "session",  "key_arg_length", "" ) ;
+    session->key_arg_length = gHyp_data_getInt( pData, 0, TRUE ) ;
 
-  pData = gHyp_ssl_getData ( pSSLdata, "session",  "key_arg_length", "" ) ;
-  session->key_arg_length = gHyp_data_getInt( pData, 0, TRUE ) ;
-
-  pData = gHyp_ssl_getData ( pSSLdata, "session",  "key_arg", "" ) ;
-  memcpy( session->key_arg,
-	  gHyp_data_buffer ( pData, 0 ),
-	  gHyp_data_bufferLen ( pData, 0 ) ) ;
+    pData = gHyp_ssl_getData ( pSSLdata, "session",  "key_arg", "" ) ;
+    memcpy( session->key_arg,
+	    gHyp_data_buffer ( pData, 0 ),
+	    gHyp_data_bufferLen ( pData, 0 ) ) ;
 
 
-  pData = gHyp_ssl_getData ( pSSLdata, "session",  "master_key_length", "" ) ;
-  session->master_key_length = gHyp_data_getInt( pData, 0, TRUE ) ;
+    pData = gHyp_ssl_getData ( pSSLdata, "session",  "master_key_length", "" ) ;
+    session->master_key_length = gHyp_data_getInt( pData, 0, TRUE ) ;
 
-  pData = gHyp_ssl_getData ( pSSLdata, "session",  "master_key", "" ) ;
-  memcpy( session->master_key,
-	  gHyp_data_buffer ( pData, 0 ),
-	  gHyp_data_bufferLen ( pData, 0 ) ) ;
+    pData = gHyp_ssl_getData ( pSSLdata, "session",  "master_key", "" ) ;
+    memcpy( session->master_key,
+	    gHyp_data_buffer ( pData, 0 ),
+	    gHyp_data_bufferLen ( pData, 0 ) ) ;
 
 
-  pData = gHyp_ssl_getData ( pSSLdata, "session",  "session_id_length", "" ) ;
-  session->session_id_length = gHyp_data_getInt( pData, 0, TRUE ) ;
+    pData = gHyp_ssl_getData ( pSSLdata, "session",  "session_id_length", "" ) ;
+    session->session_id_length = gHyp_data_getInt( pData, 0, TRUE ) ;
 
-  pData = gHyp_ssl_getData ( pSSLdata, "session",  "session_id", "" ) ;
-  memcpy( session->session_id, 
-	  gHyp_data_buffer ( pData, 0 ),
-	  gHyp_data_bufferLen ( pData, 0 ) ) ;
+    pData = gHyp_ssl_getData ( pSSLdata, "session",  "session_id", "" ) ;
+    memcpy( session->session_id, 
+	    gHyp_data_buffer ( pData, 0 ),
+	    gHyp_data_bufferLen ( pData, 0 ) ) ;
 
-  pData = gHyp_ssl_getData ( pSSLdata, "session",  "sid_ctx_length", "" ) ;
-  session->sid_ctx_length = gHyp_data_getInt( pData, 0, TRUE ) ;
+    pData = gHyp_ssl_getData ( pSSLdata, "session",  "sid_ctx_length", "" ) ;
+    session->sid_ctx_length = gHyp_data_getInt( pData, 0, TRUE ) ;
 
-  pData = gHyp_ssl_getData ( pSSLdata, "session",  "sid_ctx", "" ) ;
-  memcpy( session->sid_ctx,
-	  gHyp_data_buffer ( pData, 0 ),
-	  gHyp_data_bufferLen ( pData, 0 ) ) ;
+    pData = gHyp_ssl_getData ( pSSLdata, "session",  "sid_ctx", "" ) ;
+    memcpy( session->sid_ctx,
+	    gHyp_data_buffer ( pData, 0 ),
+	    gHyp_data_bufferLen ( pData, 0 ) ) ;
 
-  
-  pData = gHyp_ssl_getData ( pSSLdata, "session",  "not_resumable", "" ) ;
-  session->not_resumable = gHyp_data_getInt( pData, 0, TRUE ) ;
+    
+    pData = gHyp_ssl_getData ( pSSLdata, "session",  "not_resumable", "" ) ;
+    session->not_resumable = gHyp_data_getInt( pData, 0, TRUE ) ;
 
-  pData = gHyp_ssl_getData ( pSSLdata, "session",  "verify_result", "" ) ;
-  session->verify_result = gHyp_data_getInt( pData, 0, TRUE ) ;
+    pData = gHyp_ssl_getData ( pSSLdata, "session",  "verify_result", "" ) ;
+    session->verify_result = gHyp_data_getInt( pData, 0, TRUE ) ;
 
-  pData = gHyp_ssl_getData ( pSSLdata, "session",  "references", "" ) ;
-  session->references = gHyp_data_getInt( pData, 0, TRUE ) ;
+    pData = gHyp_ssl_getData ( pSSLdata, "session",  "references", "" ) ;
+    session->references = gHyp_data_getInt( pData, 0, TRUE ) ;
 
-  pData = gHyp_ssl_getData ( pSSLdata, "session",  "timeout", "" ) ;
-  session->timeout = gHyp_data_getInt( pData, 0, TRUE ) ;
+    pData = gHyp_ssl_getData ( pSSLdata, "session",  "timeout", "" ) ;
+    session->timeout = gHyp_data_getInt( pData, 0, TRUE ) ;
 
-  pData = gHyp_ssl_getData ( pSSLdata, "session",  "time", "" ) ;
-  session->time = gHyp_data_getInt( pData, 0, TRUE ) ;
+    pData = gHyp_ssl_getData ( pSSLdata, "session",  "time", "" ) ;
+    session->time = gHyp_data_getInt( pData, 0, TRUE ) ;
 
-  pData = gHyp_ssl_getData ( pSSLdata, "session",  "compress_meth", "" ) ;
-  session->compress_meth = gHyp_data_getInt( pData, 0, TRUE ) ;
+    pData = gHyp_ssl_getData ( pSSLdata, "session",  "compress_meth", "" ) ;
+    session->compress_meth = gHyp_data_getInt( pData, 0, TRUE ) ;
 
-  pData = gHyp_ssl_getData ( pSSLdata, "session",  "cipher_id", "" ) ;
-  session->cipher_id = gHyp_data_getInt( pData, 0, TRUE ) ;
+    pData = gHyp_ssl_getData ( pSSLdata, "session",  "cipher_id", "" ) ;
+    session->cipher_id = gHyp_data_getInt( pData, 0, TRUE ) ;
 
   }
   /*=============================================================*/
 
-  /*
-  pSSL->ssl = pSSLORIG->ssl ;
-  pSSL->outBio = pSSLORIG->outBio ; 
-  pSSL->filterBio = pSSLORIG->filterBio ;
-  pSSL->inBio = pSSLORIG->inBio ;
-  */
 
-  /*
-  pSSL->isClient = pSSLORIG->isClient ;
-  strcpy(pSSL->condition,pSSLORIG->condition);
-  pSSL->sslCtx = pSSLORIG->sslCtx ;
-  pSSL->state = pSSLORIG->state ;
-  */
-
-  /* What did we forget? 
-  ssl->init_msg = pSSLORIG->ssl->init_msg ;
-  ssl->packet = pSSLORIG->ssl->packet ;
-  session->cipher = pSSLORIG->ssl->session->cipher ;
-  ssl->cert = pSSLORIG->ssl->cert ;
-  ssl->session = pSSLORIG->ssl->session ;
+  /* Testing *********************************
+    pSSL->outBio = pSSLORIG->outBio ; 
+    pSSL->filterBio = pSSLORIG->filterBio ;
+    pSSL->inBio = pSSLORIG->inBio ;
+    pSSL->ssl = pSSLORIG->ssl ;
+    pSSL->isClient = pSSLORIG->isClient ;
+    strcpy(pSSL->condition,pSSLORIG->condition);
+    pSSL->sslCtx = pSSLORIG->sslCtx ;
+    pSSL->state = pSSLORIG->state ;
+    ssl->init_msg = pSSLORIG->ssl->init_msg ;
+    ssl->packet = pSSLORIG->ssl->packet ;
+    session->cipher = pSSLORIG->ssl->session->cipher ;
+    ssl->cert = pSSLORIG->ssl->cert ;
+    ssl->session = pSSLORIG->ssl->session ;
   */
 
   /*=============================================================*/
   if ( DO_REHANDSHAKE ) {
-  
+
     SSL_renegotiate(ssl);
     SSL_do_handshake(ssl);
   }
@@ -4092,6 +4642,8 @@ static int lHyp_sock_doSSL( sSSL* pSSL,
 
   int 
     n,
+    tickCount1,
+    tickCount2,
     maxWait,
     sslTimeout,
     outBioPending,
@@ -4174,6 +4726,19 @@ static int lHyp_sock_doSSL( sSSL* pSSL,
     }
   }
 
+  /********************************************************************
+   *                 BIO_read                     BIO_write 
+   *                (filterBio)   ____________     (outBio)
+   *              /____(2)______ |            | /____(3)______
+   *     APP       _____________ |   ENGINE   |  _____________  SOCKET   
+   * (decrypted)       (1)     / |____________|      (4)     /  (encrypted)
+   *                 BIO_write                    BIO_nread
+   *                (filterBio)                   (outBio)
+   *
+   *  Modes:  1) isWriter (APP->SOCKET)  2) isReader (SOCKET->APP)
+   *  States: 1) shouldRead  2) shouldWrite  3) filterBioPending
+   *
+   ********************************************************************/
   pBuf = pMsg ;
   pSSLbuf = gzSSLbuf ;
   maxWait = SSL_TIMEOUT  ;
@@ -4328,6 +4893,7 @@ static int lHyp_sock_doSSL( sSSL* pSSL,
 	*/
 	if ( filterBioPending > 0 ) sslTimeout = 0 ;
 
+        tickCount1 = gHyp_util_getclock() ;
 	nReadSock = lHyp_sock_read (  s, 
 				  pSSLbuf,
 				  nWriteOut, /* nWriteOut2 */
@@ -4344,14 +4910,14 @@ static int lHyp_sock_doSSL( sSSL* pSSL,
 	}
 	*/
 
-	if ( guDebugFlags & DEBUG_DIAGNOSTICS )
-	  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
-	    "Engine<-Socket read, %d bytes, timeout=%dms",nReadSock,sslTimeout ) ;
-
 	/* The first time around the timeout is zero, after that we
 	 * set it to a small amount, so that we don't do a tight CPU spin
-	 */
-	if ( sslTimeout == 0 ) sslTimeout = SSL_WAIT_INCREMENT ;
+         */
+	/*if ( sslTimeout == 0 ) sslTimeout = SSL_WAIT_INCREMENT ;*/
+
+	if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+	  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
+	    "Engine<-Socket read, %d bytes, timeout=%d ms",nReadSock,sslTimeout ) ;
 
 	/* 0 = no data, -1 = error, > 1 = nBytes */
 	if ( nReadSock < 0 ) {
@@ -4359,13 +4925,30 @@ static int lHyp_sock_doSSL( sSSL* pSSL,
 	  return -1 ;
 	}
 	else if ( nReadSock == 0 ) {
+          /*
 	  if ( sslTimeout == 0 && filterBioPending == 0 ) {
 	    gHyp_util_logWarning ( "Expecting bytes but zero received. Failed Engine<-Socket read" ) ;
 	    return COND_SILENT ;
 	  }
-	  /* Wait some more - SSL could be slower than expected */
+          */
+
+          /* Did the select really wait?  If not, kill it */
+          if ( sslTimeout > 0 ) {
+
+            tickCount2 = gHyp_util_getclock() ;
+            if ( tickCount2 < tickCount1 ) tickCount2 += 1000 ;
+            if ( ( tickCount2 - tickCount1 ) < sslTimeout ) {
+  	      /* Wait some more - SSL could be slower than expected */
+	      gHyp_util_logWarning ( "Zero bytes received. Failed Engine<-Socket read" ) ;
+	      return COND_SILENT ;
+            }
+          }
+	  /* The first time around the timeout is zero, after that we
+	   * set it to a small amount, so that we don't do a tight CPU spin
+	   */
+	  sslTimeout = SSL_WAIT_INCREMENT ;
 	  maxWait -= SSL_WAIT_INCREMENT ;
-	}
+        }
 	else {
 
 	  /* If conditional SSL was set, then this is the point we
@@ -4474,10 +5057,11 @@ static int lHyp_sock_doSSL( sSSL* pSSL,
     
     if ( guDebugFlags & DEBUG_DIAGNOSTICS )
       gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
-	"Filter BIO: shouldWrite = %d, shouldRead = %d, pending = %d",
+	"Filter BIO: shouldWrite = %d, shouldRead = %d, pending = %d, outBioPending = %d",
 	shouldWrite,
         shouldRead,
-        filterBioPending);
+        filterBioPending,
+        outBioPending );
   
     if (  isWriter && 
 	  outBioPending == 0 && 
@@ -4502,11 +5086,6 @@ static int lHyp_sock_doSSL( sSSL* pSSL,
       break ;
     }
 
-    /*
-    *shouldRead = shouldRead || ( filterBioPending > 0 );
-    *shouldWrite = shouldWrite || ( filterBioPending > 0 );
-    */
-
     if ( maxWait <= 0 ) { 
 
       gHyp_util_logWarning("SSL timeout - maybe increase past %d milliseconds",SSL_TIMEOUT);
@@ -4514,7 +5093,7 @@ static int lHyp_sock_doSSL( sSSL* pSSL,
     }
 
   }
-  while ( shouldRead || shouldWrite || filterBioPending > 0 ) ;
+  while ( shouldRead || shouldWrite || filterBioPending > 0 || outBioPending > 0 ) ;
 
   if ( isReader )
     nBytes = bytesRead ;
@@ -4858,7 +5437,7 @@ void gHyp_sock_shutdown ( SOCKET listenTCP,
 
     pChannel = (sChannel*) gHyp_data_getObject ( pData ) ;
 
-    strcpy ( target, gHyp_channel_path(pChannel) );  
+    strcpy ( target, gHyp_channel_targetId(pChannel) );  
 
     gHyp_util_breakTarget ( target, instance, concept, parent, root, host ) ;
 
@@ -4945,7 +5524,8 @@ static sChannel* lHyp_sock_getMBOXchannel ( char *object,
 			      alreadyExists ) ) != INVALID_HANDLE_VALUE ) {	
   
     pChannel = gHyp_channel_new ( object,
-                                  path, /*targetId,*/
+                                  path,
+                                  targetId,
                                   (SOCKET_FIFO | PROTOCOL_AI),
                                   s ) ;
 
@@ -5003,7 +5583,8 @@ static sChannel* lHyp_sock_getFIFOchannel ( char *object,
 			      alreadyExists ) ) != INVALID_HANDLE_VALUE ) {
   
     pChannel = gHyp_channel_new ( object,
-                                  path, /*targetId,*/
+                                  path, 
+                                  targetId,
                                   (SOCKET_FIFO | PROTOCOL_AI),
                                   s ) ;
 
@@ -5069,7 +5650,8 @@ static sChannel* lHyp_sock_getMSLOTchannel ( char *object,
                              alreadyExists ) ) != INVALID_HANDLE_VALUE ) {
   
     pChannel = gHyp_channel_new ( object,
-                                  path, /*targetId,*/
+                                  path, 
+                                  targetId,
                                   (SOCKET_FIFO | PROTOCOL_AI),
                                   (SOCKET) s ) ;
 
@@ -5110,6 +5692,7 @@ static sChannel* lHyp_sock_getDMBXchannel ( char *object,
   if ( (s = mbxOpen ( object, "q" ) ) != DMBX_INVALID_BOX ) {
   
     pChannel = gHyp_channel_new ( object,
+                                  targetId,
                                   targetId,
                                   (SOCKET_DMBX | PROTOCOL_AI),
                                   s ) ;
@@ -5216,6 +5799,7 @@ sData* gHyp_sock_createNetwork ( sData *pHosts, char *host, char *addr, SOCKET s
     /* Create new socket descriptor */
     pChannel = gHyp_channel_new (	addr, 
 					host,
+                                        host,
 					(short)(SOCKET_TCP | PROTOCOL_AI),
 					s ) ;
     gHyp_util_logInfo ( 
@@ -5516,7 +6100,7 @@ void gHyp_sock_cleanClient ( sData *pClients )
       else {    /* nBytes == 0 */
         
 	/* Close targets beginning with a random 8 digit hex number */
-        target = gHyp_channel_target ( pChannel ) ;
+        target = gHyp_channel_targetId ( pChannel ) ;
         if ( strspn ( target, "0123456789abcdef" ) == 8 ) {
 
 	  gHyp_util_logInfo (

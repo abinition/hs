@@ -3,6 +3,13 @@
  * Modifications:
  *
  * $Log: channel.h,v $
+ * Revision 1.9  2013-01-02 19:07:48  bergsma
+ * 3.9.4-130101
+ *
+ * Revision 1.6  2012-10-20 18:45:24  bergsma
+ * Add another argument (targetId) to channel_new so that properly
+ * formated ABORTmessages can be sent to the router.
+ *
  * Revision 1.5  2006-08-08 20:48:27  bergsma
  * Added setTarget, setPath, setSocket
  *
@@ -17,13 +24,14 @@
  *
  *
  */
-extern sChannel*        gHyp_channel_new ( char*, char*, short flags, SOCKET fd  ) ;
+extern sChannel*        gHyp_channel_new ( char*, char*, char*, short flags, SOCKET fd  ) ;
 extern void		gHyp_channel_close ( sChannel*) ;
 extern void		gHyp_channel_delete ( sChannel* ) ;
 extern sChannel*        gHyp_channel_next ( sChannel* ) ; 
 extern short            gHyp_channel_flags ( sChannel* ) ;
 extern void		gHyp_channel_object ( sChannel* ) ;
 extern char*            gHyp_channel_target ( sChannel* ) ;
+extern char*            gHyp_channel_targetId ( sChannel* ) ;
 extern void	        gHyp_channel_setTarget ( sChannel*, char* ) ;
 extern char*            gHyp_channel_path ( sChannel* ) ;
 extern void		gHyp_channel_setPath ( sChannel *pChannel, char *path ) ;

@@ -10,6 +10,21 @@
  * Modifications:
  *
  *	$Log: tcp.c,v $
+ *	Revision 1.42  2013-01-22 21:26:48  bergsma
+ *	Add WIN_LEAN_AND_MEAN
+ *	
+ *	Revision 1.41  2013-01-02 19:09:49  bergsma
+ *	CVS Issues
+ *	
+ *	Revision 1.39  2012-09-09 21:51:04  bergsma
+ *	Don't unlink UNIX sock after incoming connection request!!!
+ *	
+ *	Revision 1.38  2012-08-11 00:15:55  bergsma
+ *	Defs for AS_SOLARIS needed moving to avoid link errors.
+ *	
+ *	Revision 1.37  2012-07-21 18:15:51  bergsma
+ *	TRU64 and SOLARIS share the same differences
+ *	
  *	Revision 1.36  2012-04-03 20:59:39  bergsma
  *	Comments
  *	
@@ -149,6 +164,7 @@
 #endif
 
 #ifdef AS_WINDOWS
+#define W32_LEAN_AND_MEAN 
 #include <winsock2.h>
 #define EWOULDBLOCK WSAEWOULDBLOCK
 #else
@@ -162,6 +178,10 @@
 #include <sys/ioctl.h>		/* Socket structures and functions */
 #include <sys/time.h>
 #include <sys/un.h>
+#endif
+
+#ifndef INADDR_NONE
+#define INADDR_NONE  0xffffffff
 #endif
 
 #include "auto.h"	/* System Interface and Function Prototypes */
@@ -1107,6 +1127,7 @@ sLOGICAL gHyp_tcp_sendmsg ( char *pClient, char *pService, SOCKET sendfd, int po
   struct iovec   iov[1];
   char buf[4] ; 
 
+#if !defined ( AS_TRU64 ) && !defined ( AS_SOLARIS )
 #ifndef CMSG_SPACE
 #define CMSG_SPACE(len)	(_CMSG_ALIGN(sizeof(struct cmsghdr)) + _CMSG_ALIGN(len))
 #endif
@@ -1120,7 +1141,6 @@ sLOGICAL gHyp_tcp_sendmsg ( char *pClient, char *pService, SOCKET sendfd, int po
   } control_un;
   struct cmsghdr *cmptr;
 
-#ifndef AS_TRU64
   msg.msg_control = control_un.control;
   msg.msg_controllen = sizeof(control_un.control);
 
@@ -1255,13 +1275,16 @@ SOCKET gHyp_tcp_recvmsg ( int s, int *pport )
   SOCKET
     newfd = INVALID_SOCKET;
 
+#if !defined ( AS_TRU64 ) && !defined ( AS_SOLARIS )
+
   union {
     struct cmsghdr cm;
     char           control[CMSG_SPACE(sizeof(int))];
   } control_un;
   struct cmsghdr *cmptr;
 
-#ifndef AS_TRU64
+
+
   msg.msg_control = control_un.control;
   msg.msg_controllen = sizeof(control_un.control);
 #else
@@ -1285,7 +1308,7 @@ SOCKET gHyp_tcp_recvmsg ( int s, int *pport )
 
   }
 
-#ifndef AS_TRU64
+#if !defined ( AS_TRU64 ) && !defined ( AS_SOLARIS )
   if ( (cmptr=CMSG_FIRSTHDR(&msg)) != NULL &&
        cmptr->cmsg_len == CMSG_LEN(sizeof(int) ) ) {
 
@@ -1300,7 +1323,8 @@ SOCKET gHyp_tcp_recvmsg ( int s, int *pport )
      port |= (((unsigned int)(buf[3])) & 0x0ff);
      *pport = port ;
 
-#ifndef AS_TRU64
+#if !defined ( AS_TRU64 ) && !defined ( AS_SOLARIS )
+
     }
     else {
 
@@ -1457,10 +1481,11 @@ SOCKET gHyp_tcp_checkInboundUNIX ( SOCKET s )
       return INVALID_SOCKET ;
     }
   }
-  /* Done with pathname now */
+  /* Done with pathname now ****************
   gHyp_util_logInfo ( "Removing '%s'",sock.sun_path ) ;
   unlink ( sock.sun_path ) ;
-
+  *******************************/
+  
   return ns ;
 }
 

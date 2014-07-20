@@ -10,6 +10,12 @@
 /* Modifications:
  *
  * $Log: ssl.c,v $
+ * Revision 1.30  2013-01-02 19:10:27  bergsma
+ * CVS Issues
+ *
+ * Revision 1.28  2012-08-30 18:04:54  bergsma
+ * Changes to ssl setState and getState for V 1.0 of openssl
+ *
  * Revision 1.27  2011-01-08 21:35:11  bergsma
  * Add HMAC_SHA256
  *
@@ -1571,28 +1577,27 @@ void gHyp_ssl_setState ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
 	/* We want to use this new SSL structure */
 
-	if ( pSSL ) {
-	  /* Get rid of old one */
-	  gHyp_sock_deleteSSL ( pSSL ) ;
-	}
-
 	/* Assign pSSL2 to pSSL */
 	gHyp_secs1_setSSL ( pPort, pSSL2 ) ;
 
-	/* Remove SSL entry from other port */
-	if ( pPort2 != pPort ) {
-	  gHyp_secs1_setSSL ( pPort2, NULL ) ;
+	/* Switch entry with other port */
+	if ( pPort2 && pPort2 != pPort ) {
+	  gHyp_secs1_setSSL ( pPort2, pSSL ) ;
 	}
-
-	/* Switch */
-	pSSL = pSSL2 ;
-
+        else {
+	  /* Get rid of old one */
+	  gHyp_sock_deleteSSL ( pSSL ) ;
+	}
+      
+        /* Hack the SSL state. GRIM IT IS, BUT WHAT ELSE? . */
+        status = gHyp_sock_setSSLstate ( pSSL2, pSSLdata, pSSL ) ;
       }
+      else {
 
-      /* Hack the SSL state. GRIM IT IS, BUT WHAT ELSE? . */
-      status = gHyp_sock_setSSLstate ( pSSL, pSSLdata, pSSL3 ) ;
+        /* Hack the SSL state. GRIM IT IS, BUT WHAT ELSE? . */
+        status = gHyp_sock_setSSLstate ( pSSL, pSSLdata, pSSL2 ) ;
+      }
     }
-
     gHyp_instance_pushSTATUS ( pAI, pStack ) ;
 
   }

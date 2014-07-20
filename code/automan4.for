@@ -26,6 +26,9 @@
 ! Modifications:
 !
 ! $Log: automan4.for,v $
+! Revision 1.26  2011-06-09 22:32:13  bergsma
+! Initialize tlog.recnum
+!
 ! Revision 1.25  2010-05-26 22:38:52  bergsma
 ! Typo
 !
@@ -2867,7 +2870,7 @@
 !   Code:
 
 	bufflen = TLOG__MAXRECSIZ
-
+      tlog.recnum = 0 ;  ! must initialize
       call Fil_Rms_GetRec( 	aeqSsp_autofil_tlogRab, 
      &				0, 
      &				TLOG_S_RECNUM,
@@ -2946,7 +2949,7 @@
 
 	aeqSsp_automan_getTlogNext = FIL__NORMAL
 	bufflen = TLOG__MAXRECSIZ
-
+        tlog.recnum = 0
 ! 	Do a sequential read if we can, otherwise to a random read
 
 	if ( .not. aeqSsp_autofil_tlogNextValid ) then
