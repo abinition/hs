@@ -584,7 +584,7 @@ void gHyp_cgi_urlparse ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     if ( context== -2 && ss != -1 ) {
       gHyp_data_delete ( pResult ) ;
       gHyp_instance_error ( pAI, STATUS_BOUNDS, 
-			    "Subscript '%s' is out of bounds in decode()",
+			    "Subscript '%d' is out of bounds in decode()",
 			    ss);
     }
     gHyp_stack_push ( pStack, pResult ) ;
@@ -2517,4 +2517,3 @@ void gHyp_cgi_parse ( sInstance *pAI, sFrame *pFrame  )
   
   lHyp_cgi_quit();
 }
-

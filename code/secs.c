@@ -1601,6 +1601,14 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
              gHyp_frame_setGlobalFlag ( pFrame, FRAME_GLOBAL_TRUE ) ;
 	  */
 
+	 /* Queue up the interrupting message.  
+          * TRUE means don't block, which means we are not executing select(),
+          * we are only fetching the incoming message from the queue and setting
+          * up for the message call.
+          *
+	  gHyp_instance_read ( pAI, TRUE ) ;
+          */
+
           do {
 	    /* Setting STATE_QUERY here let's us execute the 
 	     * handler for the incoming message, which is

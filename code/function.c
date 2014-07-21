@@ -1551,7 +1551,7 @@ void gHyp_function_tolower ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     if ( context== -2 && ss != -1 ) {
       gHyp_data_delete ( pResult ) ;
       gHyp_instance_error ( pAI, STATUS_BOUNDS, 
-			      "Subscript '%s' is out of bounds in tolower()",ss);
+			      "Subscript '%d' is out of bounds in tolower()",ss);
     }
 
     gHyp_stack_push ( pStack, pResult ) ;
@@ -1865,7 +1865,7 @@ void gHyp_function_toexternal(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     if ( context== -2 && ss != -1 ) {
       gHyp_data_delete ( pResult ) ;
       gHyp_instance_error ( pAI, STATUS_BOUNDS, 
-			    "Subscript '%s' is out of bounds in toexternal()",
+			    "Subscript '%d' is out of bounds in toexternal()",
 			    ss);
     }
     gHyp_stack_push ( pStack, pResult ) ;
@@ -1967,7 +1967,7 @@ void gHyp_function_tointernal(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     if ( context== -2 && ss != -1 ) {
       gHyp_data_delete ( pResult ) ;
       gHyp_instance_error ( pAI, STATUS_BOUNDS, 
-			    "Subscript '%s' is out of bounds in tointernal()",
+			    "Subscript '%d' is out of bounds in tointernal()",
 			    ss);
     }
     gHyp_stack_push ( pStack, pResult ) ;
@@ -2160,7 +2160,7 @@ void gHyp_function_decode(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     if ( context== -2 && ss != -1 ) {
       gHyp_data_delete ( pResult ) ;
       gHyp_instance_error ( pAI, STATUS_BOUNDS, 
-			    "Subscript '%s' is out of bounds in decode()",
+			    "Subscript '%d' is out of bounds in decode()",
 			    ss);
     }
     gHyp_stack_push ( pStack, pResult ) ;
@@ -2251,7 +2251,7 @@ void gHyp_function_encode(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     if ( context== -2 && ss != -1 ) {
       gHyp_data_delete ( pResult ) ;
       gHyp_instance_error ( pAI, STATUS_BOUNDS, 
-			    "Subscript '%s' is out of bounds in encode()",
+			    "Subscript '%d' is out of bounds in encode()",
 			    ss);
     }
     gHyp_stack_push ( pStack, pResult ) ;
@@ -2343,7 +2343,7 @@ void gHyp_function_urlDecode(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     if ( context== -2 && ss != -1 ) {
       gHyp_data_delete ( pResult ) ;
       gHyp_instance_error ( pAI, STATUS_BOUNDS, 
-			    "Subscript '%s' is out of bounds in urldecode()",
+			    "Subscript '%d' is out of bounds in urldecode()",
 			    ss);
     }
     gHyp_stack_push ( pStack, pResult ) ;
@@ -2435,7 +2435,7 @@ void gHyp_function_urlEncode(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     if ( context== -2 && ss != -1 ) {
       gHyp_data_delete ( pResult ) ;
       gHyp_instance_error ( pAI, STATUS_BOUNDS, 
-			    "Subscript '%s' is out of bounds in urlencode()",
+			    "Subscript '%d' is out of bounds in urlencode()",
 			    ss);
     }
     gHyp_stack_push ( pStack, pResult ) ;

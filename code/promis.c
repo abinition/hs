@@ -1780,6 +1780,7 @@ sLOGICAL gHyp_promis_hs (	sDescr*		token_d,
     result[VALUE_SIZE+1] ;
 
   int
+    hypIndex,
     i,j,
     stat,
     resultLen = *pResultLen ;
@@ -1960,10 +1961,11 @@ sLOGICAL gHyp_promis_hs (	sDescr*		token_d,
 
     /* Load from stream. */
     pHyp = gHyp_frame_getHyp ( gHyp_instance_frame ( gpAI ) ) ;
+    hypIndex = gHyp_hyp_getHypCount ( pHyp ) ;
     pStream = gHyp_load_fromStream ( gpAI, pHyp, stream, lineCount ) ;
  
     /* If load was fatal, (-1) then quit */
-    if ( pStream == NULL ) { 
+    if ( !pStream || *pStream ) { 
 
       aeqSsp_autoMan_closeFiles ( ) ;
       gHyp_promis_cleanFields ( -1 ) ;
@@ -1971,6 +1973,23 @@ sLOGICAL gHyp_promis_hs (	sDescr*		token_d,
       gpsConcept = NULL ; 
       *pIsHSenabled = giIsHSenabled = FALSE ;
       return FALSE ;
+    }
+    if ( resultLen != 0 ) {
+      /* A pexec() caused an INISTRING, a suggested token
+       * from PROMIS to be used in the the current prompt.
+       *
+       * The token is returned from GETTOKEN or INQUIRE in 
+       * the form:
+       *
+       *      {_promis_tokens_="token";}
+       *
+       * It has to be executed like a dereference so that
+       * it doesn't add to the program space.
+       */
+      /*gHyp_util_debug("Deref from operator");*/
+      gHyp_instance_setDerefHandler ( gpAI, 
+				      hypIndex, 
+				      pHyp ) ;
     }
   }
 

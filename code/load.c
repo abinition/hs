@@ -10,6 +10,10 @@
  * Modifications:
  *
  *   $Log: load.c,v $
+ *   Revision 1.64  2013-05-21 17:46:26  bergsma
+ *   Add secs_map & secp_unmap.  Deal with 64-bit systems where long and
+ *   int datatypes are 32 bit.  HS long,ulong,and int are 32 bit.
+ *
  *   Revision 1.63  2013-05-15 16:42:52  bergsma
  *   Comment
  *
@@ -367,6 +371,15 @@ void gHyp_load_new ()
   lHyp_load_newKey ( "unsetenv" ,  gHyp_system_unsetenv, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "setheap" ,  gHyp_system_setheap, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
 
+/*
+#ifdef AS_JS
+*
+  lHyp_load_newKey ( "var" ,  gHyp_type_list, TOKEN_TYPECAST, PRECEDENCE_UNARY ) ;
+  lHyp_load_newKey ( "function" ,  gHyp_type_list, TOKEN_TYPECAST, PRECEDENCE_UNARY ) ;
+
+*
+#endif
+*/
 #ifdef AS_PROMIS
   /* PROMIS functions */
   lHyp_load_newKey ( "pexec" ,  gHyp_promis_pexec, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
@@ -456,6 +469,7 @@ void gHyp_load_new ()
   lHyp_load_newKey ( "sql_datetime", gHyp_sql_datetime, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
 #ifndef AS_INFORMIX
   /* SQL functions */
+  lHyp_load_newKey ( "sql_bind",  gHyp_sql_bind, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "sql_open",  gHyp_sql_open, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "sql_close", gHyp_sql_close, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
   lHyp_load_newKey ( "sql_query", gHyp_sql_query, TOKEN_FUNCTION, PRECEDENCE_UNARY ) ;
