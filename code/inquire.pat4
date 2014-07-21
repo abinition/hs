@@ -42,8 +42,17 @@ c Code:
 	  ! Turn off pexec execution
 	  isHSpexeced = .false.
 
-	  ! Restore tokens that were saved with the pexec() function
-	  tut_buf = hs_buf 
+	  ! Look for tut_iniString entries, otherwise start with what's in hs_buf
+	  ! For INQUIRE, iniString entries are not yet consumed, 
+	  ! so tut_cursor <= tut_readlen	  
+	  if ( tut_buf(:gut_trimblks(tut_buf)) .ne. ' ' .and.
+     &      (tut_flags.and.TUT_M_INISTRING).ne.0 ) then
+		tut_buf = '{_promis_tokens_="'//tut_buf(:tut_readlen)//'";}' 
+		tut_readlen = gut_trimblks ( tut_buf )
+		tut_cursor = tut_readlen
+	  else
+		tut_buf = hs_buf
+	  endif
 	  hs_buf = ' '
 	  tokenOffset = 0
 	  tokenLength = gut_trimblks ( tut_buf )

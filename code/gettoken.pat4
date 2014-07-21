@@ -37,10 +37,10 @@ c
 >IS
 !B-HS!
 	! If HyperScript has just executed a pexec() function, then
-	! the occurance of a new empty line of input indicates that the
-	! pexec() token have all been processed by PROMIS, and that
-	! HyperScript must now resume execution following the pexec()
-	! function, temporarily bypassing and disallowing additional input
+	! the occurance of a new empty line of input indicates that the 
+	! pexec() token have all been processed by PROMIS, and that 
+	! HyperScript must now resume execution following the pexec() 
+	! function, temporarily bypassing and disallowing additional input 
 	! from the keyboard or script file.
 	if ( isHSenabled .and. isHSpexeced .and.
      &	     (tut_flags .and. TUT_M_CMDLIN) .eq. 0 ) then
@@ -48,14 +48,23 @@ c
 	  ! Turn off pexec execution
 	  isHSpexeced = .false.	! Turn off pexec execution
 
-	  ! Restore tokens that were saved with the pexec() function
-	  ! was started
-	  tut_buf = hs_buf	
+	  ! Restore tokens that remain when the pexec() function returned
+	  ! Look for tut_iniString entries, otherwise start with what's in hs_buf
+	  ! For GETTOKEN, iniString entries are already consumed, 
+	  ! so tut_cursor > tut_readlen
+	  if ( 	tut_buf .ne. ' ' .and.
+     &      (tut_flags.and.TUT_M_INISTRING).ne.0 ) then
+		tut_buf = '{_promis_tokens_="'//tut_buf(:tut_readlen)//'"};' 
+		tut_readlen = gut_trimblks ( tut_buf )
+		tut_cursor = tut_readlen
+	  else
+		tut_buf = hs_buf
+	  endif
 	  hs_buf = ' '	
 	  tokenOffset = 0	
 	  tokenLength = gut_trimblks ( tut_buf )
 
-	  ! Put trailing contents of the prompt line into the symbuffer
+	  ! Put trailing contents of the prompt line into the symbuffer 
 	  ! to pass back to HyperScript.  Do not include escape sequences
 	  length = gut_trimblks ( prompt )
 	  i = MAX ( 1, length - LEN ( symbuffer ) + 1 )
@@ -63,7 +72,7 @@ c
 	  do while ( i .le. length )
 	    if ( prompt(i:i) .eq. TUT_T_ATTRPREFIX ) then
 	      ! Skip two characters.
-	      i = i + 2
+	      i = i + 2 
 	    else
 	      ! Copy character	
 	      j = j + 1
@@ -136,7 +145,7 @@ c	Set the beginning-of-token pointer
 	! Copyright (c) 1994, Michael Bergsma, Ab-Initio Software
 
 	! Pass token to Hyperscript interpreter for processing
-101     continue
+ 101    continue
 	if ( .not. isHSpexeced ) then
 
           if ( .not. doGOTO_101 ) then
@@ -163,7 +172,7 @@ c	Set the beginning-of-token pointer
 	    ! The token has been processed by HyperScript.
 
 	    ! If the token was absorbed, re-prompt for another one.
-	    if ( symlength .le. 0 ) goto 5
+	    if ( symlength .le. 0 ) goto 5 
 
 	    ! HyperScript returned a result to execute, ie: pexec()
 
