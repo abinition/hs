@@ -2926,7 +2926,7 @@ short *gHyp_data_dataLenPtr( sData *pData )
   case TYPE_OCTAL :
   case TYPE_LONG :
   case TYPE_ULONG :
-    return &len_4
+    return &len_4 ;
 
   case TYPE_INTEGER :
     if ( sizeof ( int ) == 4 )
