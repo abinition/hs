@@ -20,6 +20,7 @@
  *
  */
 #ifndef AS_INFORMIX
+extern void		gHyp_sql_bind ( sInstance*, sCode*, sLOGICAL ) ;
 extern void		gHyp_sql_open ( sInstance*, sCode*, sLOGICAL ) ;
 extern void		gHyp_sql_close ( sInstance*, sCode*, sLOGICAL ) ;
 extern void		gHyp_sql_query ( sInstance*, sCode*, sLOGICAL ) ;

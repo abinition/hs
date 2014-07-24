@@ -664,11 +664,10 @@ void gHyp_sql_bind ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
 		sData
 		  *pStatus,
-      *pVariable,
 		  *pData,
 		  *pData2,
       *pData3,
-      *pValue,
+
 		  *pResult ;
 
 		sLOGICAL
@@ -688,9 +687,19 @@ void gHyp_sql_bind ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 		  sql_stmt[MAX_SQL_STMT_LENGTH+1] ;
 
 #ifdef AS_SQL
+
+		sLOGICAL
+		  isSelect ;
 		
+#endif
+
+#ifdef AS_SQL
+
+#ifdef AS_ORACLE
+
 		sData
-		  *pArgs=NULL ;
+      *pValue,
+      *pVariable ;
 		
     int
 		  i,
@@ -708,14 +717,7 @@ void gHyp_sql_bind ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       msg[MAX_OUTPUT_LENGTH+1] ;
 
 		sLOGICAL
-      isFloat,
-		  isSelect ;
-		
-#endif
-
-#ifdef AS_SQL
-
-#ifdef AS_ORACLE
+      isFloat ;
 
     sBIND *dbbind ;
     dvoid* data_buffer; 
@@ -736,10 +738,15 @@ void gHyp_sql_bind ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 		OCILobLocator* pLobLocator[MAX_SQL_ITEMS];
 		sb2	indicator[MAX_SQL_ITEMS] ;
 
+#else
+    short results = 0 ;
+		void *dbproc ;
+    void *dbbind ;
 #endif
 
 #else
-		void *dbproc ;
+    void *dbbind ;
+    void *dbproc ;
 #endif
 
 		/* Assume success */
@@ -1236,6 +1243,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 		DBPROCESS  *dbproc ;
 		RETCODE    results ;
 		char      buffer[MAX_BUFFER_SIZE+1];
+    void* dbbind = NULL;
 
 #elif AS_MYSQL
 
@@ -1244,7 +1252,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 		MYSQL_FIELD *field ;
 		MYSQL_ROW row ;
 		unsigned long *length ;
-
+    void* dbbind = NULL;
 #elif AS_PGSQL
 
 		PGconn      *dbproc ;
@@ -1253,13 +1261,13 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 		numRows,
 		isDataBinary[MAX_SQL_ITEMS],
 		row,col;
-
+    void* dbbind = NULL;
 #elif AS_ORACLE
 
 		sORACLE	*dbproc ;
 		sword	results ;
 		sword	rc ; 
-    sBIND* dbbind ;
+    sBIND* dbbind = NULL ;
 		OCIStmt    *stmthp;
 		OCIParam   *mypard;
 		void*	dataBuffer[MAX_SQL_ITEMS] ;
@@ -1289,7 +1297,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 #endif
 
 #else
-		void *dbproc ;
+		void *dbproc = NULL;
 #endif
 
 		/* Assume success */
@@ -1346,7 +1354,12 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 #endif
 		}
 		else {
-			dbbind = (sBIND*) NULL ;
+			dbbind = 
+#ifdef AS_ORACLE
+        (sBIND*) NULL ;
+#else
+         (void*) NULL ;
+#endif
 			isStmtBound = FALSE ;
 		}
 
