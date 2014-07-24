@@ -690,6 +690,8 @@ void gHyp_sql_bind ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
 		sLOGICAL
 		  isSelect ;
+    int 
+       n ;
 		
 #endif
 
@@ -708,7 +710,6 @@ void gHyp_sql_bind ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       dataType,
       precision,
 		  numCols,
-		  n, 
       msgLen ;
 
 		char
@@ -740,13 +741,13 @@ void gHyp_sql_bind ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
 #else
     short results = 0 ;
-		void *dbproc ;
-    void *dbbind ;
+		void *dbproc = NULL ;
+    void *dbbind = NULL ;
 #endif
 
 #else
-    void *dbbind ;
-    void *dbproc ;
+    void *dbbind = NULL ;
+    void *dbproc = NULL ;
 #endif
 
 		/* Assume success */
