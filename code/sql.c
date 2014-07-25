@@ -1086,20 +1086,21 @@ void gHyp_sql_bind ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
   data_bufferlen = (sb4) gHyp_data_bufferLen ( pValue,0 );
   data_buffer = (dvoid *) gHyp_data_buffer ( pValue, 0 ) ;
   dbbind->valuep[i] = data_buffer ;
-  dbbind->alenp[i] = (sb2) gHyp_data_dataLenPtr ( pValue,0 );
+  dbbind->alenp[i] = (ub2*) gHyp_data_dataLenPtr ( pValue );
 
                 if ( guDebugFlags & DEBUG_SQL) gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SQL,
-        "sql : Binding %s, type %d, buf=%x, len=%d",colName,dataType,data_buffer,data_bufferlen);
+        "sql : Binding %s, type %d, buf=%x, len=%d,%d",
+        colName,dataType,dbbind->valuep[i],data_bufferlen,(short)*dbbind->alenp[i]);
 				rc = OCIBindByName( stmthp, 
 					                  &bindp[i], 
 					                  dbproc->errhp,
 					                  (text *) colName, 
                             (sb4) strlen ( colName ),
-						                (dvoid*) &dbbind->valuep[i]
+						                (dvoid*) dbbind->valuep[i],
                             (sb4) data_bufferlen, 
 					                  (ub2) dataType,
 					                  (dvoid *) 0, /*&indicator[i]*/ 
-					                  (ub2 *) &dbbind->alenp[i],
+					                  (ub2 *) dbbind->alenp[i],
 					                  (ub2) 0, 
 					                  (ub4) 0, 
 					                  (ub4 *) 0, 
