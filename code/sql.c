@@ -900,7 +900,7 @@ void gHyp_sql_bind ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 		                        (ub4) OCI_DEFAULT);
 		lHyp_sql_checkErr (	dbproc->errhp, rc ) ;
 
-#endifdf
+#endif
 		if ( rc == OCI_SUCCESS ) {
 
       if ( isSelect ) {
