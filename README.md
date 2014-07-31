@@ -24,17 +24,17 @@ WIN32 (VS 2008) Hyperscript Build Procedures
 2.	HS-DOM, ActiveX control HSX.DLL deployed using webpickle.cab
 
 	a) From VS, select “Build hsx”
-		AS_ATL and AS_SSL are the directives used
+: AS_ATL and AS_SSL are the directives used
 
 	b) You get HSX.DLL in the Release directory
-		Copy it up one level to the hs\hsx and CVS it
+: Copy it up one level to the hs\hsx and CVS it
 
 	c) cd to \abinition\hs\hsx and execute MAKECABSIGNED.BAT
-		password is Abinition
+: password is Abinition
 
 	e) You get WebPickle.cab in \Abinition\hs\hsx
-		CVS it
-		Copy it to \hs\deploy and CVS it
+: CVS it
+: Copy it to \hs\deploy and CVS it
 
 
 3.	HS-DOM, JAVA control HS.DLL, deployed using abinition.jar
