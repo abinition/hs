@@ -9,21 +9,21 @@ WIN32 (VS 2008) Hyperscript Build Procedures
 
 	Rotate through the following combinations, building each combination of SQL server and SSL support
 
-..1.	AS_SQL, AS_SQLSERVER
-..2.	AS_SQL, AS_SQLSERVER, AS_SSL
-..3	AS_SQL, AS_MYSQL
-..4	AS_SQL, AS_MYSQL, AS_SSL
-..5.	AS_SQL, AS_ORACLE
-..6.	AS_SQL, AS_ORACLE, AS_SSL
-..7.	AS_SQL, AS_PGSQL
-..8.	AS_SQL, AS_PGSQL, AS_SSL
-..9.	AS_SSL
-..10.	(none)  ->  to make ROUTER.EXE
+  1.	AS_SQL, AS_SQLSERVER
+  2.	AS_SQL, AS_SQLSERVER, AS_SSL
+  3	AS_SQL, AS_MYSQL
+  4	AS_SQL, AS_MYSQL, AS_SSL
+  5.	AS_SQL, AS_ORACLE
+  6.	AS_SQL, AS_ORACLE, AS_SSL
+  7.	AS_SQL, AS_PGSQL
+  8.	AS_SQL, AS_PGSQL, AS_SSL
+  9.	AS_SSL
+  10.	(none)  ->  to make ROUTER.EXE
 
 
 2.	HS-DOM, ActiveX control HSX.DLL deployed using webpickle.cab
 
-	a) From VS, select “Build hsx”
+	a) From VS, select â€œBuild hsxâ€
 		AS_ATL and AS_SSL are the directives used
 
 	b) You get HSX.DLL in the Release directory
