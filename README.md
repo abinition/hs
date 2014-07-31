@@ -1,8 +1,7 @@
 hs
 ==
 
-HyperScript Automation Scripting Language
-
+HS Automation Scripting Language
 
 WIN32 (VS 2008) Hyperscript Build Procedures
 
@@ -10,32 +9,32 @@ WIN32 (VS 2008) Hyperscript Build Procedures
 
 	Rotate through the following combinations, building each combination of SQL server and SSL support
 
-	i.	AS_SQL, AS_SQLSERVER
-	ii.	AS_SQL, AS_SQLSERVER, AS_SSL
-	iii.	AS_SQL, AS_MYSQL
-	iv.	AS_SQL, AS_MYSQL, AS_SSL
-	v.	AS_SQL, AS_ORACLE
-	vi.	AS_SQL, AS_ORACLE, AS_SSL
-	vii.	AS_SQL, AS_PGSQL
-	viii.	AS_SQL, AS_PGSQL, AS_SSL
-	ix.	AS_SSL
-	x.	(none)  ->  to make ROUTER.EXE
+  1.	AS_SQL, AS_SQLSERVER
+  2.	AS_SQL, AS_SQLSERVER, AS_SSL
+  3	AS_SQL, AS_MYSQL
+  4	AS_SQL, AS_MYSQL, AS_SSL
+  5.	AS_SQL, AS_ORACLE
+  6.	AS_SQL, AS_ORACLE, AS_SSL
+  7.	AS_SQL, AS_PGSQL
+  8.	AS_SQL, AS_PGSQL, AS_SSL
+  9.	AS_SSL
+  10.	(none)  ->  to make ROUTER.EXE
 
 
 2.	HS-DOM, ActiveX control HSX.DLL deployed using webpickle.cab
 
-	a) From VS, select ìBuild hsxî
-		AS_ATL and AS_SSL are the directives used
+	a) From VS, select ‚ÄúBuild hsx‚Äù
+: AS_ATL and AS_SSL are the directives used
 
 	b) You get HSX.DLL in the Release directory
-		Copy it up one level to the hs\hsx and CVS it
+: Copy it up one level to the hs\hsx and CVS it
 
 	c) cd to \abinition\hs\hsx and execute MAKECABSIGNED.BAT
-		password is Abinition
+: password is Abinition
 
 	e) You get WebPickle.cab in \Abinition\hs\hsx
-		CVS it
-		Copy it to \hs\deploy and CVS it
+: CVS it
+: Copy it to \hs\deploy and CVS it
 
 
 3.	HS-DOM, JAVA control HS.DLL, deployed using abinition.jar
