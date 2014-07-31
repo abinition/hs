@@ -4305,7 +4305,7 @@ void gHyp_data_setStr ( sData *pData, char *pStr )
       pData->pStrVal[n] = '\0' ;
       pData->maxLen = MAX ( n, pData->maxLen ) ;
       pData->strLen = n ;
-      for (i=n+1;i<pData->maxLen;i++ ) pData->pStrVal[i] = '\0' ;
+      /*for (i=n+1;i<pData->maxLen;i++ ) pData->pStrVal[i] = '\0' ;*/
  
     }
     else {
@@ -4381,7 +4381,7 @@ gHyp_util_debug("new size %d, old size %d '%s'<-'%s' @ %x", n , pData->maxLen, p
       pData->pStrVal[n] = '\0' ;
       pData->maxLen = MAX ( n, pData->maxLen ) ;
       pData->strLen = n ;
-      for (i=n+1;i<pData->maxLen;i++ ) pData->pStrVal[i] = '\0' ; 
+      /*for (i=n+1;i<pData->maxLen;i++ ) pData->pStrVal[i] = '\0' ;*/ 
     }
     else {
       if ( pData->pStrVal != NULLstring ) ReleaseMemory ( pData->pStrVal ) ;

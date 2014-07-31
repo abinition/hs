@@ -1674,6 +1674,10 @@ int gHyp_instance_readQueue ( sInstance* pAI )
     pAI->msg.startQQ++ ;
     if ( pAI->msg.startQQ >= MAX_QUEUE_DEPTH ) pAI->msg.startQQ = 0 ;
 
+    /* OK to call this, it just makes sure any read has a timeout of zero,
+     * in which case this requeued message will be processed.
+     */
+    gHyp_instance_signalMsg( pAI ) ;
     return COND_NORMAL ;
   }
 
@@ -1707,8 +1711,13 @@ int gHyp_instance_readQueue ( sInstance* pAI )
     
     /* Advance start of queue */
     pAI->msg.startRQ++ ;
+
     if ( pAI->msg.startRQ >= MAX_QUEUE_DEPTH ) pAI->msg.startRQ = 0 ;
 
+    /* OK to call this, it just makes sure any read has a timeout of zero,
+     * in which case this requeued message will be processed.
+     */
+    gHyp_instance_signalMsg( pAI ) ;
     return COND_NORMAL ;
   }
 
@@ -2961,7 +2970,7 @@ sAImsg *gHyp_instance_incomingMsg ( sInstance *pAI )
       
   pAI->msg.qq[n] = gHyp_aimsg_new() ;
 
-  gHyp_instance_signalMsg ( pAI ) ;
+  /*gHyp_instance_signalMsg ( pAI ) ;*/
 
   /*gHyp_util_logInfo("Initialize new message in queue(%d)",n ) ;*/
   return pAI->msg.qq[n] ;
