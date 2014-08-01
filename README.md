@@ -1,6 +1,6 @@
-* HS Automation Scripting Language
+# HS Automation Scripting Language
 
-** UNIX Build Procedures
+## UNIX Build Procedures
 
 Although HS now has AUTOCONF integration, the features of SSL, SQL are not yet integrated.  Therefore, to use these features, you must use the older makefile copies in the directory.  Otherwise, simply do:
 
@@ -9,9 +9,9 @@ Although HS now has AUTOCONF integration, the features of SSL, SQL are not yet i
 make
 ```
 
-** WIN32 (VS 2008) Hyperscript Build Procedures
+## WIN32 (VS 2008) Hyperscript Build Procedures
 
-*** HS Standalone, HS.EXE
+### HS Standalone, HS.EXE
 
 The following combinations are available.
 ```
@@ -27,7 +27,7 @@ AS_SSL
 (none)  ->  to make ROUTER.EXE
 ```
 
-*** HS-DOM, ActiveX control HSX.DLL deployed using webpickle.cab
+### HS-DOM, ActiveX control HSX.DLL deployed using webpickle.cab
 
 From VS, select “Build hsx”
 : AS_ATL and AS_SSL are the directives used
@@ -41,7 +41,7 @@ cd to \abinition\hs\hsx and execute MAKECABSIGNED.BAT
 You get WebPickle.cab in \Abinition\hs\hsx
 : CVS it, then copy it to \hs\deploy and CVS it
 
-*** HS-DOM, JAVA control HS.DLL, deployed using abinition.jar
+### HS-DOM, JAVA control HS.DLL, deployed using abinition.jar
 
 From VS, select "Build hsdll"
 : AS_DLL, AS_JNI, AS_SSL are the directives used
@@ -62,7 +62,7 @@ cd to \abinition\hs\ and execute the ANT sequences.
 
 You get Abinition.jar in deploy
 	
-*** HS/GD
+### HS/GD
 
 Installing supporting packages
 		
@@ -74,7 +74,7 @@ Installing supporting packages
 For Linux, first install all the required support packages so that the include
 areas and libraries can be found:
 
-**** zlib
+#### zlib
 ```
 			tar -xvf zlib-1.2.3.tar.tar
 			cd zlib-1.2.3/
@@ -83,7 +83,7 @@ areas and libraries can be found:
 			su
 			make install
 ```
-**** jpeglib
+#### jpeglib
 
 ```
 			tar -xvzf jpegsrc.v6b.tar.gz
@@ -94,7 +94,7 @@ areas and libraries can be found:
 			su
 			make install
 ```
-**** libpng
+#### libpng
 ```
 			tar -xvzf libpng-1.2.35.tar.gz
 			cd libpng-1.2.35/
@@ -103,7 +103,7 @@ areas and libraries can be found:
 			su
 			make install
 ```
-**** FreeType
+#### FreeType
 ```
 			tar -xvf freetype-2.1.10.tar.tar
 			cd freetype-2.1.10
@@ -112,7 +112,7 @@ areas and libraries can be found:
 			su
 			make install
 ```
-**** OpenSSL
+#### OpenSSL
 ```
 			tar -xvf openssl_0.9.8c.orig.tar.gz
 			cd openssl-0.9.8c
@@ -144,7 +144,7 @@ files and link libraries.
 	cp libjpeg.a /usr/lib
 ```
 
-**** Building GD
+#### Building GD
 
 ```
 	tar -xvf gd-2.0.35.tar.gz
@@ -186,7 +186,7 @@ files and link libraries.
 	cp -rp libgd* /usr/lib
 ```
 
-**** Building HS/GD with SQL support
+#### Building HS/GD with SQL support
 
 In the makefile.  For MySQL
 ```
@@ -213,7 +213,7 @@ In the makefile.  For MySQL
 		LIBS = -lc -lm -lssl -lcrypto -L/home/autoprod/freetds-0.82/src/dblib/.libs -lsybdb
 ```
 
-**** BUILDING FreeTDS
+#### BUILDING FreeTDS
 ```
 		TDSVER=7.0
 		TDSDUMPCONFIG=$AUTOLOG/tdsconfig.log
