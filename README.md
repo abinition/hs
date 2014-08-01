@@ -1,4 +1,4 @@
-# HS Automation Scripting Language
+# Building Notes
 
 ## UNIX Build Procedures
 
@@ -174,6 +174,7 @@ To the following:
 		#include <jpeg/jpeglib.h>
 		#include <jpeg/jerror.h>
 ```
+Then make it.
 ```
 	make
 	
