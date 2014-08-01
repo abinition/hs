@@ -1,4 +1,4 @@
-# Building Notes
+# Sticky Notes
 
 ## UNIX Build Procedures
 
