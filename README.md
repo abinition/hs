@@ -30,7 +30,7 @@ AS_SSL
 ### HS-DOM, ActiveX control HSX.DLL deployed using webpickle.cab
 
 * From VS, select “Build hsx”
-** AS_ATL and AS_SSL are the directives used
+ AS_ATL and AS_SSL are the directives used
 
 * You get HSX.DLL in the Release directory
 ** Copy it up one level to the hs\hsx and CVS it
