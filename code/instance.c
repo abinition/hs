@@ -2612,8 +2612,9 @@ sLOGICAL gHyp_instance_replyMessage ( sInstance *pAI, sData *pMethodData )
                * TRUE means don't block, which means we are not executing select(),
                * we are only fetching the incoming message from the queue and setting
                * up for the message call.
-               */
+               *
 	      gHyp_instance_read ( pAI, TRUE ) ;
+               */
 
 	      do {
 		/* Setting STATE_QUERY here let's us execute the 
