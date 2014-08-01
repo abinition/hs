@@ -50,8 +50,8 @@ AS_DLL, AS_JNI, AS_SSL are the directives used
 CVS them
 
 * cd to \abinition\hs\ and execute the ANT sequences.  
-(make sure JAVA is 1.6 or recent)
-
+(make sure JAVA is 1.6 or recent)  
+You get Abinition.jar in deploy
 ```
 		ant clean
 		ant init
@@ -59,17 +59,15 @@ CVS them
 		
 		ant jar		<=== repeatable
 ```
-
-** You get Abinition.jar in deploy
 	
 ### HS/GD
 
 Installing supporting packages
 	
-: For Windows, obtain the gd.lib, either generating from the gd.dll 
-: file, or getting a download of gd.lib off of the internet.  Alternatively,
-: it is possible to build gd.lib from the gd sources, but that has not been
-: done on windows.
+> For Windows, obtain the gd.lib, either generating from the gd.dll 
+> file, or getting a download of gd.lib off of the internet.  Alternatively,
+> it is possible to build gd.lib from the gd sources, but that has not been
+> done on windows.
 
 For Linux, first install all the required support packages so that the include
 areas and libraries can be found:
