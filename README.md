@@ -1,3 +1,9 @@
+# HS
+
+Refer to the Wiki for detailed user guide, installation guides, and language guides.
+
+Otherwise, to build HS, the following README notes describe the process.
+
 # Sticky Notes
 
 ## UNIX Build Procedures
