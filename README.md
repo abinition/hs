@@ -9,7 +9,7 @@ Although HS now has AUTOCONF integration, the features of SSL, SQL are not yet i
 make
 ```
 
-## WIN32 (VS 2008) Hyperscript Build Procedures
+## WIN32 (VS 2008) HS Build Procedures
 
 ### HS Standalone, HS.EXE
 
@@ -30,27 +30,27 @@ AS_SSL
 ### HS-DOM, ActiveX control HSX.DLL deployed using webpickle.cab
 
 * From VS, select “Build hsx”
-AS_ATL and AS_SSL are the directives used
+** AS_ATL and AS_SSL are the directives used
 
 * You get HSX.DLL in the Release directory
-Copy it up one level to the hs\hsx and CVS it
+** Copy it up one level to the hs\hsx and CVS it
 
 * cd to \abinition\hs\hsx and execute MAKECABSIGNED.BAT
-password is Abinition
+** password is Abinition
 
 * You get WebPickle.cab in \Abinition\hs\hsx
-CVS it, then copy it to \hs\deploy and CVS it
+** CVS it, then copy it to \hs\deploy and CVS it
 
 ### HS-DOM, JAVA control HS.DLL, deployed using abinition.jar
 
 * From VS, select "Build hsdll"
-AS_DLL, AS_JNI, AS_SSL are the directives used
+** AS_DLL, AS_JNI, AS_SSL are the directives used
 
 * You get HS.DLL and HSDLL.LIB in the Release directory
-CVS them
+** CVS them
 
 * cd to \abinition\hs\ and execute the ANT sequences.
-(make sure JAVA is 1.6 or recent)
+** (make sure JAVA is 1.6 or recent)
 
 ```
 		ant clean
@@ -60,7 +60,7 @@ CVS them
 		ant jar		<=== repeatable
 ```
 
-You get Abinition.jar in deploy
+** You get Abinition.jar in deploy
 	
 ### HS/GD
 
