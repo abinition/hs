@@ -29,28 +29,28 @@ AS_SSL
 
 ### HS-DOM, ActiveX control HSX.DLL deployed using webpickle.cab
 
-From VS, select “Build hsx”
-: AS_ATL and AS_SSL are the directives used
+* From VS, select “Build hsx”
+AS_ATL and AS_SSL are the directives used
 
-You get HSX.DLL in the Release directory
-: Copy it up one level to the hs\hsx and CVS it
+* You get HSX.DLL in the Release directory
+Copy it up one level to the hs\hsx and CVS it
 
-cd to \abinition\hs\hsx and execute MAKECABSIGNED.BAT
-: password is Abinition
+* cd to \abinition\hs\hsx and execute MAKECABSIGNED.BAT
+password is Abinition
 
-You get WebPickle.cab in \Abinition\hs\hsx
-: CVS it, then copy it to \hs\deploy and CVS it
+* You get WebPickle.cab in \Abinition\hs\hsx
+CVS it, then copy it to \hs\deploy and CVS it
 
 ### HS-DOM, JAVA control HS.DLL, deployed using abinition.jar
 
-From VS, select "Build hsdll"
-: AS_DLL, AS_JNI, AS_SSL are the directives used
+* From VS, select "Build hsdll"
+AS_DLL, AS_JNI, AS_SSL are the directives used
 
-You get HS.DLL and HSDLL.LIB in the Release directory
-: CVS them
+* You get HS.DLL and HSDLL.LIB in the Release directory
+CVS them
 
-cd to \abinition\hs\ and execute the ANT sequences.
-: (make sure JAVA is 1.6 or recent)
+* cd to \abinition\hs\ and execute the ANT sequences.
+(make sure JAVA is 1.6 or recent)
 
 ```
 		ant clean
@@ -58,7 +58,7 @@ cd to \abinition\hs\ and execute the ANT sequences.
 		ant genkey
 		
 		ant jar		<=== repeatable
-``
+```
 
 You get Abinition.jar in deploy
 	
