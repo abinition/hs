@@ -149,25 +149,27 @@ files and link libraries.
 	cd gd-2.0.35
 	./configure
 ```
-		If the supporting packages were installed
-		correctly, then the configuration summary for
-		GD should appear as follows
+
+If the supporting packages were installed
+correctly, then the configuration summary for
+GD should appear as follows
+
 ```
-		** Configuration summary for gd 2.0.35:
-		   Support for PNG library:          yes
-		   Support for JPEG library:         yes
-		   Support for Freetype 2.x library: yes
-		   Support for Fontconfig library:   no
-		   Support for Xpm library:          no
-		   Support for pthreads:             yes
-``
-	## Modify gd_jpeg.c to point to jpeg include files
-	## Change the following:
+** Configuration summary for gd 2.0.35:
+	   Support for PNG library:          yes
+	   Support for JPEG library:         yes
+	   Support for Freetype 2.x library: yes
+	   Support for Fontconfig library:   no
+	   Support for Xpm library:          no
+	   Support for pthreads:             yes
+```
+Modify gd_jpeg.c to point to jpeg include files  
+Change the following:
 ```	
 		#include "jpeglib.h"
 		#include "jerror.h"
 ```
-	## To the following:
+To the following:
 ```
 		#include <jpeg/jpeglib.h>
 		#include <jpeg/jerror.h>
@@ -178,7 +180,7 @@ files and link libraries.
 	su
 	make install
 ```
-	## Copy the library files to /usr/lib
+Copy the library files to /usr/lib
 ```
 	cd /usr/local/lib
 	cp -rp libgd* /usr/lib
@@ -195,8 +197,8 @@ In the makefile.  For MySQL
 		CDEFS =   -DAS_SQL -DAS_MYSQL -DAS_SSL -DAS_GD
 
 		LIBS = -lc -L/usr/lib/mysql -lmysqlclient -lz -lm -lssl -lcrypto -lgd -ljpeg
-``
-	In the makefile, for SQLSERVER aka FreeTDS
+```
+In the makefile, for SQLSERVER aka FreeTDS
 ```
 		CC = gcc
 
@@ -210,7 +212,6 @@ In the makefile.  For MySQL
 
 		LIBS = -lc -lm -lssl -lcrypto -L/home/autoprod/freetds-0.82/src/dblib/.libs -lsybdb
 ```
-
 #### BUILDING FreeTDS
 ```
 		TDSVER=7.0
@@ -219,8 +220,7 @@ In the makefile.  For MySQL
 
 		./configure  --with-tdsver=7.0
 ```
-
-In freetds-0.82/src/tds/config.c, we must force the version to 7.0.
+In freetds-0.82/src/tds/config.c, we must force the version to 7.0. 
 Edit the file and look for the following
 ```	
 	        	/* And finally apply anything from the login structure */
@@ -233,6 +233,7 @@ Edit the file and look for the following
 	                	tdsdump_log(TDS_DBG_INFO1, "Final connection parameters:\n");
 
 ```
+Then make it.
 ```
 		make
 
