@@ -530,7 +530,11 @@ static void lHyp_route_QE (	sInstance 	*pAI,
       gHyp_util_logInfo ( "...waiting for '%s' reply, timeout in %d seconds", 
 			  method,
 			  (eventTime-gsCurTime)) ;
-      longjmp ( gsJmpStack[giJmpLevel=1], COND_SILENT) ;
+      if ( guDebugFlags & DEBUG_FRAME )
+        gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME, 
+			   "frame: QUERY (longjmp to %d from frame %d)",
+			   giJmpRootLevel,gHyp_frame_depth(pFrame) ) ;
+      longjmp ( gsJmpStack[giJmpLevel=giJmpRootLevel], COND_SILENT) ;
     }
   }
 

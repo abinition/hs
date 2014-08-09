@@ -1775,7 +1775,11 @@ static void lHyp_http_QE (	sInstance 	*pAI,
     gHyp_util_logInfo ( "...waiting for  reply, timeout in %d seconds", 
 			(eventTime-gsCurTime)) ;
 
-    longjmp ( gsJmpStack[giJmpLevel=1], COND_SILENT) ;
+    if ( guDebugFlags & DEBUG_FRAME )
+        gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME, 
+			   "frame: QUERY HTTP (longjmp to %d from frame %d)",
+			   giJmpRootLevel,gHyp_frame_depth(pFrame) ) ;
+    longjmp ( gsJmpStack[giJmpLevel=giJmpRootLevel], COND_SILENT) ;
   }
 
   return ;

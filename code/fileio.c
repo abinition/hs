@@ -1044,7 +1044,7 @@ static int lHyp_fileio_describe2 ( sData *pParent,
 	    pValue = value ;
             
             /*
-            gHyp_util_debug("Sizeof value is %d %d %d",sizeof(value),strlen(value),MAX_OUTPUT_LENGTH);
+            *gHyp_util_debug("Sizeof value is %d %d %d",sizeof(value),strlen(value),MAX_OUTPUT_LENGTH);
 	    */
             if ( !isSCR && !isPRE && !isTXT ) {
 	      gHyp_util_unparseString ( value2 ,

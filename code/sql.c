@@ -1295,7 +1295,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 		ub4	amount ;
 		ub4	offset ;
     ub4 iters ;
-    sData *[
+
 #ifdef AS_ORACLE_DO_PREPARE2
 		OraText	*key = "mykey" ;
     ub4	keylen = strlen (key) ;
@@ -1540,7 +1540,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 		  isVector = (gHyp_data_getDataType(pTable) > TYPE_STRING);
       i = 0 ;
 		  while ( (pResult = gHyp_data_nextValue ( pTable, pResult, &context, ss ) ) ) {  
-        dbbind->valuep[i] = (dvoid*) gHyp_data_buffer ( pResult ) ; 
+        dbbind->valuep[i] = (dvoid*) gHyp_data_buffer ( pResult, 0 ) ;
         dbbind->alenp[i] = (ub2*) gHyp_data_dataLenPtr ( pResult );
         i++ ;
       }

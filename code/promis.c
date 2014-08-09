@@ -1648,7 +1648,7 @@ static sLOGICAL lHyp_promis_addTLOG (	long fileId,
     length = length - fieldOffset + 1; 
     
     /*
-    gHyp_util_debug("Unpacking %d bytes at %d for %s", 
+    *gHyp_util_debug("Unpacking %d bytes at %d for %s", 
       length,fieldOffset,tableName);
     */
 
@@ -2629,7 +2629,13 @@ void gHyp_promis_pexec ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
      */
     lHyp_promis_setResult ( message ) ;
     gHyp_frame_setHypIndex ( pFrame, gHyp_frame_getHypIndex(pFrame) - 1 ) ;
-    longjmp ( gsJmpStack[giJmpLevel=1], COND_NORMAL ) ;
+
+    giJmpRootLevel=1;
+    if ( guDebugFlags & DEBUG_FRAME )
+      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME, 
+			   "frame: EXEC PROMIS (longjmp to %d from frame %d)",
+			   giJmpRootLevel,gHyp_frame_depth(pFrame) ) ;
+    longjmp ( gsJmpStack[giJmpLevel=giJmpRootLevel], COND_NORMAL ) ;
   }
 }
 

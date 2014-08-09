@@ -8635,7 +8635,7 @@ int gHyp_sock_select ( sConcept* pConcept,
   giNumHosts = 0 ;
   gsSocketToCancel = INVALID_SOCKET ;
 
-  /*gHyp_util_debug("Timeout is %d seconds",timeout);*/
+  gHyp_util_debug("Timeout is %d seconds",timeout);
 
   /* Application fd's */
   cond = lHyp_sock_select_FDSET_objects ( pConcept, pSockets, timeout ) ;

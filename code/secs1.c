@@ -2250,12 +2250,25 @@ int gHyp_secs1_outgoing ( sSecs1 *pSecs1,
 	}
 	else {
 	  /* Not in a reply state or not got an ENQ */
-	  if ( gotENQ )
+          if ( gotENQ ) {
 	    pSecs1->state = SECS_EXPECT_SEND_EOT2 ; 
-	  else 
+	  cond2 = lHyp_secs1_incoming ( pSecs1, 
+					 gHyp_instance_getConcept(pAI),
+					 pAI,
+					 mode,
+					 TID,
+					 SID,
+					 id,
+					 stream,
+					 function ) ;
+	  pSecs1->state = SECS_EXPECT_RECV_ENQ ;
+          if ( cond2 < 0 ) return cond2 ;
+            cond = cond2 ;
+          }
+          else { 
 	    pSecs1->state = SECS_EXPECT_RECV_ENQ ;
-	  cond = COND_NORMAL ;
-	 
+	    cond = COND_NORMAL ;
+          }
 	}
 
 	lastBlockSent = TRUE ;

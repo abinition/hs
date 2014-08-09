@@ -606,10 +606,10 @@ void gHyp_env_idle ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
     if ( guDebugFlags & DEBUG_FRAME )
       gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME, 
-			   "frame: IDLE (longjmp to 1 from frame %d)",
-			   gHyp_frame_depth(pFrame) ) ;
+			   "frame: IDLE (longjmp to %d from frame %d)",
+			   giJmpRootLevel,gHyp_frame_depth(pFrame) ) ;
 
-    longjmp ( gsJmpStack[giJmpLevel=1], COND_SILENT) ;
+    longjmp ( gsJmpStack[giJmpLevel=giJmpRootLevel], COND_SILENT) ;
 
   }
 }
@@ -753,7 +753,12 @@ void lHyp_env_instantiate ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE, sLOG
 
       gHyp_instance_reset ( pAI, STATE_IDLE, TRUE ) ;
 
-      longjmp ( gsJmpStack[giJmpLevel=1], COND_NORMAL ) ;
+      giJmpRootLevel=1;
+      if ( guDebugFlags & DEBUG_FRAME )
+        gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME, 
+			   "frame: Instantiate (longjmp to %d from frame %d)",
+			   giJmpRootLevel,gHyp_frame_depth(pFrame) ) ;
+      longjmp ( gsJmpStack[giJmpLevel=giJmpRootLevel], COND_NORMAL ) ;
 
     }
     gHyp_instance_pushSTATUS ( pAI, pStack ) ;
@@ -4498,8 +4503,8 @@ void gHyp_env_node_root ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     while ( strcmp( gHyp_data_getLabel( gHyp_data_getParent( pAncestor ) ), "_main_" ) != 0 )
     {
       /*
-      gHyp_util_debug("buffer: %s", buffer);
-      gHyp_util_debug("node parent: %s", gHyp_data_getLabel( gHyp_data_getVariable( pAncestor )) ) ;
+      *gHyp_util_debug("buffer: %s", buffer);
+      *gHyp_util_debug("node parent: %s", gHyp_data_getLabel( gHyp_data_getVariable( pAncestor )) ) ;
       */
       /*  check for curly bracketed index on the end and remove it*/
       if( (i = gHyp_data_getTagIndex( pAncestor )) ) {

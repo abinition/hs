@@ -1413,7 +1413,8 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
     TID=0,
     SID=0,
     stream,
-    function ;
+    function,
+    saveJmpRootLevel=giJmpRootLevel ;
   
   sSecs1
     *pSecs1=NULL ;
@@ -1597,27 +1598,29 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
 
           /* ENQ contention likely occurred, execute all pending conditions. */
 
-	  /* Move the next stmt into loop so that multiple conditions can be handled
-             gHyp_frame_setGlobalFlag ( pFrame, FRAME_GLOBAL_TRUE ) ;
-	  */
+          gHyp_util_debug("ENQ Contention! Adjusting jmpRootLevel to %d",giJmpLevel);
 
-	 /* Queue up the interrupting message.  
-          * TRUE means don't block, which means we are not executing select(),
-          * we are only fetching the incoming message from the queue and setting
-          * up for the message call.
-          *
-	  gHyp_instance_read ( pAI, TRUE ) ;
-          */
-
+          giJmpRootLevel = giJmpLevel ;
           do {
+	    /* Queue up the interrupting message.  
+             * TRUE means don't block, which means we are not executing select(),
+             * we are only fetching the incoming message from the queue and setting
+             * up for the message call.
+             */
+ 	    gHyp_instance_read ( pAI, TRUE ) ;
+	    
 	    /* Setting STATE_QUERY here let's us execute the 
 	     * handler for the incoming message, which is
 	     * the gHyp_instance_handleMessageCall() function.
   	     */
- 	    gHyp_frame_setGlobalFlag ( pFrame, FRAME_GLOBAL_TRUE ) ;
 	    gHyp_instance_setState ( pAI, STATE_QUERY ) ;
+
+	    /* Setting FRAME_GLOBAL_TRUE allos us to execute handlers */
+            gHyp_frame_setGlobalFlag ( pFrame, FRAME_GLOBAL_TRUE ) ;
+
 	  }
 	  while ( gHyp_instance_parse ( pAI ) == COND_NORMAL ) ;
+          giJmpRootLevel = saveJmpRootLevel ;
 
 	  pData = gHyp_frame_findRootVariable ( pFrame, "STATUS" ) ;
 	  
@@ -1722,7 +1725,12 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
 			  id,
 			  (eventTime-gsCurTime)) ;
       if ( pSecsIIdata ) gHyp_data_delete ( pSecsIIdata ) ;
-      longjmp ( gsJmpStack[giJmpLevel=1], COND_SILENT) ;
+
+      if ( guDebugFlags & DEBUG_FRAME )
+        gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME, 
+			   "frame: QUERY SECS (longjmp to %d from frame %d)",
+			   giJmpRootLevel,gHyp_frame_depth(pFrame) ) ;
+      longjmp ( gsJmpStack[giJmpLevel=giJmpRootLevel], COND_SILENT) ;
     }
   }
 

@@ -2906,7 +2906,7 @@ short *gHyp_data_dataLenPtr( sData *pData )
 
   case TYPE_LIST :
   case TYPE_STRING :
-    return &pData->strLen ;
+    return (short*) &pData->strLen ;
 
   case TYPE_ATTR :
   case TYPE_CHAR :
@@ -4287,7 +4287,7 @@ void gHyp_data_setStr ( sData *pData, char *pStr )
    *
    */ 
   int
-    i, n ;
+    n ;
  
   if ( pData->pStrVal != pStr ) {
 
@@ -4362,8 +4362,8 @@ void gHyp_data_setStr_n ( sData *pData, char *pStr, int n )
       }
       else if ( n > pData->maxLen ) {
 /*
-gHyp_util_debug("new size is %d, old size was %d, parent tt = %d", n , pData->maxLen,
-gHyp_data_getTokenType(gHyp_data_getParent(pData)) );
+*gHyp_util_debug("new size is %d, old size was %d, parent tt = %d", n , pData->maxLen,
+*gHyp_data_getTokenType(gHyp_data_getParent(pData)) );
 */
         ptr = (char *) ReAllocMemory ( pData->pStrVal, n + 1 ) ;
       /*
@@ -4374,7 +4374,7 @@ gHyp_data_getTokenType(gHyp_data_getParent(pData)) );
       }
 /*
       else {
-gHyp_util_debug("new size %d, old size %d '%s'<-'%s' @ %x", n , pData->maxLen, pData->pStrVal,pStr, pData->pStrVal);
+* gHyp_util_debug("new size %d, old size %d '%s'<-'%s' @ %x", n , pData->maxLen, pData->pStrVal,pStr, pData->pStrVal);
       }
 */
       memcpy ( pData->pStrVal, pStr, n ) ;
@@ -4386,9 +4386,9 @@ gHyp_util_debug("new size %d, old size %d '%s'<-'%s' @ %x", n , pData->maxLen, p
     else {
       if ( pData->pStrVal != NULLstring ) ReleaseMemory ( pData->pStrVal ) ;
       pData->pStrVal = NULLstring ;
-/**/
-      gHyp_util_debug("n NULL loc %d",pData->pStrVal);
-/**/
+/*
+  *    gHyp_util_debug("n NULL loc %d",pData->pStrVal);
+*/
       pData->strLen = 0 ;
       pData->maxLen = 0 ;
     }
