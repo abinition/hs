@@ -5040,7 +5040,7 @@ int  gHyp_instance_run ( sInstance * pAIarg )
           if ( guDebugFlags & DEBUG_DIAGNOSTICS ) 
 	     gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
 			       "%s awakening from SLEEP state",pAI->msg.targetId ) ;
-	  /*gHyp_instance_setState ( pAI, STATE_PARSE ) ;*/
+	  gHyp_instance_setState ( pAI, STATE_PARSE ) ;
           break ;
         }
         
