@@ -4348,7 +4348,6 @@ void gHyp_data_setStr_n ( sData *pData, char *pStr, int n )
    *
    */ 
   char *ptr;
-  int i ;
 
   if ( pData->pStrVal != pStr ) {
 
