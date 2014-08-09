@@ -1285,7 +1285,7 @@ void gHyp_system_parse ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
    if ( argCount == 0 ) {
 
-      /* Go back to PARSE mode - must not allow return to IDLE */
+      /* Go back to PARSE mode - break out of IDLE or SLEEP or QUERY */
      pAImain = gHyp_concept_getConceptInstance ( gHyp_instance_getConcept ( pAI ) ) ;
      if ( pAI == pAImain && gHyp_instance_isEND ( pAI ) )
        gHyp_concept_setReturnToStdIn ( gHyp_instance_getConcept(pAI), TRUE ) ;

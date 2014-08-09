@@ -1312,11 +1312,12 @@ void gHyp_concept_setReturnToStdIn ( sConcept *pConcept, sLOGICAL returnToStdIn 
 {
   pConcept->exec.returnToStdIn = returnToStdIn ;
  
+  /*
   if ( returnToStdIn )
     gHyp_util_logInfo("Can now return to get stdin" ) ;
   else
     gHyp_util_logInfo("Cannot return to get stdin" ) ;
- 
+  */
   return ;
 }
 

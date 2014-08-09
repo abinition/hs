@@ -2091,6 +2091,9 @@ static void lHyp_frame_return ( sFrame *pFrame,
   }
   else if ( wasCompletedMessageCall ) {
 
+    /* Get the status of the method - did it return 1 or 0? */
+    status = gHyp_data_getBool ( pMethodVariable, 0, TRUE ) ;
+
     /* A incoming message.  Check for replies */ 
     /* Execute all pending conditions */
     do {
@@ -2148,11 +2151,11 @@ static void lHyp_frame_return ( sFrame *pFrame,
         gHyp_instance_setState ( pAI, STATE_PARSE ) ;
     }
     else {
-      gHyp_util_debug("Handler returned false, instance state remains %d", gHyp_instance_getState ( pAI ) ) ;
-      /*gHyp_instance_setState ( pAI, STATE_IDLE ) ;*/
+      /*gHyp_util_debug("Handler returned false, instance state remains %d", gHyp_instance_getState ( pAI ) ) ;*/
+      gHyp_instance_setState ( pAI, STATE_IDLE ) ;
     }
   }
-  else if ( giJmpLevel > 1 ) {
+  else if ( giJmpLevel > giJmpRootLevel ) {
     /* Return from an internal method call or from a handler that was invoked while we
      * were executing tokens (gHyp_parse_expression).
      * In this case, we want to continue to EXECUTE.
@@ -2165,7 +2168,7 @@ static void lHyp_frame_return ( sFrame *pFrame,
     if ( !status ) cond = COND_FATAL ;
   }
   else {
-    /* giJmpLevel = 1
+    /* giJmpLevel == giJmpRootLevel
      *
      * Returning from a handler that was invoked while we were either parsing new input
      * or returning back to a query or idle or sleep state.
