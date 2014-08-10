@@ -333,6 +333,7 @@ sLOGICAL        giJmpEnabled ; /* If longjmp is enabled from handlers*/
 SOCKET          gsSocketToCancel ; /* If cancel I/O is needed. */
 
 int             giJmpLevel ; /* Current depth of saved jmp env */
+int             giJmpRootLevel ;
 jmp_buf         gsJmpStack[MAX_JMP_LEVEL+1] ; /* For setjmp,longjmp */ 
 jmp_buf         gsJmpOverride ; /* Overrides gsJmpStack */ 
 sLOGICAL        giJmpOverride ; /* Overrides gsJmpStack */ 
@@ -774,6 +775,7 @@ sLOGICAL gHyp_concept_init ( sConcept *pConcept,
   giLineCount = 0 ;
   gsCurTime = time ( NULL ) ;
   giJmpLevel = -1 ;
+  giJmpRootLevel = 1 ;
   giJmpEnabled = FALSE ;
   giJmpOverride = FALSE ;
   gpsConcept = pConcept ;
@@ -1309,11 +1311,12 @@ void gHyp_concept_quit ( sConcept *pConcept )
 void gHyp_concept_setReturnToStdIn ( sConcept *pConcept, sLOGICAL returnToStdIn  )
 {
   pConcept->exec.returnToStdIn = returnToStdIn ;
-/*  
+ 
+  /*
   if ( returnToStdIn )
-    gHyp_util_logInfo("Yes return to get stdin" ) ;
+    gHyp_util_logInfo("Can now return to get stdin" ) ;
   else
-    gHyp_util_logInfo("No  return to get stdin" ) ;
+    gHyp_util_logInfo("Cannot return to get stdin" ) ;
   */
   return ;
 }
@@ -1383,12 +1386,12 @@ int gHyp_concept_setAlarms ( sConcept *pConcept )
     if ( timeout != 0 ) timeout = MIN ( timeout, eventTime-(int)gsCurTime ) ;
     
     if ( gHyp_instance_isSignal ( pAI ) ) {
-      /*
+      
       if ( guDebugFlags & DEBUG_DIAGNOSTICS )
         gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
                              "Signal for %s",
                              gHyp_instance_getTargetId(pAI) ) ; 
-      */
+      
       timeout = 0 ;
     }
 

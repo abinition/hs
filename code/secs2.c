@@ -772,7 +772,6 @@ int gHyp_secs2_parseSecs ( sSecs2 *pSecs2,
     strcpy ( mode, pReply ) ;
     sprintf ( method, "S%dF%d", stream, function ) ;
     isReply = TRUE ;
-    
   }
 
   strcpy ( target, gHyp_instance_getTargetPath ( pAI ) ) ;
@@ -849,7 +848,6 @@ int gHyp_secs2_parseSecs ( sSecs2 *pSecs2,
 
   gHyp_data_append ( pSTATUS, pVALUE ) ;
   gHyp_data_append ( pTV, pSTATUS ) ;
-
 
   /* pAI is the instance that created the secs port (fd) with secs_open or secs_hsms,
    * but any instance can get the secs message if they did a secs_assign to the fd with

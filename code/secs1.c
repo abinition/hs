@@ -1443,7 +1443,7 @@ static int lHyp_secs1_incoming ( sSecs1 *pSecs1,
 	if ( pHeader ) {
 
 	  /* A header exists, thus a message may already be in progress. 
-           * - Primary messages can always interrupt messages in progress.
+           * - Primary messages can always interrupt any message type in progress.
            * - Any message type can always interrupt a secondary message in progress.
            * - Any message type can always interrupt a message whose last block has been received.
            *   (example: S1F4 interrupting a completed S6F3).
@@ -1460,8 +1460,9 @@ static int lHyp_secs1_incoming ( sSecs1 *pSecs1,
 	  }
 	  else {
 	    gHyp_util_logError ( 
-	     "SECS-II, non-primary message S%dF%d cannot interrupt current message",
-             gHyp_secs2_stream ( &header ), gHyp_secs2_function ( &header ) );
+	     "SECS-II, non-primary message incoming S%dF%d cannot interrupt current incoming S%dF%d",
+             gHyp_secs2_stream ( &header ), gHyp_secs2_function ( &header ),
+	     gHyp_secs2_stream ( pHeader ), gHyp_secs2_function ( pHeader ) );
 	    pSecs1->state = SECS_EXPECT_SEND_S9F7 ;
 	    break ;
 	  }
@@ -1539,6 +1540,10 @@ static int lHyp_secs1_incoming ( sSecs1 *pSecs1,
 	  pSecs1->state = SECS_EXPECT_SEND_S9F7 ;
 	  break ;
 	}
+
+	/* Update the block values */
+	pHeader->isLastBlock = header.isLastBlock ;
+	pHeader->isFirstBlock = header.isFirstBlock ;
       }
 
       /* Copy the secsII block into the secsII buffer */
@@ -1575,6 +1580,8 @@ static int lHyp_secs1_incoming ( sSecs1 *pSecs1,
 	  }
 	  cond = COND_NORMAL ;
 	}
+	/* Done with message, clear pHeader */
+	pHeader = NULL ;
 	blockReceived = TRUE ;
       }
       else
@@ -2250,12 +2257,25 @@ int gHyp_secs1_outgoing ( sSecs1 *pSecs1,
 	}
 	else {
 	  /* Not in a reply state or not got an ENQ */
-	  if ( gotENQ )
+          if ( gotENQ ) {
 	    pSecs1->state = SECS_EXPECT_SEND_EOT2 ; 
-	  else 
+	  cond2 = lHyp_secs1_incoming ( pSecs1, 
+					 gHyp_instance_getConcept(pAI),
+					 pAI,
+					 mode,
+					 TID,
+					 SID,
+					 id,
+					 stream,
+					 function ) ;
+	  pSecs1->state = SECS_EXPECT_RECV_ENQ ;
+          if ( cond2 < 0 ) return cond2 ;
+            cond = cond2 ;
+          }
+          else { 
 	    pSecs1->state = SECS_EXPECT_RECV_ENQ ;
-	  cond = COND_NORMAL ;
-	 
+	    cond = COND_NORMAL ;
+          }
 	}
 
 	lastBlockSent = TRUE ;

@@ -2091,48 +2091,26 @@ static void lHyp_frame_return ( sFrame *pFrame,
   }
   else if ( wasCompletedMessageCall ) {
 
+    /* Get the status of the method - did it return 1 or 0? */
+    status = gHyp_data_getBool ( pMethodVariable, 0, TRUE ) ;
+
     /* A incoming message.  Check for replies */ 
     /* Execute all pending conditions */
     do {
       gHyp_frame_setGlobalFlag ( pFrame, FRAME_GLOBAL_TRUE ) ;
+      /* Setting EXECUTE makes sure only handlers will execute */
       gHyp_instance_setState ( pAI, STATE_EXECUTE ) ;
     }
     while ( gHyp_instance_parse ( pAI ) == COND_NORMAL ) ;
 
-    /* The following loop used to be a single call to replyMessage.
-     * Now it resembles the code used for exit() or instantiate().
-     * That logic requires that all reply messages get sent that are
-     * outstanding.  
-     * 
-     * The previous failure to send one or more required reply message
-     * happened as follows:
-     * 1. Incoming S6F11, reply message S6F12 created at depth 0.
-     * 2. Outgoing S6F12, depth 0
-     *    a) ENQ contention - interrupted before S6F12 gets sent.
-     *    b) Another incoming S6F11 received, depth = 1
-     *       i)  Inside of the S6F11 method, we send a S2F41 query
-     *       ii) S2F42 reply is received
-     *    c) Now we send the S6F12 for the second S6F11, depth = 1
-     *    d) Now we send the S6F12 for the first S6F11, depth = 0
-     * 3. Back to idle.
-     * 
-     * There is a failure because the S6F12 from #1 never
-     * gets sent, because gHyp_instance_reply does not
-     * get called again. Why? Because at 2b)i), HS
-     * jumps back to a QUERY state, which is a longjmp to level 1.
-     * At that point, the return for 2a) is forgotten/lost.
-     * But, the outgoing reply depth remembers it!!  
-     * We can send the reply here.
-     * We must decrement the output depth until we match the 2a) depth.
-     *
-     * So, we call gHyp_instance_atCorrectDepth and stop when we reach the 
-     * correct depth.
-     * We always call replyMessage at least once.
-     */
     if ( guDebugFlags & DEBUG_DIAGNOSTICS )
       gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
 			   "Returning from method %s",pMethodStr );
   
+    /* Make sure all replies are out.  Because of bug fixes on 140808, there
+     * now should only ever be one reply to send, but the fix is still good
+     * to have... just in case
+     */
     while ( gHyp_instance_atCorrectDepth ( pAI, pMethodStr, pFrame->depth+1 ) ) {
       /* Does the method (which HS is returning from) match what the current depth has stored?
        * While Yes, we want to reply to this and then we are done.
@@ -2161,18 +2139,23 @@ static void lHyp_frame_return ( sFrame *pFrame,
       /* The handler returned false.  We will fall out of an idle, sleep, query
        * state.
        */
-      if ( pAI == pAImain && !gHyp_instance_isEND ( pAI ) )
+      if ( pAI == pAImain && gHyp_instance_isEND ( pAI ) ) {
+	  /*gHyp_util_debug("Parent instance can return to stdin");*/
         gHyp_concept_setReturnToStdIn ( gHyp_instance_getConcept(pAI),TRUE ) ;
+      }
     }
 
     if ( pAI == pAImain && 
-         gHyp_concept_returnToStdIn ( gHyp_instance_getConcept ( pAI )) ) 
-      gHyp_instance_setState ( pAI, STATE_PARSE ) ;
-    else
+      gHyp_concept_returnToStdIn ( gHyp_instance_getConcept ( pAI )) ) {
+	  /*gHyp_util_debug("Parent instance can return to stdin after !status, setting PARSE");*/
+        gHyp_instance_setState ( pAI, STATE_PARSE ) ;
+    }
+    else {
+      /*gHyp_util_debug("Handler returned false, instance state remains %d", gHyp_instance_getState ( pAI ) ) ;*/
       gHyp_instance_setState ( pAI, STATE_IDLE ) ;
-
+    }
   }
-  else if ( giJmpLevel > 1 ) {
+  else if ( giJmpLevel > giJmpRootLevel ) {
     /* Return from an internal method call or from a handler that was invoked while we
      * were executing tokens (gHyp_parse_expression).
      * In this case, we want to continue to EXECUTE.
@@ -2185,7 +2168,7 @@ static void lHyp_frame_return ( sFrame *pFrame,
     if ( !status ) cond = COND_FATAL ;
   }
   else {
-    /* giJmpLevel = 1
+    /* giJmpLevel == giJmpRootLevel
      *
      * Returning from a handler that was invoked while we were either parsing new input
      * or returning back to a query or idle or sleep state.
@@ -2193,8 +2176,9 @@ static void lHyp_frame_return ( sFrame *pFrame,
     if ( pLevel->state == STATE_IDLE ) {
       if ( status ) {
 	if ( pAI == pAImain &&
-	  gHyp_concept_returnToStdIn(gHyp_instance_getConcept(pAI)) ) {
-
+	  gHyp_concept_returnToStdIn(gHyp_instance_getConcept(pAI)) &&
+          gHyp_instance_isEND(pAI) ) {
+	  /*gHyp_util_debug("Parent instance can return to stdin after idle(), setting PARSE");*/
 	  gHyp_instance_setState ( pAI, STATE_PARSE ) ;
 	  if ( guDebugFlags & DEBUG_FRAME )
 	    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
@@ -2213,7 +2197,7 @@ static void lHyp_frame_return ( sFrame *pFrame,
       else {
 	gHyp_util_logInfo ( "...aborting idle state, status = %s",gHyp_data_print(pSTATUS)) ;
 
-	if ( pAI == pAImain && !gHyp_instance_isEND ( pAI ) )
+	if ( pAI == pAImain && gHyp_instance_isEND ( pAI ) )
 	  gHyp_concept_setReturnToStdIn ( gHyp_instance_getConcept(pAI),TRUE ) ;
 
 
@@ -2230,7 +2214,8 @@ static void lHyp_frame_return ( sFrame *pFrame,
       if ( status ) {
 
 	if ( pAI == pAImain && 
-	  gHyp_concept_returnToStdIn(gHyp_instance_getConcept(pAI) ) ) {
+	  gHyp_concept_returnToStdIn(gHyp_instance_getConcept(pAI) ) &&
+          gHyp_instance_isEND(pAI) ) {
 
 	  /*gHyp_util_debug("Parent instance can return to stdin after sleep(), setting PARSE");*/
 	  gHyp_instance_setState ( pAI, STATE_PARSE ) ;
@@ -2264,7 +2249,7 @@ static void lHyp_frame_return ( sFrame *pFrame,
       else {
 	gHyp_util_logInfo ( "...aborting sleep state, status = %s",gHyp_data_print(pSTATUS)) ;
 
-	if ( pAI == pAImain && !gHyp_instance_isEND ( pAI ) )
+	if ( pAI == pAImain && gHyp_instance_isEND ( pAI ) )
 	  gHyp_concept_setReturnToStdIn ( gHyp_instance_getConcept(pAI),TRUE ) ;
 	gHyp_instance_setState ( pAI, STATE_PARSE ) ;
 	gHyp_instance_pushSTATUS ( pAI, pLevel->pStack ) ;

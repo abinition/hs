@@ -891,9 +891,10 @@ void gHyp_system_sleep ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
       if ( guDebugFlags & DEBUG_FRAME )
         gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME, 
-			     "frame: SLEEP (longjmp to 1 from frame %d)",
-			     gHyp_frame_depth(pFrame) ) ;
-      longjmp ( gsJmpStack[giJmpLevel=1], COND_SILENT ) ;
+			   "frame: SLEEP (longjmp to %d from frame %d)",
+			   giJmpRootLevel,gHyp_frame_depth(pFrame) ) ;
+
+      longjmp ( gsJmpStack[giJmpLevel=giJmpRootLevel], COND_SILENT ) ;
 
     }
   }
@@ -1284,9 +1285,9 @@ void gHyp_system_parse ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
    if ( argCount == 0 ) {
 
-      /* Go back to PARSE mode - must not allow return to IDLE */
+      /* Go back to PARSE mode - break out of IDLE or SLEEP or QUERY */
      pAImain = gHyp_concept_getConceptInstance ( gHyp_instance_getConcept ( pAI ) ) ;
-     if ( pAI == pAImain && !gHyp_instance_isEND ( pAI ) )
+     if ( pAI == pAImain && gHyp_instance_isEND ( pAI ) )
        gHyp_concept_setReturnToStdIn ( gHyp_instance_getConcept(pAI), TRUE ) ;
      gHyp_instance_setState ( pAI, STATE_PARSE ) ;
       strcpy ( fileSpec, "stdin" ) ;

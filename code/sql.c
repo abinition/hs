@@ -342,7 +342,10 @@ sORACLE *gsORACLE ;
 /* for sql_bind */
 struct bind_t {
 	OCIStmt    *stmthp;
-  dvoid      *valuep[MAX_SQL_ITEMS] ;
+  char       table[TOKEN_SIZE+1];     /* Eg: actl */
+  char       counter[TOKEN_SIZE+1];   /* Eg: noevents */
+  sData*     pData ;
+  dvoid      *valuep[MAX_SQL_ITEMS] ; 
   ub2        *alenp[MAX_SQL_ITEMS] ;
 }  ;
 
@@ -667,7 +670,8 @@ void gHyp_sql_bind ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 		  *pData,
 		  *pData2,
       *pData3,
-
+      *pData4,
+      *pData5,
 		  *pResult ;
 
 		sLOGICAL
@@ -757,9 +761,15 @@ void gHyp_sql_bind ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 		pStatus = gHyp_frame_createVariable ( pAI, pFrame, "_sql_status_" ) ;
 		gHyp_data_deleteValues ( pStatus ) ;
 
-		if ( argCount != 3 )
+		if ( argCount != 5 )
 		gHyp_instance_error ( pAI, STATUS_ARGUMENT,
-		"Invalid arguments. Usage: sql_bind ( stmt, handle, bindVariables )" ) ;
+		"Invalid arguments. Usage: sql_bind ( stmt, handle, bindVariables, table, counter )" ) ;
+
+		/* Get the Bind counter name */
+		pData5 = gHyp_stack_popRdata ( pStack, pAI ) ;
+
+		/* Get the Bind table name */
+		pData4 = gHyp_stack_popRdata ( pStack, pAI ) ;
 
 		/* Get the Bind list */
 		pData3 = gHyp_stack_popRdata ( pStack, pAI ) ;
@@ -854,6 +864,13 @@ void gHyp_sql_bind ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     /* Create the bind handle */
     dbbind = (sBIND*) AllocMemory ( sizeof ( sBIND ) ) ;
     dbbind->stmthp = stmthp ;
+
+    context = -1 ;
+		isVector = (gHyp_data_getDataType(pData5) > TYPE_STRING);
+		valueLen = gHyp_data_getStr ( pData5, dbbind->counter, MAX_INPUT_LENGTH, context, isVector ) ;
+		isVector = (gHyp_data_getDataType(pData4) > TYPE_STRING);
+		valueLen = gHyp_data_getStr ( pData4, dbbind->table, MAX_INPUT_LENGTH, context, isVector ) ;
+    dbbind->pData = pData3 ;
 
 		/* Prepare the statement */
                 if ( guDebugFlags & DEBUG_SQL) gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SQL,
@@ -1085,6 +1102,7 @@ void gHyp_sql_bind ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
   data_bufferlen = (sb4) gHyp_data_bufferLen ( pValue,0 );
   data_buffer = (dvoid *) gHyp_data_buffer ( pValue, 0 ) ;
+  
   dbbind->valuep[i] = data_buffer ;
   dbbind->alenp[i] = (ub2*) gHyp_data_dataLenPtr ( pValue );
 
@@ -1277,6 +1295,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 		ub4	amount ;
 		ub4	offset ;
     ub4 iters ;
+
 #ifdef AS_ORACLE_DO_PREPARE2
 		OraText	*key = "mykey" ;
     ub4	keylen = strlen (key) ;
@@ -1507,7 +1526,24 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 			rc = OCI_SUCCESS ;
 			isSelect = FALSE ;
 			orientation = OCI_DEFAULT  ;
-      iters = 1 ;
+
+      /* Populate the bind arrays */
+
+      pData = dbbind->pData ;
+      pTable = gHyp_frame_findVariable ( pAI, pFrame, dbbind->table ) ;
+      pData2 = gHyp_data_getChildByName ( pTable, dbbind->counter ) ;
+      iters = 1 ; /*gHyp_data_getInt ( pData2, 0, TRUE ) ;*/
+
+		  pResult = NULL ;
+		  ss = 0 ;
+		  context = -1 ;
+		  isVector = (gHyp_data_getDataType(pTable) > TYPE_STRING);
+      i = 0 ;
+		  while ( (pResult = gHyp_data_nextValue ( pTable, pResult, &context, ss ) ) ) {  
+        dbbind->valuep[i] = (dvoid*) gHyp_data_buffer ( pResult, 0 ) ;
+        dbbind->alenp[i] = (ub2*) gHyp_data_dataLenPtr ( pResult );
+        i++ ;
+      }
     }
 
 		if ( rc == OCI_SUCCESS ) {
