@@ -3,7 +3,7 @@
  * Modifications:
  *
  * $Log: instance.h,v $
- * Revision 1.19  2012-01-29 21:18:20  bergsma
+ * Revision 1.19  2012-01-29 21gsettim:18:20  bergsma
  * Build 3.9.4 - 120202
  *
  * Revision 1.18  2012-01-08 01:25:25  bergsma
@@ -88,7 +88,7 @@ extern int gHyp_instance_nextEvent ( sInstance *pAI ) ;
 extern int gHyp_instance_read ( sInstance*, sLOGICAL ) ;
 extern int gHyp_instance_readReply ( sInstance *pAI ) ;
 extern int gHyp_instance_readQueue ( sInstance* pAI ) ;
-extern int gHyp_instance_readProcess ( sInstance *pAI ) ;
+extern int gHyp_instance_readProcess ( sInstance *pAI, sBYTE state ) ;
 extern int gHyp_instance_readSignals ( sInstance *pAI ) ;
 extern void	gHyp_instance_setSecsMLB ( sInstance*, sBYTE ) ; 
 extern sBYTE	gHyp_instance_getSecsMLB ( sInstance* ) ;
@@ -119,6 +119,7 @@ extern void	gHyp_instance_portEnable ( sInstance*, sWORD , sData* ) ;
 extern void	gHyp_instance_portDisable ( sInstance*, sWORD ) ;
 extern sData*	gHyp_instance_portMethod ( sInstance*, sWORD ) ;
 extern sLOGICAL	gHyp_instance_replyMessage ( sInstance*, sData* ) ;
+extern int gHyp_instance_ENQcontention ( sInstance * pAI, sFrame * pFrame ) ;
 extern void    	gHyp_instance_reset ( sInstance*, char, sLOGICAL ) ;
 extern sBYTE   	gHyp_instance_getState ( sInstance * ) ;
 extern void    	gHyp_instance_setState ( sInstance *, sBYTE ) ;
@@ -147,6 +148,7 @@ extern void	gHyp_instance_setBeatTime ( sInstance *, int );
 extern void	gHyp_instance_setWakeTime ( sInstance *, int );
 extern time_t	gHyp_instance_getWakeTime ( sInstance * );
 extern time_t	gHyp_instance_getTimeOutTime ( sInstance *);
+extern time_t	gHyp_instance_getTimeOutTime2 ( sInstance *);
 extern void	gHyp_instance_cancelTimeOut ( sInstance *);
 extern void    	gHyp_instance_initTimeOut ( sInstance *, int ) ;
 extern void    	gHyp_instance_setTimeOut ( sInstance * ) ;

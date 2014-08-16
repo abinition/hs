@@ -285,16 +285,16 @@ void gHyp_frame_dumpLevel ( sFrame *pFrame )
 {
   sLevel *pLevel = gHyp_frame_level ( pFrame ) ;
 
-  gHyp_util_logInfo("LEVEL  = %x",pFrame->depth ) ;
-  gHyp_util_logInfo("state  = %x",pLevel->state ) ;
-  gHyp_util_logInfo("statementtype  = %d",pLevel->statementType ) ;
-  gHyp_util_logInfo("hypindex  = %d",pLevel->hypIndex ) ;
-  gHyp_util_logInfo("branchindex  = %d",pLevel->branchIndex ) ;
-  gHyp_util_logInfo("currentstate  = %d",pLevel->currentState ) ;
-  gHyp_util_logInfo("expectedstate  = %d",pLevel->expectedState ) ;
-  gHyp_util_logInfo("globalflags = %x",pLevel->globalFlags ) ;
-  gHyp_util_logInfo("localflags  = %x",pLevel->localFlags ) ;
-  gHyp_util_logInfo("loopflags  = %x",pLevel->loopFlags ) ;
+  gHyp_util_debug("LEVEL  = %x",pFrame->depth ) ;
+  gHyp_util_debug("state  = %x",pLevel->state ) ;
+  gHyp_util_debug("statementtype  = %d",pLevel->statementType ) ;
+  gHyp_util_debug("hypindex  = %d",pLevel->hypIndex ) ;
+  gHyp_util_debug("branchindex  = %d",pLevel->branchIndex ) ;
+  gHyp_util_debug("currentstate  = %d",pLevel->currentState ) ;
+  gHyp_util_debug("expectedstate  = %d",pLevel->expectedState ) ;
+  gHyp_util_debug("globalflags = %x",pLevel->globalFlags ) ;
+  gHyp_util_debug("localflags  = %x",pLevel->localFlags ) ;
+  gHyp_util_debug("loopflags  = %x",pLevel->loopFlags ) ;
  
   return ;
 }
@@ -2002,6 +2002,9 @@ static void lHyp_frame_return ( sFrame *pFrame,
   sLOGICAL
     status = TRUE ;
 
+  sBYTE
+	currentState ;
+
   int
     cond = COND_SILENT ;
 
@@ -2096,12 +2099,14 @@ static void lHyp_frame_return ( sFrame *pFrame,
 
     /* A incoming message.  Check for replies */ 
     /* Execute all pending conditions */
+    currentState = gHyp_instance_getState( pAI) ;
     do {
       gHyp_frame_setGlobalFlag ( pFrame, FRAME_GLOBAL_TRUE ) ;
       /* Setting EXECUTE makes sure only handlers will execute */
       gHyp_instance_setState ( pAI, STATE_EXECUTE ) ;
     }
     while ( gHyp_instance_parse ( pAI ) == COND_NORMAL ) ;
+    gHyp_instance_setState ( pAI, currentState ) ;
 
     if ( guDebugFlags & DEBUG_DIAGNOSTICS )
       gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
@@ -2151,7 +2156,7 @@ static void lHyp_frame_return ( sFrame *pFrame,
         gHyp_instance_setState ( pAI, STATE_PARSE ) ;
     }
     else {
-      /*gHyp_util_debug("Handler returned false, instance state remains %d", gHyp_instance_getState ( pAI ) ) ;*/
+	    gHyp_util_debug("Handler1 returned %d, instance state %d->%d->%d", status,gHyp_instance_getState(pAI), pLevel->state, STATE_IDLE ) ;
       gHyp_instance_setState ( pAI, STATE_IDLE ) ;
     }
   }
@@ -2164,6 +2169,8 @@ static void lHyp_frame_return ( sFrame *pFrame,
       gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
 			   "frame: EXECUTE (longjmp to %d from frame %d)",
 			   giJmpLevel, pFrame->depth );
+
+    gHyp_util_debug("Handler2 returned %d, instance state %d->%d->%d", status, gHyp_instance_getState(pAI), pLevel->state, STATE_EXECUTE ) ;
     gHyp_instance_setState ( pAI, STATE_EXECUTE ) ;
     if ( !status ) cond = COND_FATAL ;
   }
@@ -2172,13 +2179,17 @@ static void lHyp_frame_return ( sFrame *pFrame,
      *
      * Returning from a handler that was invoked while we were either parsing new input
      * or returning back to a query or idle or sleep state.
+     *
+     * Returning from an ENQ contention, either in QUERY mode or sending a reply.
+     *
      */
     if ( pLevel->state == STATE_IDLE ) {
       if ( status ) {
 	if ( pAI == pAImain &&
 	  gHyp_concept_returnToStdIn(gHyp_instance_getConcept(pAI)) &&
           gHyp_instance_isEND(pAI) ) {
-	  /*gHyp_util_debug("Parent instance can return to stdin after idle(), setting PARSE");*/
+    gHyp_util_debug("Handler3 returned %d, instance state %d->%d->%d", status, gHyp_instance_getState(pAI), pLevel->state, STATE_PARSE ) ;
+
 	  gHyp_instance_setState ( pAI, STATE_PARSE ) ;
 	  if ( guDebugFlags & DEBUG_FRAME )
 	    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
@@ -2186,7 +2197,9 @@ static void lHyp_frame_return ( sFrame *pFrame,
 			       giJmpLevel, pFrame->depth );
 	}
 	else {
-	  gHyp_instance_setState ( pAI, STATE_IDLE ) ;
+
+    gHyp_util_debug("Handler4 returned %d, instance state %d->%d->%d", status, gHyp_instance_getState(pAI), pLevel->state, STATE_IDLE ) ;
+    gHyp_instance_setState ( pAI, STATE_IDLE ) ;
 
 	  if ( guDebugFlags & DEBUG_FRAME )
 	    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
@@ -2200,7 +2213,7 @@ static void lHyp_frame_return ( sFrame *pFrame,
 	if ( pAI == pAImain && gHyp_instance_isEND ( pAI ) )
 	  gHyp_concept_setReturnToStdIn ( gHyp_instance_getConcept(pAI),TRUE ) ;
 
-
+    gHyp_util_debug("Handler5 returned %d, instance state %d->%d->%d", status, gHyp_instance_getState(pAI), pLevel->state, STATE_PARSE ) ;
 	gHyp_instance_setState ( pAI, STATE_PARSE ) ;
 	gHyp_instance_pushSTATUS ( pAI, pLevel->pStack ) ;
 	if ( guDebugFlags & DEBUG_FRAME )
@@ -2217,7 +2230,7 @@ static void lHyp_frame_return ( sFrame *pFrame,
 	  gHyp_concept_returnToStdIn(gHyp_instance_getConcept(pAI) ) &&
           gHyp_instance_isEND(pAI) ) {
 
-	  /*gHyp_util_debug("Parent instance can return to stdin after sleep(), setting PARSE");*/
+    gHyp_util_debug("Handler6 returned %d, instance state %d->%d->%d", status, gHyp_instance_getState(pAI), pLevel->state, STATE_PARSE ) ;
 	  gHyp_instance_setState ( pAI, STATE_PARSE ) ;
 	  if ( guDebugFlags & DEBUG_FRAME )
 	    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
@@ -2227,7 +2240,10 @@ static void lHyp_frame_return ( sFrame *pFrame,
 	else if ( gHyp_instance_getWakeTime ( pAI ) == 0 ) {
 
 	  /*gHyp_util_debug("Finished Sleeping");*/
+		
+    gHyp_util_debug("Handler7 returned %d, instance state %d->%d->%d", status, gHyp_instance_getState(pAI), pLevel->state, STATE_PARSE ) ;
 	  gHyp_instance_setState ( pAI, STATE_PARSE ) ;
+    gHyp_instance_pushSTATUS ( pAI, gHyp_frame_stack ( pFrame ) ) ;
 	  if ( guDebugFlags & DEBUG_FRAME )
 	    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
 			       "frame: PARSE (longjmp to %d from frame %d)",
@@ -2236,7 +2252,7 @@ static void lHyp_frame_return ( sFrame *pFrame,
 	else {
 
 	  /* Continue sleeping */
-	  /*gHyp_util_debug("CONTINUE SLEEPING");*/
+    gHyp_util_debug("Handler8 returned %d, instance state %d->%d->%d", status, gHyp_instance_getState(pAI), pLevel->state, STATE_SLEEP ) ;
 
 	  gHyp_instance_setState ( pAI, STATE_SLEEP ) ;
 	  if ( guDebugFlags & DEBUG_FRAME )
@@ -2251,7 +2267,9 @@ static void lHyp_frame_return ( sFrame *pFrame,
 
 	if ( pAI == pAImain && gHyp_instance_isEND ( pAI ) )
 	  gHyp_concept_setReturnToStdIn ( gHyp_instance_getConcept(pAI),TRUE ) ;
-	gHyp_instance_setState ( pAI, STATE_PARSE ) ;
+
+    gHyp_util_debug("Handler9 returned %d, instance state %d->%d->%d", status, gHyp_instance_getState(pAI), pLevel->state, STATE_PARSE ) ;
+    gHyp_instance_setState ( pAI, STATE_PARSE ) ;
 	gHyp_instance_pushSTATUS ( pAI, pLevel->pStack ) ;
 	if ( guDebugFlags & DEBUG_FRAME )
 	  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
@@ -2261,23 +2279,52 @@ static void lHyp_frame_return ( sFrame *pFrame,
     }
     else if ( pLevel->state == STATE_QUERY ) {
 
-      /* Do we re-issue the query? */
-      if ( status ) {
-	/* The STATUS value was changed to "TRUE" by the handler.*/
-	if ( gHyp_instance_getTimeOutTime ( pAI ) == 0 ) 
-	  gHyp_instance_setTimeOut ( pAI ) ;	
+      gHyp_util_debug("Handler10 returned %d, instance state %d->%d->%d", status, gHyp_instance_getState(pAI), pLevel->state, STATE_QUERY ) ;
 
-	gHyp_instance_setState ( pAI, STATE_QUERY ) ;
-	if ( guDebugFlags & DEBUG_FRAME )
-	  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
+      if ( status ) {
+
+        while ( (cond = gHyp_instance_readQueue ( pAI )) == COND_NORMAL ) {
+          cond = gHyp_instance_readProcess ( pAI, pLevel->state ) ;
+	  /* Reply messages return COND_SILENT, event and query COND_NORMAL */
+	  if ( cond == COND_NORMAL ) break ;
+        }
+	if ( cond == COND_SILENT ) {
+	  /* There were no event or query messages.
+	   * Check to see if the reply messages came in. 
+	   * Consumed reply messages return COND_NORMAL
+	   */
+	  cond = gHyp_instance_readReply ( pAI ) ;
+	}
+	else
+	  /* An event or query interrupts, go back to STATE_QUERY */
+	  cond = COND_SILENT ;
+
+	if ( cond == COND_NORMAL ) {
+          /* Result is in status variable */
+          /* Create a local copy of STATUS.  Put that on the stack. */
+          gHyp_instance_pushLocalSTATUS ( pAI, gHyp_frame_stack ( pFrame ) ) ;
+          gHyp_instance_setState ( pAI, STATE_PARSE ) ;
+	  if ( guDebugFlags & DEBUG_FRAME )
+	    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
+			       "frame: PARSE (longjmp to %d from frame %d)",
+			       giJmpLevel, pFrame->depth );
+	}
+	else {		
+          gHyp_instance_setState ( pAI, STATE_QUERY ) ;
+          gHyp_instance_setTimeOut ( pAI ) ;	
+          if ( guDebugFlags & DEBUG_FRAME )
+	    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
 			       "frame: QUERY (longjmp to %d from frame %d)",
 			       giJmpLevel, pFrame->depth );
+	}
       }
       else {
+
 	gHyp_util_logInfo ( "...aborting query: %s", gHyp_data_print(pSTATUS) ) ;
-	/* Cancel timeout */
 	gHyp_instance_decIncomingDepth ( pAI ) ;
-	gHyp_instance_cancelTimeOut ( pAI ) ;
+
+ 	/* Cancel timeout */
+        gHyp_instance_cancelTimeOut ( pAI ) ;
 	gHyp_instance_setState ( pAI, STATE_PARSE ) ;
 	gHyp_instance_pushSTATUS ( pAI, pLevel->pStack ) ;
 	if ( guDebugFlags & DEBUG_FRAME )
@@ -2287,6 +2334,8 @@ static void lHyp_frame_return ( sFrame *pFrame,
       }
     }
     else {
+
+      gHyp_util_debug("Handler12 returned %d, instance state %d->%d->%d", status, gHyp_instance_getState(pAI), pLevel->state, STATE_PARSE ) ;
       gHyp_instance_setState ( pAI, STATE_PARSE ) ;
       if ( guDebugFlags & DEBUG_FRAME )
 	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,

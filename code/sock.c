@@ -8637,7 +8637,7 @@ int gHyp_sock_select ( sConcept* pConcept,
 
   if ( guDebugFlags & DEBUG_DIAGNOSTICS )
     gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS, 
-			   "diag:  Timeout is %d seconds",timeout );
+			   "diag:  Select timeout is %d seconds",timeout );
 
   /* Application fd's */
   cond = lHyp_sock_select_FDSET_objects ( pConcept, pSockets, timeout ) ;

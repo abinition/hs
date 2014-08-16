@@ -1958,7 +1958,7 @@ int gHyp_secs1_outgoing ( sSecs1 *pSecs1,
       else {
 
 	/* Got some data. We hope its an <EOT> */
-	if ( pSecs1->inbuf[0] != SECS_CHAR_EOT ) {
+        if ( pSecs1->inbuf[0] != SECS_CHAR_EOT ) {
 
 	  /* Not what we expected */
 
@@ -1993,12 +1993,22 @@ int gHyp_secs1_outgoing ( sSecs1 *pSecs1,
 	      break ;
 	    }
 	    else {
-	   
-	      /* Not a slave but master!. Keep listening for EOT! */
-	      gHyp_util_logError ( 
-		"Expecting <EOT>, got <ENQ> from SECS device %s",
-		  pSecs1->device ) ;
-	      break ;
+	  
+	      /* Not a slave but master!
+	       * Check to see if the slave has just done an ENQ contention
+	       * by the presence of EOT after the ENQ
+	       */
+	      if ( nBytes > 1 && pSecs1->inbuf[1] != SECS_CHAR_EOT ) {
+	        gHyp_util_logError ( 
+		  "Expecting <EOT>, got <ENQ> from SECS device %s",
+		    pSecs1->device ) ;
+	        break ;
+	      }
+	      else {
+	        if ( guDebugFlags & DEBUG_PROTOCOL )
+		  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
+				   "Slave ENQ contention accepted" ) ;
+	      }
 	    }
 	  }
 	  else if ( pSecs1->inbuf[0] == SECS_CHAR_NAK ) {

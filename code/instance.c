@@ -1291,9 +1291,8 @@ int gHyp_instance_nextEvent ( sInstance *pAI )
     pAI->exec.eventType = EVENT_WAKEUP ;
   }
   
-  /*gHyp_util_debug("Next event(s) is %x in %d seconds",
-   *		   pAI->exec.eventType,(pAI->exec.eventTime-gsCurTime));
-   */
+  gHyp_util_debug("Next event(s) is %x in %d seconds",
+  		   pAI->exec.eventType,(pAI->exec.eventTime-gsCurTime));
   
  
   return (int) pAI->exec.eventTime ;
@@ -1302,6 +1301,20 @@ int gHyp_instance_nextEvent ( sInstance *pAI )
 time_t gHyp_instance_getTimeOutTime ( sInstance *pAI )
 {
   return pAI->exec.timeOutTime ;
+}
+
+time_t gHyp_instance_getTimeOutTime2 ( sInstance *pAI )
+{
+  int i;
+  for ( i=0; i<=pAI->msg.incomingDepth; i++ )
+    gHyp_util_debug("Depth %d, S%dF%d frame %d time %d",i,
+  pAI->msg.incomingReply[i]->secs.stream, 
+  pAI->msg.incomingReply[i]->secs.function,
+  pAI->msg.incomingReply[i]->frameDepth,
+  pAI->msg.incomingReply[i]->timeoutTime
+  ) ;
+
+  return pAI->msg.incomingReply[pAI->msg.incomingDepth-1]->timeoutTime ;
 }
 
 void gHyp_instance_setBeatTime ( sInstance *pAI, int eventTime )
@@ -1476,54 +1489,35 @@ int gHyp_instance_read ( sInstance * pAI, sLOGICAL queueOnly  )
      *
      * The message is put in 'incoming' and cond is set to COND_NORMAL.
      */
-    cond = gHyp_instance_readQueue ( pAI ) ;
-    if ( cond == COND_NORMAL ) {
+    while ( (cond = gHyp_instance_readQueue ( pAI )) == COND_NORMAL ) {
 
       /* There was a message. See if the message is for us.
        *
        * Only if the message can invoke a hyperscript method will the
        * returned value be COND_NORMAL.
-       * The signal uMSGINTERRUPT or uMSGPENDING will also be set.
+       * The signal uMSGINTERRUPT or uMSGPENDING will also be set
+       * and we read no more messages from the queue.
        *
        * If the message is a reply, it will be put in the reply queue
-       * and the cond will be COND_SILENT.
-       *
+       * and the cond returned will be COND_SILENT, we keep reading more
+       * reply messages from the queue.
        */
-      cond = gHyp_instance_readProcess ( pAI ) ;
-
-      if ( cond != COND_SILENT ) {
-        /* Either we will be a executing message or there's an error */
-        gHyp_instance_readSignals ( pAI )  ;
-        break ;
-      }
+      cond = gHyp_instance_readProcess ( pAI, pAI->exec.state ) ;
+      if ( cond == COND_NORMAL ) break ;
     }
-
-    if ( cond == COND_SILENT ) {
-
-      /* Nothing was in the main queue.
-       * But somethng may have been placed in the reply queue.
+    if ( cond == COND_SILENT && pAI->exec.state == STATE_QUERY ) {
+      /* Since no message is interrupting, check to see if the top 
+       * level reply has come in, and if so, then break and
+       * continue parsing HS after the query
        */
-
       cond = gHyp_instance_readReply ( pAI ) ;
-
-      if ( cond != COND_SILENT ) {
-
-        /* Either an error or
-         * we found a reply that matches a query at the current
-         * frame level ONLY.  Execution after the "query" statement can resume.
-         * The state will be set to PARSE and the cond will be COND_NORMAL.
-         * The message will also be "consumed" by the instance.
-         *
-         * The reply message will be put into 'incoming', although its
-	 * already been processed.
-         *
-         * For all other replies, it is COND_SILENT.
-         *
-         */
-        gHyp_instance_readSignals ( pAI )  ;
-        break ;
+      if ( cond == COND_NORMAL ) {
+	gHyp_instance_pushLocalSTATUS ( pAI, gHyp_frame_stack (pAI->exec.pFrame ) ) ;
+	break ;
       }
     }
+
+    if ( cond != COND_SILENT ) break ;
 
     if ( !queueOnly ) {
 
@@ -1571,26 +1565,26 @@ int gHyp_instance_read ( sInstance * pAI, sLOGICAL queueOnly  )
 int gHyp_instance_readReply ( sInstance *pAI )
 {
   int
-    n ;
-
-  if ( (pAI->exec.state == STATE_QUERY ) &&
-       pAI->msg.incomingDepth > 0 &&
-       pAI->msg.incomingReply[pAI->msg.incomingDepth-1]->msg != NULL ) {
+    n = pAI->msg.incomingDepth-1 ;
+  gHyp_util_debug("Depth %d reply %x frame %d / %d",
+	  n,pAI->msg.incomingReply[n]->msg,pAI->msg.incomingReply[n]->frameDepth,gHyp_frame_depth(pAI->exec.pFrame) );
+  if ( pAI->msg.incomingDepth > 0 &&
+       pAI->msg.incomingReply[n]->msg != NULL
+        /*pAI->msg.incomingReply[n]->frameDepth >= gHyp_frame_depth(pAI->exec.pFrame)*/
+       ) {
     
     if ( guDebugFlags & DEBUG_DIAGNOSTICS )
       gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
 			   "diag : Matched incoming reply at depth %d",
-			   pAI->msg.incomingDepth-1);
-    
-    /* Reply message for our current level has arrived. */
-    n = pAI->msg.incomingDepth-1 ;
+			   n);
+
     
     if ( pAI->msg.incoming ) gHyp_aimsg_delete ( pAI->msg.incoming ) ;
     pAI->msg.incoming = pAI->msg.incomingReply[n]->msg; 
     pAI->msg.inSecs = pAI->msg.incomingReply[n]->secs ;
-    
-    pAI->msg.incomingReply[n]->msg = NULL ;
 
+    pAI->msg.incomingReply[n]->msg = NULL ;
+    pAI->msg.incomingReply[n]->frameDepth = -1 ;
     pAI->msg.incomingReply[n]->secs.id = NULL_DEVICEID ;
     pAI->msg.incomingReply[n]->secs.stream = -1 ;
     pAI->msg.incomingReply[n]->secs.function = -1 ;
@@ -1598,17 +1592,17 @@ int gHyp_instance_readReply ( sInstance *pAI )
     pAI->msg.incomingReply[n]->secs.SID = -1 ;
         
     /* Consume the REPLY message and resume execution after the query */
-
-    
     if ( guDebugFlags & DEBUG_DIAGNOSTICS )
       gHyp_util_logDebug ( 
 			  FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
 			  "diag : Consuming reply message at incoming depth %d",
 			  n ) ;
     
-
     lHyp_instance_consumeMessage ( pAI, 0 ) ;
-    
+
+    gHyp_aimsg_delete ( pAI->msg.incoming ) ;
+    pAI->msg.incoming = NULL ;
+
     /* Make sure the frame state is no longer STATE_QUERY */
     pAI->exec.state = STATE_PARSE ;
     gHyp_frame_setState ( pAI->exec.pFrame, STATE_PARSE ) ;
@@ -1616,10 +1610,6 @@ int gHyp_instance_readReply ( sInstance *pAI )
 
     /* Cancel timeout. Determine next critical event. */
     gHyp_instance_cancelTimeOut ( pAI ) ;
-    
-    /* Result is in status variable */
-    /* Create a local copy of STATUS.  Put that on the stack. */
-    gHyp_instance_pushLocalSTATUS ( pAI, gHyp_frame_stack ( pAI->exec.pFrame ) ) ;
     
     /* RETURN 1, SATISFYING THE QUERY */
     return COND_NORMAL ;
@@ -1633,7 +1623,8 @@ int gHyp_instance_readQueue ( sInstance* pAI )
   int
     n ;
 
-  if ( pAI->msg.qq[pAI->msg.startQQ] != NULL) {
+  gHyp_util_debug("Checking qq at %d", pAI->msg.startQQ);
+  if ( pAI->msg.qq[pAI->msg.startQQ] != NULL && pAI->msg.incoming == NULL ) {
 
     /* There are queued messages */
 
@@ -1809,7 +1800,7 @@ int gHyp_instance_readSignals ( sInstance *pAI )
   return COND_SILENT ;
 }
 
-int gHyp_instance_readProcess ( sInstance *pAI )
+int gHyp_instance_readProcess ( sInstance *pAI, sBYTE state )
 {
   int	       
     i ;
@@ -1862,7 +1853,7 @@ int gHyp_instance_readProcess ( sInstance *pAI )
   pTargetInstance = gHyp_aimsg_targetInstance ( pAI->msg.incoming ) ;
   pTargetConcept = gHyp_aimsg_targetConcept ( pAI->msg.incoming ) ;
 
-  /*gHyp_util_debug("TARGET COMPARE %s == %s",pTargetInstance, pTargetConcept) ;*/
+  gHyp_util_debug("TARGET COMPARE %s == %s",pTargetInstance, pTargetConcept) ;
 
   if ( strcmp ( pTargetInstance, pTargetConcept ) != 0 ) {
 
@@ -2007,11 +1998,9 @@ int gHyp_instance_readProcess ( sInstance *pAI )
 	  gHyp_aimsg_delete (pAI->msg.incomingReply[i]->msg);
 	
 	pAI->msg.incomingReply[i]->msg = pAI->msg.incoming ;
-
         pAI->msg.incomingReply[i]->secs = pAI->msg.inSecs ;
 
 	pAI->msg.incoming = NULL ;
-
 	pAI->msg.inSecs.id = NULL_DEVICEID ;
 	pAI->msg.inSecs.stream = -1 ;
 	pAI->msg.inSecs.function = -1 ;
@@ -2030,8 +2019,10 @@ int gHyp_instance_readProcess ( sInstance *pAI )
                                 (!okTID?"TID mismatch":(!okMethod?"Method mismatch":(!okInstance?"Instance":"Unknown?"))) ) ;
 	/* To do: Send S9F3 (stream mismatch) or S9F5 (function mismatch) */
       }
-      else
+      else {
+	      gHyp_util_debug("Not a reply message");
 	isReplyMsg = FALSE ;
+      }
     }
   }
 
@@ -2090,15 +2081,15 @@ int gHyp_instance_readProcess ( sInstance *pAI )
       pAI->signal.uMSGINTERRUPT = 1 ;
       pAI->signal.uMSGPENDING = 1 ;
 
-      if ( pAI->exec.state == STATE_QUERY ) {
+      if ( state == STATE_QUERY ) {
 	/* An incoming message has interrupted a QUERY state. 
 	 * Make a noise about it.
 	 */
 	gHyp_instance_warning ( pAI, STATUS_MESSAGE, 
-				"Message interrupted query at incoming depth %d",
-				pAI->msg.incomingDepth ) ;
+				"Message %s interrupted query at incoming depth %d",
+				pMethodStr, pAI->msg.incomingDepth ) ;
       } 
-      else if ( pAI->exec.state == STATE_SLEEP ) {
+      else if ( state == STATE_SLEEP ) {
 	/* An incoming message has interrupted a SLEEP state. 
 	 * Make a noise about it.
 	 */
@@ -2106,14 +2097,14 @@ int gHyp_instance_readProcess ( sInstance *pAI )
 				"Message interrupted sleep at incoming depth %d",
 				pAI->msg.incomingDepth ) ;
       } 
-      else if ( pAI->exec.state == STATE_IDLE ) {
+      else if ( state == STATE_IDLE ) {
 	/* An incoming message has interrupted an IDLE  state. 
 	 * Make a noise about it - but don't abort if there's no message handler./
-	 *
+	 */
 	gHyp_instance_warning ( pAI, STATUS_ACKNOWLEDGE, 
 				"Message interrupted IDLE at incoming depth %d",
 				pAI->msg.incomingDepth ) ;
-	 */
+	 
       }
 
       /* Increment the outgoingdepth */
@@ -2144,6 +2135,7 @@ void gHyp_instance_incIncomingDepth ( sInstance *pAI )
   pAI->msg.incomingReply[pAI->msg.incomingDepth]->secs.function = -1 ;
   pAI->msg.incomingReply[pAI->msg.incomingDepth]->secs.TID = -1 ;
   pAI->msg.incomingReply[pAI->msg.incomingDepth]->secs.SID = -1 ;
+  pAI->msg.incomingReply[pAI->msg.incomingDepth]->frameDepth = -1 ;
 
 }
 
@@ -2375,10 +2367,10 @@ sLOGICAL gHyp_instance_replyMessage ( sInstance *pAI, sData *pMethodData )
     TID,
     SID,
     contentLength,
-    saveJmpRootLevel=giJmpRootLevel;
+    saveJmpRootLevel=giJmpRootLevel,
+    cond;
 
   sBYTE
-    currentState,
     tokenType ;
 
   sSecs1
@@ -2611,37 +2603,19 @@ sLOGICAL gHyp_instance_replyMessage ( sInstance *pAI, sData *pMethodData )
 	      /* Since we didn't send the reply, restore the outgoing depth */
 	      gHyp_instance_incOutgoingDepth ( pAI ) ;
 	      outgoingDepth =  pAI->msg.outgoingDepth ;
-              currentState = gHyp_instance_getState ( pAI ) ;
-
-	      /*gHyp_util_debug ( "ENQ contention at depth %d ",outgoingDepth ) ;*/
               
-              /* Queue up the interrupting message.  
-               * TRUE means don't block, which means we are not executing select(),
-               * we are only fetching the incoming message from the queue and setting
-               * up for the message call.
-               */
-	      gHyp_util_debug("ENQ Contention! Adjusting jmprootlevel to %d",giJmpLevel);
-              giJmpRootLevel = giJmpLevel ;
+              gHyp_util_debug("ENQ Contention on Reply at depth %d. Adjusting jmpRootLevel to %d",
+		      outgoingDepth,giJmpLevel+1);
 
-	      do {
-		/* Queue up the interrupting message.  
-                 * TRUE means don't block, which means we are not executing select(),
-                 * we are only fetching the incoming message from the queue and setting
-                 * up for the message call.
-                 * Setting STATE_QUERY here let's us execute the 
-		 * handler for the incoming message, which is
-		 * the gHyp_instance_handleMessageCall() function.
-		 * Setting FRAME_GLOBAL_TRUE let's us execute handlers.
-		 */
-	        gHyp_instance_read ( pAI, TRUE ) ;
-		gHyp_instance_setState ( pAI, STATE_QUERY ) ;
-		gHyp_frame_setGlobalFlag ( pAI->exec.pFrame, FRAME_GLOBAL_TRUE ) ;
-	      }
-	      while ( gHyp_instance_parse ( pAI ) == COND_NORMAL ) ;
-              giJmpRootLevel = saveJmpRootLevel ;
-
-              /* Restore the state, we are not in a QUERY state */
-	      gHyp_instance_setState ( pAI, currentState ) ;
+	      if ( giJmpLevel == MAX_JMP_LEVEL ) {
+                gHyp_util_logError ( "Parse jump level overflow at %d", MAX_JMP_LEVEL ) ;
+                longjmp ( gsJmpStack[0], COND_FATAL ) ;
+              }
+	      giJmpLevel++ ;
+	        giJmpRootLevel = giJmpLevel ;
+                  cond = gHyp_instance_ENQcontention ( pAI, pAI->exec.pFrame ) ;
+	        giJmpRootLevel = saveJmpRootLevel ; 
+              giJmpLevel-- ;
 
 	      /* If the STATUS variable is TRUE, then resend the SECS reply
 	       * message that was interrupted by the ENQ contention.
@@ -2720,6 +2694,33 @@ sLOGICAL gHyp_instance_replyMessage ( sInstance *pAI, sData *pMethodData )
   return TRUE ;
 }
 
+int gHyp_instance_ENQcontention ( sInstance * pAI, sFrame * pFrame )
+{
+  int jmpVal ;
+  byte currentState ;
+  if ( (jmpVal = setjmp ( gsJmpStack[giJmpLevel] )) ) return jmpVal ;
+
+  /* Save the state */
+  currentState = gHyp_instance_getState ( pAI ) ;
+  do {
+    /* Queue up the interrupting message.  
+     * TRUE means don't block, which means we are not executing select(),
+     * we are only fetching the incoming message from the queue and setting
+     * up for the message call.
+     */
+    gHyp_instance_read ( pAI, TRUE ) ;
+
+    /* Setting FRAME_GLOBAL_TRUE allows HS to execute handlers */
+    gHyp_frame_setGlobalFlag ( pFrame, FRAME_GLOBAL_TRUE ) ;
+  }
+  while ( gHyp_instance_parse ( pAI ) == COND_NORMAL ) ;
+
+  /* Restore the state */
+  gHyp_instance_setState ( pAI, currentState ) ;
+
+  return 0 ;
+}
+
 void gHyp_instance_setExpectedReply ( sInstance *pAI, 
 				      char *senderPath,
 				      char* method,
@@ -2729,7 +2730,7 @@ void gHyp_instance_setExpectedReply ( sInstance *pAI,
   /* Description:
    *
    *	When sending a query message, remember the name of the target of 
-   *	the query message and the method name, these will be expecteded in the 
+   *	the query message and the method name, these will be expected in the 
    *	returning reply message.
    *
    * Arguments:
@@ -2767,14 +2768,14 @@ void gHyp_instance_setExpectedReply ( sInstance *pAI,
   strcpy ( pAI->msg.incomingReply[incomingDepth]->method, method ) ;
   strcpy ( pAI->msg.incomingReply[incomingDepth]->transactionID, 
 	   transactionID ) ;
-  pAI->msg.incomingReply[incomingDepth]->timeoutTime	= timeoutTime ;
-  
+  pAI->msg.incomingReply[incomingDepth]->timeoutTime = timeoutTime ;
+  pAI->msg.incomingReply[incomingDepth]->frameDepth = gHyp_frame_depth ( pAI->exec.pFrame ) ;
+
   pAI->msg.incomingReply[incomingDepth]->secs.id = NULL_DEVICEID ;
   pAI->msg.incomingReply[incomingDepth]->secs.stream = -1 ;
   pAI->msg.incomingReply[incomingDepth]->secs.function = -1 ;
   pAI->msg.incomingReply[incomingDepth]->secs.TID = -1 ;
   pAI->msg.incomingReply[incomingDepth]->secs.SID = -1 ;
-
   return ;
 }
 
@@ -2995,7 +2996,7 @@ sAImsg *gHyp_instance_incomingMsg ( sInstance *pAI )
    */
   gHyp_instance_signalMsg ( pAI ) ;
 
-  /*gHyp_util_logInfo("Initialize new message in queue(%d)",n ) ;*/
+  gHyp_util_logInfo("Initialize new message in qq[%d]",n ) ;
   return pAI->msg.qq[n] ;
 }
 
@@ -3500,36 +3501,29 @@ void gHyp_instance_initTimeOut ( sInstance *pAI, int seconds )
 
 void gHyp_instance_cancelTimeOut ( sInstance *pAI )
 { 
-/*
-  int i ;
-  int t ;
-*/
-
+  int n = pAI->msg.incomingDepth ;
   pAI->exec.timeOutTime = 0 ;
-
-  /* See if there is still a timeout existing *
-  for ( i=pAI->msg.incomingDepth-1; i>=0; i-- ) {
-    t = pAI->msg.incomingReply[i]->timeoutTime ;
-    if ( t != 0 ) {
-      if ( pAI->exec.timeOutTime == 0 ||
-	   t < pAI->exec.timeOutTime )
-	pAI->exec.timeOutTime = t ;
-    }
-  }
-  */
-
+  pAI->msg.incomingReply[n]->timeoutTime  = 0 ;
   gHyp_instance_nextEvent ( pAI ) ;
 }
 
 void gHyp_instance_setTimeOut ( sInstance *pAI )
 {        
+  int n = pAI->msg.incomingDepth-1;
 
   gsCurTime = time ( NULL ) ; 
-  if ( pAI->exec.timeOut == 0 ) 
+  if ( pAI->exec.timeOut == 0 ) {
     pAI->exec.timeOutTime = 0 ;
-  else
+    pAI->msg.incomingReply[n]->timeoutTime  = 0 ;
+  }
+  else {
     pAI->exec.timeOutTime = gsCurTime + pAI->exec.timeOut ;
-  
+    pAI->msg.incomingReply[n]->timeoutTime  = (int) pAI->exec.timeOutTime ;
+  }
+  gHyp_util_debug("setting timeout for %s S%dF%d",
+	  pAI->msg.incomingReply[n]->method,
+	  pAI->msg.incomingReply[n]->secs.stream,
+	  pAI->msg.incomingReply[n]->secs.function );
   gHyp_instance_nextEvent ( pAI ) ;
 }
 
@@ -4032,10 +4026,6 @@ static sLOGICAL lHyp_instance_handleAlarm ( sInstance *pAI )
   
   if ( pAI->signal.uALRM ) {
 
-    /* If already in a handler, cannot invoke another one 
-    if ( gHyp_frame_testGlobalFlag ( pAI->exec.pFrame, FRAME_GLOBAL_HANDLER ) ) return FALSE ;
-    */
-
     pAI->signal.uALRM = 0 ;
 #ifdef SIGALRM
     /* Since longjmp is used in lHyp_instance_intHandler rather than
@@ -4052,12 +4042,10 @@ static sLOGICAL lHyp_instance_handleAlarm ( sInstance *pAI )
   
   /*gHyp_util_debug("NEXT EVENT is past %d seconds",gsCurTime-pAI->exec.eventTime );*/
 
-  /*
   if ( guDebugFlags & DEBUG_DIAGNOSTICS )
     gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
 			 "diag : Handling alarm");
-  */
-
+  
   if ( pAI->exec.eventType & EVENT_DEATH ) {
     
     gHyp_instance_warning ( pAI, STATUS_DEATH, "Death condition at %s",gHyp_util_timeStamp ( gsCurTime ) ) ;
@@ -4162,7 +4150,7 @@ static sLOGICAL lHyp_instance_handleAlarm ( sInstance *pAI )
   else if ( pAI->exec.eventType & EVENT_ALARM ) {
     
     gHyp_instance_warning ( pAI, STATUS_ALARM, "Alarm condition at %s",gHyp_util_timeStamp ( gsCurTime )  ) ;
- 
+
     pAI->exec.alarmTime = 0 ;
     
     /* Re-establish timer. */
@@ -4177,7 +4165,7 @@ static sLOGICAL lHyp_instance_handleAlarm ( sInstance *pAI )
 			     gHyp_frame_depth(pAI->exec.pFrame) );
       longjmp ( gsJmpStack[0], COND_ERROR );
     }
-    //gHyp_frame_dumpLevel ( pAI->exec.pFrame ) ;
+    /*gHyp_frame_dumpLevel ( pAI->exec.pFrame ) ;*/
     /*gHyp_util_debug("Frame statement %d is %s/%s",
 		    gHyp_frame_statementType(pAI->exec.pFrame),
 		    gHyp_frame_expectedStateStr ( pAI->exec.pFrame ),
@@ -4232,8 +4220,9 @@ static sLOGICAL lHyp_instance_handleAlarm ( sInstance *pAI )
 
     /* Fall out of sleep() */
     if ( pAI->exec.state == STATE_SLEEP ) {
-      /*gHyp_util_debug( "Fall out of sleep" );*/
+      gHyp_util_debug( "Fall out of sleep" );
       pAI->exec.state = STATE_PARSE ;
+      gHyp_instance_pushSTATUS ( pAI, gHyp_frame_stack ( pAI->exec.pFrame ) ) ;
       pConcept = gHyp_instance_getConcept(pAI) ;
       if ( gHyp_concept_getConceptInstance ( pConcept ) == pAI && gHyp_instance_isEND ( pAI ) ) 
         gHyp_concept_setReturnToStdIn ( pConcept,TRUE ) ;
@@ -4266,6 +4255,7 @@ static sLOGICAL lHyp_instance_handleInterrupt ( sInstance *pAI )
     *pMethodData ;
 
   if ( pAI->signal.uINT ) {
+
     pAI->signal.uINT = 0 ;
 #ifdef SIGINT
     /* Since longjmp is used in lHyp_instance_intHandler rather than
@@ -4638,8 +4628,10 @@ static sLOGICAL lHyp_instance_handleMessageInt ( sInstance *pAI )
    */
   sData
     *pMethodData;
+  gHyp_util_debug("Checking %d interrupt %d",pAI->signal.uMSGINTERRUPT,pAI->exec.handler[HANDLER_MESSAGE].hypIndex);
 
   if ( !pAI->signal.uMSGINTERRUPT ) return FALSE ;
+
   pAI->signal.uMSGINTERRUPT = 0  ;
 
   if ( pAI->exec.handler[HANDLER_MESSAGE].hypIndex == -1 ) return FALSE ;
@@ -4881,9 +4873,10 @@ sLOGICAL gHyp_instance_isEND ( sInstance *pAI )
 
   if ( hypIndex < hypCount ) return FALSE ;
 
-  if ( gHyp_frame_testGlobalFlag ( pAI->exec.pFrame, FRAME_GLOBAL_HANDLER ) && 
-       hypIndex < gHyp_hyp_getHighWaterCount ( pHyp ) ) return FALSE ;
-
+  if ( hypIndex < gHyp_hyp_getHighWaterCount ( pHyp ) ) {
+    if ( gHyp_frame_testGlobalFlag ( pAI->exec.pFrame, FRAME_GLOBAL_HANDLER ) )
+      return FALSE ;
+  }
   /* gHyp_util_logInfo("AT END FOR %s",pAI->msg.targetId ) ;*/
 
   return TRUE ;
@@ -5040,6 +5033,7 @@ int  gHyp_instance_run ( sInstance * pAIarg )
           if ( guDebugFlags & DEBUG_DIAGNOSTICS ) 
 	     gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
 			       "%s awakening from SLEEP state",pAI->msg.targetId ) ;
+	  gHyp_instance_pushSTATUS ( pAI, gHyp_frame_stack ( pAI->exec.pFrame ) ) ;
 	  gHyp_instance_setState ( pAI, STATE_PARSE ) ;
           break ;
         }
@@ -5104,9 +5098,12 @@ int  gHyp_instance_run ( sInstance * pAIarg )
 	isEnd && 
 	!hasRun && 
 	pAI->exec.state == STATE_PARSE ) {
-    gHyp_instance_setState ( pAI, STATE_IDLE ) ;
+    if ( gHyp_concept_getConceptInstance ( gHyp_instance_getConcept(pAI) ) == pAI ) 
+      gHyp_concept_setReturnToStdIn ( gHyp_instance_getConcept(pAI),TRUE ) ;
+    else
+      gHyp_instance_setState ( pAI, STATE_IDLE ) ;
   }
-
+  
   /** pAI can invalidate.  See renameto() *
   if ( guDebugFlags & DEBUG_STATE )
     gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_STATE,

@@ -1414,7 +1414,8 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
     SID=0,
     stream,
     function,
-    saveJmpRootLevel=giJmpRootLevel ;
+    saveJmpRootLevel=giJmpRootLevel,
+    cond;
   
   sSecs1
     *pSecs1=NULL ;
@@ -1598,29 +1599,17 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
 
           /* ENQ contention likely occurred, execute all pending conditions. */
 
-          gHyp_util_debug("ENQ Contention! Adjusting jmpRootLevel to %d",giJmpLevel);
+          gHyp_util_debug("ENQ Contention on Query. Adjusting jmpRootLevel to %d",giJmpLevel+1);
 
-          giJmpRootLevel = giJmpLevel ;
-          do {
-	    /* Queue up the interrupting message.  
-             * TRUE means don't block, which means we are not executing select(),
-             * we are only fetching the incoming message from the queue and setting
-             * up for the message call.
-             */
- 	    gHyp_instance_read ( pAI, TRUE ) ;
-	    
-	    /* Setting STATE_QUERY here let's us execute the 
-	     * handler for the incoming message, which is
-	     * the gHyp_instance_handleMessageCall() function.
-  	     */
-	    gHyp_instance_setState ( pAI, STATE_QUERY ) ;
-
-	    /* Setting FRAME_GLOBAL_TRUE allos us to execute handlers */
-            gHyp_frame_setGlobalFlag ( pFrame, FRAME_GLOBAL_TRUE ) ;
-
-	  }
-	  while ( gHyp_instance_parse ( pAI ) == COND_NORMAL ) ;
-          giJmpRootLevel = saveJmpRootLevel ;
+	  if ( giJmpLevel == MAX_JMP_LEVEL ) {
+            gHyp_util_logError ( "Parse jump level overflow at %d", MAX_JMP_LEVEL ) ;
+            longjmp ( gsJmpStack[0], COND_FATAL ) ;
+          }
+	  giJmpLevel++ ;
+	    giJmpRootLevel = giJmpLevel ;
+              cond = gHyp_instance_ENQcontention ( pAI, pFrame ) ;
+	    giJmpRootLevel = saveJmpRootLevel ; 
+          giJmpLevel-- ;
 
 	  pData = gHyp_frame_findRootVariable ( pFrame, "STATUS" ) ;
 	  
@@ -1725,12 +1714,31 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
 			  id,
 			  (eventTime-gsCurTime)) ;
       if ( pSecsIIdata ) gHyp_data_delete ( pSecsIIdata ) ;
+      pSecsIIdata = NULL ; /* Consumed */
 
-      if ( guDebugFlags & DEBUG_FRAME )
-        gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME, 
+      while ( (cond = gHyp_instance_readQueue ( pAI )) == COND_NORMAL ) {
+        cond = gHyp_instance_readProcess ( pAI, STATE_QUERY ) ;
+	/* Reply messages return COND_SILENT, event and query COND_NORMAL */
+	if ( cond == COND_NORMAL ) break ;
+      }
+      if ( cond == COND_SILENT ) {
+	/* There were no event or query messages.
+	 * Check to see if the reply messages came in. 
+	 * Consumed reply messages return COND_NORMAL
+         */
+	cond = gHyp_instance_readReply ( pAI ) ;
+      }
+      else 
+	cond = COND_SILENT ;
+
+      if ( cond == COND_SILENT ) {
+        /* An message is interrupting */
+        if ( guDebugFlags & DEBUG_FRAME )
+          gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME, 
 			   "frame: QUERY SECS (longjmp to %d from frame %d)",
 			   giJmpRootLevel,gHyp_frame_depth(pFrame) ) ;
-      longjmp ( gsJmpStack[giJmpLevel=giJmpRootLevel], COND_SILENT) ;
+        longjmp ( gsJmpStack[giJmpLevel=giJmpRootLevel], COND_SILENT) ;
+      }
     }
   }
 

@@ -1589,8 +1589,9 @@ void gHyp_parse_loop (	sParse *pParse,
 
 	  /* Look for exception conditions, executing any and all handlers. */
 	  do {
-	      gHyp_instance_setState ( pAI, STATE_EXECUTE ) ;
-	    }
+	    /*if ( gHyp_frame_testGlobalFlag ( pFrame, FRAME_GLOBAL_HANDLER ) ) break ;*/
+	    gHyp_instance_setState ( pAI, STATE_EXECUTE ) ;
+	  }
 	  while ( (cond = gHyp_instance_parse ( pAI )) == COND_NORMAL ) ;
 	  
 	  gHyp_instance_setState ( pAI, STATE_PARSE ) ;
