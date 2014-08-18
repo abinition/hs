@@ -1253,8 +1253,10 @@ int main ( int argc, char * argv[] )
           gHyp_concept_setReturnToStdIn ( gpsConcept, FALSE ) ;
 
 	  /* If already end-of-file from before, then continue */
-	  if ( endOfFile ) continue ;
-
+	  if ( endOfFile ) {
+	    gHyp_instance_setState ( gpAImain, STATE_IDLE ) ;
+	    continue ;
+	  }
 	  /*gHyp_util_debug("STATE is %d", gHyp_instance_getState ( gpAImain ) ) ;*/
 	  /* End-of-file or ^D (^Z) typed or just returning to IDLE */
           

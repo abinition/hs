@@ -2152,7 +2152,8 @@ static void lHyp_frame_return ( sFrame *pFrame,
       }
     }
 
-    if ( pAI == pAImain && 
+    if ( !status && 
+	 pAI == pAImain && 
       gHyp_concept_returnToStdIn ( gHyp_instance_getConcept ( pAI )) ) {
 	  /*gHyp_util_debug("Parent instance can return to stdin after !status, setting PARSE");*/
         gHyp_instance_setState ( pAI, STATE_PARSE ) ;
