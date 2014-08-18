@@ -1649,7 +1649,6 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
 	     * The decIncomingDepth should be called before a cancelTimeout.
 	     */
   	    gHyp_instance_decIncomingDepth ( pAI ) ;
-	    gHyp_instance_cancelTimeOut ( pAI ) ;
 	    status = FALSE ;
 	    break ;
 	  }

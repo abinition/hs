@@ -995,7 +995,8 @@ static int lHyp_secs1_incoming ( sSecs1 *pSecs1,
 	    "Expecting <ENQ>, got <NAK> from SECS device %s",
 	    pSecs1->device ) ;
           pSecs1->errorCount++ ;
-	  gHyp_instance_signalPipe ( pAI, (int) pSecs1->fd, pSecs1->modifier, id ) ;
+	  /* Retry, like ENQ contention */
+	  /*gHyp_instance_signalPipe ( pAI, (int) pSecs1->fd, pSecs1->modifier, id ) ;*/
 	  return COND_SILENT ;
 	}
 	else {
@@ -1304,7 +1305,7 @@ static int lHyp_secs1_incoming ( sSecs1 *pSecs1,
       giJmpEnabled = jmpEnabled ;
       
       if ( nBytes < 0 ) {
-	gHyp_util_logError ( "Failed to receive garbage from SECS device %s",
+	gHyp_util_logError ( "Failed to receive data from SECS device %s",
 			     pSecs1->device ) ;
         pSecs1->errorCount++ ;
 	gHyp_instance_signalHangup ( pAI, (int) pSecs1->fd, pSecs1->modifier, id ) ;
@@ -1313,7 +1314,7 @@ static int lHyp_secs1_incoming ( sSecs1 *pSecs1,
       }
       else if ( nBytes == 0 ) {
 
-	gHyp_util_logWarning ( "Timeout occurred while expecting garbage" ) ;
+	gHyp_util_logWarning ( "Timeout occurred while expecting data" ) ;
 	pSecs1->state = SECS_EXPECT_RECV_ENQ ;
 
 	/* Leave the socket open.  Its just quiet after the garbage dump. */
@@ -1355,6 +1356,8 @@ static int lHyp_secs1_incoming ( sSecs1 *pSecs1,
 
       pSecs1->state = SECS_EXPECT_RECV_ENQ ;
       blockReceived = TRUE ;
+      /* Retry */
+      cond = COND_SILENT ;
       ix = 0 ;
       break ;
     
@@ -1961,7 +1964,6 @@ int gHyp_secs1_outgoing ( sSecs1 *pSecs1,
         if ( pSecs1->inbuf[0] != SECS_CHAR_EOT ) {
 
 	  /* Not what we expected */
-
 	  if ( pSecs1->inbuf[0] == SECS_CHAR_ENQ ) {
 	    
 	    if ( guDebugFlags & DEBUG_PROTOCOL )
@@ -1998,16 +2000,24 @@ int gHyp_secs1_outgoing ( sSecs1 *pSecs1,
 	       * Check to see if the slave has just done an ENQ contention
 	       * by the presence of EOT after the ENQ
 	       */
-	      if ( nBytes > 1 && pSecs1->inbuf[1] != SECS_CHAR_EOT ) {
+	      if ( nBytes > 1 && pSecs1->inbuf[1] == SECS_CHAR_EOT ) {
+
+		if ( guDebugFlags & DEBUG_PROTOCOL )
+		  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
+				   "Slave ENQ contention accepted" ) ;
+
+		/* Remove the ENQ, shift all bytes down */
+		if ( nBytes > 1 )
+		  for (i=0; i<nBytes; i++) pSecs1->inbuf[i] = pSecs1->inbuf[i+1];
+	        nBytes-- ;
+
+	      }
+	      else {
 	        gHyp_util_logError ( 
 		  "Expecting <EOT>, got <ENQ> from SECS device %s",
 		    pSecs1->device ) ;
-	        break ;
-	      }
-	      else {
-	        if ( guDebugFlags & DEBUG_PROTOCOL )
-		  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
-				   "Slave ENQ contention accepted" ) ;
+		/* Return and try again */
+		return COND_SILENT ;
 	      }
 	    }
 	  }
@@ -2035,7 +2045,6 @@ int gHyp_secs1_outgoing ( sSecs1 *pSecs1,
 	  }
 	}
       }
-
 
       if ( guDebugFlags & DEBUG_PROTOCOL )
 	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,

@@ -1291,30 +1291,10 @@ int gHyp_instance_nextEvent ( sInstance *pAI )
     pAI->exec.eventType = EVENT_WAKEUP ;
   }
   
-  gHyp_util_debug("Next event(s) is %x in %d seconds",
-  		   pAI->exec.eventType,(pAI->exec.eventTime-gsCurTime));
+  /*gHyp_util_debug("Next event(s) is %x in %d seconds", pAI->exec.eventType,(pAI->exec.eventTime-gsCurTime));*/
   
  
   return (int) pAI->exec.eventTime ;
-}
-
-time_t gHyp_instance_getTimeOutTime ( sInstance *pAI )
-{
-  return pAI->exec.timeOutTime ;
-}
-
-time_t gHyp_instance_getTimeOutTime2 ( sInstance *pAI )
-{
-  int i;
-  for ( i=0; i<=pAI->msg.incomingDepth; i++ )
-    gHyp_util_debug("Depth %d, S%dF%d frame %d time %d",i,
-  pAI->msg.incomingReply[i]->secs.stream, 
-  pAI->msg.incomingReply[i]->secs.function,
-  pAI->msg.incomingReply[i]->frameDepth,
-  pAI->msg.incomingReply[i]->timeoutTime
-  ) ;
-
-  return pAI->msg.incomingReply[pAI->msg.incomingDepth-1]->timeoutTime ;
 }
 
 void gHyp_instance_setBeatTime ( sInstance *pAI, int eventTime )
@@ -1566,8 +1546,12 @@ int gHyp_instance_readReply ( sInstance *pAI )
 {
   int
     n = pAI->msg.incomingDepth-1 ;
-  gHyp_util_debug("Depth %d reply %x frame %d / %d",
-	  n,pAI->msg.incomingReply[n]->msg,pAI->msg.incomingReply[n]->frameDepth,gHyp_frame_depth(pAI->exec.pFrame) );
+  /*gHyp_util_debug("Depth %d reply %x frame %d / %d",
+    n,
+    pAI->msg.incomingReply[n]->msg,
+    pAI->msg.incomingReply[n]->frameDepth,
+    gHyp_frame_depth(pAI->exec.pFrame) );
+   */
   if ( pAI->msg.incomingDepth > 0 &&
        pAI->msg.incomingReply[n]->msg != NULL
         /*pAI->msg.incomingReply[n]->frameDepth >= gHyp_frame_depth(pAI->exec.pFrame)*/
@@ -1607,9 +1591,6 @@ int gHyp_instance_readReply ( sInstance *pAI )
     pAI->exec.state = STATE_PARSE ;
     gHyp_frame_setState ( pAI->exec.pFrame, STATE_PARSE ) ;
     gHyp_instance_decIncomingDepth ( pAI ) ;
-
-    /* Cancel timeout. Determine next critical event. */
-    gHyp_instance_cancelTimeOut ( pAI ) ;
     
     /* RETURN 1, SATISFYING THE QUERY */
     return COND_NORMAL ;
@@ -1623,7 +1604,7 @@ int gHyp_instance_readQueue ( sInstance* pAI )
   int
     n ;
 
-  gHyp_util_debug("Checking qq at %d", pAI->msg.startQQ);
+  /*gHyp_util_debug("Checking qq at %d", pAI->msg.startQQ);*/
   if ( pAI->msg.qq[pAI->msg.startQQ] != NULL && pAI->msg.incoming == NULL ) {
 
     /* There are queued messages */
@@ -1853,7 +1834,7 @@ int gHyp_instance_readProcess ( sInstance *pAI, sBYTE state )
   pTargetInstance = gHyp_aimsg_targetInstance ( pAI->msg.incoming ) ;
   pTargetConcept = gHyp_aimsg_targetConcept ( pAI->msg.incoming ) ;
 
-  gHyp_util_debug("TARGET COMPARE %s == %s",pTargetInstance, pTargetConcept) ;
+  /*gHyp_util_debug("TARGET COMPARE %s == %s",pTargetInstance, pTargetConcept) ;*/
 
   if ( strcmp ( pTargetInstance, pTargetConcept ) != 0 ) {
 
@@ -1983,6 +1964,8 @@ int gHyp_instance_readProcess ( sInstance *pAI, sBYTE state )
 	      pMethodStr, i);
 	}
 	
+        /* Cancel timeout. Determine next critical event. */
+        gHyp_instance_cancelTimeOut ( pAI, i ) ;
 
 	if ( guDebugFlags & DEBUG_DIAGNOSTICS )
 	  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
@@ -2020,7 +2003,7 @@ int gHyp_instance_readProcess ( sInstance *pAI, sBYTE state )
 	/* To do: Send S9F3 (stream mismatch) or S9F5 (function mismatch) */
       }
       else {
-	      gHyp_util_debug("Not a reply message");
+	/*gHyp_util_debug("Not a reply message");*/
 	isReplyMsg = FALSE ;
       }
     }
@@ -2604,8 +2587,9 @@ sLOGICAL gHyp_instance_replyMessage ( sInstance *pAI, sData *pMethodData )
 	      gHyp_instance_incOutgoingDepth ( pAI ) ;
 	      outgoingDepth =  pAI->msg.outgoingDepth ;
               
-              gHyp_util_debug("ENQ Contention on Reply at depth %d. Adjusting jmpRootLevel to %d",
+              /*gHyp_util_debug("ENQ Contention on Reply at depth %d. Adjusting jmpRootLevel to %d",
 		      outgoingDepth,giJmpLevel+1);
+		*/
 
 	      if ( giJmpLevel == MAX_JMP_LEVEL ) {
                 gHyp_util_logError ( "Parse jump level overflow at %d", MAX_JMP_LEVEL ) ;
@@ -2712,6 +2696,7 @@ int gHyp_instance_ENQcontention ( sInstance * pAI, sFrame * pFrame )
 
     /* Setting FRAME_GLOBAL_TRUE allows HS to execute handlers */
     gHyp_frame_setGlobalFlag ( pFrame, FRAME_GLOBAL_TRUE ) ;
+    gHyp_instance_setState ( pAI, STATE_QUERY ) ;
   }
   while ( gHyp_instance_parse ( pAI ) == COND_NORMAL ) ;
 
@@ -3499,12 +3484,32 @@ void gHyp_instance_initTimeOut ( sInstance *pAI, int seconds )
   pAI->exec.timeOut = seconds ;
 }
 
-void gHyp_instance_cancelTimeOut ( sInstance *pAI )
+void gHyp_instance_cancelTimeOut ( sInstance *pAI, int depth )
 { 
-  int n = pAI->msg.incomingDepth ;
+  pAI->msg.incomingReply[depth]->timeoutTime  = 0 ;
+
+  gHyp_util_debug("Cancelling timeout for %s S%dF%d",
+	  pAI->msg.incomingReply[depth]->method,
+	  pAI->msg.incomingReply[depth]->secs.stream,
+	  pAI->msg.incomingReply[depth]->secs.function );
   pAI->exec.timeOutTime = 0 ;
-  pAI->msg.incomingReply[n]->timeoutTime  = 0 ;
   gHyp_instance_nextEvent ( pAI ) ;
+}
+
+time_t gHyp_instance_getTimeOutTime ( sInstance *pAI )
+{
+  int n = pAI->msg.incomingDepth-1 ;
+
+  gHyp_util_debug("Timeout = %d Depth %d, S%dF%d frame %d time %d",n, 
+     (pAI->exec.timeOutTime-gsCurTime),
+     n,
+  pAI->msg.incomingReply[n]->secs.stream, 
+  pAI->msg.incomingReply[n]->secs.function,
+  pAI->msg.incomingReply[n]->frameDepth,
+  (pAI->msg.incomingReply[n]->timeoutTime-gsCurTime)
+  ) ;
+
+  return pAI->exec.timeOutTime ;
 }
 
 void gHyp_instance_setTimeOut ( sInstance *pAI )
@@ -4628,7 +4633,7 @@ static sLOGICAL lHyp_instance_handleMessageInt ( sInstance *pAI )
    */
   sData
     *pMethodData;
-  gHyp_util_debug("Checking %d interrupt %d",pAI->signal.uMSGINTERRUPT,pAI->exec.handler[HANDLER_MESSAGE].hypIndex);
+  /*gHyp_util_debug("Checking %d interrupt %d",pAI->signal.uMSGINTERRUPT,pAI->exec.handler[HANDLER_MESSAGE].hypIndex);*/
 
   if ( !pAI->signal.uMSGINTERRUPT ) return FALSE ;
 
