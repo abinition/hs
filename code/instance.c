@@ -1649,7 +1649,7 @@ int gHyp_instance_readQueue ( sInstance* pAI )
     pAI->msg.startQQ++ ;
     if ( pAI->msg.startQQ >= MAX_QUEUE_DEPTH ) pAI->msg.startQQ = 0 ;
 
-    /* OK to call this, it just makes sure any read has a timeout of zero,
+    /* Make sure any read has a timeout of zero,
      * in which case this requeued message will be processed.
      */
     gHyp_instance_signalMsg( pAI ) ;
@@ -1689,7 +1689,7 @@ int gHyp_instance_readQueue ( sInstance* pAI )
 
     if ( pAI->msg.startRQ >= MAX_QUEUE_DEPTH ) pAI->msg.startRQ = 0 ;
 
-    /* OK to call this, it just makes sure any read has a timeout of zero,
+    /* Make sure any read has a timeout of zero,
      * in which case this requeued message will be processed.
      */
     gHyp_instance_signalMsg( pAI ) ;
@@ -1817,10 +1817,9 @@ int gHyp_instance_readProcess ( sInstance *pAI, sBYTE state )
   sMethod
     *pMethod = NULL ;
 
-  if ( !pAI->msg.incoming ) return COND_SILENT ;
-
   /* Clear the flag that there's a message in pAI->msg.incoming */	
   pAI->signal.uMSG = 0 ;
+  if ( !pAI->msg.incoming ) return COND_SILENT ;
   
   /* The incoming message header items for target and sender have not been altered in
    * any way.  
@@ -2681,7 +2680,7 @@ sLOGICAL gHyp_instance_replyMessage ( sInstance *pAI, sData *pMethodData )
 int gHyp_instance_ENQcontention ( sInstance * pAI, sFrame * pFrame )
 {
   int jmpVal ;
-  byte currentState ;
+  sBYTE currentState ;
   if ( (jmpVal = setjmp ( gsJmpStack[giJmpLevel] )) ) return jmpVal ;
 
   /* Save the state */
@@ -2981,7 +2980,7 @@ sAImsg *gHyp_instance_incomingMsg ( sInstance *pAI )
    */
   gHyp_instance_signalMsg ( pAI ) ;
 
-  gHyp_util_logInfo("Initialize new message in qq[%d]",n ) ;
+  /*gHyp_util_logInfo("Initialize new message in qq[%d]",n ) ;*/
   return pAI->msg.qq[n] ;
 }
 
@@ -3488,10 +3487,11 @@ void gHyp_instance_cancelTimeOut ( sInstance *pAI, int depth )
 { 
   pAI->msg.incomingReply[depth]->timeoutTime  = 0 ;
 
-  gHyp_util_debug("Cancelling timeout for %s S%dF%d",
+  /*gHyp_util_debug("Cancelling timeout for %s S%dF%d",
 	  pAI->msg.incomingReply[depth]->method,
 	  pAI->msg.incomingReply[depth]->secs.stream,
 	  pAI->msg.incomingReply[depth]->secs.function );
+  */
   pAI->exec.timeOutTime = 0 ;
   gHyp_instance_nextEvent ( pAI ) ;
 }
@@ -3500,7 +3500,7 @@ time_t gHyp_instance_getTimeOutTime ( sInstance *pAI )
 {
   int n = pAI->msg.incomingDepth-1 ;
 
-  gHyp_util_debug("Timeout = %d Depth %d, S%dF%d frame %d time %d",n, 
+  /*gHyp_util_debug("Timeout = %d Depth %d, S%dF%d frame %d time %d",n, 
      (pAI->exec.timeOutTime-gsCurTime),
      n,
   pAI->msg.incomingReply[n]->secs.stream, 
@@ -3508,6 +3508,7 @@ time_t gHyp_instance_getTimeOutTime ( sInstance *pAI )
   pAI->msg.incomingReply[n]->frameDepth,
   (pAI->msg.incomingReply[n]->timeoutTime-gsCurTime)
   ) ;
+  */
 
   return pAI->exec.timeOutTime ;
 }
@@ -3525,10 +3526,11 @@ void gHyp_instance_setTimeOut ( sInstance *pAI )
     pAI->exec.timeOutTime = gsCurTime + pAI->exec.timeOut ;
     pAI->msg.incomingReply[n]->timeoutTime  = (int) pAI->exec.timeOutTime ;
   }
-  gHyp_util_debug("setting timeout for %s S%dF%d",
+  /*gHyp_util_debug("setting timeout for %s S%dF%d",
 	  pAI->msg.incomingReply[n]->method,
 	  pAI->msg.incomingReply[n]->secs.stream,
 	  pAI->msg.incomingReply[n]->secs.function );
+  */
   gHyp_instance_nextEvent ( pAI ) ;
 }
 

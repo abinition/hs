@@ -2158,7 +2158,7 @@ static void lHyp_frame_return ( sFrame *pFrame,
         gHyp_instance_setState ( pAI, STATE_PARSE ) ;
     }
     else {
-	    gHyp_util_debug("Handler1 returned %d, instance state %d->%d->%d", status,gHyp_instance_getState(pAI), pLevel->state, STATE_IDLE ) ;
+	    /*gHyp_util_debug("Handler1 returned %d, instance state %d->%d->%d", status,gHyp_instance_getState(pAI), pLevel->state, STATE_IDLE ) ;*/
       gHyp_instance_setState ( pAI, STATE_IDLE ) ;
     }
   }
