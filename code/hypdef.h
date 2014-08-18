@@ -11,8 +11,8 @@
 #define __HYPDEF_H_
 
 #define 	VERSION_HYPERSCRIPT	    "3.9.4"
-#define 	VERSION_BUILD		    "140808"
-#define 	VERSION_HYPERSCRIPT_BUILD   "3.9.4-140808"
+#define 	VERSION_BUILD		    "140818"
+#define 	VERSION_HYPERSCRIPT_BUILD   "3.9.4-140818"
 
 /* Modification history:
  *
