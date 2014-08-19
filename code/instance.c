@@ -5055,8 +5055,7 @@ int  gHyp_instance_run ( sInstance * pAIarg )
          */
         if ( pAI->exec.state == STATE_SLEEP &&
 	     pAI->exec.eventType & EVENT_WAKEUP &&
-	     pAI->exec.wakeTime > 0 ) {
-          pAI->exec.wakeTime = 0 ;
+	     pAI->exec.wakeTime == 0 ) {
 	  gHyp_instance_nextEvent ( pAI ) ;
           if ( guDebugFlags & DEBUG_DIAGNOSTICS ) 
 	     gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
