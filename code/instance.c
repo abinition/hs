@@ -2127,8 +2127,16 @@ void gHyp_instance_incIncomingDepth ( sInstance *pAI )
 
 void gHyp_instance_decIncomingDepth ( sInstance *pAI )
 {
+  int n ;
   if ( pAI->msg.incomingDepth > 0 ) pAI->msg.incomingDepth-- ;
-  
+
+  /* If the reply message is still there, throw it away */
+  n = pAI->msg.incomingDepth ;
+  if ( pAI->msg.incomingReply[n]->msg != NULL ) {
+    gHyp_aimsg_delete ( pAI->msg.incoming ) ;
+    pAI->msg.incomingReply[n]->msg = NULL ;
+  }
+
   if ( guDebugFlags & DEBUG_DIAGNOSTICS )
     gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
 			 "proto: incoming reply depth-- = %d",

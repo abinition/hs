@@ -827,6 +827,16 @@ void gHyp_stmt_eList ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 	gHyp_frame_endStmt ( pFrame, pAI ) ;
 	break ;
 
+	
+      case G_STMT_EOS :
+
+	/* gHyp_frame_return() changed the expected state to from G_LIST_END to STMT_EOS
+	 * so that the frame would unwind back to the last CALL frame.
+	 * 
+	 */
+	gHyp_frame_endStmt ( pFrame, pAI ) ;
+	break ;
+
       default :
 
         gHyp_instance_error ( pAI, STATUS_PARSE, "Not expecting '}', expected state is %d",
