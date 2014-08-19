@@ -1696,6 +1696,9 @@ int gHyp_instance_readQueue ( sInstance* pAI )
     return COND_NORMAL ;
   }
 
+  /* Clear the flag that there's NO message in pAI->msg.incoming */	
+  pAI->signal.uMSG = 0 ;
+
   return COND_SILENT ;
 }
 
@@ -1817,10 +1820,11 @@ int gHyp_instance_readProcess ( sInstance *pAI, sBYTE state )
   sMethod
     *pMethod = NULL ;
 
-  /* Clear the flag that there's a message in pAI->msg.incoming */	
-  pAI->signal.uMSG = 0 ;
   if ( !pAI->msg.incoming ) return COND_SILENT ;
-  
+
+    /* Clear the flag that there's a message in pAI->msg.incoming */	
+  pAI->signal.uMSG = 0 ;
+
   /* The incoming message header items for target and sender have not been altered in
    * any way.  
    * The incoming message has already been screened for receipt by this node only.

@@ -2094,24 +2094,32 @@ static void lHyp_frame_return ( sFrame *pFrame,
   }
   else if ( wasCompletedMessageCall ) {
 
-    /* Get the status of the method - did it return 1 or 0? */
-    status = gHyp_data_getBool ( pMethodVariable, 0, TRUE ) ;
-
     /* A incoming message.  Check for replies */ 
     /* Execute all pending conditions */
     currentState = gHyp_instance_getState( pAI) ;
     do {
       gHyp_frame_setGlobalFlag ( pFrame, FRAME_GLOBAL_TRUE ) ;
-      /* Setting EXECUTE makes sure only handlers will execute */
+      /* Setting EXECUTE makes sure only non-message handlers will execute  */
       gHyp_instance_setState ( pAI, STATE_EXECUTE ) ;
     }
     while ( gHyp_instance_parse ( pAI ) == COND_NORMAL ) ;
     gHyp_instance_setState ( pAI, currentState ) ;
 
+    /* Get the status of the method - did it return 1 or 0? */
+    status = gHyp_data_getBool ( pMethodVariable, 0, TRUE ) ;
+
     if ( guDebugFlags & DEBUG_DIAGNOSTICS )
       gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
-			   "Returning from method %s",pMethodStr );
-  
+			   "Returning from method %s, value = %s",
+		pMethodStr, gHyp_data_print ( pMethodVariable ) );
+
+    /* The problem with getting the boolean value of the called
+     * message method is that it will abort the query.
+     * Its up the the message handler (see above) to set the
+     * STATUS variable to false to abort the query
+     */
+    status = TRUE ;
+
     /* Make sure all replies are out.  Because of bug fixes on 140808, there
      * now should only ever be one reply to send, but the fix is still good
      * to have... just in case
