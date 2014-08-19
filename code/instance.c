@@ -1848,6 +1848,8 @@ int gHyp_instance_readProcess ( sInstance *pAI, sBYTE state )
         "Message ignored, implied target of message '%s' is incorrect - should be '%s'",
         targetPath,
         pAI->msg.targetPath ) ;
+      gHyp_instance_delete ( pAI->msg.incoming ) ;
+      pAI->msg.incoming = NULL ;
       return COND_SILENT ;
     }
   }
@@ -1861,6 +1863,8 @@ int gHyp_instance_readProcess ( sInstance *pAI, sBYTE state )
 	targetPath,
         pTargetConcept,
 	gzParent ) ;
+      gHyp_instance_delete ( pAI->msg.incoming ) ;
+      pAI->msg.incoming = NULL 
       return COND_SILENT ;
     }
   }
@@ -2003,6 +2007,8 @@ int gHyp_instance_readProcess ( sInstance *pAI, sBYTE state )
 	gHyp_util_logWarning ( "Reply '%s' message ignored, no match, reason = %s",
 				pMethodStr,
                                 (!okTID?"TID mismatch":(!okMethod?"Method mismatch":(!okInstance?"Instance":"Unknown?"))) ) ;
+        gHyp_instance_delete ( pAI->msg.incoming ) ;
+        pAI->msg.incoming = NULL 
 	/* To do: Send S9F3 (stream mismatch) or S9F5 (function mismatch) */
       }
       else {
@@ -2052,8 +2058,10 @@ int gHyp_instance_readProcess ( sInstance *pAI, sBYTE state )
 	  
 	  /* Prevent infinite looping between HyperScripts, which are
 	   * both rejecting MESSAGE event messages. Allow only 3
-	   * MESSAGE method rejectsin a row.
+	   * MESSAGE method rejects in a row.
 	   */	    
+          gHyp_instance_delete ( pAI->msg.incoming ) ;
+          pAI->msg.incoming = NULL 
 	  pAI->msg.rejectCount++ ;
 	  if ( !gHyp_concept_route ( pAI->exec.pConcept, message ) ) return COND_SILENT ; 
 	}
