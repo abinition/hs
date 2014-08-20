@@ -2120,9 +2120,6 @@ pMethodStr,pMethodVariable,pMethod,gHyp_method_isEnabled(pMethod));
 	 
       }
 
-      /* Increment the outgoingdepth */
-      gHyp_instance_incOutgoingDepth ( pAI ) ;
-
       return COND_NORMAL ;
     }
   }
@@ -4835,6 +4832,9 @@ static sLOGICAL lHyp_instance_handleMessageCall ( sInstance *pAI )
   gHyp_frame_setHyp ( pAI->exec.pFrame, pHyp ) ;
   gHyp_frame_setHypIndex ( pAI->exec.pFrame, 0 ) ;
   gHyp_frame_setStatementIndex ( pAI->exec.pFrame, 0 ) ; 
+
+  /* Increment the outgoingdepth */
+  gHyp_instance_incOutgoingDepth ( pAI ) ;
 
   /* Consume tokens and values from message. 
    * The incoming message becomes the current message.
