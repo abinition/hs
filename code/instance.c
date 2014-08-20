@@ -1590,11 +1590,14 @@ int gHyp_instance_readQueue ( sInstance* pAI )
      /* Has to be one just pulled, we are coming back for it after
       * servicing the interrupt handler
       */
-     if ( guDebugFlags & DEBUG_DIAGNOSTICS )
-        gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
-        "Already a message pending, %s",gHyp_aimsg_method ( pAI->msg.incoming) ) ;
-
-    return COND_NORMAL ;
+     if ( !pAI->signal.uMSGPENDING ) {
+       if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+          gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
+          "Already a message pending, %s",gHyp_aimsg_method ( pAI->msg.incoming) ) ;
+       return COND_NORMAL ;
+     }
+     else
+      return COND_SILENT ;
   }	  
 
   if ( pAI->msg.qq[pAI->msg.startQQ] != NULL ) {
@@ -2713,7 +2716,7 @@ void gHyp_instance_setExpectedReply ( sInstance *pAI,
    */
 
   int
-    incomingDepth = pAI->msg.incomingDepth - 1 ;
+    incomingDepth = pAI->msg.incomingDepth -1 ;
 
   
   if ( guDebugFlags & DEBUG_DIAGNOSTICS )
@@ -2857,7 +2860,7 @@ void gHyp_instance_setSecsReplyIn ( sInstance *pAI,
 				    int SID )  
 {
   int
-    incomingDepth = pAI->msg.incomingDepth ;
+    incomingDepth = pAI->msg.incomingDepth -1 ;
 
   if ( guDebugFlags & DEBUG_DIAGNOSTICS )
     gHyp_util_logDebug ( 

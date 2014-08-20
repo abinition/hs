@@ -1682,6 +1682,7 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
   
       /* Wait for reply message from query */
 
+      gHyp_instance_incIncomingDepth ( pAI ) ;
       gHyp_instance_setTimeOut ( pAI ) ;
       eventTime = gHyp_instance_getTimeOutTime ( pAI ) ;
       sprintf ( sender, "%u#secs%s", id, gzRoot ) ;  
@@ -1709,7 +1710,7 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
       if ( pSecsIIdata ) gHyp_data_delete ( pSecsIIdata ) ;
       pSecsIIdata = NULL ; /* Consumed */
 
-      gHyp_instance_incIncomingDepth ( pAI ) ;
+
 
       while ( (cond = gHyp_instance_readQueue ( pAI )) == COND_NORMAL ) {
         cond = gHyp_instance_readProcess ( pAI, STATE_QUERY ) ;
