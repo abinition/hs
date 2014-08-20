@@ -1604,13 +1604,29 @@ int gHyp_instance_readQueue ( sInstance* pAI )
   int
     n ;
 
-  /*gHyp_util_debug("Checking qq at %d", pAI->msg.startQQ);*/
-  if ( pAI->msg.qq[pAI->msg.startQQ] != NULL && pAI->msg.incoming == NULL ) {
+  if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
+	"Looking for next queued message at [%d]", pAI->msg.startQQ);  
+
+  if ( pAI->msg.incoming != NULL ) {
+
+     /* Has to be one just pulled, we are coming back for it after
+      * servicing the interrupt handler
+      */
+     if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+        gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
+        "Already a message pending, %s",gHyp_aimsg_method ( pAI->msg.incoming) ) ;
+
+    return COND_NORMAL ;
+  }	  
+
+  if ( pAI->msg.qq[pAI->msg.startQQ] != NULL ) {
 
     /* There are queued messages */
 
     n = pAI->msg.startQQ ;
     if ( pAI->msg.incoming ) gHyp_aimsg_delete ( pAI->msg.incoming ) ;
+
     pAI->msg.incoming = pAI->msg.qq[n] ;
     pAI->msg.qq[n] = NULL ;
 
@@ -2033,7 +2049,9 @@ int gHyp_instance_readProcess ( sInstance *pAI, sBYTE state )
     if ( !pMethodVariable || !pMethod || !gHyp_method_isEnabled(pMethod) ) { 
       
       /* REJECT THE MESSAGE - SEND THE SENDER A MESSAGE REJECTING IT */
-      
+      gHyp_util_debug("Message %s rejected %d %d %d",
+pMethodStr,pMethodVariable,pMethod,gHyp_method_isEnabled(pMethod));
+
       /* Don't reject back to ourselves */
       if ( !isSenderSelf && !isSECSmsg ) {
 	
@@ -2060,12 +2078,13 @@ int gHyp_instance_readProcess ( sInstance *pAI, sBYTE state )
 	   * both rejecting MESSAGE event messages. Allow only 3
 	   * MESSAGE method rejects in a row.
 	   */	    
-          gHyp_aimsg_delete ( pAI->msg.incoming ) ;
-          pAI->msg.incoming = NULL ;
+
 	  pAI->msg.rejectCount++ ;
 	  if ( !gHyp_concept_route ( pAI->exec.pConcept, message ) ) return COND_SILENT ; 
 	}
       }
+      gHyp_aimsg_delete ( pAI->msg.incoming ) ;
+      pAI->msg.incoming = NULL ;
     }
     else {
       
@@ -2995,12 +3014,15 @@ sAImsg *gHyp_instance_incomingMsg ( sInstance *pAI )
   pAI->msg.qq[n] = gHyp_aimsg_new() ;
 
   /* We call signalMsg() here as well as in readQueue(),
-   * because it sets uMSG, which is used by gHyo_instance_isSignal().
-   * uMSG is important to set as soon as the message has been received.
+   * because it sets uMSG, which is used by gHyp_instance_isSignal(),
+   * which in turn makes sure the select() timeout is zero.
+   * Thus, uMSG is important to set as soon as the message has been received.
+   * It also must be cleared when there are no messages so that spinning
+   * does not occur.
    */
   gHyp_instance_signalMsg ( pAI ) ;
 
-  /*gHyp_util_logInfo("Initialize new message in qq[%d]",n ) ;*/
+  gHyp_util_logInfo("Initialize new message in qq[%d]",n ) ;
   return pAI->msg.qq[n] ;
 }
 
@@ -3518,9 +3540,10 @@ void gHyp_instance_cancelTimeOut ( sInstance *pAI, int depth )
 
 time_t gHyp_instance_getTimeOutTime ( sInstance *pAI )
 {
+  /*
   int n = pAI->msg.incomingDepth-1 ;
 
-  /*gHyp_util_debug("Timeout = %d Depth %d, S%dF%d frame %d time %d",n, 
+   gHyp_util_debug("Timeout = %d Depth %d, S%dF%d frame %d time %d",n, 
      (pAI->exec.timeOutTime-gsCurTime),
      n,
   pAI->msg.incomingReply[n]->secs.stream, 
