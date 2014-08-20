@@ -667,21 +667,6 @@ static void lHyp_instance_consumeMessage ( sInstance *pAI,
   gHyp_data_delete ( pLvalue ) ;
   if ( deleteMethodArgs ) gHyp_data_delete ( pMethodArgs ) ;
   
-  if ( isEvent || isQuery ) {
-
-    /* Initialize reply message - default to NULL - for event messages */
-    if ( pAI->msg.outgoingReply[outgoingDepth]->msg != NULL ) 
-      gHyp_aimsg_delete ( pAI->msg.outgoingReply[outgoingDepth]->msg ) ;
-    pAI->msg.outgoingReply[outgoingDepth]->msg = NULL ;
-    pAI->msg.outgoingReply[outgoingDepth]->frameDepth = gHyp_frame_depth ( pAI->exec.pFrame ) ;
-    pAI->msg.outgoingReply[pAI->msg.outgoingDepth]->secs.id = NULL_DEVICEID ;
-    pAI->msg.outgoingReply[pAI->msg.outgoingDepth]->secs.id = NULL_DEVICEID ;
-    pAI->msg.outgoingReply[pAI->msg.outgoingDepth]->secs.stream = -1 ;
-    pAI->msg.outgoingReply[pAI->msg.outgoingDepth]->secs.function = -1 ;
-    pAI->msg.outgoingReply[pAI->msg.outgoingDepth]->secs.TID = -1 ;
-    pAI->msg.outgoingReply[pAI->msg.outgoingDepth]->secs.SID = -1 ;
-  }
-
   if ( isQuery ) {
     
     /* Prepare the reply message */
@@ -1546,23 +1531,15 @@ int gHyp_instance_readReply ( sInstance *pAI )
 {
   int
     n = pAI->msg.incomingDepth-1 ;
-  /*gHyp_util_debug("Depth %d reply %x frame %d / %d",
-    n,
-    pAI->msg.incomingReply[n]->msg,
-    pAI->msg.incomingReply[n]->frameDepth,
-    gHyp_frame_depth(pAI->exec.pFrame) );
-   */
+
   if ( pAI->msg.incomingDepth > 0 &&
-       pAI->msg.incomingReply[n]->msg != NULL
-        /*pAI->msg.incomingReply[n]->frameDepth >= gHyp_frame_depth(pAI->exec.pFrame)*/
-       ) {
+       pAI->msg.incomingReply[n]->msg != NULL ) {
     
     if ( guDebugFlags & DEBUG_DIAGNOSTICS )
       gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
 			   "diag : Matched incoming reply at depth %d",
 			   n);
 
-    
     if ( pAI->msg.incoming ) gHyp_aimsg_delete ( pAI->msg.incoming ) ;
     pAI->msg.incoming = pAI->msg.incomingReply[n]->msg; 
     pAI->msg.inSecs = pAI->msg.incomingReply[n]->secs ;
@@ -1631,7 +1608,6 @@ int gHyp_instance_readQueue ( sInstance* pAI )
     pAI->msg.qq[n] = NULL ;
 
     pAI->msg.inSecs = pAI->msg.qqSecs[n] ;  
-    /*gHyp_util_logInfo("Resetting qqSecs[%d]",n);*/
     pAI->msg.qqSecs[n].id  = NULL_DEVICEID ;
     pAI->msg.qqSecs[n].stream = -1 ;
     pAI->msg.qqSecs[n].function = -1 ;
@@ -1652,14 +1628,6 @@ int gHyp_instance_readQueue ( sInstance* pAI )
 			     gHyp_aimsg_method ( pAI->msg.incoming),
 			     pAI->msg.targetId ) ;
     }
-
-    if ( gHyp_aimsg_isQuery ( pAI->msg.incoming ) ) 
-      gHyp_instance_setSecsReplyOut (pAI,
-				     pAI->msg.inSecs.id,
-				     pAI->msg.inSecs.stream,
-				     pAI->msg.inSecs.function+1,
-				     pAI->msg.inSecs.TID,
-				     pAI->msg.inSecs.SID ) ;
 
     /* Advance start of queue */
     pAI->msg.startQQ++ ;
@@ -1688,13 +1656,6 @@ int gHyp_instance_readQueue ( sInstance* pAI )
     pAI->msg.rqSecs[n].function = -1 ;
     pAI->msg.rqSecs[n].TID = -1 ;
     pAI->msg.rqSecs[n].SID = -1 ;
-    if ( gHyp_aimsg_isQuery ( pAI->msg.incoming ) ) 
-      gHyp_instance_setSecsReplyOut (pAI,
-				     pAI->msg.inSecs.id,
-				     pAI->msg.inSecs.stream,
-				     pAI->msg.inSecs.function+1,
-				     pAI->msg.inSecs.TID,
-				     pAI->msg.inSecs.SID ) ;
 
     gHyp_util_logInfo ( "Found re-queued message(%d) '%s'",
 			pAI->msg.startRQ,
@@ -1836,7 +1797,7 @@ int gHyp_instance_readProcess ( sInstance *pAI, sBYTE state )
   sMethod
     *pMethod = NULL ;
 
-  if ( !pAI->msg.incoming ) return COND_SILENT ;
+  if ( pAI->msg.incoming == NULL ) return COND_SILENT ;
 
     /* Clear the flag that there's a message in pAI->msg.incoming */	
   pAI->signal.uMSG = 0 ;
@@ -2050,7 +2011,7 @@ int gHyp_instance_readProcess ( sInstance *pAI, sBYTE state )
       
       /* REJECT THE MESSAGE - SEND THE SENDER A MESSAGE REJECTING IT */
       gHyp_util_debug("Message %s rejected %d %d %d",
-pMethodStr,pMethodVariable,pMethod,gHyp_method_isEnabled(pMethod));
+         pMethodStr,pMethodVariable,pMethod,gHyp_method_isEnabled(pMethod));
 
       /* Don't reject back to ourselves */
       if ( !isSenderSelf && !isSECSmsg ) {
@@ -2182,19 +2143,6 @@ void gHyp_instance_incOutgoingDepth ( sInstance *pAI )
 			 pAI->msg.outgoingDepth ) ;
     longjmp ( gsJmpStack[0], COND_FATAL ) ;
   }  
-
-  /* Clear the next level - ahead of itself ****************************
-  if ( pAI->msg.outgoingReply[pAI->msg.outgoingDepth]->msg ) {
-    gHyp_aimsg_delete ( pAI->msg.outgoingReply[pAI->msg.outgoingDepth]->msg ) ;
-    pAI->msg.outgoingReply[pAI->msg.outgoingDepth]->msg = NULL ;
-  }
-  pAI->msg.outgoingReply[pAI->msg.outgoingDepth]->frameDepth = -1 ;
-  pAI->msg.outgoingReply[pAI->msg.outgoingDepth]->secs.id = NULL_DEVICEID ;
-  pAI->msg.outgoingReply[pAI->msg.outgoingDepth]->secs.stream = -1 ;
-  pAI->msg.outgoingReply[pAI->msg.outgoingDepth]->secs.function = -1 ;
-  pAI->msg.outgoingReply[pAI->msg.outgoingDepth]->secs.TID = -1 ;
-  pAI->msg.outgoingReply[pAI->msg.outgoingDepth]->secs.SID = -1 ;
-  ***********************************************************************/
 }
 
 void gHyp_instance_decOutgoingDepth ( sInstance *pAI )
@@ -2371,7 +2319,6 @@ sLOGICAL gHyp_instance_replyMessage ( sInstance *pAI, sData *pMethodData )
     id ;
 
   int
-    highWaterOutgoingDepth,
     outgoingDepth,
     nBytes=0,
     maxTries,
@@ -2409,7 +2356,6 @@ sLOGICAL gHyp_instance_replyMessage ( sInstance *pAI, sData *pMethodData )
 			 pAI->msg.outgoingDepth-1 ) ;
   
 
-  highWaterOutgoingDepth = pAI->msg.outgoingDepth ;
   gHyp_instance_decOutgoingDepth ( pAI ) ;
   outgoingDepth =  pAI->msg.outgoingDepth ;
   
@@ -2701,14 +2647,6 @@ sLOGICAL gHyp_instance_replyMessage ( sInstance *pAI, sData *pMethodData )
     }  
   
   }
-  /*
-  else {
-    *gHyp_util_debug("no reply");
-  }
-  */
-
-  /* The method variable that was put on the stack should be removed. */
-  /*gHyp_stack_pop ( gHyp_frame_stack ( pAI->exec.pFrame )  ) ;*/
 
   return TRUE ;
 }
@@ -2828,8 +2766,6 @@ void gHyp_instance_requeue ( sInstance* pAI )
     pAI->msg.inSecs.SID = -1 ;
     pAI->msg.incoming = NULL ;
 
-    gHyp_instance_decOutgoingDepth ( pAI ) ;
-
     if ( guDebugFlags & DEBUG_DIAGNOSTICS )
       gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
 			   "diag : Incoming message transfered to requeue") ;
@@ -2921,7 +2857,7 @@ void gHyp_instance_setSecsReplyIn ( sInstance *pAI,
 				    int SID )  
 {
   int
-    incomingDepth = pAI->msg.incomingDepth - 1 ;
+    incomingDepth = pAI->msg.incomingDepth ;
 
   if ( guDebugFlags & DEBUG_DIAGNOSTICS )
     gHyp_util_logDebug ( 
@@ -4764,10 +4700,7 @@ static sLOGICAL lHyp_instance_handleMessageCall ( sInstance *pAI )
 			   "...checking %s",gHyp_data_print(pSTATUS)) ;
 
   if ( !gHyp_data_getBool ( pSTATUS, 0, TRUE ) ) {
-
     gHyp_util_logWarning("Aborting message call - %s",gHyp_data_print(pSTATUS));
-    gHyp_instance_decOutgoingDepth ( pAI ) ;
-
     return FALSE ;
   }
 
@@ -4833,21 +4766,31 @@ static sLOGICAL lHyp_instance_handleMessageCall ( sInstance *pAI )
   gHyp_frame_setHypIndex ( pAI->exec.pFrame, 0 ) ;
   gHyp_frame_setStatementIndex ( pAI->exec.pFrame, 0 ) ; 
 
-  /* Increment the outgoingdepth */
-  gHyp_instance_incOutgoingDepth ( pAI ) ;
-
   /* Consume tokens and values from message. 
    * The incoming message becomes the current message.
    */
-  lHyp_instance_consumeMessage ( pAI, pAI->msg.outgoingDepth-1 ) ;
+  lHyp_instance_consumeMessage ( pAI, pAI->msg.outgoingDepth ) ;
+
   if ( pAI->msg.current ) gHyp_aimsg_delete ( pAI->msg.current ) ;
   pAI->msg.current = pAI->msg.incoming ;
+
+  if ( gHyp_aimsg_isQuery ( pAI->msg.incoming ) ) 
+    gHyp_instance_setSecsReplyOut (pAI,
+				     pAI->msg.inSecs.id,
+				     pAI->msg.inSecs.stream,
+				     pAI->msg.inSecs.function+1,
+				     pAI->msg.inSecs.TID,
+				     pAI->msg.inSecs.SID ) ;
+
   pAI->msg.incoming = NULL ;
   pAI->msg.inSecs.id = NULL_DEVICEID ;
   pAI->msg.inSecs.stream = -1 ;
   pAI->msg.inSecs.function = -1 ;
   pAI->msg.inSecs.TID = -1 ;
   pAI->msg.inSecs.SID = -1 ;
+
+  /* Increment the outgoingdepth */
+  gHyp_instance_incOutgoingDepth ( pAI ) ;
 
   return TRUE ;    
 }
