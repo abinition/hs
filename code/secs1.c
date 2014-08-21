@@ -2242,7 +2242,7 @@ int gHyp_secs1_outgoing ( sSecs1 *pSecs1,
            * would be to put a usleep() call before any secs_event or secs_query
 	   * call, but that should be up to the programmer.
 	   * 
-	   */
+	   *
 	  if ( guDebugFlags & DEBUG_PROTOCOL ) {
 	    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 				 "<-ENQ(ACK)" ) ;
@@ -2251,6 +2251,7 @@ int gHyp_secs1_outgoing ( sSecs1 *pSecs1,
 	      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_PROTOCOL,
 				   "ENQ contention. Relinquishing..." ) ;
 	  }
+	  */
 
 	}
 

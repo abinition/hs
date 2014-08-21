@@ -1470,13 +1470,14 @@ int gHyp_instance_read ( sInstance * pAI, sLOGICAL queueOnly  )
       cond = gHyp_instance_readProcess ( pAI, pAI->exec.state ) ;
       if ( cond == COND_NORMAL ) break ;
     }
-    if ( cond == COND_SILENT && pAI->exec.state == STATE_QUERY ) {
+    if ( cond == COND_SILENT ) {
       /* Since no message is interrupting, check to see if the top 
-       * level reply has come in, and if so, then break and
-       * continue parsing HS after the query
+       * level reply has come in
        */
       cond = gHyp_instance_readReply ( pAI ) ;
-      if ( cond == COND_NORMAL ) {
+      if ( cond == COND_NORMAL && pAI->exec.state == STATE_QUERY ) {
+        pAI->exec.state = STATE_PARSE ;
+        gHyp_frame_setState ( pAI->exec.pFrame, STATE_PARSE ) ;
 	gHyp_instance_pushLocalSTATUS ( pAI, gHyp_frame_stack (pAI->exec.pFrame ) ) ;
 	break ;
       }
@@ -1533,12 +1534,14 @@ int gHyp_instance_readReply ( sInstance *pAI )
     n = pAI->msg.incomingDepth-1 ;
 
   if ( pAI->msg.incomingDepth > 0 &&
-       pAI->msg.incomingReply[n]->msg != NULL ) {
+       pAI->msg.incomingReply[n]->msg != NULL &&
+       pAI->msg.incomingReply[n]->frameDepth == gHyp_frame_depth( pAI->exec.pFrame ) ) {
     
     if ( guDebugFlags & DEBUG_DIAGNOSTICS )
       gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
-			   "diag : Matched incoming reply at depth %d",
-			   n);
+			   "diag : Consuming incoming reply for %s at depth %d and frame %d",
+			   gHyp_aimsg_method(pAI->msg.incomingReply[n]->msg),
+			   n, pAI->msg.incomingReply[n]->frameDepth);
 
     if ( pAI->msg.incoming ) gHyp_aimsg_delete ( pAI->msg.incoming ) ;
     pAI->msg.incoming = pAI->msg.incomingReply[n]->msg; 
@@ -1553,20 +1556,11 @@ int gHyp_instance_readReply ( sInstance *pAI )
     pAI->msg.incomingReply[n]->secs.SID = -1 ;
         
     /* Consume the REPLY message and resume execution after the query */
-    if ( guDebugFlags & DEBUG_DIAGNOSTICS )
-      gHyp_util_logDebug ( 
-			  FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
-			  "diag : Consuming reply message at incoming depth %d",
-			  n ) ;
-    
     lHyp_instance_consumeMessage ( pAI, 0 ) ;
 
     gHyp_aimsg_delete ( pAI->msg.incoming ) ;
     pAI->msg.incoming = NULL ;
 
-    /* Make sure the frame state is no longer STATE_QUERY */
-    pAI->exec.state = STATE_PARSE ;
-    gHyp_frame_setState ( pAI->exec.pFrame, STATE_PARSE ) ;
     gHyp_instance_decIncomingDepth ( pAI ) ;
     
     /* RETURN 1, SATISFYING THE QUERY */
@@ -2127,7 +2121,7 @@ void gHyp_instance_decIncomingDepth ( sInstance *pAI )
 
   if ( guDebugFlags & DEBUG_DIAGNOSTICS )
     gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
-			 "proto: incoming reply depth-- = %d",
+			 "diag : incoming reply depth-- = %d",
 			 pAI->msg.incomingDepth);
   
 }
@@ -2138,7 +2132,7 @@ void gHyp_instance_incOutgoingDepth ( sInstance *pAI )
   
   if ( guDebugFlags & DEBUG_DIAGNOSTICS )
     gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
-			 "proto: outgoing reply depth++ = %d",
+			 "diag : outgoing reply depth++ = %d",
 			 pAI->msg.outgoingDepth);
     
   if ( pAI->msg.outgoingDepth >= MAX_REPLY_DEPTH ) {
@@ -4206,7 +4200,8 @@ static sLOGICAL lHyp_instance_handleAlarm ( sInstance *pAI )
 
     /* Fall out of sleep() */
     if ( pAI->exec.state == STATE_SLEEP ) {
-      gHyp_util_debug( "Fall out of sleep" );
+      if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+        gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,"Fall out of sleep" );
       pAI->exec.state = STATE_PARSE ;
       gHyp_instance_pushSTATUS ( pAI, gHyp_frame_stack ( pAI->exec.pFrame ) ) ;
       pConcept = gHyp_instance_getConcept(pAI) ;

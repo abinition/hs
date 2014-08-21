@@ -1564,11 +1564,36 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
     else
       gHyp_secs2_unParseSecs ( pSecs2, pSecsIIdata, pAI, stream, function ) ;
 
-    /* Send message. */
     if ( pSecs1 ) {
 
       TID = gHyp_secs1_TID ( pSecs1 ) ;
       SID = gHyp_secs1_SID ( pSecs1 ) ;
+    }
+    else if ( pHsms ) {
+
+      TID = gHyp_hsms_TID ( pHsms ) ;
+      SID = gHyp_hsms_SID ( pHsms ) ;
+    }
+
+     gHyp_instance_incIncomingDepth ( pAI ) ;
+     gHyp_instance_setTimeOut ( pAI ) ;
+     eventTime = gHyp_instance_getTimeOutTime ( pAI ) ;
+     sprintf ( sender, "%u#secs%s", id, gzRoot ) ;  
+     sprintf ( method, "S%dF%d", stream, function+1 ) ;
+     sprintf ( transactionId, "%08x", TID ) ;
+     gHyp_instance_setExpectedReply ( pAI, 
+				       sender, 
+				       method, 
+				       transactionId,
+				       (int)eventTime ) ;
+     gHyp_instance_setSecsReplyIn ( pAI, 
+				     id, 
+				     stream, 
+				     function+1,
+				     TID,
+				     SID ) ;
+    /* Send message. */
+    if ( pSecs1 ) {
 
       /* If gHyp_secs1_outgoing returns 0, then the message has been
        * interrupted (an ENQ/ENQ contention).  We should service the
@@ -1652,9 +1677,6 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
     }
     else if ( pHsms ) {
 
-      TID = gHyp_hsms_TID ( pHsms ) ;
-      SID = gHyp_hsms_SID ( pHsms ) ;
-
       nBytes = gHyp_hsms_outgoing ( pHsms, 
 				    pSecs2,
 				    pAI,
@@ -1682,6 +1704,7 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
   
       /* Wait for reply message from query */
 
+	    /*
       gHyp_instance_incIncomingDepth ( pAI ) ;
       gHyp_instance_setTimeOut ( pAI ) ;
       eventTime = gHyp_instance_getTimeOutTime ( pAI ) ;
@@ -1699,6 +1722,8 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
 				     function+1,
 				     TID,
 				     SID ) ;
+				     */
+
       gHyp_instance_setState ( pAI, STATE_QUERY ) ;
       gHyp_frame_setState ( pFrame, STATE_QUERY ) ;
       gHyp_frame_setHypIndex ( pFrame, gHyp_frame_getHypIndex(pFrame) - 1 ) ;
@@ -1710,8 +1735,6 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
       if ( pSecsIIdata ) gHyp_data_delete ( pSecsIIdata ) ;
       pSecsIIdata = NULL ; /* Consumed */
 
-
-
       while ( (cond = gHyp_instance_readQueue ( pAI )) == COND_NORMAL ) {
         cond = gHyp_instance_readProcess ( pAI, STATE_QUERY ) ;
 	/* Reply messages return COND_SILENT, event and query COND_NORMAL */
@@ -1719,7 +1742,7 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
       }
       if ( cond == COND_SILENT ) {
 	/* There were no event or query messages.
-	 * Check to see if the reply messages came in. 
+	 * Check to see if the reply message came in. 
 	 * Consumed reply messages return COND_NORMAL
          */
 	cond = gHyp_instance_readReply ( pAI ) ;
@@ -1728,12 +1751,17 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
 	cond = COND_SILENT ;
 
       if ( cond == COND_SILENT ) {
-        /* An message is interrupting */
+        /* A message is interrupting OR there is nothing */
         if ( guDebugFlags & DEBUG_FRAME )
           gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME, 
 			   "frame: QUERY SECS (longjmp to %d from frame %d)",
 			   giJmpRootLevel,gHyp_frame_depth(pFrame) ) ;
         longjmp ( gsJmpStack[giJmpLevel=giJmpRootLevel], COND_SILENT) ;
+      }
+      else {
+        /* Make sure the frame state is no longer STATE_QUERY */
+        gHyp_instance_setState ( pAI, STATE_PARSE ) ;
+        gHyp_frame_setState ( pFrame, STATE_PARSE ) ;
       }
     }
   }
