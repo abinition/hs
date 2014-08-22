@@ -2295,24 +2295,33 @@ static void lHyp_frame_return ( sFrame *pFrame,
       if ( status ) {
 
         while ( (cond = gHyp_instance_readQueue ( pAI )) == COND_NORMAL ) {
+	  /* Got a message, an event, query, or reply */
           cond = gHyp_instance_readProcess ( pAI, pLevel->state ) ;
 	  /* Reply messages return COND_SILENT, event and query COND_NORMAL */
-	  if ( cond == COND_NORMAL ) break ;
+	  if ( cond == COND_NORMAL ) {
+	    /* An event or query. Service it, then we'll be back after it returns */
+	    cond = COND_SILENT ;
+	    break ;
+	  }
+          else if ( cond == COND_SILENT ) {
+	    /* A reply.  See if it satisfies the current query */
+	    cond = gHyp_instance_readReply ( pAI ) ;
+
+	    /* If it does, return and PARSE after the query */
+	    if ( cond == COND_NORMAL ) break ;
+
+	    /* Otherwise keep looking */
+	  }
         }
-	if ( cond == COND_SILENT ) {
-	  /* There were no event or query messages.
-	   * Check to see if the reply messages came in. 
-	   * Consumed reply messages return COND_NORMAL
-	   */
-	  cond = gHyp_instance_readReply ( pAI ) ;
-	}
-	else
-	  /* An event or query interrupts, go back to STATE_QUERY */
-	  cond = COND_SILENT ;
+
+	/* Just in case the reply was received earlier */
+	if ( cond == COND_SILENT ) cond = gHyp_instance_readReply ( pAI ) ;
 
 	if ( cond == COND_NORMAL ) {
-          /* Result is in status variable */
-          /* Create a local copy of STATUS.  Put that on the stack. */
+          /* Reply is satisfied, result is in status variable.
+           * Create a local copy of STATUS.  Put that on the stack.
+	   * PARSE away...
+	   */
           gHyp_instance_pushLocalSTATUS ( pAI, gHyp_frame_stack ( pFrame ) ) ;
           gHyp_instance_setState ( pAI, STATE_PARSE ) ;
 	  if ( guDebugFlags & DEBUG_FRAME )
@@ -2320,15 +2329,18 @@ static void lHyp_frame_return ( sFrame *pFrame,
 			       "frame: PARSE (longjmp to %d from frame %d)",
 			       giJmpLevel, pFrame->depth );
 	}
-	else {		
+	else {
+	  /* An event or query interrupts, go back to STATE_QUERY, service it */
           gHyp_instance_setState ( pAI, STATE_QUERY ) ;
           gHyp_instance_getTimeOutTime ( pAI ) ;
           gHyp_instance_setTimeOut ( pAI ) ;	
           if ( guDebugFlags & DEBUG_FRAME )
 	    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
-			       "frame: QUERY (longjmp to %d from frame %d)",
+			       "frame: QUERY continue (longjmp to %d from frame %d)",
 			       giJmpLevel, pFrame->depth );
 	}
+	
+
       }
       else {
 

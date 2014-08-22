@@ -1415,7 +1415,8 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
     stream,
     function,
     saveJmpRootLevel=giJmpRootLevel,
-    cond;
+    cond,
+    initialFrameDepth ;
   
   sSecs1
     *pSecs1=NULL ;
@@ -1575,6 +1576,7 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
       SID = gHyp_hsms_SID ( pHsms ) ;
     }
 
+     initialFrameDepth = gHyp_frame_depth ( pFrame ) ;
      gHyp_instance_incIncomingDepth ( pAI ) ;
      gHyp_instance_setTimeOut ( pAI ) ;
      eventTime = gHyp_instance_getTimeOutTime ( pAI ) ;
@@ -1704,30 +1706,12 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
   
       /* Wait for reply message from query */
 
-	    /*
-      gHyp_instance_incIncomingDepth ( pAI ) ;
-      gHyp_instance_setTimeOut ( pAI ) ;
-      eventTime = gHyp_instance_getTimeOutTime ( pAI ) ;
-      sprintf ( sender, "%u#secs%s", id, gzRoot ) ;  
-      sprintf ( method, "S%dF%d", stream, function+1 ) ;
-      sprintf ( transactionId, "%08x", TID ) ;
-      gHyp_instance_setExpectedReply ( pAI, 
-				       sender, 
-				       method, 
-				       transactionId,
-				       (int)eventTime ) ;
-      gHyp_instance_setSecsReplyIn ( pAI, 
-				     id, 
-				     stream, 
-				     function+1,
-				     TID,
-				     SID ) ;
-				     */
-
       gHyp_instance_setState ( pAI, STATE_QUERY ) ;
       gHyp_frame_setState ( pFrame, STATE_QUERY ) ;
-      gHyp_frame_setHypIndex ( pFrame, gHyp_frame_getHypIndex(pFrame) - 1 ) ;
-      gHyp_parse_restoreExprRank ( pParse ) ;
+      if ( initialFrameDepth == gHyp_frame_depth ( pFrame ) ) {
+        gHyp_frame_setHypIndex ( pFrame, gHyp_frame_getHypIndex(pFrame) - 1 ) ;
+        gHyp_parse_restoreExprRank ( pParse ) ;
+      }
       gHyp_util_logInfo ( "...waiting for S%dF%d reply from device '%d', timeout in %d seconds", 
 			  stream,function+1,
 			  id,
@@ -1736,22 +1720,25 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
       pSecsIIdata = NULL ; /* Consumed */
 
       while ( (cond = gHyp_instance_readQueue ( pAI )) == COND_NORMAL ) {
+	/* Got a message, an event, query, or reply */
         cond = gHyp_instance_readProcess ( pAI, STATE_QUERY ) ;
 	/* Reply messages return COND_SILENT, event and query COND_NORMAL */
-	if ( cond == COND_NORMAL ) break ;
+        if ( cond == COND_NORMAL ) {
+          /* Got an interrupting message. Service it. */
+	  cond = COND_SILENT ;
+	  break ;
+        }
+        else if ( cond == COND_SILENT ) {
+          /* Got a reply message */
+	  cond = gHyp_instance_readReply ( pAI ) ;
+	  /* If it satisfies this query, break and PARSE */
+	  if ( cond == COND_NORMAL ) break ;
+	}
+	/* Otherwise keep looking */
       }
-      if ( cond == COND_SILENT ) {
-	/* There were no event or query messages.
-	 * Check to see if the reply message came in. 
-	 * Consumed reply messages return COND_NORMAL
-         */
-	cond = gHyp_instance_readReply ( pAI ) ;
-      }
-      else 
-	cond = COND_SILENT ;
 
       if ( cond == COND_SILENT ) {
-        /* A message is interrupting OR there is nothing */
+        /* A message is interrupting OR there is simply nothing to do but wait. */
         if ( guDebugFlags & DEBUG_FRAME )
           gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME, 
 			   "frame: QUERY SECS (longjmp to %d from frame %d)",

@@ -1455,35 +1455,30 @@ int gHyp_instance_read ( sInstance * pAI, sLOGICAL queueOnly  )
      * The message is put in 'incoming' and cond is set to COND_NORMAL.
      */
     while ( (cond = gHyp_instance_readQueue ( pAI )) == COND_NORMAL ) {
-
-      /* There was a message. See if the message is for us.
-       *
-       * Only if the message can invoke a hyperscript method will the
-       * returned value be COND_NORMAL.
-       * The signal uMSGINTERRUPT or uMSGPENDING will also be set
-       * and we read no more messages from the queue.
-       *
-       * If the message is a reply, it will be put in the reply queue
-       * and the cond returned will be COND_SILENT, we keep reading more
-       * reply messages from the queue.
-       */
+      /* Got a message, an event, query, or reply */
       cond = gHyp_instance_readProcess ( pAI, pAI->exec.state ) ;
-      if ( cond == COND_NORMAL ) break ;
-    }
-    if ( cond == COND_SILENT ) {
-      /* Since no message is interrupting, check to see if the top 
-       * level reply has come in
-       */
-      cond = gHyp_instance_readReply ( pAI ) ;
-      if ( cond == COND_NORMAL && pAI->exec.state == STATE_QUERY ) {
-        pAI->exec.state = STATE_PARSE ;
-        gHyp_frame_setState ( pAI->exec.pFrame, STATE_PARSE ) ;
-	gHyp_instance_pushLocalSTATUS ( pAI, gHyp_frame_stack (pAI->exec.pFrame ) ) ;
+      if ( cond == COND_NORMAL ) {
+        /* Got an interrupting message. Service it.  */
 	break ;
+      }
+      else if ( cond == COND_SILENT ) {
+        /* Got a reply message */
+	cond = gHyp_instance_readReply ( pAI ) ;
+	if ( cond == COND_NORMAL ) {
+          if ( pAI->exec.state == STATE_QUERY ) {
+	    /* Current reply is satisfied, we can continue parsing */
+            pAI->exec.state = STATE_PARSE ;
+            gHyp_frame_setState ( pAI->exec.pFrame, STATE_PARSE ) ;
+	    gHyp_instance_pushLocalSTATUS ( pAI, gHyp_frame_stack (pAI->exec.pFrame ) ) ;
+	    break ;
+	  }
+        }
+        /* Look for more messages */
       }
     }
 
-    if ( cond != COND_SILENT ) break ;
+    /* We exit if either a message is pending or the reply was satisfied at the correct point */
+    if ( cond == COND_NORMAL ) break ;
 
     if ( !queueOnly ) {
 
@@ -2007,8 +2002,7 @@ int gHyp_instance_readProcess ( sInstance *pAI, sBYTE state )
     if ( !pMethodVariable || !pMethod || !gHyp_method_isEnabled(pMethod) ) { 
       
       /* REJECT THE MESSAGE - SEND THE SENDER A MESSAGE REJECTING IT */
-      gHyp_util_debug("Message %s rejected %d %d %d",
-         pMethodStr,pMethodVariable,pMethod,gHyp_method_isEnabled(pMethod));
+      gHyp_util_debug("Message %s rejected",pMethodStr);
 
       /* Don't reject back to ourselves */
       if ( !isSenderSelf && !isSECSmsg ) {
@@ -2038,7 +2032,7 @@ int gHyp_instance_readProcess ( sInstance *pAI, sBYTE state )
 	   */	    
 
 	  pAI->msg.rejectCount++ ;
-	  if ( !gHyp_concept_route ( pAI->exec.pConcept, message ) ) return COND_SILENT ; 
+	  gHyp_concept_route ( pAI->exec.pConcept, message ) ;
 	}
       }
       gHyp_aimsg_delete ( pAI->msg.incoming ) ;
