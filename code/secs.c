@@ -1576,24 +1576,27 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
       SID = gHyp_hsms_SID ( pHsms ) ;
     }
 
-     initialFrameDepth = gHyp_frame_depth ( pFrame ) ;
-     gHyp_instance_incIncomingDepth ( pAI ) ;
-     gHyp_instance_setTimeOut ( pAI ) ;
-     eventTime = gHyp_instance_getTimeOutTime ( pAI ) ;
-     sprintf ( sender, "%u#secs%s", id, gzRoot ) ;  
-     sprintf ( method, "S%dF%d", stream, function+1 ) ;
-     sprintf ( transactionId, "%08x", TID ) ;
-     gHyp_instance_setExpectedReply ( pAI, 
+    if ( mode == MESSAGE_QUERY ) {
+      initialFrameDepth = gHyp_frame_depth ( pFrame ) ;
+      gHyp_instance_incIncomingDepth ( pAI ) ;
+      gHyp_instance_setTimeOut ( pAI ) ;
+      eventTime = gHyp_instance_getTimeOutTime ( pAI ) ;
+      sprintf ( sender, "%u#secs%s", id, gzRoot ) ;  
+      sprintf ( method, "S%dF%d", stream, function+1 ) ;
+      sprintf ( transactionId, "%08x", TID ) ;
+      gHyp_instance_setExpectedReply ( pAI, 
 				       sender, 
 				       method, 
 				       transactionId,
 				       (int)eventTime ) ;
-     gHyp_instance_setSecsReplyIn ( pAI, 
+      gHyp_instance_setSecsReplyIn ( pAI, 
 				     id, 
 				     stream, 
 				     function+1,
 				     TID,
 				     SID ) ;
+    }
+
     /* Send message. */
     if ( pSecs1 ) {
 
