@@ -2109,7 +2109,7 @@ void gHyp_instance_decIncomingDepth ( sInstance *pAI )
   /* If the reply message is still there, throw it away */
   n = pAI->msg.incomingDepth ;
   if ( pAI->msg.incomingReply[n]->msg != NULL ) {
-    gHyp_aimsg_delete ( pAI->msg.incoming ) ;
+    gHyp_aimsg_delete ( pAI->msg.incomingReply[n]->msg ) ;
     pAI->msg.incomingReply[n]->msg = NULL ;
   }
 
