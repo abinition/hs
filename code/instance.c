@@ -1538,7 +1538,13 @@ int gHyp_instance_readReply ( sInstance *pAI )
 			   gHyp_aimsg_method(pAI->msg.incomingReply[n]->msg),
 			   n, pAI->msg.incomingReply[n]->frameDepth);
 
-    if ( pAI->msg.incoming ) gHyp_aimsg_delete ( pAI->msg.incoming ) ;
+    if ( pAI->msg.incoming ) {
+      gHyp_util_debug("Deleting message %s",gHyp_aimsg_method(pAI->msg.incoming ));
+      gHyp_aimsg_delete ( pAI->msg.incoming ) ;
+      pAI->msg.incoming = NULL;
+      pAI->signal.uMSGINTERRUPT = 0 ;
+      pAI->signal.uMSGPENDING = 0 ;
+    }
     pAI->msg.incoming = pAI->msg.incomingReply[n]->msg; 
     pAI->msg.inSecs = pAI->msg.incomingReply[n]->secs ;
 
@@ -1594,8 +1600,15 @@ int gHyp_instance_readQueue ( sInstance* pAI )
     /* There are queued messages */
 
     n = pAI->msg.startQQ ;
-    if ( pAI->msg.incoming ) gHyp_aimsg_delete ( pAI->msg.incoming ) ;
 
+    if ( pAI->msg.incoming ) {
+      gHyp_util_debug("Deleting message %s",gHyp_aimsg_method(pAI->msg.incoming ));
+      gHyp_aimsg_delete ( pAI->msg.incoming ) ;
+      pAI->msg.incoming = NULL;
+      pAI->signal.uMSGINTERRUPT = 0 ;
+      pAI->signal.uMSGPENDING = 0 ;
+
+    }
     pAI->msg.incoming = pAI->msg.qq[n] ;
     pAI->msg.qq[n] = NULL ;
 
@@ -1637,7 +1650,13 @@ int gHyp_instance_readQueue ( sInstance* pAI )
        pAI->msg.rq[pAI->msg.startRQ] != NULL ) {
     
     n = pAI->msg.startRQ ;
-    if ( pAI->msg.incoming ) gHyp_aimsg_delete ( pAI->msg.incoming ) ;
+    if ( pAI->msg.incoming ) {
+      gHyp_util_debug("Deleting message %s",gHyp_aimsg_method(pAI->msg.incoming ));
+      gHyp_aimsg_delete ( pAI->msg.incoming ) ;
+      pAI->msg.incoming = NULL;
+      pAI->signal.uMSGINTERRUPT = 0 ;
+      pAI->signal.uMSGPENDING = 0 ;
+    }
     pAI->msg.incoming = pAI->msg.rq[n] ;
     pAI->msg.rq[n] = NULL ;
     
@@ -2035,8 +2054,13 @@ int gHyp_instance_readProcess ( sInstance *pAI, sBYTE state )
 	  gHyp_concept_route ( pAI->exec.pConcept, message ) ;
 	}
       }
-      gHyp_aimsg_delete ( pAI->msg.incoming ) ;
-      pAI->msg.incoming = NULL ;
+      if ( pAI->msg.incoming ) {
+        gHyp_util_debug("Deleting message %s",gHyp_aimsg_method(pAI->msg.incoming ));
+        gHyp_aimsg_delete ( pAI->msg.incoming ) ;
+        pAI->msg.incoming = NULL;
+        pAI->signal.uMSGINTERRUPT = 0 ;
+        pAI->signal.uMSGPENDING = 0 ;
+      }
     }
     else {
       
@@ -2559,9 +2583,9 @@ sLOGICAL gHyp_instance_replyMessage ( sInstance *pAI, sData *pMethodData )
 	      gHyp_instance_incOutgoingDepth ( pAI ) ;
 	      outgoingDepth =  pAI->msg.outgoingDepth ;
               
-              /*gHyp_util_debug("ENQ Contention on Reply at depth %d. Adjusting jmpRootLevel to %d",
-		      outgoingDepth,giJmpLevel+1);
-		*/
+              if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+	        gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
+	        "ENQ Contention on Reply. Adjusting jmpRootLevel to %d",giJmpLevel+1);
 
 	      if ( giJmpLevel == MAX_JMP_LEVEL ) {
                 gHyp_util_logError ( "Parse jump level overflow at %d", MAX_JMP_LEVEL ) ;
@@ -3464,19 +3488,6 @@ void gHyp_instance_cancelTimeOut ( sInstance *pAI, int depth )
 
 time_t gHyp_instance_getTimeOutTime ( sInstance *pAI )
 {
-  /*
-  int n = pAI->msg.incomingDepth-1 ;
-
-   gHyp_util_debug("Timeout = %d Depth %d, S%dF%d frame %d time %d",n, 
-     (pAI->exec.timeOutTime-gsCurTime),
-     n,
-  pAI->msg.incomingReply[n]->secs.stream, 
-  pAI->msg.incomingReply[n]->secs.function,
-  pAI->msg.incomingReply[n]->frameDepth,
-  (pAI->msg.incomingReply[n]->timeoutTime-gsCurTime)
-  ) ;
-  */
-
   return pAI->exec.timeOutTime ;
 }
 

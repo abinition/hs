@@ -929,7 +929,7 @@ static int lHyp_secs1_incoming ( sSecs1 *pSecs1,
 #endif
           /* If a read on the same socket in a non-blocking mode would block, then
            * we know there is nothing on the line, and so getting the result
-           * of zero means along with EAGAIN and EWOULDBLOCK means we should be
+           * of zero along with EAGAIN and EWOULDBLOCK means we should be
            * able to just return COND_SILENT.
            */
           if ( errno == EAGAIN || errno == EWOULDBLOCK ) return COND_SILENT ;

@@ -2199,18 +2199,16 @@ static void lHyp_frame_return ( sFrame *pFrame,
 	if ( pAI == pAImain &&
 	  gHyp_concept_returnToStdIn(gHyp_instance_getConcept(pAI)) &&
           gHyp_instance_isEND(pAI) ) {
-    /*gHyp_util_debug("Handler3 returned %d, instance state %d->%d->%d", status, gHyp_instance_getState(pAI), pLevel->state, STATE_PARSE ) ;*/
 
 	  gHyp_instance_setState ( pAI, STATE_PARSE ) ;
 	  if ( guDebugFlags & DEBUG_FRAME )
 	    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
-			       "frame: PARSE (longjmp to %d from frame %d)",
+			       "frame: PARSE idle (longjmp to %d from frame %d)",
 			       giJmpLevel, pFrame->depth );
 	}
 	else {
 
-    /*gHyp_util_debug("Handler4 returned %d, instance state %d->%d->%d", status, gHyp_instance_getState(pAI), pLevel->state, STATE_IDLE ) ;*/
-    gHyp_instance_setState ( pAI, STATE_IDLE ) ;
+          gHyp_instance_setState ( pAI, STATE_IDLE ) ;
 
 	  if ( guDebugFlags & DEBUG_FRAME )
 	    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
@@ -2224,12 +2222,11 @@ static void lHyp_frame_return ( sFrame *pFrame,
 	if ( pAI == pAImain && gHyp_instance_isEND ( pAI ) )
 	  gHyp_concept_setReturnToStdIn ( gHyp_instance_getConcept(pAI),TRUE ) ;
 
-    /*gHyp_util_debug("Handler5 returned %d, instance state %d->%d->%d", status, gHyp_instance_getState(pAI), pLevel->state, STATE_PARSE ) ;*/
 	gHyp_instance_setState ( pAI, STATE_PARSE ) ;
 	gHyp_instance_pushSTATUS ( pAI, pLevel->pStack ) ;
 	if ( guDebugFlags & DEBUG_FRAME )
 	  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
-			       "frame: PARSE (longjmp to %d from frame %d)",
+			       "frame: PARSE idle (longjmp to %d from frame %d)",
 			       giJmpLevel, pFrame->depth );
       }
     }
@@ -2241,29 +2238,25 @@ static void lHyp_frame_return ( sFrame *pFrame,
 	  gHyp_concept_returnToStdIn(gHyp_instance_getConcept(pAI) ) &&
           gHyp_instance_isEND(pAI) ) {
 
-    /*gHyp_util_debug("Handler6 returned %d, instance state %d->%d->%d", status, gHyp_instance_getState(pAI), pLevel->state, STATE_PARSE ) ;*/
 	  gHyp_instance_setState ( pAI, STATE_PARSE ) ;
 	  if ( guDebugFlags & DEBUG_FRAME )
 	    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
-			       "frame: PARSE (longjmp to %d from frame %d)",
+			       "frame: PARSE sleep (longjmp to %d from frame %d)",
 			       giJmpLevel, pFrame->depth );
 	}
 	else if ( gHyp_instance_getWakeTime ( pAI ) == 0 ) {
 
-	  /*gHyp_util_debug("Finished Sleeping");*/
 		
-    /*gHyp_util_debug("Handler7 returned %d, instance state %d->%d->%d", status, gHyp_instance_getState(pAI), pLevel->state, STATE_PARSE ) ;*/
 	  gHyp_instance_setState ( pAI, STATE_PARSE ) ;
-    gHyp_instance_pushSTATUS ( pAI, gHyp_frame_stack ( pFrame ) ) ;
+          gHyp_instance_pushSTATUS ( pAI, gHyp_frame_stack ( pFrame ) ) ;
 	  if ( guDebugFlags & DEBUG_FRAME )
 	    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
-			       "frame: PARSE (longjmp to %d from frame %d)",
+			       "frame: PARSE sleep (longjmp to %d from frame %d)",
 			       giJmpLevel, pFrame->depth );
 	}
 	else {
 
 	  /* Continue sleeping */
-    /*gHyp_util_debug("Handler8 returned %d, instance state %d->%d->%d", status, gHyp_instance_getState(pAI), pLevel->state, STATE_SLEEP ) ;*/
 
 	  gHyp_instance_setState ( pAI, STATE_SLEEP ) ;
 	  if ( guDebugFlags & DEBUG_FRAME )
@@ -2279,18 +2272,15 @@ static void lHyp_frame_return ( sFrame *pFrame,
 	if ( pAI == pAImain && gHyp_instance_isEND ( pAI ) )
 	  gHyp_concept_setReturnToStdIn ( gHyp_instance_getConcept(pAI),TRUE ) ;
 
-    /*gHyp_util_debug("Handler9 returned %d, instance state %d->%d->%d", status, gHyp_instance_getState(pAI), pLevel->state, STATE_PARSE ) ;*/
-    gHyp_instance_setState ( pAI, STATE_PARSE ) ;
+        gHyp_instance_setState ( pAI, STATE_PARSE ) ;
 	gHyp_instance_pushSTATUS ( pAI, pLevel->pStack ) ;
 	if ( guDebugFlags & DEBUG_FRAME )
 	  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
-			       "frame: PARSE (longjmp to %d from frame %d)",
+			       "frame: PARSE sleep (longjmp to %d from frame %d)",
 			       giJmpLevel, pFrame->depth );
       }
     }
     else if ( pLevel->state == STATE_QUERY ) {
-
-      /*gHyp_util_debug("Handler10 returned %d, instance state %d->%d->%d", status, gHyp_instance_getState(pAI), pLevel->state, STATE_QUERY ) ;*/
 
       if ( status ) {
 
@@ -2326,7 +2316,7 @@ static void lHyp_frame_return ( sFrame *pFrame,
           gHyp_instance_setState ( pAI, STATE_PARSE ) ;
 	  if ( guDebugFlags & DEBUG_FRAME )
 	    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
-			       "frame: PARSE (longjmp to %d from frame %d)",
+			       "frame: PARSE query (longjmp to %d from frame %d)",
 			       giJmpLevel, pFrame->depth );
 	}
 	else {
@@ -2351,13 +2341,12 @@ static void lHyp_frame_return ( sFrame *pFrame,
 	gHyp_instance_pushSTATUS ( pAI, pLevel->pStack ) ;
 	if ( guDebugFlags & DEBUG_FRAME )
 	  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
-			       "frame: PARSE (longjmp to %d from frame %d)",
+			       "frame: PARSE query (longjmp to %d from frame %d)",
 			       giJmpLevel, pFrame->depth );
       }
     }
     else {
 
-      /*gHyp_util_debug("Handler12 returned %d, instance state %d->%d->%d", status, gHyp_instance_getState(pAI), pLevel->state, STATE_PARSE ) ;*/
       gHyp_instance_setState ( pAI, STATE_PARSE ) ;
       if ( guDebugFlags & DEBUG_FRAME )
 	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
@@ -2366,7 +2355,6 @@ static void lHyp_frame_return ( sFrame *pFrame,
     }
   }
   /* Exit swiftly */
-  /*gHyp_util_debug ( "(longjmp to %d from frame %d)", giJmpLevel, pFrame->depth );*/
 
   longjmp ( gsJmpStack[giJmpLevel], cond ) ;
  }

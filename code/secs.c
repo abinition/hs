@@ -1629,7 +1629,9 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
 
           /* ENQ contention likely occurred, execute all pending conditions. */
 
-          gHyp_util_debug("ENQ Contention on Query. Adjusting jmpRootLevel to %d",giJmpLevel+1);
+          if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+	    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
+	    "ENQ Contention on Query. Adjusting jmpRootLevel to %d",giJmpLevel+1);
 
 	  if ( giJmpLevel == MAX_JMP_LEVEL ) {
             gHyp_util_logError ( "Parse jump level overflow at %d", MAX_JMP_LEVEL ) ;
