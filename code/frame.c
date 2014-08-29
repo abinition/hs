@@ -1305,6 +1305,34 @@ void gHyp_frame_setHypIndex ( sFrame *pFrame, int hypIndex )
   pLevel->hypIndex = hypIndex ;
 }
 
+void gHyp_frame_setHypIndex2 ( sLevel *pLevel, int hypIndex )
+{
+  /* Description:
+   *
+   *	Set the program counter for the frame level.
+   *
+   * Arguments:
+   *
+   *	pLevel						[R]
+   *	- pointer to level object
+   *
+   *
+   *	hypIndex
+   *	- integer value, 0 through MAX_HYPER_CODE
+   *
+   * Return value:
+   *
+   *	none
+   *
+   */
+  if ( guDebugFlags & DEBUG_FRAME ) 
+    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
+			 "index: set %d -> %d",
+			 pLevel->hypIndex,
+			 hypIndex ) ;
+  pLevel->hypIndex = hypIndex ;
+}
+
 void gHyp_frame_incHypIndex ( sFrame *pFrame )
 {
   /* Description:
@@ -1641,6 +1669,26 @@ void gHyp_frame_setState ( sFrame *pFrame, sBYTE state )
    *
    */
   sLevel *pLevel = pFrame->pLevel[pFrame->depth] ;
+  pLevel->state = state ;
+  return ;
+}
+
+void gHyp_frame_setState2 ( sLevel *pLevel, sBYTE state )
+{
+  /* Description:
+   *
+   *	Returns the state of the instance at the specified level
+   *
+   * Arguments:
+   *
+   *	pLevel						[R]
+   *	- pointer to level object
+   *
+   * Return value:
+   *
+   *	See HYPDEF.H for STATE_* values.
+   *
+   */
   pLevel->state = state ;
   return ;
 }
@@ -2110,8 +2158,9 @@ static void lHyp_frame_return ( sFrame *pFrame,
 
     if ( guDebugFlags & DEBUG_DIAGNOSTICS )
       gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
-			   "Returning from method %s, value = %s",
-		pMethodStr, gHyp_data_print ( pMethodVariable ) );
+			   "Returning from method %s, value = %s, to state %d",
+		pMethodStr, gHyp_data_print ( pMethodVariable ),
+		pLevel->state);
 
     /* The problem with getting the boolean value of the called
      * message method is that it will abort the query.
@@ -2120,19 +2169,15 @@ static void lHyp_frame_return ( sFrame *pFrame,
      */
     status = TRUE ;
 
-    /* Make sure all replies are out.  Because of bug fixes on 140808, there
-     * now should only ever be one reply to send, but the fix is still good
-     * to have... just in case
-     *
-     while ( gHyp_instance_atCorrectDepth ( pAI, pMethodStr, pFrame->depth+1 ) ) {
-       * Does the method (which HS is returning from) match what the current depth has stored?
+    /* Make sure all replies are out. */
+    while ( gHyp_instance_atCorrectDepth ( pAI, pMethodStr, pFrame->depth+1 ) ) {
+      /* Does the method (which HS is returning from) match what the current depth has stored?
        * While Yes, we want to reply to this and then we are done.
        * We keep testing and replying as long as we are above the correct depth.
-       *
+       */
+
       if ( !gHyp_instance_replyMessage ( pAI, pMethodData ) ) break ;      
     } 
-    */
-    gHyp_instance_replyMessage ( pAI, pMethodData ) ;
   }
 
   pConcept = gHyp_instance_getConcept ( pAI ) ;
@@ -2734,6 +2779,7 @@ void gHyp_frame_endStmt ( sFrame *pFrame, sInstance *pAI )
     }
 
     /* Flush the stack prior to popping the frame */
+    /*gHyp_util_debug("Flushing stack %x at depth %d",pLevel->pStack,pFrame->depth);*/
     gHyp_stack_flush ( pLevel->pStack );
     
     /* Pop the frame to the next lower level */

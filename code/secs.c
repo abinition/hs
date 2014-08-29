@@ -1391,6 +1391,9 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
     *pData2,
     *pSecsIIdata ;
 
+  sLevel
+    *pLevel ;
+
   char
     method[METHOD_SIZE+1],
     sender[SENDER_SIZE+1],
@@ -1415,8 +1418,8 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
     stream,
     function,
     saveJmpRootLevel=giJmpRootLevel,
-    cond,
-    initialFrameDepth ;
+    hypIndex,
+    cond ;
   
   sSecs1
     *pSecs1=NULL ;
@@ -1577,7 +1580,8 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
     }
 
     if ( mode == MESSAGE_QUERY ) {
-      initialFrameDepth = gHyp_frame_depth ( pFrame ) ;
+      pLevel = gHyp_frame_level ( pFrame ) ;
+      hypIndex = gHyp_frame_getHypIndex(pFrame) - 1 ;
       gHyp_instance_incIncomingDepth ( pAI ) ;
       gHyp_instance_setTimeOut ( pAI ) ;
       eventTime = gHyp_instance_getTimeOutTime ( pAI ) ;
@@ -1643,6 +1647,7 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
 	    giJmpRootLevel = saveJmpRootLevel ; 
           giJmpLevel-- ;
 
+	  /*
 	  pData = gHyp_frame_findRootVariable ( pFrame, "STATUS" ) ;
 	  
 	  if ( guDebugFlags & DEBUG_DIAGNOSTICS )
@@ -1651,6 +1656,8 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
 				 gHyp_data_print ( pData ) ) ;
 	  
 	  resend = gHyp_data_getBool ( pData, 0, TRUE ) ;
+          */
+	  resend = TRUE ;
 
 	  /* Incase the port was closed */
 	  pSecs1 = (sSecs1*) gHyp_concept_getSocketObject ( gHyp_instance_getConcept(pAI), 
@@ -1702,21 +1709,18 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
     /* pSecsIIdata can be cleared */
     gpsTempData = NULL ; 
 
-    if ( !status )
+    if ( !status ) {
 
       gHyp_instance_warning ( pAI, STATUS_SECS, 
 			      "Failed to send SECS message" ) ;
 
+    }
     else if ( mode == MESSAGE_QUERY ) {
   
       /* Wait for reply message from query */
 
       gHyp_instance_setState ( pAI, STATE_QUERY ) ;
-      gHyp_frame_setState ( pFrame, STATE_QUERY ) ;
-      if ( initialFrameDepth == gHyp_frame_depth ( pFrame ) ) {
-        gHyp_frame_setHypIndex ( pFrame, gHyp_frame_getHypIndex(pFrame) - 1 ) ;
-        gHyp_parse_restoreExprRank ( pParse ) ;
-      }
+      gHyp_frame_setState2 ( pLevel, STATE_QUERY ) ;
       gHyp_util_logInfo ( "...waiting for S%dF%d reply from device '%d', timeout in %d seconds", 
 			  stream,function+1,
 			  id,
@@ -1748,12 +1752,16 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
           gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME, 
 			   "frame: QUERY SECS (longjmp to %d from frame %d)",
 			   giJmpRootLevel,gHyp_frame_depth(pFrame) ) ;
+        gHyp_frame_setHypIndex2 ( pLevel, hypIndex ) ;
+        gHyp_parse_restoreExprRank ( pParse ) ;
+
         longjmp ( gsJmpStack[giJmpLevel=giJmpRootLevel], COND_SILENT) ;
       }
       else {
         /* Make sure the frame state is no longer STATE_QUERY */
         gHyp_instance_setState ( pAI, STATE_PARSE ) ;
         gHyp_frame_setState ( pFrame, STATE_PARSE ) ;
+	gHyp_util_debug("Continuing from successful SECS query");
       }
     }
   }

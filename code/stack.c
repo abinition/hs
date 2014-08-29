@@ -77,7 +77,7 @@ sStack *gHyp_stack_new ( )
 
 void gHyp_stack_flush ( sStack * pStack )
 {
-  int 	i ;
+  int i ;
   for ( i=0; i<giMaxStackDepth; i++ ) 
     if ( pStack->data[i] != NULL ) {
       gHyp_data_delete ( pStack->data[i] ) ;
@@ -125,9 +125,10 @@ void gHyp_stack_push ( sStack * pStack, sData *pData )
     
     if ( guDebugFlags & DEBUG_STACK )
       gHyp_util_logDebug (	FRAME_DEPTH_NULL, DEBUG_STACK,
-				"push : %s [%d]", 
+				"push : %s [%d] %x", 
       				gHyp_data_print ( pData ),
-                                pStack->depth ) ;
+                                pStack->depth,
+				pStack) ;
   }
   else {
     gHyp_data_delete ( pData ) ;
@@ -162,9 +163,10 @@ sData * gHyp_stack_pop ( sStack * pStack )
     if ( guDebugFlags & DEBUG_STACK )
       gHyp_util_logDebug (
       	FRAME_DEPTH_NULL, DEBUG_STACK,
-	"pop  : %s [%d]", 
+	"pop  : %s [%d] %x", 
       	gHyp_data_print ( pStack->data[pStack->depth] ),
-        pStack->depth ) ;
+        pStack->depth,
+	pStack ) ;
   
     return pStack->data[pStack->depth] ;
   }

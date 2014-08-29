@@ -926,6 +926,7 @@ void gHyp_instance_init ( sInstance *pAI,
   /* Initialize message variables. */
   pAI->msg.outgoingDepth = 0 ;
   pAI->msg.incomingDepth = 0 ;
+  pAI->msg.rejectCount = 0 ;
 
   /* Create array space for the message levels */
   pAI->msg.incomingReply[0] = (sReply*) AllocMemory(sizeof(sReply)*MAX_REPLY_DEPTH);
@@ -1539,7 +1540,7 @@ int gHyp_instance_readReply ( sInstance *pAI )
 			   n, pAI->msg.incomingReply[n]->frameDepth);
 
     if ( pAI->msg.incoming ) {
-      gHyp_util_debug("Deleting message %s",gHyp_aimsg_method(pAI->msg.incoming ));
+      /*gHyp_util_debug("Deleting message %s",gHyp_aimsg_method(pAI->msg.incoming ));*/
       gHyp_aimsg_delete ( pAI->msg.incoming ) ;
       pAI->msg.incoming = NULL;
       pAI->signal.uMSGINTERRUPT = 0 ;
@@ -1602,7 +1603,7 @@ int gHyp_instance_readQueue ( sInstance* pAI )
     n = pAI->msg.startQQ ;
 
     if ( pAI->msg.incoming ) {
-      gHyp_util_debug("Deleting message %s",gHyp_aimsg_method(pAI->msg.incoming ));
+      /*gHyp_util_debug("Deleting message %s",gHyp_aimsg_method(pAI->msg.incoming ));*/
       gHyp_aimsg_delete ( pAI->msg.incoming ) ;
       pAI->msg.incoming = NULL;
       pAI->signal.uMSGINTERRUPT = 0 ;
@@ -1651,7 +1652,7 @@ int gHyp_instance_readQueue ( sInstance* pAI )
     
     n = pAI->msg.startRQ ;
     if ( pAI->msg.incoming ) {
-      gHyp_util_debug("Deleting message %s",gHyp_aimsg_method(pAI->msg.incoming ));
+      /*gHyp_util_debug("Deleting message %s",gHyp_aimsg_method(pAI->msg.incoming ));*/
       gHyp_aimsg_delete ( pAI->msg.incoming ) ;
       pAI->msg.incoming = NULL;
       pAI->signal.uMSGINTERRUPT = 0 ;
@@ -2021,7 +2022,7 @@ int gHyp_instance_readProcess ( sInstance *pAI, sBYTE state )
     if ( !pMethodVariable || !pMethod || !gHyp_method_isEnabled(pMethod) ) { 
       
       /* REJECT THE MESSAGE - SEND THE SENDER A MESSAGE REJECTING IT */
-      gHyp_util_debug("Message %s rejected",pMethodStr);
+      /*gHyp_util_debug("Message %s rejected, %d times",pMethodStr,pAI->msg.rejectCount);*/
 
       /* Don't reject back to ourselves */
       if ( !isSenderSelf && !isSECSmsg ) {
@@ -2055,7 +2056,7 @@ int gHyp_instance_readProcess ( sInstance *pAI, sBYTE state )
 	}
       }
       if ( pAI->msg.incoming ) {
-        gHyp_util_debug("Deleting message %s",gHyp_aimsg_method(pAI->msg.incoming ));
+        /*gHyp_util_debug("Deleting message %s",gHyp_aimsg_method(pAI->msg.incoming ));*/
         gHyp_aimsg_delete ( pAI->msg.incoming ) ;
         pAI->msg.incoming = NULL;
         pAI->signal.uMSGINTERRUPT = 0 ;
@@ -2213,18 +2214,18 @@ sLOGICAL gHyp_instance_atCorrectDepth ( sInstance *pAI, char *pMethodStr, int fr
   /* The frame depths are equal. */
 
   if ( pAI->msg.outgoingReply[outgoingDepth]->msg == NULL ) {
-    /* The method was an event message.  There is no method to match.  Return OK */
+    /* The method was an event message.  There is no method to match.  Return FALSE */
     /*gHyp_util_debug("Event message, no reply", pMethodStr, pMethodStr2 ) ;*/
-    return TRUE ;
+    return FALSE ;
   }
   else if ( strcmp ( pMethodStr, pMethodStr2 ) == 0 ) {
     /* Methods match.  Ok to send reply */
-    gHyp_util_debug("Sending reply for %s", pMethodStr2 ) ;
+    /*gHyp_util_debug("Sending reply for %s", pMethodStr2 ) ;*/
     return TRUE ;
   }
   else {
     /* A mistmatch - OK as well, just a different method needs a reply */
-    gHyp_util_debug("Sending reply for %s from return of %s", pMethodStr2, pMethodStr ) ;
+    /*gHyp_util_debug("Sending reply for %s from return of %s", pMethodStr2, pMethodStr ) ;*/
     return TRUE ;
   }
 
@@ -2581,7 +2582,7 @@ sLOGICAL gHyp_instance_replyMessage ( sInstance *pAI, sData *pMethodData )
 
 	      /* Since we didn't send the reply, restore the outgoing depth */
 	      gHyp_instance_incOutgoingDepth ( pAI ) ;
-	      outgoingDepth =  pAI->msg.outgoingDepth ;
+	      /*outgoingDepth =  pAI->msg.outgoingDepth ;*/
               
               if ( guDebugFlags & DEBUG_DIAGNOSTICS )
 	        gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
@@ -2602,12 +2603,16 @@ sLOGICAL gHyp_instance_replyMessage ( sInstance *pAI, sData *pMethodData )
 	       */
 	      pData = gHyp_frame_findRootVariable( pAI->exec.pFrame,"STATUS") ;
 	      
+	      /*
 	      if ( guDebugFlags & DEBUG_DIAGNOSTICS )
 		gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
 				     "Checking re-send %s",
 				     gHyp_data_print ( pData ) ) ;
 	      
 	      resend = gHyp_data_getBool ( pData, 0, TRUE ) ;
+	      */
+	      resend = TRUE ;
+
 	      pSecs1 = (sSecs1*) gHyp_concept_getSocketObject ( pAI->exec.pConcept, 
 								secsFd, 
 								DATA_OBJECT_SECS1 ) ;
@@ -2616,7 +2621,7 @@ sLOGICAL gHyp_instance_replyMessage ( sInstance *pAI, sData *pMethodData )
                 
                 /* Let's try that again, shall we */
   	        gHyp_instance_decOutgoingDepth ( pAI ) ;
-	        outgoingDepth =  pAI->msg.outgoingDepth ;
+	        /*outgoingDepth =  pAI->msg.outgoingDepth ;*/
 
 		/* Print a helpful message */
 		gHyp_util_logInfo (
@@ -2635,7 +2640,8 @@ sLOGICAL gHyp_instance_replyMessage ( sInstance *pAI, sData *pMethodData )
               /* Successfully sent */
 	      if ( guDebugFlags & DEBUG_DIAGNOSTICS )
 		gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
-				     "SECS reply successfully sent" ) ;
+				     "SECS reply successfully sent at depth %d",
+				     outgoingDepth ) ;
               gHyp_aimsg_delete ( pAI->msg.outgoingReply[outgoingDepth]->msg ) ;
               pAI->msg.outgoingReply[outgoingDepth]->msg = NULL ;
               pAI->msg.outgoingReply[outgoingDepth]->secs.id = NULL_DEVICEID ;
@@ -2970,7 +2976,7 @@ sAImsg *gHyp_instance_incomingMsg ( sInstance *pAI )
    */
   gHyp_instance_signalMsg ( pAI ) ;
 
-  gHyp_util_logInfo("Initialize new message in qq[%d]",n ) ;
+  /*gHyp_util_logInfo("Initialize new message in qq[%d]",n ) ;*/
   return pAI->msg.qq[n] ;
 }
 
@@ -4791,6 +4797,9 @@ static sLOGICAL lHyp_instance_handleMessageCall ( sInstance *pAI )
   pAI->msg.inSecs.function = -1 ;
   pAI->msg.inSecs.TID = -1 ;
   pAI->msg.inSecs.SID = -1 ;
+
+  /* Remember the frame depth from which we will send the reply */ 
+  pAI->msg.outgoingReply[pAI->msg.outgoingDepth]->frameDepth = gHyp_frame_depth( pAI->exec.pFrame) ;
 
   /* Increment the outgoingdepth */
   gHyp_instance_incOutgoingDepth ( pAI ) ;

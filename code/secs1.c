@@ -793,7 +793,7 @@ static int lHyp_secs1_incoming ( sSecs1 *pSecs1,
    *	- a return value > 0 satisfies the read.
    * 2. ENQ contention.
    *    - called from gHyp_secs1_outgoing, which in turn is called from
-   *	  gHyp_secs_event, gHyp_secs_query, or gHyp_instance_replyMessage.
+   *	  either gHyp_secs_query or gHyp_instance_replyMessage.
    *	- a return value of -1 aborts the query or aborts the reply Message
    *	- a return value of 0 re-invokes the query or re-sends the reply
    *	- a return value of 1 completes the query or reply message
@@ -966,7 +966,7 @@ static int lHyp_secs1_incoming ( sSecs1 *pSecs1,
 	   *	- after sending ACK : a successfull receipt of a SECS message
 	   *    - after sending a NAK : an unsuccessful receipt
 	   *	- 0 byte error while expecting garbage after getting bad block.
-	   * Returning 0 at this point is ok w.r.t. a potenital spin loop because 
+	   * Returning 0 at this point is ok w.r.t. a potential spin loop because 
 	   * gHyp_sock_select_readObjects always calls lHyp_secs1_incoming with 
 	   * timeout==0.  So, if the socket is not killed now, it will be
 	   * the next time.
