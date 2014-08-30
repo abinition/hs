@@ -2638,11 +2638,13 @@ sLOGICAL gHyp_instance_replyMessage ( sInstance *pAI, sData *pMethodData )
 	    } /* nBytes == 0 */
             else {
               /* Successfully sent */
+
 	      if ( guDebugFlags & DEBUG_DIAGNOSTICS )
 		gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
 				     "SECS reply successfully sent at depth %d",
 				     outgoingDepth ) ;
-              gHyp_aimsg_delete ( pAI->msg.outgoingReply[outgoingDepth]->msg ) ;
+	      if ( pAI->msg.outgoingReply[outgoingDepth]->msg )
+	        gHyp_aimsg_delete ( pAI->msg.outgoingReply[outgoingDepth]->msg ) ;
               pAI->msg.outgoingReply[outgoingDepth]->msg = NULL ;
               pAI->msg.outgoingReply[outgoingDepth]->secs.id = NULL_DEVICEID ;
               pAI->msg.outgoingReply[outgoingDepth]->secs.stream = -1 ;
