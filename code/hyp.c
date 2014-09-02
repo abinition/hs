@@ -1011,7 +1011,7 @@ int gHyp_hyp_parse (	sInstance	*pAIarg,
     }
   }
     
-  /* Debugging: level 5 and above. */
+  /* Debugging: level 5. */
   if ( guDebugFlags & DEBUG_STATE )
     gHyp_util_logDebug (	FRAME_DEPTH_NULL, DEBUG_STATE,
     				"state: %s, expecting: %s",

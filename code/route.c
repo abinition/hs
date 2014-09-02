@@ -525,6 +525,7 @@ static void lHyp_route_QE (	sInstance 	*pAI,
 
       gHyp_instance_setState ( pAI, STATE_QUERY ) ;
       gHyp_frame_setState ( pFrame, STATE_QUERY ) ;
+      /* Set index back one to be at the right spot for gHyp_parse_completeExpression */ 
       gHyp_frame_setHypIndex ( pFrame, gHyp_frame_getHypIndex(pFrame) - 1 ) ;
       gHyp_parse_restoreExprRank ( pParse ) ;
       gHyp_util_logInfo ( "...waiting for '%s' reply, timeout in %d seconds", 

@@ -2214,9 +2214,11 @@ sLOGICAL gHyp_instance_atCorrectDepth ( sInstance *pAI, char *pMethodStr, int fr
   /* The frame depths are equal. */
 
   if ( pAI->msg.outgoingReply[outgoingDepth]->msg == NULL ) {
-    /* The method was an event message.  There is no method to match.  Return FALSE */
+    /* The method was an event message.  There is no reply to send.  
+     * Return TRUE  so that the outgoingDepth is decremented 
+     */
     /*gHyp_util_debug("Event message, no reply", pMethodStr, pMethodStr2 ) ;*/
-    return FALSE ;
+    return TRUE ;
   }
   else if ( strcmp ( pMethodStr, pMethodStr2 ) == 0 ) {
     /* Methods match.  Ok to send reply */
@@ -4712,6 +4714,8 @@ static sLOGICAL lHyp_instance_handleMessageCall ( sInstance *pAI )
 
   if ( !gHyp_data_getBool ( pSTATUS, 0, TRUE ) ) {
     gHyp_util_logWarning("Aborting message call - %s",gHyp_data_print(pSTATUS));
+    gHyp_aimsg_delete ( pAI->msg.incoming ) ;
+    pAI->msg.incoming = NULL ;
     return FALSE ;
   }
 

@@ -52,6 +52,7 @@ extern sLOGICAL		gHyp_parse_isMethodDeferred ( sParse *pParse ) ;
 extern sLOGICAL		gHyp_parse_isMethodDeprecated ( sParse *pParse ) ;
 extern sLOGICAL		gHyp_parse_isIndexCall ( sParse * ) ;
 extern sLOGICAL		gHyp_parse_isConditional ( sParse *, sHyp* ) ;
+extern int gHyp_parse_handleConditions ( sInstance * pAI ) ;
 extern void gHyp_parse_completeExpression ( sParse *pParse,
 				     sInstance *pAI,
 				     sHyp *pHyp,

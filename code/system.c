@@ -878,10 +878,8 @@ void gHyp_system_sleep ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       gHyp_frame_setState ( pFrame, STATE_SLEEP ) ;
       gsCurTime = time(NULL);
       gHyp_instance_setWakeTime ( pAI, (int)gsCurTime+seconds ) ;
+      /* Set index back one to be at the right spot for gHyp_parse_completeExpression */ 
       gHyp_frame_setHypIndex ( pFrame, gHyp_frame_getHypIndex(pFrame) - 1 ) ;
-
-      /*gHyp_instance_pushSTATUS ( pAI, pStack ) ;*/
-      
       gHyp_parse_restoreExprRank ( pParse ) ;
 
       /* If we are the parent, we may turn-off "return to stdIn".*/

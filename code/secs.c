@@ -1752,6 +1752,7 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
           gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME, 
 			   "frame: QUERY SECS (longjmp to %d from frame %d)",
 			   giJmpRootLevel,gHyp_frame_depth(pFrame) ) ;
+        /* Set index back one to be at the right spot for gHyp_parse_completeExpression */ 
         gHyp_frame_setHypIndex2 ( pLevel, hypIndex ) ;
         gHyp_parse_restoreExprRank ( pParse ) ;
 
@@ -1761,7 +1762,7 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
         /* Make sure the frame state is no longer STATE_QUERY */
         gHyp_instance_setState ( pAI, STATE_PARSE ) ;
         gHyp_frame_setState ( pFrame, STATE_PARSE ) ;
-	gHyp_util_debug("Continuing from successful SECS query");
+	/*gHyp_util_debug("Continuing from successful SECS query");*/
       }
     }
   }

@@ -152,7 +152,7 @@ int gHyp_parse_exprRank ( sParse *pParse )
 
 void gHyp_parse_restoreExprRank ( sParse *pParse )
 {
-  /*pParse->exprRank = pParse->prevExprRank ;*/
+  pParse->exprRank = pParse->prevExprRank ;
 }
 
 int gHyp_parse_listDepth ( sParse *pParse ) 
@@ -557,7 +557,14 @@ void gHyp_parse_completeExpression ( sParse *pParse,
 {
   if ( pParse->saveInputCode != NULL ) {
 
-    gHyp_parse_loop(  pParse, 
+	  gHyp_util_debug("Completing expression, current state %d, token %s ",
+		  pParse->saveCurrentState,
+		  gHyp_hyp_token ( pParse->saveInputCode ));
+    if ( pParse->saveCurrentState == G_STMT_EXP &&
+	 pParse->saveInputPrecedence == PRECEDENCE_EOS )
+      gHyp_frame_endStmt ( pFrame, pAI ) ; 
+    else
+      gHyp_parse_loop(pParse, 
   		      pAI,
 		      pHyp,
 		      pFrame,
@@ -924,8 +931,9 @@ void gHyp_parse_expression (	sParse 		*pParse,
    * the parser recursively.  Such handlers include the method handler, dereference
    * handler, alarm handler.   Handlers, when they are done, longjmp back to the point
    * which they were invoked, and the loop below continues execution.  
-   * However, if the handler calls the sleep(), *query(), or poll() functions, then
-   * they must longjmp back to depth 1 (to give other instances a chance to run, etc).
+   * However, if the handler calls the sleep(), query(), or idle() functions, then
+   * they must longjmp back to the root depth, (usually 1) 
+   * (to give other instances a chance to run, etc).
    * Thus, when the handler finally returns, it can no longer longjmp back into this 
    * loop, it must re-enter it instead.  In most cases, this is ok because the input
    * token - which was being parsed when the handler was invoked - had completed 
@@ -982,6 +990,7 @@ void gHyp_parse_loop (	sParse *pParse,
   int
     i,
     cond,
+    saveJmpRootLevel=giJmpRootLevel,
     depth ;
 
   sLabel
@@ -1056,8 +1065,9 @@ void gHyp_parse_loop (	sParse *pParse,
     /* EVALUATE PRECEDENCE */
     if ( guDebugFlags & DEBUG_INFIX_EXPR ) 
         gHyp_util_logDebug ( 	FRAME_DEPTH_NULL,  DEBUG_INFIX_EXPR,
-				"expr : (Input p=%d > Expr p=%d)?",
-				inputPrecedence, exprPrecedence ) ;
+				"expr : [Input '%s'(%d) > Expr '%s'(%d)] ?",
+				inputToken, inputPrecedence, 
+				exprToken, exprPrecedence ) ;
        
     if ( inputPrecedence > exprPrecedence && isNormal ) {
 
@@ -1568,33 +1578,36 @@ void gHyp_parse_loop (	sParse *pParse,
 
         if ( gHyp_frame_isStmtTrue ( pFrame ) && 
 	     pParse->exprCount < pParse->shortCircuit ) {
-    	  
+    
+	  
 	  gHyp_instance_setState ( pAI, STATE_EXECUTE ) ;
 
 	  if ( giJmpLevel == MAX_JMP_LEVEL ) {
 	    gHyp_util_logError ( "Execute jump level overflow at %d", MAX_JMP_LEVEL ) ;
             longjmp ( gsJmpStack[0], COND_FATAL ) ; 
 	  }
-    	  giJmpLevel++ ;
+
+	  giJmpLevel++ ;
           cond = gHyp_hyp_execute (	pAI,
 					pExprCode ) ;
     	  giJmpLevel-- ;
 
-  	  /* Save the necessary values */ 
+ 	  /* Save the necessary values */ 
 	  pParse->saveCurrentState = currentState ;
 	  pParse->saveInputCode = pInputCode ;
 	  pParse->saveInputPrecedence = inputPrecedence ;
 	  pParse->saveExprTokenType = exprTokenType ;
-	  pParse->saveMatchedLEFT = matchedLEFT ;
+	  pParse->saveMatchedLEFT = matchedLEFT ; 
 
-	  /* Look for exception conditions, executing any and all handlers. */
-	  do {
-	    /*if ( gHyp_frame_testGlobalFlag ( pFrame, FRAME_GLOBAL_HANDLER ) ) break ;*/
-	    gHyp_instance_setState ( pAI, STATE_EXECUTE ) ;
-	  }
-	  while ( (cond = gHyp_instance_parse ( pAI )) == COND_NORMAL ) ;
-	  
-	  gHyp_instance_setState ( pAI, STATE_PARSE ) ;
+	  /*
+	   *giJmpLevel++ ;
+	   *giJmpRootLevel = giJmpLevel ;
+           */
+          cond = gHyp_parse_handleConditions( pAI ) ;
+	  /*
+	   *giJmpRootLevel = saveJmpRootLevel ; 
+           *giJmpLevel-- ;
+	   */
 	 
         }
 
@@ -1635,6 +1648,25 @@ void gHyp_parse_loop (	sParse *pParse,
   }
   
   return ;
+}
+
+int gHyp_parse_handleConditions ( sInstance * pAI )
+{
+  int cond ;
+  /*
+  int jmpVal ;
+  if ( (jmpVal = setjmp ( gsJmpStack[giJmpLevel] )) ) return jmpVal ;
+  */
+
+  /* Look for exception conditions, executing any and all handlers. */
+  do {
+    gHyp_instance_setState ( pAI, STATE_EXECUTE ) ;
+  }
+  while ( (cond = gHyp_instance_parse ( pAI )) == COND_NORMAL ) ;
+	  
+  gHyp_instance_setState ( pAI, STATE_PARSE ) ;
+
+  return cond ;
 }
 
 void gHyp_parse_statement (	sParse		*pParse, 

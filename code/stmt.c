@@ -161,7 +161,6 @@ void gHyp_stmt_else ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 	break ;
 
       default :	 
-	      gHyp_util_debug("State was %d",gHyp_frame_expectedState ( pFrame ) );
 	gHyp_instance_error ( 	pAI, STATUS_PARSE, 
 				"Not expecting 'else'." ) ;
 	break ;

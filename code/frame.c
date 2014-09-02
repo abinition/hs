@@ -2051,7 +2051,7 @@ static void lHyp_frame_return ( sFrame *pFrame,
     status = TRUE ;
 
   sBYTE
-	currentState ;
+    currentState;
 
   int
     cond = COND_SILENT ;
@@ -2142,12 +2142,14 @@ static void lHyp_frame_return ( sFrame *pFrame,
   }
   else if ( wasCompletedMessageCall ) {
 
-    /* A incoming message.  Check for replies */ 
+    /* End of an incoming message.  
+     * Send out replies 
+     */
+
     /* Execute all pending conditions */
     currentState = gHyp_instance_getState( pAI) ;
     do {
       gHyp_frame_setGlobalFlag ( pFrame, FRAME_GLOBAL_TRUE ) ;
-      /* Setting EXECUTE makes sure only non-message handlers will execute  */
       gHyp_instance_setState ( pAI, STATE_EXECUTE ) ;
     }
     while ( gHyp_instance_parse ( pAI ) == COND_NORMAL ) ;

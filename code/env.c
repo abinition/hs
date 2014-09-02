@@ -596,6 +596,7 @@ void gHyp_env_idle ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     /* Idle */    
     gHyp_instance_setState ( pAI, STATE_IDLE ) ;
     gHyp_frame_setState ( pFrame, STATE_IDLE ) ;
+    /* Set index back one to be at the right spot for gHyp_parse_completeExpression */ 
     gHyp_frame_setHypIndex ( pFrame, gHyp_frame_getHypIndex(pFrame) - 1 ) ;
     gHyp_parse_restoreExprRank ( pParse ) ;
 
@@ -741,8 +742,10 @@ void lHyp_env_instantiate ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE, sLOG
       gHyp_instance_setgpAImain ( pAI ) ;
       gHyp_instance_setgpAI ( pAInew ) ;
 
+      /* Set index back one to be at the right spot for gHyp_parse_completeExpression */ 
       gHyp_frame_setHypIndex ( pFrame, gHyp_frame_getHypIndex(pFrame) - 1 ) ;
       gHyp_parse_restoreExprRank ( pParse ) ;
+
       gHyp_instance_pushSTATUS ( pAI, pStack ) ;
       	
       if ( !gHyp_instance_isEND ( pAI ) && gHyp_frame_depth (pFrame) > 1 )
