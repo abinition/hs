@@ -557,9 +557,10 @@ void gHyp_parse_completeExpression ( sParse *pParse,
 {
   if ( pParse->saveInputCode != NULL ) {
 
-	  gHyp_util_debug("Completing expression, current state %d, token %s ",
+	  /*gHyp_util_debug("Completing expression, current state %d, token %s ",
 		  pParse->saveCurrentState,
 		  gHyp_hyp_token ( pParse->saveInputCode ));
+	   */
     if ( pParse->saveCurrentState == G_STMT_EXP &&
 	 pParse->saveInputPrecedence == PRECEDENCE_EOS )
       gHyp_frame_endStmt ( pFrame, pAI ) ; 
