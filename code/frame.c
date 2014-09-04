@@ -2146,14 +2146,6 @@ static void lHyp_frame_return ( sFrame *pFrame,
      * Send out replies 
      */
 
-    /* Execute all pending conditions */
-    currentState = gHyp_instance_getState( pAI) ;
-    do {
-      gHyp_frame_setGlobalFlag ( pFrame, FRAME_GLOBAL_TRUE ) ;
-      gHyp_instance_setState ( pAI, STATE_EXECUTE ) ;
-    }
-    while ( gHyp_instance_parse ( pAI ) == COND_NORMAL ) ;
-    gHyp_instance_setState ( pAI, currentState ) ;
 
     /* Get the status of the method - did it return 1 or 0? */
     status = gHyp_data_getBool ( pMethodVariable, 0, TRUE ) ;
@@ -2180,6 +2172,16 @@ static void lHyp_frame_return ( sFrame *pFrame,
 
       if ( !gHyp_instance_replyMessage ( pAI, pMethodData ) ) break ;      
     } 
+
+    /* Execute all pending conditions */
+    currentState = gHyp_instance_getState( pAI) ;
+    do {
+      gHyp_frame_setGlobalFlag ( pFrame, FRAME_GLOBAL_TRUE ) ;
+      gHyp_instance_setState ( pAI, STATE_EXECUTE ) ;
+    }
+    while ( gHyp_instance_parse ( pAI ) == COND_NORMAL ) ;
+    gHyp_instance_setState ( pAI, currentState ) ;
+
   }
 
   pConcept = gHyp_instance_getConcept ( pAI ) ;

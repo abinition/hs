@@ -993,16 +993,16 @@ int gHyp_hyp_parse (	sInstance	*pAIarg,
   sFrame* pFrame = pFrameArg ;
 
   int jmpVal ;
-  
-  /* Do we need to complete an expression? */
-  gHyp_parse_completeExpression ( gHyp_frame_parse ( pFrame ), pAI, pHyp, pFrame ) ;
 
   /* When a recoverable error occurs (that which we can handle), we always
    * jump back to this point and then return FALSE.
    * We always jump back to gsJmpStack[1] when going to an IDLE state.
    */
   if ( (jmpVal = setjmp ( gsJmpStack[giJmpLevel] )) ) return jmpVal ;
-  
+    
+  /* Do we need to complete an expression? */
+  gHyp_parse_completeExpression ( gHyp_frame_parse ( pFrame ), pAI, pHyp, pFrame ) ;
+
   /* Check if we were expecting 'else' but didn't get it. */
   if (	pCode->precedence != PRECEDENCE_EMPTY ) {
     while ( gHyp_frame_expectedState ( pFrame ) == G_IF_ELSE ) {
