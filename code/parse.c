@@ -561,11 +561,8 @@ void gHyp_parse_completeExpression ( sParse *pParse,
 		  pParse->saveCurrentState,
 		  gHyp_hyp_token ( pParse->saveInputCode ));
 	   */
-    if ( pParse->saveCurrentState == G_STMT_EXP &&
-	 pParse->saveInputPrecedence == PRECEDENCE_EOS )
-      gHyp_frame_endStmt ( pFrame, pAI ) ; 
-    else
-      gHyp_parse_loop(pParse, 
+
+    gHyp_parse_loop(pParse, 
   		      pAI,
 		      pHyp,
 		      pFrame,
@@ -579,7 +576,12 @@ void gHyp_parse_completeExpression ( sParse *pParse,
 		      pParse->saveExprTokenType,
 		      pParse->saveMatchedLEFT,
 		      FALSE ) ;
+
+    if ( pParse->saveCurrentState == G_STMT_EXP &&
+	 pParse->saveInputPrecedence == PRECEDENCE_EOS )
+      gHyp_frame_endStmt ( pFrame, pAI ) ;
   }
+
 }
 
 void gHyp_parse_expression (	sParse 		*pParse,
