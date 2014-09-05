@@ -2545,7 +2545,21 @@ sLOGICAL gHyp_instance_replyMessage ( sInstance *pAI, sData *pMethodData )
 	  
 	  if ( nBytes < 0 ) 
 	    return gHyp_util_logError("Failed to send SECS HSMS reply message");
-	  
+	  else {
+            /* Successfully sent */
+	    if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+		gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
+				     "SECS (HSMS) reply successfully sent at depth %d",
+				     outgoingDepth ) ;
+	    if ( pAI->msg.outgoingReply[outgoingDepth]->msg )
+	        gHyp_aimsg_delete ( pAI->msg.outgoingReply[outgoingDepth]->msg ) ;
+            pAI->msg.outgoingReply[outgoingDepth]->msg = NULL ;
+            pAI->msg.outgoingReply[outgoingDepth]->secs.id = NULL_DEVICEID ;
+            pAI->msg.outgoingReply[outgoingDepth]->secs.stream = -1 ;
+            pAI->msg.outgoingReply[outgoingDepth]->secs.function = -1 ;
+            pAI->msg.outgoingReply[outgoingDepth]->secs.TID = -1 ;
+            pAI->msg.outgoingReply[outgoingDepth]->secs.SID = -1 ;
+	  }
 	}
 	else if ( pSecs1 ) {
 	  
