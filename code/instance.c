@@ -1581,6 +1581,9 @@ int gHyp_instance_readQueue ( sInstance* pAI )
     gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
 	"Looking for next queued message at [%d]", pAI->msg.startQQ);  
 
+  /* Clear the flag to begin with */	
+  pAI->signal.uMSG = 0 ;
+
   if ( pAI->msg.incoming != NULL ) {
 
      /* Has to be one just pulled, we are coming back for it after
@@ -1590,6 +1593,7 @@ int gHyp_instance_readQueue ( sInstance* pAI )
        if ( guDebugFlags & DEBUG_DIAGNOSTICS )
           gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
           "Already a message pending, %s",gHyp_aimsg_method ( pAI->msg.incoming) ) ;
+       gHyp_instance_signalMsg( pAI ) ;
        return COND_NORMAL ;
      }
      else
@@ -1608,7 +1612,6 @@ int gHyp_instance_readQueue ( sInstance* pAI )
       pAI->msg.incoming = NULL;
       pAI->signal.uMSGINTERRUPT = 0 ;
       pAI->signal.uMSGPENDING = 0 ;
-
     }
     pAI->msg.incoming = pAI->msg.qq[n] ;
     pAI->msg.qq[n] = NULL ;
@@ -1684,9 +1687,6 @@ int gHyp_instance_readQueue ( sInstance* pAI )
     gHyp_instance_signalMsg( pAI ) ;
     return COND_NORMAL ;
   }
-
-  /* Clear the flag that there's NO message in pAI->msg.incoming */	
-  pAI->signal.uMSG = 0 ;
 
   return COND_SILENT ;
 }
@@ -2543,7 +2543,15 @@ sLOGICAL gHyp_instance_replyMessage ( sInstance *pAI, sData *pMethodData )
 					SID,
 					MESSAGE_REPLY ) ;
 	  
-	  if ( nBytes < 0 ) 
+	  gHyp_aimsg_delete ( pAI->msg.outgoingReply[outgoingDepth]->msg ) ;
+          pAI->msg.outgoingReply[outgoingDepth]->msg = NULL ;
+          pAI->msg.outgoingReply[outgoingDepth]->secs.id = NULL_DEVICEID ;
+          pAI->msg.outgoingReply[outgoingDepth]->secs.stream = -1 ;
+          pAI->msg.outgoingReply[outgoingDepth]->secs.function = -1 ;
+          pAI->msg.outgoingReply[outgoingDepth]->secs.TID = -1 ;
+          pAI->msg.outgoingReply[outgoingDepth]->secs.SID = -1 ;
+	  
+	  if ( nBytes < 0 )
 	    return gHyp_util_logError("Failed to send SECS HSMS reply message");
 	  else {
             /* Successfully sent */
@@ -2551,14 +2559,7 @@ sLOGICAL gHyp_instance_replyMessage ( sInstance *pAI, sData *pMethodData )
 		gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
 				     "SECS (HSMS) reply successfully sent at depth %d",
 				     outgoingDepth ) ;
-	    if ( pAI->msg.outgoingReply[outgoingDepth]->msg )
-	        gHyp_aimsg_delete ( pAI->msg.outgoingReply[outgoingDepth]->msg ) ;
-            pAI->msg.outgoingReply[outgoingDepth]->msg = NULL ;
-            pAI->msg.outgoingReply[outgoingDepth]->secs.id = NULL_DEVICEID ;
-            pAI->msg.outgoingReply[outgoingDepth]->secs.stream = -1 ;
-            pAI->msg.outgoingReply[outgoingDepth]->secs.function = -1 ;
-            pAI->msg.outgoingReply[outgoingDepth]->secs.TID = -1 ;
-            pAI->msg.outgoingReply[outgoingDepth]->secs.SID = -1 ;
+
 	  }
 	}
 	else if ( pSecs1 ) {
@@ -3533,6 +3534,23 @@ void gHyp_instance_setTimeOut ( sInstance *pAI )
 	  pAI->msg.incomingReply[n]->secs.stream,
 	  pAI->msg.incomingReply[n]->secs.function );
   */
+  gHyp_instance_nextEvent ( pAI ) ;
+}
+
+
+void gHyp_instance_restoreTimeOut ( sInstance *pAI )
+{        
+  int n = pAI->msg.incomingDepth-1;
+
+  gsCurTime = time ( NULL ) ; 
+  if ( pAI->exec.timeOut == 0 ) {
+    pAI->exec.timeOutTime = 0 ;
+    pAI->msg.incomingReply[n]->timeoutTime  = 0 ;
+  }
+  else {
+    pAI->exec.timeOutTime = pAI->msg.incomingReply[n]->timeoutTime ;
+
+  }
   gHyp_instance_nextEvent ( pAI ) ;
 }
 

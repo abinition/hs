@@ -935,7 +935,8 @@ int gHyp_router_message ( sConcept *pConcept,
         /* For messages to ourself, they don't get written/read from the fifo's */
 	if ( guDebugFlags & DEBUG_DIAGNOSTICS )
 	  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
-			       "Found instance %s#%s",pTargetInstance,pTargetConcept) ;
+			       "Found instance %s#%s for method %s",
+			       pTargetInstance,pTargetConcept,pMethod) ;
 	gHyp_aimsg_initParse ( gHyp_instance_incomingMsg(pAI), (char*) pMsg ) ;
 	cond = COND_NORMAL ;
       }

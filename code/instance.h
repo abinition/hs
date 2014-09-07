@@ -151,6 +151,7 @@ extern time_t	gHyp_instance_getTimeOutTime ( sInstance *);
 extern void	gHyp_instance_cancelTimeOut ( sInstance *, int depth);
 extern void    	gHyp_instance_initTimeOut ( sInstance *, int ) ;
 extern void    	gHyp_instance_setTimeOut ( sInstance * ) ;
+extern void    	gHyp_instance_restoreTimeOut ( sInstance * ) ;
 extern void    	gHyp_instance_setTimeOutHandler ( sInstance *, int, sHyp* ) ;
 extern sData*  	gHyp_instance_setStatus ( sInstance *, char * ) ;
 extern void	gHyp_instance_warning ( sInstance*,char*,char*, ...) ;

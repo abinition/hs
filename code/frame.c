@@ -2371,8 +2371,7 @@ static void lHyp_frame_return ( sFrame *pFrame,
 	else {
 	  /* An event or query interrupts, go back to STATE_QUERY, service it */
           gHyp_instance_setState ( pAI, STATE_QUERY ) ;
-          gHyp_instance_getTimeOutTime ( pAI ) ;
-          gHyp_instance_setTimeOut ( pAI ) ;	
+          gHyp_instance_restoreTimeOut ( pAI ) ;	
           if ( guDebugFlags & DEBUG_FRAME )
 	    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
 			       "frame: QUERY continue (longjmp to %d from frame %d)",
