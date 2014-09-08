@@ -2407,11 +2407,16 @@ static void lHyp_frame_return ( sFrame *pFrame,
     }
     else {
 
-      gHyp_instance_setState ( pAI, STATE_PARSE ) ;
-      gHyp_frame_setState ( pFrame, STATE_PARSE ) ;
+      /* Must be STATE_EXECUTE */
+      /*gHyp_util_debug("EXECUTE return, state is %s",gzaInstanceState[gHyp_instance_getState(pAI)]);*/
+
+      gHyp_instance_setState ( pAI, gHyp_instance_getState(pAI) ) ;
+      gHyp_frame_setState ( pFrame, gHyp_instance_getState(pAI) ) ;
+
       if ( guDebugFlags & DEBUG_FRAME )
 	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
-			     "frame: PARSE (longjmp to %d from frame %d)",
+			     "frame: %s (?) (longjmp to %d from frame %d)",
+			     gzaInstanceState[gHyp_instance_getState(pAI)],
 			     giJmpLevel, pFrame->depth );
     }
   }

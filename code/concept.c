@@ -339,6 +339,9 @@ jmp_buf         gsJmpOverride ; /* Overrides gsJmpStack */
 sLOGICAL        giJmpOverride ; /* Overrides gsJmpStack */ 
 FILE*           gsPP ;          /* Hyperscript input stream */
 sAImsg*         gpsAImsg  ;     /* Working message structure */
+char *gzaInstanceState[6] = {
+	"IDLE",	"QUERY", "PARSE", "EXECUTE", "DEREFERENCE", "SLEEP" 
+} ;
 
 /* Variables for the gHyp_util_getopt function call - in util.c */
 

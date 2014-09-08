@@ -501,9 +501,6 @@ struct instance_t
 
 } ;
 
-static char *gzaInstanceState[6] = {
-	"IDLE",	"QUERY", "PARSE", "EXECUTE", "DEREFERENCE", "SLEEP" 
-} ;
 
 /***************	FUNCTION DEFINITIONS ********************************/
 
@@ -2201,7 +2198,8 @@ sLOGICAL gHyp_instance_atCorrectDepth ( sInstance *pAI, char *pMethodStr, int fr
     frameDepth2 = -1 ;
   } 
 
-  /*gHyp_util_debug("Evaluating depth %d, %s==%s, frame %d==%d", outgoingDepth, pMethodStr, pMethodStr2, frameDepth, frameDepth2 ) ;*/
+  /*gHyp_util_debug("Evaluating depth %d, %s==%s, frame %d==%d", 
+  outgoingDepth, pMethodStr, pMethodStr2, frameDepth, frameDepth2 ) ;*/
 
   /* If we are already at depth 0, then there is no reply to send. */ 
   if ( outgoingDepth < 0 ) return FALSE ;
@@ -2318,7 +2316,6 @@ sLOGICAL gHyp_instance_replyMessage ( sInstance *pAI, sData *pMethodData )
   sData
     *pTV,
     *pTV2,
-    *pData,
     *pValue,
     *pToken,
     *pVariable,
@@ -2602,9 +2599,11 @@ sLOGICAL gHyp_instance_replyMessage ( sInstance *pAI, sData *pMethodData )
                * We'll do that later.  See gHyp_frame_return 
                */
 
+              /*return gHyp_util_logInfo("ENQ contention while sending SECS reply message, trying later");*/
+
+	   
 	      /* Since we didn't send the reply, restore the outgoing depth */
 	      gHyp_instance_incOutgoingDepth ( pAI ) ;
-	      /*outgoingDepth =  pAI->msg.outgoingDepth ;*/
               
               if ( guDebugFlags & DEBUG_DIAGNOSTICS )
 	        gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
@@ -2615,48 +2614,28 @@ sLOGICAL gHyp_instance_replyMessage ( sInstance *pAI, sData *pMethodData )
                 longjmp ( gsJmpStack[0], COND_FATAL ) ;
               }
 	      
-	        giJmpRootLevel = giJmpLevel+1 ;
-                  cond = gHyp_instance_ENQcontention ( pAI, pAI->exec.pFrame ) ;
-	        giJmpRootLevel = saveJmpRootLevel ; 
-             
+	      giJmpRootLevel = giJmpLevel+1 ;
+                cond = gHyp_instance_ENQcontention ( pAI, pAI->exec.pFrame ) ;
+	      giJmpRootLevel = saveJmpRootLevel ; 
 
-	      /* If the STATUS variable is TRUE, then resend the SECS reply
-	       * message that was interrupted by the ENQ contention.
-	       */
-	      pData = gHyp_frame_findRootVariable( pAI->exec.pFrame,"STATUS") ;
-	      
-	      /*
-	      if ( guDebugFlags & DEBUG_DIAGNOSTICS )
-		gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
-				     "Checking re-send %s",
-				     gHyp_data_print ( pData ) ) ;
-	      
-	      resend = gHyp_data_getBool ( pData, 0, TRUE ) ;
-	      */
-	      resend = TRUE ;
+	      resend = ( pAI->msg.outgoingReply[outgoingDepth]->msg != NULL ) ;
 
 	      pSecs1 = (sSecs1*) gHyp_concept_getSocketObject ( pAI->exec.pConcept, 
 								secsFd, 
 								DATA_OBJECT_SECS1 ) ;
 	     
-              if ( resend && pSecs1 && pAI->msg.outgoingDepth > 0 ) {
-                
-                /* Let's try that again, shall we */
-  	        gHyp_instance_decOutgoingDepth ( pAI ) ;
-	        /*outgoingDepth =  pAI->msg.outgoingDepth ;*/
+              if ( resend && pSecs1 && pAI->msg.outgoingDepth > 0 ) {              
 
-		/* Print a helpful message */
+  	        gHyp_instance_decOutgoingDepth ( pAI ) ;
+
 		gHyp_util_logInfo (
 		  "Re-sending interrupted S%dF%d reply message at depth %d",
 		  stream, function,outgoingDepth  ) ;
-                /* One less try */
                 maxTries-- ;
 	      }
               else { 
-                /* Quit */
                 maxTries = 0 ;
               }
-
 	    } /* nBytes == 0 */
             else {
               /* Successfully sent */
@@ -2722,8 +2701,10 @@ int gHyp_instance_ENQcontention ( sInstance * pAI, sFrame * pFrame )
   }
   while ( cond == COND_NORMAL && pAI->exec.state == STATE_PARSE );
 
-  /* Restore the state *
-  gHyp_instance_setState ( pAI, currentState ) ;
+  /* DO NOT restore the state,
+   * The new state is needed by replyMessage
+   *
+  pAI->exec.state = currentState ) ;
   */
 
   return 0 ;

@@ -251,6 +251,7 @@ extern jmp_buf		gsJmpOverride ;  /* Jump Override */
 extern sLOGICAL		giJmpOverride ;  /* If longjmp override should be done */
 extern FILE*		gsPP ;		/* Hyperscript input stream */
 extern sAImsg*		gpsAImsg  ;	/* Working message structure */
+extern char             *gzaInstanceState[6] ;
 
 /* Variables for the gHyp_util_getopt function call - in util.c */
 extern int		giOpterr ;	/* Useless, never set or used */
