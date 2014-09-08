@@ -1599,6 +1599,8 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
 				     function+1,
 				     TID,
 				     SID ) ;
+      gHyp_instance_setState ( pAI, STATE_QUERY ) ;
+      gHyp_frame_setState2 ( pLevel, STATE_QUERY ) ;
     }
 
     /* Send message. */
@@ -1641,12 +1643,9 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
             gHyp_util_logError ( "Parse jump level overflow at %d", MAX_JMP_LEVEL ) ;
             longjmp ( gsJmpStack[0], COND_FATAL ) ;
           }
-	  giJmpLevel++ ;
-	    giJmpRootLevel = giJmpLevel ;
-              cond = gHyp_instance_ENQcontention ( pAI, pFrame ) ;
-	    giJmpRootLevel = saveJmpRootLevel ; 
-          giJmpLevel-- ;
-
+	        giJmpRootLevel = giJmpLevel+1 ;
+		cond = gHyp_instance_ENQcontention ( pAI, pFrame) ;
+	        giJmpRootLevel = saveJmpRootLevel ; 
 	  /*
 	  pData = gHyp_frame_findRootVariable ( pFrame, "STATUS" ) ;
 	  
@@ -1719,8 +1718,6 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
   
       /* Wait for reply message from query */
 
-      gHyp_instance_setState ( pAI, STATE_QUERY ) ;
-      gHyp_frame_setState2 ( pLevel, STATE_QUERY ) ;
       gHyp_util_logInfo ( "...waiting for S%dF%d reply from device '%d', timeout in %d seconds", 
 			  stream,function+1,
 			  id,

@@ -1656,6 +1656,8 @@ void gHyp_parse_loop (	sParse *pParse,
 int gHyp_parse_handleConditions ( sInstance * pAI )
 {
   int cond ;
+
+
   /*
   int jmpVal ;
   if ( (jmpVal = setjmp ( gsJmpStack[giJmpLevel] )) ) return jmpVal ;

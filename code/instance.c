@@ -501,6 +501,10 @@ struct instance_t
 
 } ;
 
+static char *gzaInstanceState[6] = {
+	"IDLE",	"QUERY", "PARSE", "EXECUTE", "DEREFERENCE", "SLEEP" 
+} ;
+
 /***************	FUNCTION DEFINITIONS ********************************/
 
 static void lHyp_instance_consumeMessage ( sInstance *pAI, 
@@ -1929,10 +1933,11 @@ int gHyp_instance_readProcess ( sInstance *pAI, sBYTE state )
       
       if ( guDebugFlags & DEBUG_DIAGNOSTICS )
 	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
-                            "diag: Matching %s=%s, %s=%s, %s=%s",
+                            "diag: Matching %s=%s, %s=%s, %s=%s at depth %d",
 			     senderPath, pAI->msg.incomingReply[i]->sender,
 			     pMethodStr,pAI->msg.incomingReply[i]->method,
-			     pTransactionID,pAI->msg.incomingReply[i]->transactionID ) ;
+			     pTransactionID,pAI->msg.incomingReply[i]->transactionID,
+			     i ) ;
       
       if ( okTID && okMethod && ( okInstance || okWildCard ) ) {
 	
@@ -2196,7 +2201,7 @@ sLOGICAL gHyp_instance_atCorrectDepth ( sInstance *pAI, char *pMethodStr, int fr
     frameDepth2 = -1 ;
   } 
 
-  /*gHyp_util_debug("Evaluating depth %d, %s==%s, frame %d==%d", outgoingDepth, pMethodStr, pMethodStr2, frameDepth, frameDepth2 ) ;*/
+  gHyp_util_debug("Evaluating depth %d, %s==%s, frame %d==%d", outgoingDepth, pMethodStr, pMethodStr2, frameDepth, frameDepth2 ) ;
 
   /* If we are already at depth 0, then there is no reply to send. */ 
   if ( outgoingDepth < 0 ) return FALSE ;
@@ -2217,17 +2222,17 @@ sLOGICAL gHyp_instance_atCorrectDepth ( sInstance *pAI, char *pMethodStr, int fr
     /* The method was an event message.  There is no reply to send.  
      * Return TRUE  so that the outgoingDepth is decremented 
      */
-    /*gHyp_util_debug("Event message, no reply", pMethodStr, pMethodStr2 ) ;*/
+    gHyp_util_debug("Event message, no reply", pMethodStr, pMethodStr2 ) ;
     return TRUE ;
   }
   else if ( strcmp ( pMethodStr, pMethodStr2 ) == 0 ) {
     /* Methods match.  Ok to send reply */
-    /*gHyp_util_debug("Sending reply for %s", pMethodStr2 ) ;*/
+    gHyp_util_debug("Sending reply for %s", pMethodStr2 ) ;
     return TRUE ;
   }
   else {
     /* A mistmatch - OK as well, just a different method needs a reply */
-    /*gHyp_util_debug("Sending reply for %s from return of %s", pMethodStr2, pMethodStr ) ;*/
+    gHyp_util_debug("Sending reply for %s from return of %s", pMethodStr2, pMethodStr ) ;
     return TRUE ;
   }
 
@@ -2609,11 +2614,11 @@ sLOGICAL gHyp_instance_replyMessage ( sInstance *pAI, sData *pMethodData )
                 gHyp_util_logError ( "Parse jump level overflow at %d", MAX_JMP_LEVEL ) ;
                 longjmp ( gsJmpStack[0], COND_FATAL ) ;
               }
-	      giJmpLevel++ ;
-	        giJmpRootLevel = giJmpLevel ;
+	      
+	        giJmpRootLevel = giJmpLevel+1 ;
                   cond = gHyp_instance_ENQcontention ( pAI, pAI->exec.pFrame ) ;
 	        giJmpRootLevel = saveJmpRootLevel ; 
-              giJmpLevel-- ;
+             
 
 	      /* If the STATUS variable is TRUE, then resend the SECS reply
 	       * message that was interrupted by the ENQ contention.
@@ -2693,28 +2698,33 @@ sLOGICAL gHyp_instance_replyMessage ( sInstance *pAI, sData *pMethodData )
 
 int gHyp_instance_ENQcontention ( sInstance * pAI, sFrame * pFrame )
 {
-  int jmpVal ;
+  int cond ;
   sBYTE currentState ;
-  if ( (jmpVal = setjmp ( gsJmpStack[giJmpLevel] )) ) return jmpVal ;
 
   /* Save the state */
-  currentState = gHyp_instance_getState ( pAI ) ;
+  currentState = pAI->exec.state ;
+  pAI->exec.state = STATE_QUERY ;
+
+  /* Setting FRAME_GLOBAL_TRUE allows HS to execute handlers */
+  gHyp_frame_setGlobalFlag ( pFrame, FRAME_GLOBAL_TRUE ) ;
+
   do {
     /* Queue up the interrupting message.  
      * TRUE means don't block, which means we are not executing select(),
      * we are only fetching the incoming message from the queue and setting
      * up for the message call.
      */
-    gHyp_instance_read ( pAI, TRUE ) ;
-
-    /* Setting FRAME_GLOBAL_TRUE allows HS to execute handlers */
-    gHyp_frame_setGlobalFlag ( pFrame, FRAME_GLOBAL_TRUE ) ;
-    gHyp_instance_setState ( pAI, STATE_QUERY ) ;
+    cond = gHyp_instance_read ( pAI, TRUE ) ;
+    gHyp_util_debug("INSTANCE_READ = %d",cond);
+    cond = gHyp_instance_parse ( pAI ) ;
+    gHyp_util_debug("INSTANCE_PARSE = %d, state=%s",cond,gzaInstanceState[pAI->exec.state]);
+    
   }
-  while ( gHyp_instance_parse ( pAI ) == COND_NORMAL ) ;
+  while ( cond == COND_NORMAL && pAI->exec.state == STATE_PARSE );
 
-  /* Restore the state */
+  /* Restore the state *
   gHyp_instance_setState ( pAI, currentState ) ;
+  */
 
   return 0 ;
 }
@@ -4885,7 +4895,6 @@ int gHyp_instance_parse ( sInstance * pAI )
     }
 
     giJmpLevel++ ;
-
     condition = gHyp_hyp_parse ( pAI,
 				 pCode,
 				 pHyp,
@@ -4897,6 +4906,7 @@ int gHyp_instance_parse ( sInstance * pAI )
      */ 
     if ( condition != COND_NORMAL ) break ;
   }  
+
   return condition ;
 }
 
@@ -4988,9 +4998,9 @@ int  gHyp_instance_run ( sInstance * pAIarg )
 
   if ( guDebugFlags & DEBUG_FRAME )
     gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
-			 "Running instance %s, STATE = %d", 
+			 "Running instance %s, STATE = %s", 
 			 pAI->msg.targetId,
-			 pAI->exec.state ) ;
+			 gzaInstanceState[pAI->exec.state] ) ;
   
   /* Interpret the pre-loaded HyperScript code - (parse and execute) */
   while ( pAI->signal.tokenSignal ||
@@ -5006,7 +5016,7 @@ int  gHyp_instance_run ( sInstance * pAIarg )
 
     hasRun = TRUE ;
     cond = gHyp_instance_parse ( pAI ) ;
-    /*gHyp_util_debug ( "Parsed. STATE=%u COND=%d",pAI->exec.state,cond);*/
+    /*gHyp_util_debug ( "Parsed. STATE=%s COND=%d",gzaInstanceState[pAI->exec.state],cond);*/
     if ( cond < 0 ) break ;
 
    /* Returning from gHyp_instance_parse, the state of the instance will be:
@@ -5035,15 +5045,10 @@ int  gHyp_instance_run ( sInstance * pAIarg )
 	 pAI->exec.state == STATE_SLEEP ) {
    
       if ( guDebugFlags & DEBUG_DIAGNOSTICS ) {
-	if ( pAI->exec.state == STATE_IDLE  )
 	  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
-			       "%s returning to IDLE state",pAI->msg.targetId ) ;
-	else if ( pAI->exec.state == STATE_QUERY  )
-	  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
-			       "%s returning to QUERY state",pAI->msg.targetId ) ;
-	else
-	  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
-			       "%s returning to SLEEP state",pAI->msg.targetId ) ;
+			       "%s returning to %s state",
+			       pAI->msg.targetId,
+			       gzaInstanceState[pAI->exec.state]) ;
       }
 
       /* If an instance that could go back to a SLEEP, IDLE, or QUERY state
@@ -5141,19 +5146,24 @@ int  gHyp_instance_run ( sInstance * pAIarg )
 	isEnd && 
 	!hasRun && 
 	pAI->exec.state == STATE_PARSE ) {
-    if ( gHyp_concept_getConceptInstance ( gHyp_instance_getConcept(pAI) ) == pAI ) 
+    if ( gHyp_concept_getConceptInstance ( gHyp_instance_getConcept(pAI) ) == pAI /*&&
+	    gHyp_frame_depth ( pAI->exec.pFrame) <= 1 */ ) {
+	    gHyp_util_debug("Can return to stdin");
       gHyp_concept_setReturnToStdIn ( gHyp_instance_getConcept(pAI),TRUE ) ;
-    else
-      gHyp_instance_setState ( pAI, STATE_IDLE ) ;
+    }
+    else {
+	    gHyp_util_debug("Back to idle");
+	    gHyp_instance_setState ( pAI, STATE_IDLE ) ;
+    }
   }
   
   /** pAI can invalidate.  See renameto() *
   if ( guDebugFlags & DEBUG_STATE )
     gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_STATE,
-			 "%s returning from running, cond=%d, state=%d",
+			 "%s returning from running, cond=%d, state=%s",
 			 pAI->msg.targetId,
 			 cond,
-			 pAI->exec.state ) ;
+			 gzaInstanceState[pAI->exec.state] ) ;
   */
 
   return cond ;
