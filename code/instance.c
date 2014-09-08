@@ -2201,7 +2201,7 @@ sLOGICAL gHyp_instance_atCorrectDepth ( sInstance *pAI, char *pMethodStr, int fr
     frameDepth2 = -1 ;
   } 
 
-  gHyp_util_debug("Evaluating depth %d, %s==%s, frame %d==%d", outgoingDepth, pMethodStr, pMethodStr2, frameDepth, frameDepth2 ) ;
+  /*gHyp_util_debug("Evaluating depth %d, %s==%s, frame %d==%d", outgoingDepth, pMethodStr, pMethodStr2, frameDepth, frameDepth2 ) ;*/
 
   /* If we are already at depth 0, then there is no reply to send. */ 
   if ( outgoingDepth < 0 ) return FALSE ;
@@ -2222,17 +2222,17 @@ sLOGICAL gHyp_instance_atCorrectDepth ( sInstance *pAI, char *pMethodStr, int fr
     /* The method was an event message.  There is no reply to send.  
      * Return TRUE  so that the outgoingDepth is decremented 
      */
-    gHyp_util_debug("Event message, no reply", pMethodStr, pMethodStr2 ) ;
+    /*gHyp_util_debug("Event message, no reply", pMethodStr, pMethodStr2 ) ;*/
     return TRUE ;
   }
   else if ( strcmp ( pMethodStr, pMethodStr2 ) == 0 ) {
     /* Methods match.  Ok to send reply */
-    gHyp_util_debug("Sending reply for %s", pMethodStr2 ) ;
+    /*gHyp_util_debug("Sending reply for %s", pMethodStr2 ) ;*/
     return TRUE ;
   }
   else {
     /* A mistmatch - OK as well, just a different method needs a reply */
-    gHyp_util_debug("Sending reply for %s from return of %s", pMethodStr2, pMethodStr ) ;
+    /*gHyp_util_debug("Sending reply for %s from return of %s", pMethodStr2, pMethodStr ) ;*/
     return TRUE ;
   }
 
@@ -2715,9 +2715,9 @@ int gHyp_instance_ENQcontention ( sInstance * pAI, sFrame * pFrame )
      * up for the message call.
      */
     cond = gHyp_instance_read ( pAI, TRUE ) ;
-    gHyp_util_debug("INSTANCE_READ = %d",cond);
+    /*gHyp_util_debug("INSTANCE_READ = %d",cond);*/
     cond = gHyp_instance_parse ( pAI ) ;
-    gHyp_util_debug("INSTANCE_PARSE = %d, state=%s",cond,gzaInstanceState[pAI->exec.state]);
+    /*gHyp_util_debug("INSTANCE_PARSE = %d, state=%s",cond,gzaInstanceState[pAI->exec.state]);*/
     
   }
   while ( cond == COND_NORMAL && pAI->exec.state == STATE_PARSE );
@@ -5148,11 +5148,11 @@ int  gHyp_instance_run ( sInstance * pAIarg )
 	pAI->exec.state == STATE_PARSE ) {
     if ( gHyp_concept_getConceptInstance ( gHyp_instance_getConcept(pAI) ) == pAI /*&&
 	    gHyp_frame_depth ( pAI->exec.pFrame) <= 1 */ ) {
-	    gHyp_util_debug("Can return to stdin");
+	    /*gHyp_util_debug("Can return to stdin");*/
       gHyp_concept_setReturnToStdIn ( gHyp_instance_getConcept(pAI),TRUE ) ;
     }
     else {
-	    gHyp_util_debug("Back to idle");
+	    /*gHyp_util_debug("Back to idle");*/
 	    gHyp_instance_setState ( pAI, STATE_IDLE ) ;
     }
   }
