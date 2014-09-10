@@ -2363,7 +2363,7 @@ static void lHyp_frame_return ( sFrame *pFrame,
 	  }
           else if ( cond2 == COND_SILENT ) {
 	    /* A reply.  See if it satisfies the current query */
-	    cond2 = gHyp_instance_readReply ( pAI ) ;
+	    cond2 = gHyp_instance_readReply ( pAI, TRUE ) ;
 
 	    /* If it does, return and PARSE after the query */
 	    if ( cond2 == COND_NORMAL ) break ;
@@ -2373,14 +2373,14 @@ static void lHyp_frame_return ( sFrame *pFrame,
 
 
 	/* Just in case the reply was received earlier */
-	if ( cond2 == COND_SILENT ) cond2 = gHyp_instance_readReply ( pAI ) ;
+	if ( cond2 == COND_SILENT ) cond2 = gHyp_instance_readReply ( pAI, TRUE ) ;
 
 	if ( cond2 == COND_NORMAL ) {
           /* Reply is satisfied, result is in status variable.
            * Create a local copy of STATUS.  Put that on the stack.
 	   * PARSE away...
 	   */
-          gHyp_instance_pushLocalSTATUS ( pAI, gHyp_frame_stack ( pFrame ) ) ;
+          /*gHyp_instance_pushLocalSTATUS ( pAI, gHyp_frame_stack ( pFrame ) ) ;*/
 
           gHyp_instance_setState ( pAI, STATE_PARSE ) ;
 	  gHyp_frame_setState ( pFrame, STATE_PARSE ) ;

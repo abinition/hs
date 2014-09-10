@@ -1736,7 +1736,7 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
         }
         else if ( cond == COND_SILENT ) {
           /* Got a reply message */
-	  cond = gHyp_instance_readReply ( pAI ) ;
+	  cond = gHyp_instance_readReply ( pAI, FALSE ) ;
 	  /* If it satisfies this query, break and PARSE */
 	  if ( cond == COND_NORMAL ) break ;
 	}

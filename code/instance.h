@@ -86,7 +86,7 @@ extern sLOGICAL gHyp_instance_isSignal ( sInstance *pAI ) ;
 extern void  gHyp_instance_signalMsg ( sInstance *pAI ) ;
 extern int gHyp_instance_nextEvent ( sInstance *pAI ) ;
 extern int gHyp_instance_read ( sInstance*, sLOGICAL ) ;
-extern int gHyp_instance_readReply ( sInstance *pAI ) ;
+extern int gHyp_instance_readReply ( sInstance *pAI, sLOGICAL doPUSH ) ;
 extern int gHyp_instance_readQueue ( sInstance* pAI ) ;
 extern int gHyp_instance_readProcess ( sInstance *pAI, sBYTE state ) ;
 extern int gHyp_instance_readSignals ( sInstance *pAI ) ;
