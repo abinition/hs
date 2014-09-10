@@ -1530,6 +1530,8 @@ int gHyp_instance_readReply ( sInstance *pAI )
   int
     n = pAI->msg.incomingDepth-1 ;
 
+  if ( pAI->msg.incoming )  return COND_SILENT ;
+
   if ( pAI->msg.incomingDepth > 0 &&
        pAI->msg.incomingReply[n]->msg != NULL &&
        pAI->msg.incomingReply[n]->frameDepth == gHyp_frame_depth( pAI->exec.pFrame ) ) {
@@ -1540,13 +1542,7 @@ int gHyp_instance_readReply ( sInstance *pAI )
 			   gHyp_aimsg_method(pAI->msg.incomingReply[n]->msg),
 			   n, pAI->msg.incomingReply[n]->frameDepth);
 
-    if ( pAI->msg.incoming ) {
-      /*gHyp_util_debug("Deleting message %s",gHyp_aimsg_method(pAI->msg.incoming ));*/
-      gHyp_aimsg_delete ( pAI->msg.incoming ) ;
-      pAI->msg.incoming = NULL;
-      pAI->signal.uMSGINTERRUPT = 0 ;
-      pAI->signal.uMSGPENDING = 0 ;
-    }
+
     pAI->msg.incoming = pAI->msg.incomingReply[n]->msg; 
     pAI->msg.inSecs = pAI->msg.incomingReply[n]->secs ;
 
@@ -1587,19 +1583,23 @@ int gHyp_instance_readQueue ( sInstance* pAI )
 
   if ( pAI->msg.incoming != NULL ) {
 
-     /* Has to be one just pulled, we are coming back for it after
-      * servicing the interrupt handler
-      */
-     if ( !pAI->signal.uMSGPENDING ) {
-       if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+    /* Has to be one just pulled off the queue, 
+     * we are coming back for it after servicing the interrupt handler
+     */
+    if ( !pAI->signal.uMSGPENDING ) {
+      if ( guDebugFlags & DEBUG_DIAGNOSTICS )
           gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
-          "Already a message pending, %s",gHyp_aimsg_method ( pAI->msg.incoming) ) ;
-       gHyp_instance_signalMsg( pAI ) ;
-       return COND_NORMAL ;
-     }
-     else
+          "Processing message '%s'",gHyp_aimsg_method ( pAI->msg.incoming) ) ;
+      gHyp_instance_signalMsg( pAI ) ;
+      return COND_NORMAL ;
+    }
+    else {
+      if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+         gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
+          "Pending message '%s'",gHyp_aimsg_method ( pAI->msg.incoming) ) ;
       return COND_SILENT ;
-  }	  
+    }
+  }
 
   if ( pAI->msg.qq[pAI->msg.startQQ] != NULL ) {
 
@@ -2618,7 +2618,13 @@ sLOGICAL gHyp_instance_replyMessage ( sInstance *pAI, sData *pMethodData )
                 cond = gHyp_instance_ENQcontention ( pAI, pAI->exec.pFrame ) ;
 	      giJmpRootLevel = saveJmpRootLevel ; 
 
-	      resend = ( pAI->msg.outgoingReply[outgoingDepth]->msg != NULL ) ;
+	      resend = ( pAI->msg.outgoingReply[outgoingDepth]->msg != NULL &&
+                         pAI->msg.outgoingReply[outgoingDepth]->secs.id == id && 
+                         pAI->msg.outgoingReply[outgoingDepth]->secs.stream == stream &&
+                         pAI->msg.outgoingReply[outgoingDepth]->secs.function == function &&
+                         pAI->msg.outgoingReply[outgoingDepth]->secs.TID == TID &&
+                         pAI->msg.outgoingReply[outgoingDepth]->secs.SID == SID
+		       ) ;
 
 	      pSecs1 = (sSecs1*) gHyp_concept_getSocketObject ( pAI->exec.pConcept, 
 								secsFd, 
@@ -2626,7 +2632,8 @@ sLOGICAL gHyp_instance_replyMessage ( sInstance *pAI, sData *pMethodData )
 	     
               if ( resend && pSecs1 && pAI->msg.outgoingDepth > 0 ) {              
 
-  	        gHyp_instance_decOutgoingDepth ( pAI ) ;
+  	        if ( pAI->msg.outgoingDepth >= outgoingDepth+1 ) 
+		  gHyp_instance_decOutgoingDepth ( pAI ) ;
 
 		gHyp_util_logInfo (
 		  "Re-sending interrupted S%dF%d reply message at depth %d",

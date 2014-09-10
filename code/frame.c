@@ -2239,11 +2239,12 @@ static void lHyp_frame_return ( sFrame *pFrame,
      * Returning from a handler that was invoked while we were either parsing new input
      * or returning back to a query or idle or sleep state.
      *
-     * Returning from an ENQ contention, either in QUERY mode or sending a reply.
-     *
      */
     if ( pLevel->state == STATE_IDLE ) {
+
       if ( status ) {
+
+        /* Continue idling or go back for stdin if eligible */
 	if ( pAI == pAImain &&
 	  gHyp_concept_returnToStdIn(gHyp_instance_getConcept(pAI)) &&
           gHyp_instance_isEND(pAI) ) {
@@ -2277,6 +2278,7 @@ static void lHyp_frame_return ( sFrame *pFrame,
 	gHyp_frame_setState ( pFrame, STATE_PARSE ) ;
 
 	gHyp_instance_pushSTATUS ( pAI, pLevel->pStack ) ;
+
 	if ( guDebugFlags & DEBUG_FRAME )
 	  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
 			       "frame: PARSE idle (longjmp to %d from frame %d)",
@@ -2286,6 +2288,8 @@ static void lHyp_frame_return ( sFrame *pFrame,
     else if ( pLevel->state == STATE_SLEEP ) {
 
       if ( status ) {
+
+        /* Go back to sleep unless eligible for return to stdin */
 
 	if ( pAI == pAImain && 
 	  gHyp_concept_returnToStdIn(gHyp_instance_getConcept(pAI) ) &&
@@ -2301,10 +2305,12 @@ static void lHyp_frame_return ( sFrame *pFrame,
 	}
 	else if ( gHyp_instance_getWakeTime ( pAI ) == 0 ) {
 
-		
+	  /* Sleep has expired */
 	  gHyp_instance_setState ( pAI, STATE_PARSE ) ;
 	  gHyp_frame_setState ( pFrame, STATE_PARSE ) ;
+
           gHyp_instance_pushSTATUS ( pAI, gHyp_frame_stack ( pFrame ) ) ;
+
 	  if ( guDebugFlags & DEBUG_FRAME )
 	    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
 			       "frame: PARSE wakeup sleep (longjmp to %d from frame %d)",
@@ -2313,7 +2319,6 @@ static void lHyp_frame_return ( sFrame *pFrame,
 	else {
 
 	  /* Continue sleeping */
-
 	  gHyp_instance_setState ( pAI, STATE_SLEEP ) ;
 	  gHyp_frame_setState ( pFrame, STATE_SLEEP ) ;
 	  if ( guDebugFlags & DEBUG_FRAME )
@@ -2324,6 +2329,7 @@ static void lHyp_frame_return ( sFrame *pFrame,
 	}
       }
       else {
+
 	gHyp_util_logInfo ( "...aborting sleep state, status = %s",gHyp_data_print(pSTATUS)) ;
 
 	if ( pAI == pAImain && gHyp_instance_isEND ( pAI ) )
@@ -2331,7 +2337,9 @@ static void lHyp_frame_return ( sFrame *pFrame,
 
         gHyp_instance_setState ( pAI, STATE_PARSE ) ;
 	gHyp_frame_setState ( pFrame, STATE_PARSE ) ;
+
 	gHyp_instance_pushSTATUS ( pAI, pLevel->pStack ) ;
+	
 	if ( guDebugFlags & DEBUG_FRAME )
 	  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
 			       "frame: PARSE abort sleep (longjmp to %d from frame %d)",
@@ -2342,8 +2350,10 @@ static void lHyp_frame_return ( sFrame *pFrame,
 
       if ( status ) {
 
+        /* Continue the query unless the reply has come in */
+
         while ( (cond2 = gHyp_instance_readQueue ( pAI )) == COND_NORMAL ) {
-	  /* Got a message, an event, query, or reply */
+  	  /* Got a message, an event, query, or reply */
           cond2 = gHyp_instance_readProcess ( pAI, pLevel->state ) ;
 	  /* Reply messages return COND_SILENT, event and query COND_NORMAL */
 	  if ( cond2 == COND_NORMAL ) {
@@ -2357,10 +2367,10 @@ static void lHyp_frame_return ( sFrame *pFrame,
 
 	    /* If it does, return and PARSE after the query */
 	    if ( cond2 == COND_NORMAL ) break ;
-
 	    /* Otherwise keep looking */
 	  }
-        }
+	}
+
 
 	/* Just in case the reply was received earlier */
 	if ( cond2 == COND_SILENT ) cond2 = gHyp_instance_readReply ( pAI ) ;
@@ -2371,19 +2381,24 @@ static void lHyp_frame_return ( sFrame *pFrame,
 	   * PARSE away...
 	   */
           gHyp_instance_pushLocalSTATUS ( pAI, gHyp_frame_stack ( pFrame ) ) ;
+
           gHyp_instance_setState ( pAI, STATE_PARSE ) ;
 	  gHyp_frame_setState ( pFrame, STATE_PARSE ) ;
+	  
 	  if ( guDebugFlags & DEBUG_FRAME )
 	    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
 			       "frame: PARSE query (longjmp to %d from frame %d)",
 			       giJmpLevel, pFrame->depth );
 	}
 	else {
+	  
 	  /* An event or query interrupts, go back to STATE_QUERY, service it */
           gHyp_instance_setState ( pAI, STATE_QUERY ) ;
 	  gHyp_frame_setState ( pFrame, STATE_QUERY ) ;
-          gHyp_instance_restoreTimeOut ( pAI ) ;	
-          if ( guDebugFlags & DEBUG_FRAME )
+          
+	  gHyp_instance_restoreTimeOut ( pAI ) ;	
+          
+	  if ( guDebugFlags & DEBUG_FRAME )
 	    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
 			       "frame: QUERY continue (longjmp to %d from frame %d)",
 			       giJmpLevel, pFrame->depth );
@@ -2394,11 +2409,14 @@ static void lHyp_frame_return ( sFrame *pFrame,
       else {
 
 	gHyp_util_logInfo ( "...aborting query: %s", gHyp_data_print(pSTATUS) ) ;
+	
 	gHyp_instance_decIncomingDepth ( pAI ) ;
 
 	gHyp_instance_setState ( pAI, STATE_PARSE ) ;
 	gHyp_frame_setState ( pFrame, STATE_PARSE ) ;
+	
 	gHyp_instance_pushSTATUS ( pAI, pLevel->pStack ) ;
+	
 	if ( guDebugFlags & DEBUG_FRAME )
 	  gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
 			       "frame: PARSE query (longjmp to %d from frame %d)",
@@ -2407,10 +2425,12 @@ static void lHyp_frame_return ( sFrame *pFrame,
     }
     else {
 
-      /* Must be STATE_EXECUTE */
-      /*gHyp_util_debug("EXECUTE return, state is %s",gzaInstanceState[gHyp_instance_getState(pAI)]);*/
-
-      gHyp_instance_setState ( pAI, gHyp_instance_getState(pAI) ) ;
+      /* The state of the level was STATE_EXECUTE 
+       *
+       * But the state of the instance could now be QUERY, SLEEP, IDLE.
+       *
+       * It is important to change the state of the level to that of the instance.
+       */
       gHyp_frame_setState ( pFrame, gHyp_instance_getState(pAI) ) ;
 
       if ( guDebugFlags & DEBUG_FRAME )
