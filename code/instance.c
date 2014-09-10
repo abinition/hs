@@ -1530,7 +1530,10 @@ int gHyp_instance_readReply ( sInstance *pAI )
   int
     n = pAI->msg.incomingDepth-1 ;
 
-  if ( pAI->msg.incoming )  return COND_SILENT ;
+  if ( pAI->msg.incoming ) {
+    /*gHyp_util_debug("Message %s available",gHyp_aimsg_method(pAI->msg.incoming));*/
+    return COND_SILENT ;
+  }
 
   if ( pAI->msg.incomingDepth > 0 &&
        pAI->msg.incomingReply[n]->msg != NULL &&
@@ -2632,7 +2635,7 @@ sLOGICAL gHyp_instance_replyMessage ( sInstance *pAI, sData *pMethodData )
 	     
               if ( resend && pSecs1 && pAI->msg.outgoingDepth > 0 ) {              
 
-  	        if ( pAI->msg.outgoingDepth >= outgoingDepth+1 ) 
+  	        if ( outgoingDepth+1 >= pAI->msg.outgoingDepth  ) 
 		  gHyp_instance_decOutgoingDepth ( pAI ) ;
 
 		gHyp_util_logInfo (
