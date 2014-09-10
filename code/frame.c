@@ -2363,7 +2363,7 @@ static void lHyp_frame_return ( sFrame *pFrame,
 	  }
           else if ( cond2 == COND_SILENT ) {
 	    /* A reply.  See if it satisfies the current query */
-	    cond2 = gHyp_instance_readReply ( pAI, TRUE ) ;
+	    cond2 = gHyp_instance_readReply ( pAI ) ;
 
 	    /* If it does, return and PARSE after the query */
 	    if ( cond2 == COND_NORMAL ) break ;
