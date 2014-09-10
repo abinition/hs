@@ -1548,10 +1548,13 @@ int gHyp_instance_readReply ( sInstance *pAI )
 			   gHyp_aimsg_method(pAI->msg.incomingReply[n]->msg),
 			   n, pAI->msg.incomingReply[n]->frameDepth);
 
-    gHyp_instance_pushLocalSTATUS ( pAI, pAI->msg.incomingReply[n]->pStack ) ;
 
     pAI->msg.incoming = pAI->msg.incomingReply[n]->msg; 
     pAI->msg.inSecs = pAI->msg.incomingReply[n]->secs ;
+
+    /* Consume the REPLY message and resume execution after the query */
+    lHyp_instance_consumeMessage ( pAI, 0 ) ;
+    gHyp_instance_pushLocalSTATUS ( pAI, pAI->msg.incomingReply[n]->pStack ) ;
 
     pAI->msg.incomingReply[n]->msg = NULL ;
     pAI->msg.incomingReply[n]->frameDepth = -1 ;
@@ -1562,9 +1565,6 @@ int gHyp_instance_readReply ( sInstance *pAI )
     pAI->msg.incomingReply[n]->secs.TID = -1 ;
     pAI->msg.incomingReply[n]->secs.SID = -1 ;
         
-    /* Consume the REPLY message and resume execution after the query */
-    lHyp_instance_consumeMessage ( pAI, 0 ) ;
-
     gHyp_aimsg_delete ( pAI->msg.incoming ) ;
     pAI->msg.incoming = NULL ;
 
