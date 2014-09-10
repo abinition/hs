@@ -2373,7 +2373,7 @@ static void lHyp_frame_return ( sFrame *pFrame,
 
 
 	/* Just in case the reply was received earlier */
-	if ( cond2 == COND_SILENT ) cond2 = gHyp_instance_readReply ( pAI, TRUE ) ;
+	if ( cond2 == COND_SILENT ) cond2 = gHyp_instance_readReply ( pAI ) ;
 
 	if ( cond2 == COND_NORMAL ) {
           /* Reply is satisfied, result is in status variable.

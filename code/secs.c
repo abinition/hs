@@ -1736,7 +1736,7 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
         }
         else if ( cond == COND_SILENT ) {
           /* Got a reply message */
-	  cond = gHyp_instance_readReply ( pAI, FALSE ) ;
+	  cond = gHyp_instance_readReply ( pAI ) ;
 	  /* If it satisfies this query, break and PARSE */
 	  if ( cond == COND_NORMAL ) break ;
 	}
@@ -1856,9 +1856,7 @@ void gHyp_secs_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
      "Invalid arguments. Usage: secs_query ( id, stream, function, data )");
 
     lHyp_secs_QE ( pAI, pFrame, pStack, pParse, pCode, MESSAGE_QUERY, argCount, FALSE ) ;
-  
-    /* Result from query is in STATUS variable. */
-    gHyp_instance_pushSTATUS ( pAI, pStack ) ;
+
   }
   return ;
 }

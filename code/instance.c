@@ -1468,7 +1468,7 @@ int gHyp_instance_read ( sInstance * pAI, sLOGICAL queueOnly  )
       }
       else if ( cond == COND_SILENT ) {
         /* Got a reply message */
-	cond = gHyp_instance_readReply ( pAI, TRUE ) ;
+	cond = gHyp_instance_readReply ( pAI ) ;
 	if ( cond == COND_NORMAL ) {
           if ( pAI->exec.state == STATE_QUERY ) {
 	    /* Current reply is satisfied, we can continue parsing */
@@ -1528,7 +1528,7 @@ int gHyp_instance_read ( sInstance * pAI, sLOGICAL queueOnly  )
   return cond ; 
 }
 
-int gHyp_instance_readReply ( sInstance *pAI, sLOGICAL doPush )
+int gHyp_instance_readReply ( sInstance *pAI )
 {
   int
     n = pAI->msg.incomingDepth-1 ;
@@ -1548,9 +1548,7 @@ int gHyp_instance_readReply ( sInstance *pAI, sLOGICAL doPush )
 			   gHyp_aimsg_method(pAI->msg.incomingReply[n]->msg),
 			   n, pAI->msg.incomingReply[n]->frameDepth);
 
-
-    if ( doPush )
-      gHyp_instance_pushLocalSTATUS ( pAI, pAI->msg.incomingReply[n]->pStack ) ;
+    gHyp_instance_pushLocalSTATUS ( pAI, pAI->msg.incomingReply[n]->pStack ) ;
 
     pAI->msg.incoming = pAI->msg.incomingReply[n]->msg; 
     pAI->msg.inSecs = pAI->msg.incomingReply[n]->secs ;
@@ -2777,6 +2775,7 @@ void gHyp_instance_setExpectedReply ( sInstance *pAI,
 	   transactionID ) ;
   pAI->msg.incomingReply[incomingDepth]->timeoutTime = timeoutTime ;
   pAI->msg.incomingReply[incomingDepth]->frameDepth = gHyp_frame_depth ( pAI->exec.pFrame ) ;
+
   pAI->msg.incomingReply[incomingDepth]->pStack = gHyp_frame_stack (pAI->exec.pFrame ) ;
 
   pAI->msg.incomingReply[incomingDepth]->secs.id = NULL_DEVICEID ;
