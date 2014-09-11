@@ -1643,27 +1643,25 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
             gHyp_util_logError ( "Parse jump level overflow at %d", MAX_JMP_LEVEL ) ;
             longjmp ( gsJmpStack[0], COND_FATAL ) ;
           }
-	        giJmpRootLevel = giJmpLevel+1 ;
-		cond = gHyp_instance_ENQcontention ( pAI, pFrame) ;
-	        giJmpRootLevel = saveJmpRootLevel ; 
-	  /*
-	  pData = gHyp_frame_findRootVariable ( pFrame, "STATUS" ) ;
-	  
-	  if ( guDebugFlags & DEBUG_DIAGNOSTICS )
-	    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
-				 "Checking re-send %s",
-				 gHyp_data_print ( pData ) ) ;
-	  
-	  resend = gHyp_data_getBool ( pData, 0, TRUE ) ;
-          */
+
+	  giJmpRootLevel = giJmpLevel+1 ;
+            cond = gHyp_instance_ENQcontention ( pAI, pFrame) ;
+	  giJmpRootLevel = saveJmpRootLevel ; 
+
 	  resend = TRUE ;
 
 	  /* Incase the port was closed */
-	  pSecs1 = (sSecs1*) gHyp_concept_getSocketObject ( gHyp_instance_getConcept(pAI), 
+	  pSecs1 = NULL ;
+          
+	  fd = gHyp_instance_getDeviceFd ( pAIassigned, id ) ;
+          if ( fd != INVALID_SOCKET ) {
+	    pSecs1 = (sSecs1*) gHyp_concept_getSocketObject ( gHyp_instance_getConcept(pAI), 
 							    fd, 
 							    DATA_OBJECT_SECS1 ) ;
+	  }
+	  
 	  if ( !pSecs1 ) resend = FALSE ;
-
+          
 	  if ( resend ) {
 
 	    /* Print a helpful message */
@@ -1679,9 +1677,9 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
 
 	  }
 	  else {
-	    gHyp_util_logWarning ( "...aborting SECS message send of S%dF%d",
+	    gHyp_instance_warning ( pAI, STATUS_SECS, 
+				   "Failed to re-send S%dF%d",
 				   stream, function ) ;
-	    status = FALSE ;
 	    break ;
 	  }
 	  maxTries-- ;
@@ -1711,7 +1709,8 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
     if ( !status ) {
 
       gHyp_instance_warning ( pAI, STATUS_SECS, 
-			      "Failed to send SECS message" ) ;
+			      "Failed to send S%dF%d",
+				   stream, function ) ;
 
     }
     else if ( mode == MESSAGE_QUERY ) {

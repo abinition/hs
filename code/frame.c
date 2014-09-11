@@ -2274,6 +2274,11 @@ static void lHyp_frame_return ( sFrame *pFrame,
 	if ( pAI == pAImain && gHyp_instance_isEND ( pAI ) )
 	  gHyp_concept_setReturnToStdIn ( gHyp_instance_getConcept(pAI),TRUE ) ;
 
+	if ( giJmpRootLevel > 1 ) {
+	  gHyp_frame_setHypIndex2 ( pLevel, pLevel->hypIndex- 1 ) ;
+	  gHyp_parse_restoreExprRank ( pLevel->pParse ) ;
+	}
+
 	gHyp_instance_setState ( pAI, STATE_PARSE ) ;
 	gHyp_frame_setState ( pFrame, STATE_PARSE ) ;
 
@@ -2335,7 +2340,12 @@ static void lHyp_frame_return ( sFrame *pFrame,
 	if ( pAI == pAImain && gHyp_instance_isEND ( pAI ) )
 	  gHyp_concept_setReturnToStdIn ( gHyp_instance_getConcept(pAI),TRUE ) ;
 
-        gHyp_instance_setState ( pAI, STATE_PARSE ) ;
+	if ( giJmpRootLevel > 1 ) {
+	  gHyp_frame_setHypIndex2 ( pLevel, pLevel->hypIndex- 1 ) ;
+	  gHyp_parse_restoreExprRank ( pLevel->pParse ) ;
+	}
+	
+	gHyp_instance_setState ( pAI, STATE_PARSE ) ;
 	gHyp_frame_setState ( pFrame, STATE_PARSE ) ;
 
 	gHyp_instance_pushSTATUS ( pAI, pLevel->pStack ) ;
@@ -2415,6 +2425,11 @@ static void lHyp_frame_return ( sFrame *pFrame,
 	gHyp_instance_setState ( pAI, STATE_PARSE ) ;
 	gHyp_frame_setState ( pFrame, STATE_PARSE ) ;
 	
+	if ( giJmpRootLevel > 1 ) {
+	  gHyp_frame_setHypIndex2 ( pLevel, pLevel->hypIndex- 1 ) ;
+	  gHyp_parse_restoreExprRank ( pLevel->pParse ) ;
+	}
+
 	gHyp_instance_pushSTATUS ( pAI, pLevel->pStack ) ;
 	
 	if ( guDebugFlags & DEBUG_FRAME )
@@ -2435,7 +2450,7 @@ static void lHyp_frame_return ( sFrame *pFrame,
 
       if ( guDebugFlags & DEBUG_FRAME )
 	gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
-			     "frame: %s (?) (longjmp to %d from frame %d)",
+			     "frame: %s execute (longjmp to %d from frame %d)",
 			     gzaInstanceState[gHyp_instance_getState(pAI)],
 			     giJmpLevel, pFrame->depth );
     }
