@@ -1,0 +1,55 @@
+<func id="requeue">
+  <brief>
+    Re-queue an incoming message to service at a later time.
+  </brief>
+  <args>
+  </args>
+  <lvalue id="status" type="str">
+    <ret id="$ACKNOWLEDGE" status="$ACKNOWLEDGE">
+      <desc>
+        The message was requeued.
+      </desc>
+    </ret>
+  </lvalue>
+  <body>
+	When an incoming message arrives in which there is an on_message handler, the requeue() 
+	function can be used within the handler to re-queue the message for later processing. 
+	The different actions upon returning from the on_message handler are as follows:
+	<ul>
+	<li>
+	<b>Incoming message is requeued, the handler returns successful STATUS</b>
+	The HyperScript instance resumes the QUERY or IDLE state that it was in prior to 
+	the interrupt.
+	The requeued message will not be serviced until the next QUERY or IDLE condition.
+	</li>
+	<li>
+	<b>Incoming message is requeued, the handler returns failure STATUS.</b>
+	The HyperScript instance aborts from its QUERY or IDLE state.
+	The requeued message will be serviced upon the next QUERY or IDLE condition.
+	</li>
+	<li>
+	<b>Incoming message is not requeued, the handler returns success STATUS.</b>
+	If the method for the incoming message is enabled, it is executed.
+	When the message method returns, a successful STATUS will cause the 
+	HyperScript instance to resume the QUERY or IDLE state it was in prior to the interrupt.
+	A failure STATUS will cause the HyperScript instance to abort from its QUERY or IDLE
+	state.
+	</li>
+	<li>
+	<b>Message was not requeued, handler returns failure STATUS.</b>
+	The HyperScript instance aborts the QUERY or IDLE state it was in prior to the 
+	interrupt.  
+	The requeued message will be serviced upon the next query or idle condition.
+	</li>
+
+ 	</ul>
+</body>
+  <exceptions />
+  <examples>
+    <example>
+      requeue.hyp
+    </example>
+  </examples>
+  <links />
+</func>
+

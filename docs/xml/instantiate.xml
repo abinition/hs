@@ -1,0 +1,40 @@
+<func id="instantiate">
+   <brief>The instantiate function creates and runs a new instance of the concept.</brief>
+
+   <args>
+      <arg id="name" type="str" isOptional="1">
+         <desc>The name of the instance. If the name is unspecified, then the instance name becomes a randomly generated 8 digit hex number.</desc>
+      </arg>
+   </args>
+
+   <lvalue id="status" type="str">
+      <ret id="$ACKNOWLEDGE" status="$ACKNOWLEDGE">
+         <desc>The new instance was created.</desc>
+      </ret>
+
+      <ret id="%INVALID" status="%INVALID">
+         <desc>Instance name must be alphanumeric characters only</desc>
+      </ret>
+
+      <ret id="%REJECTED" status="%REJECTED">
+         <desc>Instantiate to the requested name is not allowed if instance is not the concept instance.</desc>
+      </ret>
+
+      <ret id="%TARGET" status="%TARGET">
+         <desc>Instance is already created.</desc>
+      </ret>
+   </lvalue>
+
+   <body ref="instantiate.htm" />
+
+   <exceptions />
+
+   <examples>
+      <example>instantiate.hyp</example>
+   </examples>
+
+   <links>
+      <link>instantation</link>
+   </links>
+</func>
+

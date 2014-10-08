@@ -1,0 +1,46 @@
+<func id="strtok">
+  <brief>
+    Break a string up into tokens.
+  </brief>
+  <args>
+    <arg id="string" type="str">
+      <desc>
+        The string in which to break into tokens.  If an array of elements is specified, they are appended together into a single string. 
+      </desc>
+    </arg>
+    <arg id="separator" type="str" isOptional="1">
+      <desc>
+        The string of characters to use as the separator.  Any one of the
+	characters in the separator is a valid separator. 
+	If not specified, the separator character is a space. 
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="status" type="str">
+    <ret id="tokenList" status="$ACKNOWLEDGE">
+      <desc>
+         A list of tokens.
+      </desc>
+    </ret>
+  </lvalue>
+  <body>
+	
+</body>
+   <exceptions>
+      <exception status="%BOUNDS">
+         <desc>Subscript is out of bounds in strtok()</desc>
+      </exception>
+	<exception status="%IO">
+	
+	<desc>Input string is too long</desc>
+      </exception>
+
+   </exceptions>
+   <examples>
+    <example>
+      strtok.hyp
+    </example>
+  </examples>
+  <links />
+</func>
+

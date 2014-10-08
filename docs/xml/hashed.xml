@@ -1,0 +1,28 @@
+<func id="hashed">
+  <brief>
+    Hash a variable's contents.
+  </brief>
+  <args>
+    <arg id="variable" type="list" isLvalue="1">
+      <desc>
+         A list variable.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="status" type="str">
+    <ret id="$ACKNOWLEDGE" status="$ACKNOWLEDGE">
+      <desc>
+         The variable's contents have been hashed for faster lookup.
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="hash.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      hash.hyp
+    </example>
+  </examples>
+  <links><link>unhashed</link></links>
+</func>
+

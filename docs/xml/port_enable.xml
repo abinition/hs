@@ -1,0 +1,49 @@
+<func id="port_enable">
+  <brief>
+    Enable (associate) a method with a specific device id. 
+  </brief>
+  <args>
+    <arg id="method" type="list" isLvalue="1">
+      <desc>
+         A defined method to be invoked upon receipt of a specific specific device id.
+      </desc>
+    </arg>
+    <arg id="id" type="int">
+      <desc>
+         A port device id.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="status" type="list">
+    <ret id="$ACKNOWLEDGE" status="$ACKNOWLEDGE">
+      <desc>
+         The method for the port device id has been enabled. 
+      </desc>
+    </ret>
+    <ret id="%BOUNDS" status="%BOUNDS">
+      <desc>
+         Device Id is out of range.
+      </desc>
+    </ret>
+    <ret id="%BRANCH" status="%BRANCH">
+      <desc>
+         Could not find method 'method'.
+      </desc>
+    </ret>
+    <ret id="%INVALID" status="%INVALID">
+      <desc>
+         Invalid method 'method'.
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="port_enable.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      port_enable.hyp
+    </example>
+  </examples>
+  <links>
+<link>port_disable</link>
+</links>
+</func>

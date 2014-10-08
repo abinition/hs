@@ -1,0 +1,32 @@
+<func id="local">
+  <brief>
+    Define local scope or make a global variable local.
+  </brief>
+  <args>
+    <arg id="variable" type="list" isLvalue="1" isOptional="1">
+      <desc>
+         If the variable is global, it is made local, otherwise it is unchanged.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="status" type="str">
+    <ret id="$ACKNOWLEDGE" status="$ACKNOWLEDGE">
+      <desc>
+         The variable was made local, or the program is switched to local scope.
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="local_global.htm" />
+  <exceptions>
+  <exception status="%UNDEFINED">
+  <desc>Variable does not exist</desc>
+  </exception>
+  </exceptions>
+  <examples>
+    <example>
+      local.hyp
+    </example>
+  </examples>
+  <links><link>global</link></links>
+</func>
+

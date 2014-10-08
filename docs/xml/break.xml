@@ -1,0 +1,16 @@
+<func id="break" isStmt="1">
+   <brief>Break from a for, while, or do loop.</brief>
+
+   <syntax>break ;</syntax>
+
+   <body>Use break to exit from a for, while, or do loop.</body>
+
+   <examples>
+      <example>break_continue.hyp</example>
+   </examples>
+
+   <links>
+      <link>continue</link>
+   </links>
+</func>
+

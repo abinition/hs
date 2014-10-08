@@ -1,0 +1,232 @@
+/* ROUTER.HYP
+ *
+ * $Log: router.hyp,v $
+ * Revision 1.9  2012-09-09 21:50:26  bergsma
+ * Add integrity check
+ *
+ * Revision 1.8  2011-05-19 22:12:31  bergsma
+ * Add puts stmt
+ *
+ * Revision 1.7  2011-04-27 21:22:36  bergsma
+ * Allow multiple hangups
+ *
+ * Revision 1.6  2011-02-20 00:56:30  bergsma
+ * DST changes
+ *
+ * Revision 1.5  2009-10-30 20:54:22  bergsma
+ * Upgraded.
+ *
+ * Revision 1.4  2008-05-05 04:39:05  bergsma
+ * Automatically start heartbeat
+ *
+ * Revision 1.3  2008-05-02 06:48:13  bergsma
+ * no message
+ *
+ *
+ */
+
+parse ( (getenv("AUTORUN") + (  (env=="UNIX") ? "/" : ( (env=="WINDOWS") ? "\\" : "" ) ) + "env.hyp") ) ;
+
+connect()
+{
+  puts "Connecting" ;
+  return "$ACK" ;
+}
+CONNECT() { return connect() ; }
+enable CONNECT ; 
+enable connect ;
+
+init()
+{
+  puts { "Initializing ",self() } ;
+
+  puts "Setting heap multiplier to 2 for all children, (-xx)" ;
+  setheap 2 ;
+
+  /* Establish the error handlers */
+  on_message return MESSAGE_HANDLER() ;
+  on_alarm return ALARM_HANDLER() ;
+  on_error return ERROR_HANDLER() ;
+  on_interrupt return INTERRUPT_HANDLER() ;
+  on_pipe return PIPE_HANDLER() ; 
+  on_hangup return HANGUP_HANDLER() ;
+  on_timeout return TIMEOUT_HANDLER() ;
+  on_death return DEATH_HANDLER() ;
+
+  /* Establish death timer for start of a new day */
+  ansi_now = timestamp() ;
+  ansi_newDay = parsedate( date()+":235959" ) + 2 ;
+
+  secondsToDeath = ansi_newDay - ansi_now ;
+  if ( secondsToDeath <= 0 ) secondsToDeath = 1 ;
+  lifetime ( secondsToDeath ) ;
+
+  /* Start new log file for current date */
+  logFileSpec = AUTOLOG_FILE ( "router_" + date() + ".log" ) ;
+
+  puts { "Creating new logfile", logFileSpec } ;
+  puts { "------------ END OF LOG -------------------" } ;
+  log ( logFileSpec ) ;
+  puts { "------------ START OF LOG -----------------" } ; 
+  
+  /* Start the heartbeart server */
+  event ( "heartbeat", "CONNECT" ) ;
+
+  return ;
+}
+
+disconnect()
+{
+  puts "disconnecting" ;
+}
+DISCONNECT() { return disconnect() ; }
+enable DISCONNECT ; 
+enable disconnect ;
+
+LIST()
+{
+  puts "listing" ;
+  describe children() ;
+}
+'list'() { return LIST() ; }
+enable LIST ; 
+enable 'list' ;
+
+abort ()
+{  
+  puts "aborting" ;
+}
+ABORT() { return abort() ; }
+enable ABORT ;
+enable abort ;
+
+TERMINATE ()
+{
+  puts "terminating" ;
+  LIST() ;
+  sleep 3
+  DONE() ;
+}
+enable TERMINATE ;
+
+DONE( str TEXT )
+{
+  puts TEXT ;
+  puts "...exiting" ;
+  exit ;
+}
+
+/***************************************************************************
+ *  H A N D L E R   S E C T I O N
+ ****************************************************************************/
+
+MESSAGE_HANDLER()
+{
+  puts { "Incoming message from ",sender()," requesting method ",method() } ;
+
+  /* Reinstate handler */
+  on_message return MESSAGE_HANDLER() ;
+
+  /* Allow message */
+  return "$ACK" ;
+}
+
+ALARM_HANDLER()
+{
+  return "%ALARM" ;
+}
+
+ERROR_HANDLER() 
+{
+  m = method() ;
+  text = { "%ERROR: run-time error occured in ",self(),
+	   " while executing method ",m } ;
+  *m = text ;
+  DONE ( text ) ;
+}
+
+INTERRUPT_HANDLER()
+{
+  text = { "%INTERRUPT: HyperScript was interrupted" } ;
+  DONE ( text ) ;
+}
+
+PIPE_HANDLER()
+{
+  on_pipe return PIPE_HANDLER() ;
+  text = { "%PIPE: signal received." } ;
+  DONE ( text ) ;
+}
+
+HANGUP_HANDLER()
+{
+  on_hangup return HANGUP_HANDLER() ;
+  text = { "%HANGUP: signal received." } ;
+  puts text ;
+  /* Allow it */
+  return "$ACK" ;
+}
+
+TIMEOUT_HANDLER()
+{
+  text = { "%TIMEOUT: signal received." } ;
+
+  /* Do not abort query */
+  return "$ACK" ;
+}
+
+DEATH_HANDLER()
+{
+  text = { "%DEATH: signal received." } ;
+  puts text ;
+  
+  /* Establish new death handler */
+  on_death return DEATH_HANDLER() ;  
+
+  /* Determine start of a new day */
+  ansi_now = timestamp ;
+  ansi_newDay = parsedate ( date()+":235959" ) + 2 ;
+  secondsToDeath = ansi_newDay - ansi_now ;
+  if ( secondsToDeath <= 0 ) secondsToDeath = 1 ;
+  
+  /* Prior to V3.9.4, time till death could not exceed one day */
+  if ( version < "3.9.4" && secondsToDeath > 86400 ) secondsToDeath = 86400 ; 
+
+  puts {"ansi_now is ",ansi_now," or ",asctime(ansi_now)};
+  puts {"ansi_newDay is ",ansi_newDay," or ",asctime(ansi_newDay)};
+  puts {"SecondsToDeath = ",secondsToDeath};
+	
+  lifetime ( secondsToDeath ) ;
+
+  /* Start new log file for current date */
+  logFileSpec = AUTOLOG_FILE ( "router_" + date() + ".log" ) ;
+
+  puts { "Creating new logfile", logFileSpec } ;
+  puts { "------------ END OF LOG -------------------" } ;
+  log ( logFileSpec ) ;
+  puts { "------------ START OF LOG -----------------" } ;
+
+  return ;
+}
+
+INTEGRITY_CHECK( str SECRET )
+{
+  event ( sender(), "INTEGRITY_CHECK", {&SECRET} ) ;
+}
+enable INTEGRITY_CHECK ;
+
+
+list SENDMAIL( str reason )
+{
+  subject = self(2) + " : router error" ;
+  filespec = AUTOLOG + "router_" + self(2) + ".txt" ;
+  h = fopen (filespec,"w");
+  fputs ( reason, h ) ;
+  /*fputs ( {"OPERATOR = ",USERID}, h ) ;*/
+  fclose ( h ) ;
+  exec ( "mail -s \"" + subject + "\" automation < " + filespec ) ;
+};
+
+init();
+
+idle  ;

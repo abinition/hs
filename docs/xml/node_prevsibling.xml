@@ -1,0 +1,31 @@
+<func id="node_prevsibling">
+   <brief>Returns the previous sibling of a node.</brief>
+
+   <args>
+      <arg id="node" type="list">
+         <desc>A list variable.</desc>
+      </arg>
+   </args>
+
+   <lvalue id="result" type="list">
+      <ret id="element" status="$ACKNOWLEDGE">
+         <desc>The return value is the previous sibling node of the argument. Nodes are of type list. If the node has no siblings or is the first of its parent's children, then the return value is an empty string.</desc>
+      </ret>
+   </lvalue>
+
+   <body />
+
+   <links>
+      <link>node_name</link>
+      <link>node_root</link>
+      <link>node_parent</link>
+      <link>node_firstchild</link>
+      <link>node_lastchild</link>
+      <link>node_nextsibling</link>
+      <link>node_prevsibling</link>
+      <link>node_nextfirstcousin</link>
+      <link>node_nextfirstcousin</link>
+      <link>node_getnodebyattr</link>
+   </links>
+</func>
+

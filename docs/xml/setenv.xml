@@ -1,0 +1,38 @@
+<func id="setenv">
+  <brief>
+    Set an environment variable.
+  </brief>
+  <args>
+    <arg id="name" type="list">
+      <desc>
+         The name of the environment variable
+      </desc>
+    </arg>
+    <arg id="value" type="list">
+      <desc>
+         The value of the environment variable
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="status" type="str">
+    <ret id="$ACKNOWLEDGE" status="$ACKNOWLEDGE">
+      <desc>
+         The environment variable was set.  If not found, the value is set to "".
+      </desc>
+    </ret>
+    <ret id="%UNDEFINED" status="%UNDEFINED">
+      <desc>
+         Failed to set environment variable.
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="setenv.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      setenv.hyp
+    </example>
+  </examples>
+  <links />
+</func>
+

@@ -1,0 +1,26 @@
+<func id="octal" isTypedef="1">
+	<brief>Create or convert a variable or value into a octal format</brief>
+	<args>
+		<arg id="value" type="list">
+			<desc>
+				A value of any type. 
+			</desc>
+		</arg>
+	</args>
+	<lvalue id="result" type="octal" array="vector">
+		<ret id="0x000000 - 0x1777777" status="$ACKNOWLEDGE">
+			<desc>
+			A octal value is 4 bytes.
+			It is displayed as an 6 character octal number.
+		   </desc>
+		</ret>
+	</lvalue>
+	<exceptions>
+	</exceptions>
+	<examples>
+		<example>octal.hyp</example>
+	</examples>
+	<links>
+		<link>octal</link>
+	</links>
+</func>

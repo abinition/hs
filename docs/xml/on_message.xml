@@ -1,0 +1,41 @@
+<func id="on_message" isStmt="1">
+  <brief>
+    Establish an message handler.
+  </brief>
+  <syntax>
+	<b>on_message</b> statement ;
+  </syntax>
+  <body>
+When an incoming message specifies a defined and enabled method in the HyperScript program, control is transferred unconditionally to the statement following on_message. This statement is typically a handler method. 
+
+Once a message handler is used, it must be reestablished with the on_message statement to use it again. Typically, the on_message statement is called in the handler before returning. 
+
+NOTE: An incoming message will not interrupt a HyperScript program in the EXECUTE state. The HyperScript program must be in the IDLE or QUERY state before the interrupting message is actually received. 
+
+The HyperScript program must be in the IDLE state to execute the message. If the HyperScript program was already in the IDLE state, the handler can simply return. Otherwise, the handler can execute the idle method to enter the IDLE state. To prevent the message from executing, the method can be disabled using the disable method before entering the IDLE state. 
+
+When a message interrupts a HyperScript program in the QUERY state, the handler can do one of three things: 
+
+It can return to the query method, which will fail with a return value of "%TIMEOUT". 
+It can ignore the incoming message by changing the value of STATUS from "%MESSAGE" to "$ACKNOWLEDGE" and returning. The query method will continue to wait for a reply. If another message arrives it overrides the previous one and another message exception occurs. 
+It can execute the idle method, which will abort the query method and put the HyperScript program into the IDLE state, where it will execute the incoming message. 
+It can examine the method, mode, and sender of the incoming message. This is useful when more than one method is enabled for incoming messages; the handler can look at the message before responding. 
+
+</body>
+  <exceptions />
+  <examples>
+    <example>
+      on_message.hyp
+    </example>
+  </examples>
+  <links>
+  <link>on_alarm</link>
+  <link>on_error</link>
+  <link>on_message</link>
+  <link>on_message</link>
+  <link>on_death</link>
+  <link>on_pipe</link>
+  <link>on_message</link>
+  </links>
+</func>
+

@@ -1,0 +1,78 @@
+<html>
+<body>
+<pre>
+<h1>Build Log</h1>
+<h3>
+--------------------Configuration: hs - Win32 Release--------------------
+</h3>
+<h3>Command Lines</h3>
+Creating temporary file "C:\DOCUME~1\bergsma\LOCALS~1\Temp\RSP25C.tmp" with contents
+[
+/nologo /MD /W3 /GX /O2 /I "C:\Program Files\MySQL\MySQL Server 4.1\include\\" /I "c:\openssl\openssl-0.9.8\inc32\\" /I "C:\Program Files\Java\jdk1.5.0_03\include" /I "C:\Program Files\Java\jdk1.5.0_03\include\win32" /I "C:\oraclexe\app\oracle\product\10.2.0\server\OCI\include" /I "C:\Program Files\PostgreSQL\8.1\\include" /I "C:\Program Files\Microsoft SQL Server\80\Tools\DevTools\include" /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /D "AS_SQL" /D "AS_ORACLE" /Fp"Release/hs.pch" /YX /Fo"Release/" /Fd"Release/" /FD /c 
+"C:\AbInition\hs\code\cgi.c"
+"C:\AbInition\hs\code\secs1.c"
+"C:\AbInition\hs\code\util.c"
+]
+Creating command line "cl.exe @C:\DOCUME~1\bergsma\LOCALS~1\Temp\RSP25C.tmp" 
+Creating temporary file "C:\DOCUME~1\bergsma\LOCALS~1\Temp\RSP25D.tmp" with contents
+[
+kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib ws2_32.lib libmysql.lib ntwdblib.lib ssleay32.lib libeay32.lib oci.lib libpq.lib /nologo /subsystem:console /incremental:no /pdb:"Release/hs.pdb" /machine:I386 /out:"Release/hs.exe" /libpath:"c:\openssl\openssl-0.9.8\out32" /libpath:"C:\Program Files\MySQL\MySQL Server 4.1\lib\opt" /libpath:"C:\oraclexe\app\oracle\product\10.2.0\server\OCI\lib\msvc" /libpath:"C:\Program Files\PostgreSQL\8.1\\lib\ms" /libpath:"C:\Program Files\Microsoft SQL Server\80\Tools\DevTools\lib" 
+.\Release\aimsg.obj
+.\Release\branch.obj
+.\Release\cgi.obj
+.\Release\channel.obj
+.\Release\concept.obj
+.\Release\data.obj
+.\Release\dateparse.obj
+.\Release\env.obj
+.\Release\fileio.obj
+.\Release\frame.obj
+.\Release\function.obj
+.\Release\hash.obj
+.\Release\hs.obj
+.\Release\hsms.obj
+.\Release\http.obj
+.\Release\hyp.obj
+.\Release\instance.obj
+.\Release\label.obj
+.\Release\load.obj
+.\Release\mapi.obj
+.\Release\memtrack.obj
+.\Release\method.obj
+.\Release\operand.obj
+.\Release\operator.obj
+.\Release\parse.obj
+.\Release\port.obj
+.\Release\promis.obj
+.\Release\route.obj
+.\Release\router.obj
+.\Release\secs.obj
+.\Release\secs1.obj
+.\Release\secs2.obj
+.\Release\signal.obj
+.\Release\sock.obj
+.\Release\sort.obj
+.\Release\sql.obj
+.\Release\ssl.obj
+.\Release\stack.obj
+.\Release\stmt.obj
+.\Release\system.obj
+.\Release\tcp.obj
+.\Release\type.obj
+.\Release\util.obj
+]
+Creating command line "link.exe @C:\DOCUME~1\bergsma\LOCALS~1\Temp\RSP25D.tmp"
+<h3>Output Window</h3>
+Compiling...
+cgi.c
+secs1.c
+util.c
+Linking...
+
+
+
+<h3>Results</h3>
+hs.exe - 0 error(s), 0 warning(s)
+</pre>
+</body>
+</html>

@@ -1,0 +1,32 @@
+<func id="sin">
+  <brief>
+    sin
+  </brief>
+  <args>
+    <arg id="arg1" type="list">
+      <desc>
+        
+      </desc>
+      
+    </arg>
+    
+  </args>
+  <lvalue id="status" type="list">
+    <ret id="1" status="$ACKNOWLEDGE">
+      <desc>
+        
+      </desc>
+      
+    </ret>
+    
+  </lvalue>
+  <body ref="sin.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      sin.hyp
+    </example>
+    
+  </examples>
+  <links />
+</func>

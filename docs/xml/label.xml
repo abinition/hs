@@ -1,0 +1,14 @@
+<func id="label" isStmt="1">
+  <brief>
+    Define a label from which a goto statement can branch to.
+  </brief>
+  <syntax>label <b>:</b></syntax>
+  <body ref="goto_label.htm" />
+  <examples>
+    <example>
+      goto.hyp
+    </example>
+  </examples>
+  <links><link>goto</link></links>
+</func>
+

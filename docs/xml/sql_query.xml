@@ -1,0 +1,49 @@
+<func id="sql_query">
+  <brief>
+    Query the SQL database.
+  </brief>
+  <args>
+    <arg id="stmt" type="list">
+      <desc>
+        The SQL statment to execute.
+      </desc>
+    </arg>
+    <arg id="handle" type="list">
+      <desc>
+        The handle to the SQL database as returned by sql_open().
+      </desc>
+    </arg>
+    <arg id="table" type="list" isLvalue="1" isOptional="1" >
+      <desc>
+        The name of the variable (table) in which to put each column array.
+      </desc>
+    </arg>
+    <arg id="row" type="list" isLvalue="1" isOptional="1" >
+      <desc>
+        The name of the variable (row in table) in which to put each row of elements. 
+      </desc>
+    </arg>
+    <arg id="col" type="list" isLvalue="1" isOptional="1">
+      <desc>
+         The name of the variable (col in row in table) in which to put each row/column element.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="rows" type="int">
+    <ret id="0-n" status="$ACKNOWLEDGE">
+      <desc>
+         The number of rows returned, or zero,
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="sql_query.htm" />
+      <exception status="%BOUNDS">
+         <desc>Subscript is out of bounds in sql_query()</desc>
+      </exception>
+  <examples>
+    <example>
+      sql_query.hyp
+    </example>
+  </examples>
+  <links />
+</func>

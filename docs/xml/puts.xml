@@ -1,0 +1,42 @@
+<func id="puts">
+  <brief>
+    Put string data to stdout.
+  </brief>
+  <args>
+    <arg id="data" type="list">
+      <desc>
+        The data to output.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="status" type="list">
+    <ret id="$ACKNOWLEDGE" status="$ACKNOWLEDGE">
+      <desc>
+        The data was output.
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="put.htm" />
+  <exceptions>
+  <exception status="%BOUNDS">
+	<desc>Subscript is out of bounds</desc>
+
+
+  </exception>
+  </exceptions>
+  <examples>
+    <example>
+      puts.hyp
+    </example>
+  </examples>
+  <links>
+  	<link>put</link>
+    <link>fput</link>
+    <link>fputs</link>
+    <link>get</link>
+    <link>gets</link>
+    <link>fgets</link>
+    <link>fget</link>
+  </links>
+</func>
+

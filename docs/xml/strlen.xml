@@ -1,0 +1,32 @@
+<func id="strlen">
+  <brief>
+    Return string length.
+  </brief>
+  <args>
+    <arg id="string" type="list">
+      <desc>
+         The source data.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="status" type="list" array="int>
+    <ret id="stringLength" status="$ACKNOWLEDGE">
+      <desc>
+         A string length that would be output using the puts for fputs functions.
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="strlen.htm" />
+   <exceptions>
+      <exception status="%BOUNDS">
+         <desc>Subscript is out of bounds in strlen()</desc>
+      </exception>
+   </exceptions>   
+<examples>
+    <example>
+      strlen.hyp
+    </example>
+  </examples>
+  <links />
+</func>
+

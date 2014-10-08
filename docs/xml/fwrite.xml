@@ -1,0 +1,32 @@
+<func id="fwrite">
+  <brief>
+    fwrite
+  </brief>
+  <args>
+    <arg id="arg1" type="list">
+      <desc>
+        
+      </desc>
+      
+    </arg>
+    
+  </args>
+  <lvalue id="status" type="list">
+    <ret id="1" status="$ACKNOWLEDGE">
+      <desc>
+        
+      </desc>
+      
+    </ret>
+    
+  </lvalue>
+  <body ref="fwrite.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      fwrite.hyp
+    </example>
+    
+  </examples>
+  <links />
+</func>

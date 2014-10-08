@@ -1,0 +1,30 @@
+<func id="srandom">
+  <brief>
+    Seed the random number generator.
+  </brief>
+  <args>
+    <arg id="seed" type="int">
+      <desc>
+        A integer seed.  The timestamp() function is a good seed source.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="status" type="str">
+    <ret id="$ACKNOWLEDGE" status="$ACKNOWLEDGE">
+      <desc>
+        The seed was set.
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="srandom.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      srandom.hyp
+    </example>
+  </examples>
+  <links>
+<link>random</link>
+</links>
+</func>
+

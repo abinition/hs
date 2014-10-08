@@ -1,0 +1,56 @@
+<func id="port_event">
+  <brief>
+     Send a message to a port.
+  </brief>
+  <args>
+    <arg id="id" type="int">
+      <desc>
+         Device Id.
+      </desc>
+    </arg>
+    <arg id="data" type="list">
+      <desc>
+         Data to send.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="status" type="str">
+    <ret id="$ACKNOWLEDGE" status="$ACKNOWLEDGE">
+      <desc>
+         The message was sent and a reply message received.
+      </desc>
+    </ret>
+    <ret id="%BOUNDS" status="%BOUNDS">
+      <desc>
+         Device Id is out of range.
+      </desc>
+    </ret>
+    <ret id="%PORT" status="%PORT">
+      <desc>
+Device id 'x' is not assigned. Use port_assign(id,fd)
+      </desc>
+    </ret>
+    <ret id="%PORT" status="%PORT">
+      <desc>
+No port connection (through port 'x') exists for device 'y'
+      </desc>
+    </ret>
+    <ret id="%PORT" status="%PORT">
+      <desc>
+Failed to send port message
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="port_query.htm" />
+  <exceptions>
+  </exceptions>
+  <examples>
+    <example>
+      port_event_query.hyp
+    </example>
+  </examples>
+  <links>
+<link>port_query</link>
+<link>timeout</link>
+  </links>
+</func>

@@ -1,0 +1,105 @@
+<?xml version="1.0"?>
+
+<project name="abinition" default="compile" basedir=".">
+
+    <property environment="env" />
+    <property name="class.dir" value="${basedir}/class"/>
+    <property name="deploy.dir" value="${basedir}/deploy"/>
+    <property name="java.dir" value="${basedir}/../java/abinition"/>
+    <property name="lib.dir" value="${basedir}/../hs/hsdll/Release"/>
+    <property name="resources.dir" value="${basedir}/resources"/>
+    <property name="certs.dir" value="${basedir}/resources/certs"/>
+    
+    <!-- =================================================================== -->
+    <!-- Set the classpath                                                   -->
+    <!-- =================================================================== -->
+    <target name="init.classpath">
+        <path id="base.classpath">
+            <pathelement path="${class.dir}"/>
+            <pathelement location="${env.JAVA_HOME}/jre/lib/plugin.jar"/>
+            <pathelement location="${env.JAVA_HOME}/jre/lib/jaws.jar"/>
+        </path>
+    </target>
+
+    <!-- =================================================================== -->
+    <!-- Initialize stuff                                                    -->
+    <!-- =================================================================== -->
+    <target name="init" depends="init.classpath">
+        <tstamp>
+            <format property="BUILD_DATE" pattern="MMMM d yyyy hh:mm aa"/>
+        </tstamp>
+        <echo message="${BUILD_DATE}"/>
+        <property name="classpath" refid="base.classpath" />
+        <echo message="${classpath}"/>
+        <mkdir dir="${class.dir}"/>
+	<echo message="Populating class area" />
+        <copy todir="${class.dir}">
+            <!-- <fileset dir="${resources.dir}/icons"/> -->
+            <fileset dir="${resources.dir}/certs"/>
+        </copy>
+        <copy file="${lib.dir}/hsdll.dll" todir="${class.dir}"/>
+    </target>
+
+    
+    <!-- =================================================================== -->
+    <!-- Generate the key for the Applet                                     -->
+    <!-- =================================================================== -->
+    <target name="genkey">
+        <delete dir="${certs.dir}"/>
+        <mkdir dir="${certs.dir}"/>
+        <genkey alias="Abinition" storepass="changeit" keystore="${certs.dir}/keystore" keyalg="RSA" >
+            <dname>
+                <param name="CN" value="HyperScript"/>
+                <param name="OU" value="Abinition"/>
+                <param name="O"  value="Abinition"/>
+                <param name="C"  value="US"/>
+            </dname>
+        </genkey>
+        <echo message="Self sign the keystore"/>
+        <exec dir="${basedir}" executable="keytool">
+            <arg line="-selfcert -alias Abinition -keystore ${certs.dir}/keystore -storepass changeit"/>
+        </exec>
+    </target>
+
+    
+    <!-- =================================================================== -->
+    <!-- Compiles the source code                                            -->
+    <!-- =================================================================== -->
+    <target name="compile" depends="init">
+	<echo message="Compiling JAVA sources" />
+    
+	<javac srcdir="${java.dir}"
+               destdir="${class.dir}"
+               classpath="${classpath}"
+               debug="on"
+               deprecation="off"
+               optimize="off"
+               includes="*.java" />
+	
+
+    </target>
+
+    <!-- =================================================================== -->
+    <!-- Creates the jar archive                                             -->
+    <!-- =================================================================== -->
+    <target name="jar" depends="compile">
+        <delete dir="${class.dir}/META-INF"/>
+        <jar jarfile="${deploy.dir}/Abinition.jar">
+            <fileset dir="${class.dir}" >
+                <include name="*"/>
+            </fileset>
+        </jar>
+        <signjar jar="${deploy.dir}/Abinition.jar" alias="Abinition" storepass="changeit" keystore="${certs.dir}/keystore" />
+
+    </target>
+    
+
+    <!-- =================================================================== -->
+    <!-- Cleans up generated stuff                                           -->
+    <!-- =================================================================== -->
+    <target name="clean">
+        <delete dir="${class.dir}"/>
+        <delete dir="${deploy.dir}/Abinition.jar"/>
+    </target>
+
+</project>

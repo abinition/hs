@@ -1,0 +1,28 @@
+<func id="parsedate">
+  <brief>
+    Parse a string date into internal ANSI time.
+  </brief>
+  <args>
+    <arg id="string" type="list">
+      <desc>
+         A date string, with optional time and zone information.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="ansitime" type="int">
+    <ret id="ansitime" status="$ACKNOWLEDGE">
+      <desc>
+         The number of seconds since the epoch, Jan 1, 1970, in localtime.
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="parsedate.htm">
+  <exceptions />
+  <examples>
+    <example>
+      parsedate.hyp
+    </example>
+  </examples>
+  <links />
+</func>
+

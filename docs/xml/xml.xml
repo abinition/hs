@@ -1,0 +1,28 @@
+<func id="xml">
+  <brief>
+    Parse and convert a XML string into a hyperscript variable.
+  </brief>
+  <args>
+    <arg id="XMLdata" type="str">
+      <desc>
+         An XML data structure.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="status" type="str">
+    <ret id="$ACKNOWLEDGE" status="$ACKNOWLEDGE">
+      <desc>
+        
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="xml.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      xml.hyp
+    </example>
+  </examples>
+  <links />
+</func>
+

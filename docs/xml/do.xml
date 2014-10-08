@@ -1,0 +1,25 @@
+<func id="do" isStmt="1">
+  <brief>
+    Iterative do statement.
+  </brief>
+  <syntax><b>do</b> statement ; while ( expression ) ;</syntax>
+  <body>
+	<p>The <i>do</i> statement has the form: </p>
+	<i>
+	<b>do</b> statement <b>while</b> ( expression ) ;
+	</i>
+<p>The statement is executed at least once, and the expression is evaluated 
+after each execution. If the expression is not zero, the statement is 
+executed again.</p>
+	</body>
+  <examples>
+    <example>
+      do.hyp
+    </example>
+  </examples>
+  <links>
+	<link>while</link>
+	<link>for</link>
+  </links>
+</func>
+

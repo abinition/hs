@@ -1,0 +1,16 @@
+<func id="continue" isStmt="1">
+   <brief>Continue (restart) from the beginning of a for, while, or do loop.</brief>
+
+   <syntax>continue ;</syntax>
+
+   <body>Use continue to restart from the beginning of a for, while, or doloop</body>
+
+   <examples>
+      <example>break_continue.hyp</example>
+   </examples>
+
+   <links>
+      <link>break</link>
+   </links>
+</func>
+

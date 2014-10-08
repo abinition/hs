@@ -1,0 +1,24 @@
+<func id="instance">
+   <brief>The instance() function returns the name of the current instance.</brief>
+   <args>
+   </args>
+
+   <lvalue id="name" type="str">
+      <ret id="instanceName" status="$ACKNOWLEDGE">
+         <desc>The names of the current instance.</desc>
+      </ret>
+   </lvalue>
+
+   <body ref="instance.htm" />
+
+   <exceptions />
+
+   <examples>
+      <example>instance.hyp</example>
+   </examples>
+
+   <links>
+      <link>instance</link>
+   </links>
+</func>
+

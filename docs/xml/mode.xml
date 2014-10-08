@@ -1,0 +1,29 @@
+<func id="mode">
+  <brief>
+    Return the current mode name, either "event" or "query". 
+  </brief>
+  <args>
+  </args>
+  <lvalue id="name" type="str">
+    <ret id="modeName" status="$ACKNOWLEDGE">
+      <desc>
+        The string "event" or "query".
+      </desc>
+    </ret>
+  </lvalue>
+  <body>
+The current mode name always refers to the mode invoked by the last incoming EVENT or QUERY message. If the HyperScript program was self-started, without a message, then the mode is always "event".
+</body>
+  <exceptions />
+  <examples>
+    <example>
+      mode.hyp
+    </example>
+  </examples>
+  <links>
+<link>method</link>
+<link>self</link>
+<link>sender</link>
+</links>
+</func>
+

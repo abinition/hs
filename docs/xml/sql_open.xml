@@ -1,0 +1,48 @@
+<func id="sql_open">
+  <brief>
+    Open a channel to a SQL database.
+  </brief>
+  <args>
+    <arg id="username" type="str">
+      <desc>
+         The username for access.
+      </desc>
+    </arg>
+    <arg id="password" type="str">
+      <desc>
+         The password for access.
+      </desc>
+    </arg>
+    <arg id="server" type="str">
+      <desc>
+        The name of the server (or node) for access.
+      </desc>
+    </arg>
+    <arg id="database" type="str">
+      <desc>
+        The name of the database for access.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="dbHandle" type="handle">
+    <ret id="<handle>" status="$ACKNOWLEDGE">
+      <desc>
+        A handle to the database.
+      </desc>
+    </ret>
+     <ret id="0" status="%SQL">
+      <desc>
+        A NULL handle means the database was not connected.
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="sql_open.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      sql_open.hyp
+    </example>
+  </examples>
+  <links />
+</func>
+

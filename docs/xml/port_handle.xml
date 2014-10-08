@@ -1,0 +1,39 @@
+<func id="port_handle">
+  <brief>
+    Return the socket handle for a specific port device id.
+  </brief>
+  <args>
+    <arg id="id" type="int">
+      <desc>
+         Device id.  Valid range from 0 to 65535. 
+	</desc>
+    </arg>
+  </args>
+  <lvalue id="socket" type="handle">
+    <ret id="socketHandle" status="$ACKNOWLEDGE">
+      <desc>
+        The socket handle in which the device id is assigned to.
+      </desc>
+    </ret>
+    <ret id="-1" status="%port">
+      <desc>
+        No socket handle exists for device id 'x'
+      </desc>
+    </ret>
+
+  </lvalue>
+  <body>
+The port_handle function is used to return the socket handle that was automatically associated to a device id for incoming port connection requests through port_service()
+  </body>
+  <exceptions />
+  <examples>
+    <example>
+      port_handle.hyp
+    </example>
+  </examples>
+  <links>
+	<link>port_service</link>
+	<link>port_assign</link>
+  </links>
+</func>
+

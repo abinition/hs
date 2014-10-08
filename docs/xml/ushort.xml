@@ -1,0 +1,28 @@
+<func id="ushort" isTypedef="1">
+  <brief>
+    Convert to an character value or create an short variable. 
+  </brief>
+  <args>
+    <arg id="value" type="list">
+      <desc>
+        A value of any type.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="result" type="ushort" array="vector">
+    <ret id="0 to 65536" status="$ACKNOWLEDGE">
+      <desc>
+         A value from 0 to 65536.
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="ushort.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      ushort.hyp
+    </example>
+  </examples>
+  <links><link>short</link></links>
+</func>
+

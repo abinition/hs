@@ -1,0 +1,43 @@
+<func id="secs_mlb">
+  <brief>
+    Set the Minimum Length Bytes (MLB) for outgoing SECS I messages.
+  </brief>
+  <args>
+    <arg id="mlb" type="int">
+      <desc>
+-1 - default - 0 for S1F1, minumum 1 otherwise
+0 - minimum of 0 bytes
+1 - minimum of 1 bytes2 - minimum of 2 bytes
+3 - minimum of 3 bytes 
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="status" type="str">
+    <ret id="$ACKNOWLEDGE" status="$ACKNOWLEDGE">
+      <desc>
+         The Minimum Length Bytes is set.
+      </desc>
+    </ret>
+  </lvalue>
+  <body>
+<p>
+When the destination of a SECS I message expects a certain number of length bytes, then setting the minimum length bytes will guarantee that at least that number of bytes are used to store the length of the message.  
+If more length bytes are required, then more are used.  That is why it is the "minimum" length bytes.  
+Normally, this function need not be used unless the destination complains about the number of length bytes.
+</p>
+</body>
+  <exceptions>
+<exception status="%BOUNDS">
+      <desc>
+         Minumum length bytes not in range: -1,0,1,2,3
+      </desc>
+</exception>
+</exceptions>
+  <examples>
+    <example>
+      secs_mlb.hyp
+    </example>
+  </examples>
+  <links><link>secs_mhp</link></links>
+</func>
+

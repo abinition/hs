@@ -1,0 +1,28 @@
+<func id="poll">
+  <brief>
+    poll
+  </brief>
+  <args>
+    <arg id="arg1" type="list">
+      <desc>
+        
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="status" type="list">
+    <ret id="1" status="$ACKNOWLEDGE">
+      <desc>
+        
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="poll.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      poll.hyp
+    </example>
+  </examples>
+  <links />
+</func>
+

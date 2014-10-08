@@ -1,0 +1,36 @@
+<func id="secs_hsms">
+  <brief>
+    Create a HSMS listen port.
+  </brief>
+  <args>
+    <arg id="service" type="str">
+      <desc>
+        The name of the HSMS service (ie. from /etc/services).  
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="listenSocket" type="handle">
+    <ret id="socket" status="$ACKNOWLEDGE">
+      <desc>
+        The TCP/IP socket handle in which the HSMS service is listening.
+      </desc>
+    </ret>
+    <ret id="-1" status="%INVALID">
+      <desc>
+        Could not find "service" in /etc/services",
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="secs_hsms.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      secs_hsms.hyp
+    </example>
+  </examples>
+  <links>
+<link>secs_service</link>
+<link>secs_assign</link>
+</links>
+</func>
+

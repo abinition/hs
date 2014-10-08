@@ -1,0 +1,25 @@
+<func id="on_pipe" isStmt="1">
+  <brief>
+    Establish an pipe handler.
+  </brief>
+  <syntax>
+	<b>on_pipe</b> statement ;
+  </syntax>
+  <body ref="on_pipe.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      on_pipe.hyp
+    </example>
+  </examples>
+  <links>
+  <link>on_alarm</link>
+  <link>on_error</link>
+  <link>on_pipe</link>
+  <link>on_pipe</link>
+  <link>on_death</link>
+  <link>on_pipe</link>
+  <link>on_pipe</link>
+  </links>
+</func>
+

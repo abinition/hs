@@ -1,0 +1,33 @@
+<func id="load">
+  <brief>
+    Load data from a file into a hyperscript variable.
+  </brief>
+  <args>
+    <arg id="filespec" type="str">
+      <desc>
+         The file specification containing the HyperScript structure.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="status" type="boolean">
+    <ret id="$ACKNOWLEDGE" status="$ACKNOWLEDGE">
+      <desc>
+         The data in the file was successfuly loaded.
+      </desc>
+    </ret>
+    <ret id="%FILE" status="%FILE">
+      <desc>
+         Could not open file.
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="load.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      load.hyp
+    </example>
+  </examples>
+  <links />
+</func>
+

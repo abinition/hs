@@ -1,0 +1,32 @@
+<func id="http_assign">
+  <brief>
+    http_assign
+  </brief>
+  <args>
+    <arg id="arg1" type="list">
+      <desc>
+        
+      </desc>
+      
+    </arg>
+    
+  </args>
+  <lvalue id="status" type="list">
+    <ret id="1" status="$ACKNOWLEDGE">
+      <desc>
+        
+      </desc>
+      
+    </ret>
+    
+  </lvalue>
+  <body ref="http_assign.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      http_assign.hyp
+    </example>
+    
+  </examples>
+  <links />
+</func>

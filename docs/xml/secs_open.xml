@@ -1,0 +1,90 @@
+<func id="secs_open">
+  <brief>
+    Open a SECS II connection. 
+  </brief>
+  <args>
+    <arg id="target" type="str">
+      <desc>
+         The target for the SECS II connection.  There are 3 types of connections.
+HSMS over TCP/IP: the target will be a DNS host name/an IP address.
+SECS I over TCP/IP: the target will be a DNS host name/an IP address.
+SECS I over Serial: the target will be a str value, like "com1:" or "/dev/ttyS0"
+      </desc>
+    </arg>
+    <arg id="modifier" type="list">
+      <desc>
+         This is the baud rate if the connection is SECS I over a serial connection (300, 1200, 2400, 4800, 9600, 19200, etc). 
+This is the port number for TCP/IP connections.  
+The TCP/IP connection will be HSMS if the modifier is &gt;= MHP or will be SECS I if the modifier is &lt; MHP.
+      </desc>
+    </arg>
+    <arg id="T1/T5" type="list" isOptional="1">
+      <desc>
+For SECS I, this is T1, the inter-character timeout.
+For HSMS, this is T5.
+      </desc>
+    </arg>
+    <arg id="T2/T6" type="list" isOptional="1">>
+      <desc>
+For SECS I, this is T2, the ENQ / EOT timeout.
+For HSMS, this is T6.
+      </desc>
+    </arg>
+    <arg id="T5/T7" type="list" isOptional="1">>
+      <desc>
+For SECS I, this is T4, the inter-block timeout.
+For HSMS, this is T7
+      </desc>
+    </arg>
+    <arg id="RTY/T8" type="list" isOptional="1">>
+      <desc>
+For SECS I, this is T1, the retry value..
+For HSMS, this is T8.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="socket" type="handle">
+    <ret id="socketHandle" status="$ACKNOWLEDGE">
+      <desc>
+        The socket handle for the open connection.
+      </desc>
+    </ret>
+    <ret id="-1" status="%BOUNDS">
+      <desc>
+        One of the arguments was out of boumds.
+      </desc>
+    </ret>
+    <ret id="-1" status="%SECS">
+      <desc>
+Failed to open SECS port. (for serial connections).
+      </desc>
+    </ret>
+    <ret id="-1" status="%SECS">
+      <desc>
+Failed to connect to hsms service at node 'x' on port 'y' (for HSMS connections).
+      </desc>
+	</ret>
+    <ret id="-1" status="%SECS">
+      <desc>
+Failed to connect to terminal server at node 'x' on port y" (for SECS I connections over TCP/IP)
+      </desc>
+	</ret>
+    <ret id="-1" status="%IO">
+      <desc>
+        'target' is not a tty device (for serial connections)
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="secs_open.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      secs_open.hyp
+    </example>
+  </examples>
+  <links>
+<link>secs_close</link>
+<link>secs_mhp</link>
+  </links>
+</func>
+

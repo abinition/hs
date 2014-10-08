@@ -1,0 +1,40 @@
+<func id="fopen">
+  <brief>
+    Open a file.
+  </brief>
+  <args>
+    <arg id="filespec" type="str">
+      <desc>
+        File name specification
+      </desc>
+    </arg>
+    <arg id="mode" type="str">
+      <desc>
+        File mode.  One of "r", "r+", "w", "w+", "a", "a+".
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="status" type="str">
+    <ret id="$ACKNOWLEDGE" status="$ACKNOWLEDGE">
+      <desc>
+        The file was opened.
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="fopen.htm" />
+  <exceptions>
+  <exception status="%FILE">
+  <desc>Failed to open file</desc>
+  </exception>
+  </exceptions>
+  <examples>
+    <example>
+      fopen.hyp
+    </example>
+  </examples>
+  <links>
+  <link>fclose
+  </link>
+  </links>
+</func>
+

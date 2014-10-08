@@ -1,0 +1,23 @@
+CONNECT()
+{
+  instantiate();
+  event ( "TESTPLAN", "CONNECT" ) ;
+  idle();
+}
+MESSAGE()
+{
+ puts ( TEXT ) ;
+ return; 
+}
+enable MESSAGE ;
+
+HOTKEY()
+{
+  event ( sender(), "BEGIN" ) ;
+}
+enable HOTKEY ;
+
+ABORT() { exit ; }
+enable ABORT ;
+
+CONNECT();

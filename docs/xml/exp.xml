@@ -1,0 +1,32 @@
+<func id="exp">
+  <brief>
+    exp
+  </brief>
+  <args>
+    <arg id="arg1" type="list">
+      <desc>
+        
+      </desc>
+      
+    </arg>
+    
+  </args>
+  <lvalue id="status" type="list">
+    <ret id="1" status="$ACKNOWLEDGE">
+      <desc>
+        
+      </desc>
+      
+    </ret>
+    
+  </lvalue>
+  <body ref="exp.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      exp.hyp
+    </example>
+    
+  </examples>
+  <links />
+</func>

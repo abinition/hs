@@ -1,0 +1,40 @@
+<func id="exec">
+  <brief>
+    Execute a exec shell command.
+  </brief>
+  <args>
+    <arg id="command" type="str">
+      <desc>
+        The command to execute.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="status" type="list">
+    <ret id="$ACKNOWLEDGE" status="$ACKNOWLEDGE">
+      <desc>
+        The command was executed.
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="exec_system.htm" />
+  <exceptions>
+<exception status="%IO">
+<desc>
+Command string to long.
+</desc>
+
+      <exception status="%BOUNDS">
+         <desc>Subscript is out of bounds in exec()</desc>
+      </exception>
+
+
+</exception>
+</exceptions>
+  <examples>
+    <example>
+      exec.hyp
+    </example>
+  </examples>
+  <links />
+</func>
+

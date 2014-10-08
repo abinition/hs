@@ -1,0 +1,32 @@
+<func id="load_binary">
+  <brief>
+    load_binary
+  </brief>
+  <args>
+    <arg id="arg1" type="list">
+      <desc>
+        
+      </desc>
+      
+    </arg>
+    
+  </args>
+  <lvalue id="status" type="list">
+    <ret id="1" status="$ACKNOWLEDGE">
+      <desc>
+        
+      </desc>
+      
+    </ret>
+    
+  </lvalue>
+  <body ref="load_binary.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      load_binary.hyp
+    </example>
+    
+  </examples>
+  <links />
+</func>

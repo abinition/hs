@@ -1,0 +1,39 @@
+<func id="detach">
+  <brief>
+    Detach the named sub-variable from a list variable.  
+  </brief>
+  <args>
+    <arg id="variable" type="list" isLvalue="1">
+      <desc>
+         A list variable in which the specified sub-variable is detached.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="result" type="list">
+    <ret id="element" status="$ACKNOWLEDGE">
+      <desc>
+         When the detach function is used in an expression or an assignment, then the return value is the sub-variable detached from the variable.
+	</desc>
+    </ret>
+    <ret id="$ACKNOWLEDGE" status="$ACKNOWLEDGE">
+      <desc>
+         When the detach function is used as an lvalue - as a statement - then the variable detached will create or overwrite the top-level variable of the same name.
+The return value is boolean 1, which is discarded on the stack.  
+	</desc>
+    </ret>
+    <ret id="%INVALID" status="%INVALID">
+      <desc>
+Cannot detach variable
+	</desc>
+    </ret>
+  </lvalue>
+  <body ref="detach.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      detach.hyp
+    </example>
+  </examples>
+  <links />
+</func>
+

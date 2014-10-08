@@ -1,0 +1,30 @@
+<func id="date">
+   <brief>Returns a sortable date string of the form "YYYYMMDD".</brief>
+
+   <args>
+      <arg id="ansiTime" type="int" isOptional="1">
+         <desc>With no arguments, datetime returns the current time. When an argument is specified, it is the ansitime, which is defined as the number of seconds since the Epoch (Jan 1, 1970).</desc>
+      </arg>
+   </args>
+
+   <lvalue id="result" type="str">
+      <ret id="YYYYMMDD" status="$ACKNOWLEDGE">
+         <desc>From Jan 01, 1970 through Jan 18, 2038.</desc>
+      </ret>
+   </lvalue>
+
+   <body ref="datetime.htm" />
+
+   <exceptions>
+      <exception status="%BOUNDS">
+         <desc>Invalid ansi time value.</desc>
+      </exception>
+   </exceptions>
+
+   <examples>
+      <example>datetime.hyp</example>
+   </examples>
+
+   <links />
+</func>
+

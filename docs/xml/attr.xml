@@ -1,0 +1,35 @@
+<func id="attr" isTypedef="1">
+   <brief>Convert to an attribute value or create an attribute variable.</brief>
+
+   <args>
+      <arg id="value" type="list">
+         <desc>A value of any type.</desc>
+      </arg>
+   </args>
+
+   <lvalue id="result" type="attr" array="vector">
+      <ret id="character" status="$ACKNOWLEDGE">
+         <desc>An attr value is identical to a char value in every respect except when converting to and from XML. When converting to XML, attr variables become the attribute variables of the enclosing tag. When converting from XML, attribute variables become attr variables in the enclosing list variable.</desc>
+      </ret>
+   </lvalue>
+
+   <body>
+   </body>
+
+   <exceptions />
+
+   <examples>
+      <example>attr.hyp</example>
+   </examples>
+
+   <links>
+      <link>char</link>
+
+      <link>xml</link>
+
+      <link>xparse</link>
+
+      <link>xdescribe</link>
+   </links>
+</func>
+

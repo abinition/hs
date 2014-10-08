@@ -1,0 +1,71 @@
+<func id="secs_event">
+  <brief>
+     Send a primary SECS II message.
+  </brief>
+  <args>
+    <arg id="id" type="int">
+      <desc>
+         Device Id.
+      </desc>
+    </arg>
+    <arg id="stream" type="int">
+      <desc>
+         SECS II stream value.
+      </desc>
+    </arg>
+    <arg id="function" type="int">
+      <desc>
+        SECS II function value.
+      </desc>
+    </arg>
+    <arg id="data" type="list">
+      <desc>
+         SECS II data to send.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="status" type="str">
+    <ret id="$ACKNOWLEDGE" status="$ACKNOWLEDGE">
+      <desc>
+         The SECS message was sent and a reply SECS message received.
+      </desc>
+    </ret>
+    <ret id="0" status="%BOUNDS">
+      <desc>
+         Device Id is out of range.
+      </desc>
+    </ret>
+    <ret id="0" status="%SECS">
+      <desc>
+Device id 'x' is not assigned. Use secs_assign(id,fd)
+      </desc>
+    </ret>
+    <ret id="0" status="%SECS">
+      <desc>
+Cannot query with non-primary function
+      </desc>
+    </ret>
+    <ret id="0" status="%SECS">
+      <desc>
+No SECS connection (through port 'x') exists for device 'y'
+      </desc>
+    </ret>
+    <ret id="0" status="%SECS">
+      <desc>
+Failed to send SECS message
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="secs_query.htm" />
+  <exceptions>
+  </exceptions>
+  <examples>
+    <example>
+      secs_event_query.hyp
+    </example>
+  </examples>
+  <links>
+<link>secs_query</link>
+<link>timeout</link>
+  </links>
+</func>

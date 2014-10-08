@@ -1,0 +1,37 @@
+<func id="secs_service">
+  <brief>
+    Create a SECS I listen port over TCP/IP.
+  </brief>
+  <args>
+    <arg id="service" type="str">
+      <desc>
+        The name of the service (ie. from /etc/services).  
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="listenSocket" type="handle">
+    <ret id="socket" status="$ACKNOWLEDGE">
+      <desc>
+        The TCP/IP socket handle in which the SECS I service is listening.
+      </desc>
+    </ret>
+    <ret id="-1" status="%INVALID">
+      <desc>
+        Could not find "service" in /etc/services",
+      </desc>
+    </ret>
+
+  </lvalue>
+  <body ref="secs_service.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      secs_service.hyp
+    </example>
+  </examples>
+  <links>
+<link>secs_service</link>
+<link>secs_assign</link>
+</links>
+</func>
+

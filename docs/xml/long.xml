@@ -1,0 +1,28 @@
+<func id="long" isTypedef="1">
+  <brief>
+    Convert to an character value or create an long variable. 
+  </brief>
+  <args>
+    <arg id="value" type="list">
+      <desc>
+        A value of any type.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="result" type="long" array="vector">
+    <ret id="-2147483647  to 2147483648." status="$ACKNOWLEDGE">
+      <desc>
+         A value from -2147483647 to 2147483648.
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="long.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      long.hyp
+    </example>
+  </examples>
+  <links><link>ulong</link></links>
+</func>
+

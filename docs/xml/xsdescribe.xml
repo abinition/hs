@@ -1,0 +1,34 @@
+<func id="xsdescribe">
+  <brief>
+    Describe as XML a variable into a variable.
+  </brief>
+  <args>
+    <arg id="variable" type="list">
+      <desc>
+         A variable or value of any type.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="result" type="str">
+    <ret id="definition" status="$ACKNOWLEDGE">
+      <desc>
+         A str array that contains the XML described variable.
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="describe.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      describe.hyp
+    </example>
+  </examples>
+  <links>
+     <link>describe</link>
+     <link>sdescribe</link>
+     <link>fdescribe</link>
+     <link>xdescribe</link>
+     <link>xfdescribe</link>
+  </links>
+</func>
+

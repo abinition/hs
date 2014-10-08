@@ -1,0 +1,19 @@
+<func id="quit">
+  <brief>
+    The quit() function terminates the currently running Hyperscript instance.
+  </brief>
+  <args>
+  </args>
+  <body>
+  If the quit() function is called from any instance other than the concept instance, then only that instance quits,
+  otherwise all instances quit.  Unlike the exit() function, any outstanding reply messages are not sent. 
+  </body>
+  <exceptions />
+  <examples>
+    <example>
+      exit.hyp
+    </example>
+  </examples>
+  <links><link>exit</link></links>
+</func>
+

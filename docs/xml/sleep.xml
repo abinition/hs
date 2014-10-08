@@ -1,0 +1,33 @@
+<func id="sleep">
+  <brief>
+    Sleep for a specified number of seconds.
+  </brief>
+  <args>
+    <arg id="seconds" type="int">
+      <desc>
+        The number of seconds to sleep. 
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="status" type="str">
+    <ret id="$ACKNOWLEDGE" status="$ACKNOWLEDGE">
+      <desc>
+        The sleep function succeeded.
+      </desc>
+    </ret>
+    <ret id="%BOUNDS" status="%BOUNDS">
+      <desc>
+        Invalid sleep seconds.
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="sleep.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      sleep.hyp
+    </example>
+  </examples>
+  <links />
+</func>
+

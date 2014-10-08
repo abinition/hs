@@ -1,0 +1,32 @@
+<func id="echo">
+  <brief>
+    The echo function provides a means in which to capture the contents of the input stream.
+  </brief>
+  <args>
+    <arg id="terminator" type="str">
+      <desc>
+         A string that identifies the end-of-stream.  
+When the echo function encounters this string, the capture of the input stream is ended.
+You must put a ';' on the end of the end-of-stream terminator.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="result" type="list">
+    <ret id="inputStream" status="$ACKNOWLEDGE">
+      <desc>
+         The captured input stream is returned line by line in a str variable.
+      </desc>
+    </ret>
+  </lvalue>
+  <body>The echo function is useful in cases where portions of the input code need to be captured by HyperScript. 
+
+</body>
+  <exceptions />
+  <examples>
+    <example>
+      echo.hyp
+    </example>
+  </examples>
+  <links />
+</func>
+

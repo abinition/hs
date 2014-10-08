@@ -1,0 +1,29 @@
+<func id="timestamp">
+  <brief>
+    Returns the current ANSI time and alternately set/clear timestamp logging
+  </brief>
+  <args>
+    <arg id="logTimeStamp" type="boolean" isOptional="1">
+      <desc>
+        If 1 then enable timestamp logging otherwise disable timestamp logging.
+	If not specified, then do not change the current timestamp logging setting.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="ansiTime" type="int">
+    <ret id="ANSI time" status="$ACKNOWLEDGE">
+      <desc>
+        The current ANSI time, the number of seconds since the epoch, Jan 1, 1970, in localtime.
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="timestamp.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      timestamp.hyp
+    </example>
+  </examples>
+  <links />
+</func>
+

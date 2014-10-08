@@ -1,0 +1,20 @@
+>BS
+	parameter	UAF_M_NOUSER2 = 131072		!VISIBLE	!#9582
+	! disallow User-Specified Interface No. 2 for this user		!#9582
+>BE
+>IS
+!B-HS!
+	parameter	UAF_M_HYPERSCRIPT = 262144
+	! turn on Hyperscript access	
+>IE
+>CS
+	parameter 	UAF__VISIBLEFLAGS = 16				!#9582
+>CE
+>IS
+	parameter	UAF__VISIBLEFLAGS = 17
+!E-HS!
+>IE
+>ES
+        ! this paramter must equal the current number of flags
+        ! which can be set by the user authorization functions
+>EE

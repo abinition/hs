@@ -1,0 +1,43 @@
+<func id="chop">
+   <brief>Chop the last element from a str or list variable.</brief>
+
+   <args>
+      <arg id="variable" type="list" isLvalue="1">
+         <desc>A list or str variable in which the lasted element is chopped.</desc>
+      </arg>
+   </args>
+
+   <lvalue id="result" type="list">
+      <ret id="element" status="$ACKNOWLEDGE">
+         <desc>When the chop function is used in an expression or an assignment, then the return value is the last element from the variable.</desc>
+      </ret>
+
+      <ret id="$ACKNOWLEDGE" status="$ACKNOWLEDGE">
+         <desc>When the chop function is used as an lvalue - as a statement - then the element chopped - if a variable - will create or overwrite the top-level variable of the same name. The return value is boolean 1, which is discarded on the stack.</desc>
+      </ret>
+
+      <ret id="%INVALID" status="%INVALID">
+         <desc>Cannot create variable from parent variable</desc>
+      </ret>
+
+      <ret id="%BOUNDS" status="%BOUNDS">
+         <desc>No value to chop from variable</desc>
+      </ret>
+
+   </lvalue>
+
+   <body ref="chop.htm" />
+
+   <exceptions>
+      <exception status="%INVALID">
+         <desc>'argument' is not a list or str variable</desc>
+      </exception>
+	</exceptions>   
+
+   <examples>
+      <example>chop.hyp</example>
+   </examples>
+
+   <links />
+</func>
+

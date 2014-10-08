@@ -1,0 +1,11 @@
+>BS
+!#14895 Moved down the call to Tms_Trackin_Tally right before defio_end.
+>BE
+>IS
+!B-HS!
+             call aeqSsp_autoMan_recipe( lot_lotCom_userId, 'TRACKIN' )
+!E-HS!
+>IE
+>ES
+             ! Update actl and set lot state to RUNNING
+>EE

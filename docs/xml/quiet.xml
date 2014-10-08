@@ -1,0 +1,30 @@
+<func id="quiet">
+  <brief>
+    Turning warning messages off.
+  </brief>
+  <args>
+    <arg id="flag" type="int">
+      <desc>
+        A value of 1 turns on quiet mode, a value of 0 turns off quiet mode.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="status" type="str">
+    <ret id="$ACKNOWLEDGE" status="$ACKNOWLEDGE">
+      <desc>
+         Quiet mode was changed.
+      </desc>
+    </ret>
+  </lvalue>
+  <body>
+  Warning messages can be turned on and off with this function.
+  </body>
+  <exceptions />
+  <examples>
+    <example>
+      quiet.hyp
+    </example>
+  </examples>
+  <links />
+</func>
+

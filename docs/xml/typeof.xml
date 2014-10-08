@@ -1,0 +1,40 @@
+<func id="typeof">
+  <brief>
+    Returns the data type of the variable or data.
+  </brief>
+  <args>
+    <arg id="data" type="list">
+      <desc>
+        Any variable, list, vector, constant, or literal.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="datatype" type="str">
+    <ret id="<datatype>" status="$ACKNOWLEDGE">
+      <desc>
+        One of { 
+"null","list","str","byte","ubyte","boolean",
+"binary",
+"char",			     "uchar","attr","short","ushort",
+"long","ulong",
+"int",
+"float",
+
+"double","hex",
+"octal",
+"handle",
+"datetime",
+"raw"}
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="typeof.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      typeof.hyp
+    </example>
+  </examples>
+  <links />
+</func>
+

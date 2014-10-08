@@ -1,0 +1,30 @@
+<func id="verify">
+  <brief>
+    Verify lines of hyperscript as they are newly parsed from stdin.
+  </brief>
+  <args>
+    <arg id="flag" type="int">
+      <desc>
+         A value of 1 turns on verify mode, a value of 0 turns off verify mode.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="status" type="str">
+    <ret id="$ACKNOWLEDGE" status="$ACKNOWLEDGE">
+      <desc>
+         Verify mode was changed.
+      </desc>
+    </ret>
+  </lvalue>
+  <body>
+  Verify mode displays lines of HyperScript program as they are parsed.
+  </body>
+  <exceptions />
+  <examples>
+    <example>
+      verify.hyp
+    </example>
+  </examples>
+  <links />
+</func>
+

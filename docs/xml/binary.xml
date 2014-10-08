@@ -1,0 +1,27 @@
+<func id="binary" isTypedef="1">
+   <brief>Create or convert a variable or value into a binary format</brief>
+
+   <args>
+      <arg id="value" type="list">
+         <desc>A value of any type.</desc>
+      </arg>
+   </args>
+
+   <lvalue id="result" type="binary" array="vector">
+      <ret id="0x00 - 0xff" status="$ACKNOWLEDGE">
+         <desc>A binary value is 1 byte. It is displayed as a 2 character hex number. All strings convert to a value of 0x01 except when the string begins with a "%", then the binary value is 0x00. When converting to and from binary, char and uchar vector values are preserved.</desc>
+      </ret>
+   </lvalue>
+
+   <exceptions>
+   </exceptions>
+
+   <examples>
+      <example>binary.hyp</example>
+   </examples>
+
+   <links>
+      <link>hex</link>
+   </links>
+</func>
+

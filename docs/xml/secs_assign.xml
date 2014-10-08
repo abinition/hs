@@ -1,0 +1,72 @@
+<func id="secs_assign">
+  <brief>
+    Assign a SECS II device id to a tcp or serial port.
+  </brief>
+  <args>
+    <arg id="id" type="int">
+      <desc>
+         SECS II device id.  Valid range from 0 to 65535. 
+	</desc>
+    </arg>
+    <arg id="port" type="handle">
+      <desc>
+         A port handle returned by the secs_open, secs_hsms, or secs_service functions.
+      </desc>
+    </arg>
+    <arg id="r-bit" type="boolean" isOptional="1">
+      <desc>
+         Determines the value of the SECS I R-bit when sending messages to this device id.  
+If TRUE (R-bit is set), then the destination is a host, up the connection tree. 
+If FALSE (R-bit is clear), then the destination is an equipment, down the connection tree.  
+The default value is FALSE.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="status" type="str">
+    <ret id="$ACKNOWLEDGE" status="$ACKNOWLEDGE">
+      <desc>
+         The device id was assigned to the port handle.
+      </desc>
+    </ret>
+    <ret id="0" status="%UNDEFINED">
+		<desc>
+		No secs port 'x'. Use secs_open to open port.
+		</desc>
+	</ret>
+
+    <ret id="0" status="%SECS">
+		<desc>
+		Device Id 'x' is already assigned to port 'y' by instance 'z'.
+		</desc>
+	</ret>
+  </lvalue>
+  <body>
+	<p>
+The secs_assign function restricts the device id's on a socket handle to only those device ids assigned.  More than 1 device id can be assigned to a socket handle.
+The SECS II id maximum value is 32767, however Hyperscript allows 32768 through 65535, where bit 15 is set.  This bit is used for SECS message forwarding. 
+When bit 15 is set in a SECS message that is recieved by a passive "SECS listener", the bit is cleared and the SECS message is forwarded to the resulting device id.
+If a SECS message is returned, the listener set bit 15 and sends the SECS message response to the original sender.
+
+When the socket handle was created by the secs_hsms or secs_service functions then the assignment is "pending".  
+When an incoming TCP/IP connection request for SECS I or HSMS protocol arrives, a new socket handle is created by the listener and the assignment of the device id occurs at that time, to the newly created socket handle.  
+The socket handle for the device id can be determined with the secs_handle function.  
+When the connection is closed, the  assignment of the secs id goes back to the "pending state".
+	</p>
+	</body>
+  <exceptions>
+	<exception status="%BOUNDS">
+	<desc>
+		Device ID out of range.
+	</desc>
+	</exception>
+  </exceptions>
+  <examples>
+    <example>
+      secs_assign.hyp
+    </example>
+  </examples>
+  <links>
+	<link>secs_open</link>
+  </links>
+</func>
+

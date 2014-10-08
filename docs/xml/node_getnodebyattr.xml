@@ -1,0 +1,37 @@
+<func id="node_getnodebyattr">
+   <brief>Returns a node's first descendent that matches specfied attribute criteria</brief>
+
+   <args>
+      <arg id="node" type="list">
+         <desc>A list variable.</desc>
+      </arg>
+      <arg id="attr_name" type="string">
+         <desc>A string variable cooresponding to the attribute name to match</desc>
+      </arg>
+      <arg id="attr_value" type="string">
+         <desc>A string variable cooresponding to the attribute value to match</desc>
+      </arg>
+   </args>
+
+   <lvalue id="result" type="list">
+      <ret id="element" status="$ACKNOWLEDGE">
+         <desc>Returns a descendent node of the argument. The descendent node is the first descendent of the argument to match the attribute name, attr_name, and attribute value, attr_value, specified as arguments. Nodes are of type list, attributes must be of type attr, and attr_value and attr_name are string variables. If no matching descendent is found, the return value is an empty string.</desc>
+      </ret>
+   </lvalue>
+
+   <body>node_getnodebyattr performs a recursive depth-first search of the descendent elements of the node argument. As it scans each node within the tree, the function compares only the first element with the name attr_name. If a single node contains more than one element of name attr_name, only the youngest's value is compared to attr_value. If the first element with a name equal to attr_name is not of type attr, then the function will not accept it as a valid match and will continue searching the remaining nodes in the tree.</body>
+
+   <links>
+      <link>node_name</link>
+      <link>node_root</link>
+      <link>node_parent</link>
+      <link>node_firstchild</link>
+      <link>node_lastchild</link>
+      <link>node_nextsibling</link>
+      <link>node_prevsibling</link>
+      <link>node_nextfirstcousin</link>
+      <link>node_nextfirstcousin</link>
+      <link>node_getnodebyattr</link>
+   </links>
+</func>
+

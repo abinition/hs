@@ -1,0 +1,41 @@
+<func id="log">
+  <brief>
+    Log a string to a file.
+  </brief>
+  <args>
+    <arg id="file" type="list" isOptional="1">
+      <desc>
+         The file in which to log to.  
+	 When only this argumment is specified, then the log file name is changed.
+	 When no arguments are specified, the log file name defaults to stdout.
+      </desc>
+    </arg>
+    <arg id="text" type="string" isOptional="1">
+      <desc>
+         The text in which to output.
+	 When this argument is not specified, only the log file name is changed.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="status" type="str">
+    <ret id="$ACKNOWLEDGE" status="$ACKNOWLEDGE">
+      <desc>
+        The log() function was successful.
+      </desc>
+    </ret>
+  </lvalue>
+  <body>
+
+</body>
+   <exceptions>
+      <exception status="%BOUNDS">
+         <desc>Subscript is out of bounds in log()</desc>
+      </exception>
+   </exceptions>   <examples>
+    <example>
+      log.hyp
+    </example>
+  </examples>
+  <links />
+</func>
+

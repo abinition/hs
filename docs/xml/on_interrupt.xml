@@ -1,0 +1,33 @@
+<func id="on_interrupt" isStmt="1">
+  <brief>
+    Establish an interrupt handler.
+  </brief>
+  <syntax>
+	<b>on_interrupt</b> statement ;
+  </syntax>
+  <body>
+When an interrupt condition occurs, for example, a ^C signal is sent, control is transferred unconditionally to the statement following on_interrupt. This statement is typically a handler method. 
+
+Once an interrupt handler is used, it must be reestablished with the on_interrupt statement to use it again. Typically, the on_interrupt statement is called in the handler before returning. 
+
+When the handler statement completes, control returns to the statement following the point where the interrupt occurred. If the HyperScript program was in the IDLE state, control returns to the IDLE state. If the HyperScript program was in the EXECUTE state, control returns to the point that was interrupted, with no net effect. If the HyperScript program was in the QUERY state, control returns to the query method. The query method either fails and returns the value of STATUS (i.e.: "%INTERRUPT"), or continues to wait for a reply message if STATUS was changed to a success value such as "$ACKNOWLEDGE". 
+
+
+</body>
+  <exceptions />
+  <examples>
+    <example>
+      on_interrupt.hyp
+    </example>
+  </examples>
+  <links>
+  <link>on_alarm</link>
+  <link>on_error</link>
+  <link>on_interrupt</link>
+  <link>on_message</link>
+  <link>on_death</link>
+  <link>on_pipe</link>
+  <link>on_interrupt</link>
+  </links>
+</func>
+

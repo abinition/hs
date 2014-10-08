@@ -1,0 +1,43 @@
+<func id="secs_mhp">
+  <brief>
+    Set the Minimum HSMS Port (MHP) value.
+  </brief>
+  <args>
+    <arg id="port" type="int">
+      <desc>
+         The Mimimum Hsms Port is the minimum value in which the secs_open  function will will attempt an HSMS connection.  Values below the MHP instruct secs_open to look for a SECS I connection over a TCP/IP terminal server port.
+The default MHP is 4000.  The maximum value is 99999
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="status" type="str">
+    <ret id="$ACKNOWLEDGE" status="$ACKNOWLEDGE">
+      <desc>
+         The MHP was set.
+      </desc>
+    </ret>
+  </lvalue>
+  <body>
+<p>
+The Minimum Hsms Port is necessary for the secs_open function to distinguish between the two flavors of SECS II over a TCP/IP connection.  For HSMS connections, the port number must be MHP and above.  
+For SECS I connections over TCP/IP, the port number must be below the MHP value.  
+The default value of 4000 was chosen because TCP/IP terminal server listen ports are typically 3001, 3002, 3003, 300n. 
+</p>
+</body>
+  <exceptions>
+<exception status="%BOUNDS">
+      <desc>
+         Minumum Hsms port not in range: 1 - 99999     
+     </desc>
+</exception>
+  <examples>
+    <example>
+      secs_mhp.hyp
+    </example>
+  </examples>
+  <links>
+<link>secs_open</link>
+<link>secs_mlb</link>
+</links>
+</func>
+

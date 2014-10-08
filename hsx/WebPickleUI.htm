@@ -1,0 +1,32 @@
+<!--
+
+ $Id$
+
+ $Log$
+ Revision 1.1  2004/12/17 18:14:43  jbergsma
+ Test Browser interaction using with the WebPickle ActiveX control
+
+
+-->
+
+<HTML>
+<BODY id=theBody>
+<BUTTON onclick='window.external.OnClick(theBody, "red");'>Red</BUTTON>
+<BR>
+<BR>
+<BUTTON onclick='window.external.OnClick(theBody, "green");'>Green</BUTTON>
+<BR>
+<BR>
+<BUTTON onclick='window.external.OnClick(theBody, "blue");'>Blue</BUTTON>
+
+<script language="JavaScript" type="text/javascript">
+
+function Dummy ()
+{
+	alert ( "Called Function Dummy" );
+}
+
+</script>
+
+</BODY>
+</HTML>

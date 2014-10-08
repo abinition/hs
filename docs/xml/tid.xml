@@ -1,0 +1,23 @@
+<func id="tid">
+  <brief>
+    Return the transaction id from the last incoming message.
+  </brief>
+  <args>
+  </args>
+  <lvalue id="status" type="str">
+    <ret id="xxxxxxxx" status="$ACKNOWLEDGE">
+      <desc>
+        The tid is part of the message header. It is customarily a randomly generated 8 digit hex value.
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="tid.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      tid.hyp
+    </example>
+  </examples>
+  <links />
+</func>
+

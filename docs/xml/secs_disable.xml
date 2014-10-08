@@ -1,0 +1,60 @@
+<func id="secs_disable">
+  <brief>
+    Disable (disassociate) a method with an incoming stream and function for a specific device id. 
+  </brief>
+  <args>
+    <arg id="method" type="list" isLvalue="1">
+      <desc>
+         A defined method NOT to be invoked upon receipt of a specific stream and function from a specific device id.
+      </desc>
+    </arg>
+    <arg id="id" type="int">
+      <desc>
+         A SECS II device id.
+      </desc>
+    </arg>
+    <arg id="stream" type="int">
+      <desc>
+         A SECS II stream value.
+      </desc>
+    </arg>
+    <arg id="function" type="int">
+      <desc>
+         A SECS II function value.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="status" type="str">
+    <ret id="$ACKNOWLEDE" status="$ACKNOWLEDGE">
+      <desc>
+        The method for the SECS stream and function has been disabled.
+      </desc>
+    </ret>
+    <ret id="0" status="%BOUNDS">
+      <desc>
+         Device Id is out of range.
+      </desc>
+    </ret>
+    <ret id="0" status="%BRANCH">
+      <desc>
+         Could not find method 'method'.
+      </desc>
+    </ret>
+    <ret id="0" status="%INVALID">
+      <desc>
+         Invalid method 'method'.
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="secs_disable.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      secs_disable.hyp
+    </example>
+  </examples>
+  <links>
+<link>secs_enable</link>
+</links>
+</func>
+

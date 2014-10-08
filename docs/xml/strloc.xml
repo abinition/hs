@@ -1,0 +1,34 @@
+<func id="strloc">
+  <brief>
+    Locate a substring in a string
+  </brief>
+  <args>
+    <arg id="string" type="str">
+      <desc>
+        The haystack.
+      </desc>
+    </arg>
+    <arg id="substring" type="str">
+      <desc>
+        The needle.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="offset" type="int">
+    <ret id="0-n" status="$ACKNOWLEDGE">
+      <desc>
+        The offset in string where the substring was located, 
+	otherwise the length of the string is returned. 
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="strloc.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      strloc.hyp
+    </example>
+  </examples>
+  <links />
+</func>
+

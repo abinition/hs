@@ -1,0 +1,35 @@
+<func id="fgets">
+   <brief>Get string data from a file.</brief>
+
+   <args>
+      <arg id="fileHandle" type="handle">
+         <desc>The handle of a file opened for read access.</desc>
+      </arg>
+   </args>
+
+   <lvalue id="result" type="string">
+      <ret id="string" status="$ACKNOWLEDGE">
+         <desc>
+         The next line from the file.
+         </desc>
+      </ret>
+      <ret id="NULLString" status="%EOF">
+         <desc>At the end of file, the result is "".</desc>
+      </ret>
+   </lvalue>
+
+   <body ref="get.htm" />
+
+   <exceptions>
+      <exception status="%FILE">
+      <desc>Invalid file handle.</desc>
+      </exception>
+   </exceptions>
+
+   <examples>
+      <example>fgets.hyp</example>
+   </examples>
+
+   <links />
+</func>
+

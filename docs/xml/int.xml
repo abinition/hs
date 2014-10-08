@@ -1,0 +1,28 @@
+<func id="int" isTypedef="1">
+  <brief>
+    Convert to an character value or create an int variable. 
+  </brief>
+  <args>
+    <arg id="value" type="list">
+      <desc>
+        A value of any type.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="result" type="int" array="vector">
+    <ret id="-2147483647  to 2147483648." status="$ACKNOWLEDGE">
+      <desc>
+         A value from -2147483647 to 2147483648.
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="int.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      int.hyp
+    </example>
+  </examples>
+  <links><link>long</link></links>
+</func>
+

@@ -1,0 +1,30 @@
+<func id="on_timeout" isStmt="1">
+  <brief>
+    Establish an timeout handler.
+  </brief>
+  <syntax>
+	<b>on_timeout</b> statement ;
+  </syntax>
+  <body>
+A timeout condition can only occur when blocking on the query method. When a timeout condition occurs, control is transferred unconditionally to the statement following on_timeout. This statement is typically a handler method. The timeout value is set using the timeout method. 
+Once a timeout handler is used, it must be reestablished with the on_timeout statement to use it again. Typically, the on_timeout statement is called in the handler before returning. 
+When a timeout condition occurs, the value of STATUS becomes "%TIMEOUT". If the handler changes the value of STATUS to a success value such as "$ACKNOWLEDGE", then upon returning from the handler query will continue waiting for the reply message, using the previously specified timeout. If the STATUS value remains as "%TIMEOUT", or is changed to any other non-success value, query will fail and return the value of STATUS. 
+
+</body>
+  <exceptions />
+  <examples>
+    <example>
+      on_timeout.hyp
+    </example>
+  </examples>
+  <links>
+  <link>on_alarm</link>
+  <link>on_error</link>
+  <link>on_interrupt</link>
+  <link>on_message</link>
+  <link>on_death</link>
+  <link>on_pipe</link>
+  <link>on_timeout</link>
+  </links>
+</func>
+

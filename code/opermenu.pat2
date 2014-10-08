@@ -1,0 +1,17 @@
+>BS
+    Entry 'Into Step'
+	Txt = INTOSTEP
+	Secondary = NO
+	Leaf = LOT_TKIN_TRACKIN
+>BE
+>IS
+;B-HS;
+    Entry 'Batch Into Step'
+        Txt = BATCHINTOSTEP
+        Secondary = NO
+        Leaf = AEQSSP_BATCH_TRACKIN
+;E-HS;
+>IE
+>ES
+    Entry 'List Lot Data'
+>EE

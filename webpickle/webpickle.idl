@@ -1,0 +1,56 @@
+// webpickle.idl : IDL source for webpickle.dll
+//
+
+// This file will be processed by the MIDL tool to
+// produce the type library (webpickle.tlb) and marshalling code.
+
+import "oaidl.idl";
+import "ocidl.idl";
+#include "olectl.h"
+	
+
+	[
+		object,
+		uuid(734BBD92-9922-4BA4-96D5-5D2A16F479F7),
+		dual,
+		helpstring("ICDHTML Interface"),
+		pointer_default(unique)
+	]
+	interface ICDHTML : IDispatch
+	{
+	};
+	
+
+	
+	[
+		object, dual,
+		uuid(D80E41FB-FC35-4E35-A34C-2EA2E930D07C),
+		helpstring("ICDHTMLUI Interface"),
+		pointer_default(unique)
+	]
+	interface ICDHTMLUI : IDispatch
+	{
+		// Example method that will be called by the HTML
+		HRESULT OnClick([in]IDispatch* pdispBody, [in]VARIANT varColor);
+	};
+
+[
+	uuid(DFE3AFEB-4DD9-4955-B1C7-836148A61D27),
+	version(1.0),
+	helpstring("webpickle 1.0 Type Library")
+]
+library WEBPICKLELib
+{
+	importlib("stdole32.tlb");
+	importlib("stdole2.tlb");
+
+	[
+		uuid(FB3F382A-602E-4590-BB74-38795644314E),
+		helpstring("CDHTML Class")
+	]
+	coclass CDHTML
+	{
+		[default] interface ICDHTML;
+		interface ICDHTMLUI;
+	};
+};

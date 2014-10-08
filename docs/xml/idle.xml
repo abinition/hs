@@ -1,0 +1,28 @@
+<func id="idle">
+  <brief>
+    Put the current instance into an IDLE state.
+  </brief>
+  <args>
+  </args>
+  <lvalue id="status" type="str">
+    <ret id="$ACKNOWLEDGE" status="$ACKNOWLEDGE">
+      <desc>
+         The idle() command was successful.
+      </desc>
+    </ret>
+  </lvalue>
+  <body>
+The idle() function is like the sleep() function with an infinite sleep time.  
+In general, if you are using the idle() function, you should probably be using return() instead.
+DO NOT USE IDLE AS A SUBSTITUTE FOR return!!!  
+A return from a method which was called from an incoming message will also put the instance back in a IDLE state.
+</body>
+  <exceptions />
+  <examples>
+    <example>
+      idle.hyp
+    </example>
+  </examples>
+  <links />
+</func>
+

@@ -1,0 +1,31 @@
+<func id="tointernal">
+  <brief>
+    Convert escape sequences in a string to their internal representations.
+  </brief>
+  <args>
+    <arg id="string" type="str">
+      <desc>
+        The str or list variable to convert,
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="result" type="list" array="list">
+    <ret id="internalString" status="$ACKNOWLEDGE">
+      <desc>
+        The converted list or string, with escape sequences converted to internal representation.
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="internal_external.htm" />
+   <exceptions>
+      <exception status="%BOUNDS">
+         <desc>Subscript is out of bounds in tointernal()</desc>
+      </exception>
+   </exceptions>   <examples>
+    <example>
+      tointernal.hyp
+    </example>
+  </examples>
+  <links />
+</func>
+

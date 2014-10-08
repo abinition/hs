@@ -1,0 +1,28 @@
+<func id="sql">
+  <brief>
+    ** ORACLE ONLY ** Submit a SQL statement.
+  </brief>
+  <args>
+    <arg id="sql_statement" type="list">
+      <desc>
+        
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="status" type="str">
+    <ret id="$ACKNOWLEDGE" status="$ACKNOWLEDGE">
+      <desc>
+        
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="sql.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      sql.hyp
+    </example>
+  </examples>
+  <links />
+</func>
+

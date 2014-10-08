@@ -1,0 +1,28 @@
+<func id="float" isTypedef="1">
+  <brief>
+    Convert to an character value or create an long variable. 
+  </brief>
+  <args>
+    <arg id="value" type="list">
+      <desc>
+        A value of any type.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="result" type="float" array="vector">
+    <ret id="+/-1.40239846E-45 to +/-3.40282347E+38" status="$ACKNOWLEDGE">
+      <desc>
+         A value from min to max.
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="float.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      float.hyp
+    </example>
+  </examples>
+  <links><link>double</link></links>
+</func>
+

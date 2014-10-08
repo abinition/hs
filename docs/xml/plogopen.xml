@@ -1,0 +1,32 @@
+<func id="plogopen">
+  <brief>
+    plogopen
+  </brief>
+  <args>
+    <arg id="arg1" type="list">
+      <desc>
+        
+      </desc>
+      
+    </arg>
+    
+  </args>
+  <lvalue id="status" type="list">
+    <ret id="1" status="$ACKNOWLEDGE">
+      <desc>
+        
+      </desc>
+      
+    </ret>
+    
+  </lvalue>
+  <body ref="plogopen.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      plogopen.hyp
+    </example>
+    
+  </examples>
+  <links />
+</func>

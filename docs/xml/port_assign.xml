@@ -1,0 +1,62 @@
+<func id="port_assign">
+  <brief>
+    Assign a device id to a tcp or serial port.
+  </brief>
+  <args>
+    <arg id="id" type="int">
+      <desc>
+         Device id.  Valid range from 0 to 65535. 
+	</desc>
+    </arg>
+    <arg id="port" type="handle">
+      <desc>
+         A port handle returned by the port_open or port_service functions.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="status" type="str">
+    <ret id="$ACKNOWLEDGE" status="$ACKNOWLEDGE">
+      <desc>
+         The device id was assigned to the port handle.
+      </desc>
+    </ret>
+    <ret id="0" status="%UNDEFINED">
+		<desc>
+		No port port 'x'. Use port_open() to open port.
+		</desc>
+	</ret>
+
+    <ret id="0" status="%port">
+		<desc>
+		Device Id 'x' is already assigned to port 'y' by instance 'z'.
+	</desc>
+	</ret>
+  </lvalue>
+  <body>
+	<p>
+The port_assign function restricts the device id's on a socket handle to only those device ids assigned.  More than 1 device id can be assigned to a socket handle.
+The port maximum value is 65535
+
+When the socket handle was created by the port_service functions then the assignment is "pending".  
+When an incoming TCP/IP connection request for the port arrives, a new socket handle is created by the listener and the assignment of the device id occurs at that time, to the newly created socket handle.  
+The socket handle for the device id can be determined with the port_handle function.  
+When the connection is closed, the  assignment of the port id goes back to the "pending state".
+	</p>
+	</body>
+  <exceptions>
+	<exception status="%BOUNDS">
+	<desc>
+		Device ID out of range.
+	</desc>
+	</exception>
+  </exceptions>
+  <examples>
+    <example>
+      port_assign.hyp
+    </example>
+  </examples>
+  <links>
+	<link>port_open</link>
+  </links>
+</func>
+

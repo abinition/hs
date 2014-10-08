@@ -1,0 +1,20 @@
+<func id="return" isStmt="1">
+  <brief>
+    Return from a method call.
+  </brief>
+  <args>
+    <arg id="expression" type="list" isOptional="1">
+      <desc>
+         The expression is evaluated and the value is assigned to the method variable.
+      </desc>
+    </arg>
+  </args>
+  <body ref="return.htm" />
+  <examples>
+    <example>
+      return.hyp
+    </example>
+  </examples>
+  <links />
+</func>
+

@@ -1,0 +1,21 @@
+<func id="goto">
+  <brief>
+    Branch (go) to a label.
+  </brief>
+  <args>
+    <arg id="label" type="list" isLvalue="1">
+      <desc>
+	   A 'variable' label, defined elsewhere in the program as 'label :'        
+      </desc>
+    </arg>
+  </args>
+  <body ref="goto_label.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      goto.hyp
+    </example>
+  </examples>
+  <links><link>label</link></links>
+</func>
+

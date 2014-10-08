@@ -1,0 +1,20 @@
+<func id="exit">
+  <brief>
+    The exit() function terminates the currently running Hyperscript instance.
+  </brief>
+  <args>
+  </args>
+  <body>
+  If the exit() function is called from any instance other than the concept instance, then only that instance exits,
+  otherwise all instances exit.  Unlike the quit() function, any outstanding reply messages are sent, i.e. the exit()
+  function behaves like a cascading return. 
+  </body>
+  <exceptions />
+  <examples>
+    <example>
+      exit.hyp
+    </example>
+  </examples>
+  <links><link>quit</link></links>
+</func>
+

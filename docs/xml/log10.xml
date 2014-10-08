@@ -1,0 +1,32 @@
+<func id="log10">
+  <brief>
+    log10
+  </brief>
+  <args>
+    <arg id="arg1" type="list">
+      <desc>
+        
+      </desc>
+      
+    </arg>
+    
+  </args>
+  <lvalue id="status" type="list">
+    <ret id="1" status="$ACKNOWLEDGE">
+      <desc>
+        
+      </desc>
+      
+    </ret>
+    
+  </lvalue>
+  <body ref="log10.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      log10.hyp
+    </example>
+    
+  </examples>
+  <links />
+</func>

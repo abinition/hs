@@ -1,0 +1,28 @@
+<func id="popen">
+  <brief>
+    Open a PROMIS data base file.
+  </brief>
+  <args>
+    <arg id="file" type="str">
+      <desc>
+         The 4 character file name, in lowercase.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="status" type="str">
+    <ret id="$ACKNOWLEDGE" status="$ACKNOWLEDGE">
+      <desc>
+        The file was opened (readonly).
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="popen.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      popen.hyp
+    </example>
+  </examples>
+  <links />
+</func>
+

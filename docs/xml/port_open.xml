@@ -1,0 +1,56 @@
+<func id="port_open">
+  <brief>
+    Open a port.
+  </brief>
+  <args>
+    <arg id="targer" type="str">
+      <desc>
+         The target for the SECS II connection.  There are 2 types of connections.
+TCP/IP: the target will be a DNS host name/an IP address.
+Serial: the target will be a str value, like "com1:" or "/dev/ttyS0"
+      </desc>
+    </arg>
+    <arg id="modifier" type="list">
+      <desc>
+         This is the baud rate if the connection is over a serial connection (300, 1200, 2400, 4800, 9600, 19200, etc). 
+This is the port number for TCP/IP connections.  
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="socket" type="handle">
+    <ret id="socketHandle" status="$ACKNOWLEDGE">
+      <desc>
+        The socket handle for the open connection.        
+      </desc>
+    </ret>
+    <ret id="-1" status="%PORT">
+      <desc>
+Failed to open port. (for serial connections).
+      </desc>
+    </ret>
+    <ret id="-1" status="%PORT">
+      <desc>
+Failed to connect to service at node 'x' on port 'y' (for TCP/IP connections).
+      </desc>
+    </ret>
+    <ret id="-1" status="%BOUNDS">
+      <desc>
+        One of the arguments was out of boumds.
+      </desc>
+    </ret>
+    <ret id="-1" status="%IO">
+      <desc>
+        'target' is not a tty device (for serial connections)
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="port_open.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      port_open.hyp
+    </example>
+  </examples>
+  <links />
+</func>
+

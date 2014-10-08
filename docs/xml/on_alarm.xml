@@ -1,0 +1,32 @@
+<func id="on_alarm" isStmt="1">
+  <brief>
+    Establish an alarm handler.
+  </brief>
+  <syntax>
+	<b>on_alarm</b> statement ;
+  </syntax>
+  <body>
+When an alarm condition occurs, control is transferred unconditionally to the statement following on_alarm. This statement is typically a handler method. When the statement completes, control returns back to the statement following the point where the alarm occurred. An alarm is set using the alarm method. 
+
+Once an alarm handler is used, it must be reestablished with the on_alarm statement to use it again. Typically, the on_alarm statement is called in the handler before returning. 
+
+When an alarm condition occurs, the value of STATUS becomes "%ALARM". If the HyperScript program was in the IDLE state when the alarm occurred, a return from the alarm handler continues in the IDLE state. If the HyperScript program was in the EXECUTE state, control returns to the point where the alarm occurred, with no net effect. If the HyperScript program was in the QUERY state, control returns to the query method. The query method either fails and returns the value of STATUS (i.e. "%ALARM"), or continues to wait for a reply message if STATUS was changed to a success value such as "$ACKNOWLEDGE". 
+
+</body>
+  <exceptions />
+  <examples>
+    <example>
+      on_alarm.hyp
+    </example>
+  </examples>
+  <links>
+  <link>on_death</link>
+  <link>on_error</link>
+  <link>on_interrupt</link>
+  <link>on_message</link>
+  <link>on_hangup</link>
+  <link>on_pipe</link>
+  <link>on_timeout</link>
+  </links>
+</func>
+

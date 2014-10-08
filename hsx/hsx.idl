@@ -1,0 +1,105 @@
+// hsx.idl : IDL source for hsx.dll
+//
+/*
+ * $Id$
+ *
+ * Description	: Interface Definition Language for the "WebPickle" control
+ * Author		: John Bergsma <johnbergsma@hotmail.com>
+ * 
+ ******************************************************************************!
+ !                HyperScript Software Source Code.                            !
+ !                                                                             !
+ !          ***** Copyright: (c) 2004 Ab Initio Software                       !
+ !          ***** All rights reserved - Licensed Material.                     !
+ !          ***** Program property of Ab Initio Software                       !
+ !                                                                             !
+ !******************************************************************************
+ * 
+ * Purpose		:
+ * Defines all the COM interface methods and properties.
+ * This file will be processed by the MIDL tool to
+ * produce the type library (hsx.tlb) and marshalling code.
+ *
+ * $Log$
+ * Revision 1.2  2004/12/26 17:27:15  jbergsma
+ * Define the Eval method
+ *
+ * Revision 1.1  2004/12/17 17:55:34  jbergsma
+ * Interface Definition Language for the "WebPickle" control COM objects
+ *
+ *
+ */
+
+import "oaidl.idl";
+import "ocidl.idl";
+#include "olectl.h"
+	
+
+	[
+		object,
+		uuid(E2C8E60F-DEB8-424D-AA6A-B3BD1B68E5E4),
+		dual,
+		helpstring("IWebPickle Interface"),
+		pointer_default(unique)
+	]
+	interface IWebPickle : IDispatch
+	{
+	};
+	
+
+	
+	[
+		object, dual,
+		uuid(F895D31A-BB9E-460A-992B-BCF8E0CE7058),
+		helpstring("IWebPickleUI Interface"),
+		pointer_default(unique)
+	]
+	interface IWebPickleUI : IDispatch
+	{
+		// Example method that will be called by the HTML
+		HRESULT OnClick([in]IDispatch* pdispBody, [in]VARIANT varColor);
+		[id(1), helpstring("method CreateListBox")] HRESULT CreateListBox();
+		[id(2), helpstring("method Puts")] HRESULT Puts([in]BSTR bstr);
+		[id(3), helpstring("method JSCall")] HRESULT JSCall([in]BSTR function, [in]BSTR args);
+	};
+	[
+		object,
+		uuid(51850EF0-9B87-474A-AD3B-1BCE12D05D52),
+		dual,
+		helpstring("IHyperScript2 Interface"),
+		pointer_default(unique)
+	]
+	interface IHyperScript2 : IDispatch
+	{
+		[id(1), helpstring("method Parse")] HRESULT Parse([in]BSTR bstr);
+		[id(2), helpstring("method Eval")] HRESULT Eval([in]BSTR bstr);
+	};
+
+[
+	uuid(997B6199-4F8D-4CC7-A7AE-84EFBA30ED08),
+	version(1.0),
+	helpstring("hsx 1.0 Type Library")
+]
+library HSXLib
+{
+	importlib("stdole32.tlb");
+	importlib("stdole2.tlb");
+
+	[
+		uuid(6F174267-7D1F-4A95-B8C0-F469D23E6D38),
+		helpstring("WebPickle Class")
+	]
+	coclass WebPickle
+	{
+		[default] interface IWebPickle;
+		interface IWebPickleUI;
+	};
+	[
+		uuid(09BB4B70-9AFA-4DF6-81AC-67307F39F3B9),
+		helpstring("HyperScript2 Class")
+	]
+	coclass HyperScript2
+	{
+		[default] interface IHyperScript2;
+	};
+};

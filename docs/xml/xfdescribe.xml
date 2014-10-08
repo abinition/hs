@@ -1,0 +1,38 @@
+<func id="xfdescribe">
+  <brief>
+    Describe as XML a variable into a file.
+  </brief>
+  <args>
+    <arg id="variable" type="list">
+      <desc>
+         A variable or value of any type.
+      </desc>
+    </arg>
+    <arg id="fileHandle" type="handle">
+      <desc>
+         A file handle obtained from the fopen() function.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="status" type="str">
+    <ret id="$ACKNOWLEDGE" status="$ACKNOWLEDGE">
+      <desc>
+         The fdescribe function was successful.
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="describe.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      describe.hyp
+    </example>
+  </examples>
+  <links>
+     <link>describe</link>
+     <link>sdescribe</link>
+     <link>xdescribe</link>
+     <link>xsdescribe</link>
+  </links>
+</func>
+

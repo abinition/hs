@@ -1,0 +1,29 @@
+<func id="unsetenv">
+  <brief>
+    Unset an environment variable.
+  </brief>
+  <args>
+    <arg id="name" type="str">
+      <desc>
+        The name of the environment variable to un-set.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="status" type="str">
+    <ret id="$ACKNOWLEDGE" status="$ACKNOWLEDGE">
+      <desc>
+        The environment variable was un-set.
+      </desc>
+    </ret>
+  </lvalue>
+  <body>
+  </body>
+  <exceptions />
+  <examples>
+    <example>
+      unsetenv.hyp
+    </example>
+  </examples>
+  <links />
+</func>
+

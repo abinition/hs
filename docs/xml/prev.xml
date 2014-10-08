@@ -1,0 +1,37 @@
+<func id="prev">
+  <brief>
+    Rotate elements of a list, making the previous element first in the list
+  </brief>
+  <args>
+    <arg id="variable" type="list" isLvalue="1">
+      <desc>
+        The list variable to rotate.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="status" type="str">
+    <ret id="$ACKNOWLEDGE" status="$ACKNOWLEDGE">
+      <desc>
+        The list has been rotated.
+      </desc>
+    </ret>
+    <ret id="%UNDEFINED" status="%UNDEFINED">
+      <desc>
+        Cannot do prev on 'variable'
+      </desc>
+    </ret>
+  </lvalue>
+  <body>
+The elements of a list are stored internally as a circularly linked list. The prev method rotates the elements of a list so that the prevous element moves down by one index. The prev method is useful for iterating a list variable.
+</body>
+  <exceptions />
+  <examples>
+    <example>
+      prev.hyp
+    </example>
+  </examples>
+  <links>
+    <link>next</link>
+  </links>
+</func>
+

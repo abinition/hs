@@ -1,0 +1,32 @@
+<func id="secs_event_raw">
+  <brief>
+    secs_event_raw
+  </brief>
+  <args>
+    <arg id="arg1" type="list">
+      <desc>
+        
+      </desc>
+      
+    </arg>
+    
+  </args>
+  <lvalue id="status" type="list">
+    <ret id="1" status="$ACKNOWLEDGE">
+      <desc>
+        
+      </desc>
+      
+    </ret>
+    
+  </lvalue>
+  <body ref="secs_event_raw.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      secs_event_raw.hyp
+    </example>
+    
+  </examples>
+  <links />
+</func>

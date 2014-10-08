@@ -1,0 +1,31 @@
+<func id="lifetime">
+  <brief>
+    Sets the lifetime of the current instance.
+  </brief>
+  <args>
+    <arg id="seconds" type="int">
+      <desc>
+        The number of seconds in the lifetime.  A value of zero sets an infinite lifetime.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="status" type="str">
+    <ret id="$ACKNOWLEDGE" status="$ACKNOWLEDGE">
+      <desc>
+         The lifetime was set.
+      </desc>
+    </ret>
+  </lvalue>
+  <body>
+If n seconds are specified in the lifetime() function, then a %DEATH signal will be generated after n seconds have elapsed.  If an on_death handler has been specified, then the
+instance whose death has arrived can reissue the lifetime() function to extend life, otherwise the instance will exit.  If the death condition occurs for the concept instance, then all instances will exit.
+</body>
+  <exceptions />
+  <examples>
+    <example>
+      lifetime.hyp
+    </example>
+  </examples>
+  <links />
+</func>
+

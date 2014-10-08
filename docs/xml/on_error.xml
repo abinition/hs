@@ -1,0 +1,25 @@
+<func id="on_error" isStmt="1">
+  <brief>
+    Establish an error handler.
+  </brief>
+  <syntax>
+	<b>on_error</b> statement ;
+  </syntax>
+  <body ref="on_error.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      on_error.hyp
+    </example>
+  </examples>
+  <links>
+  <link>on_alarm</link>
+  <link>on_death</link>
+  <link>on_interrupt</link>
+  <link>on_message</link>
+  <link>on_hangup</link>
+  <link>on_pipe</link>
+  <link>on_timeout</link>
+  </links>
+</func>
+

@@ -1,0 +1,34 @@
+<func id="getenv">
+  <brief>
+    Get the value of an environment variable.
+  </brief>
+  <args>
+    <arg id="name" type="list">
+      <desc>
+        The name of the environment variable.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="result" type="list">
+    <ret id="value" status="$ACKNOWLEDGE">
+      <desc>
+        The value of the environment variable.
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="getenv.htm" />
+<warnings>
+<warning status="%UNDEFINED">
+<desc>No value for environment variable found.
+</desc>
+</warning>
+</warnings>
+  <exceptions />
+  <examples>
+    <example>
+      getenv.hyp
+    </example>
+  </examples>
+  <links />
+</func>
+

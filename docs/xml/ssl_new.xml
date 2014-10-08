@@ -1,0 +1,32 @@
+<func id="ssl_new">
+  <brief>
+    ssl_new
+  </brief>
+  <args>
+    <arg id="arg1" type="list">
+      <desc>
+        
+      </desc>
+      
+    </arg>
+    
+  </args>
+  <lvalue id="status" type="list">
+    <ret id="1" status="$ACKNOWLEDGE">
+      <desc>
+        
+      </desc>
+      
+    </ret>
+    
+  </lvalue>
+  <body ref="ssl_new.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      ssl_new.hyp
+    </example>
+    
+  </examples>
+  <links />
+</func>

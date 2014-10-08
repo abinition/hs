@@ -1,0 +1,48 @@
+<func id="debug">
+  <brief>
+    Set or clear debug flags.
+  </brief>
+  <args>
+    <arg id="flags" type="int" isOptional="1">
+      <desc>
+000x : turns off all debug flags 
+001x : display trace execution of tokens 
+002x : display varied diagnostics 
+004x : display tokens as they are parsed 
+008x : display the infix expression stack 
+00Fx : display postfix execution stack 
+010x : display the frame levels 
+020x : display the data stack 
+040x : display SECS data streams 
+080x : display parse state transitions 
+0F0x : display heap usage 
+100x : display SQL streams 
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="prevFlags" type="int">
+    <ret id="0 - 1023" status="$ACKNOWLEDGE">
+      <desc>
+         The previous debug flags.
+      </desc>
+    </ret>
+  </lvalue>
+  	<body>
+The debug flags were created primarily to facilitate the creation on the HyperScript programming language by displaying the inner workings of the language as it parses and executes. 
+	</body>
+	<warnings>
+	    <warning status="%INVALID">
+      <desc>
+         The debug flags were invalid.
+      </desc>
+    </warning>
+	</warnings>
+  <exceptions />
+  <examples>
+    <example>
+      debug.hyp
+    </example>
+  </examples>
+  <links />
+</func>
+

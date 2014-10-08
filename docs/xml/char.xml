@@ -1,0 +1,29 @@
+<func id="char" isTypedef="1">
+   <brief>Convert to an unsigned character value or create an unsigned character variable.</brief>
+
+   <args>
+      <arg id="value" type="list">
+         <desc>A value of any type.</desc>
+      </arg>
+   </args>
+
+   <lvalue id="result" type="char" array="vector">
+      <ret id="character" status="$ACKNOWLEDGE">
+         <desc>An unsigned character value is any 8 bit ascii value, in printable form.</desc>
+      </ret>
+   </lvalue>
+
+   <body>
+   </body>
+
+   <exceptions />
+
+   <examples>
+      <example>char.hyp</example>
+   </examples>
+
+   <links>
+      <link>uchar</link>
+   </links>
+</func>
+

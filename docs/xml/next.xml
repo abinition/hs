@@ -1,0 +1,37 @@
+<func id="next">
+  <brief>
+    Rotate elements of a list, making the next element first in the list
+  </brief>
+  <args>
+    <arg id="variable" type="list" isLvalue="1">
+      <desc>
+        The list variable to rotate.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="status" type="str">
+    <ret id="$ACKNOWLEDGE" status="$ACKNOWLEDGE">
+      <desc>
+        The list has been rotated.
+      </desc>
+    </ret>
+    <ret id="%UNDEFINED" status="%UNDEFINED">
+      <desc>
+        Cannot do next on 'variable'
+      </desc>
+    </ret>
+  </lvalue>
+  <body>
+The elements of a list are stored internally as a circularly linked list. The next method rotates the elements of a list so that the next element moves up by one index. Thus, the next method is useful for iterating a list variable.
+</body>
+  <exceptions />
+  <examples>
+    <example>
+      next.hyp
+    </example>
+  </examples>
+  <links>
+    <link>next</link>
+  </links>
+</func>
+

@@ -1,0 +1,40 @@
+<func id="enable">
+  <brief>
+    Enable a method to receive incoming event or query messages.
+  </brief>
+  <args>
+    <arg id="method" type="list" isLvalue="1">
+      <desc>
+         Any variable that has a defined method.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="status" type="str">
+    <ret id="$ACKNOWLEDGE" status="$ACKNOWLEDGE">
+      <desc>
+        The method was enabled.
+      </desc>
+    </ret>
+    <ret id="%UNDEFINED" status="%UNDEFINED">
+      <desc>
+        Method 'name' is not a variable.
+      </desc>
+    </ret>
+    <ret id="%BRANCH" status="%BRANCH">
+      <desc>
+        Could not find 'method'.
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="disable_enable.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      enable.hyp
+    </example>
+  </examples>
+  <links>
+  <link>disable</link>
+  </links>
+</func>
+

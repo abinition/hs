@@ -1,0 +1,30 @@
+<func id="self">
+  <brief>
+    Return the target identification from the last incoming message. 
+  </brief>
+  <args>
+    <arg id="index" type="int">
+      <desc>
+         0 - return all components
+	 1 - return instance component
+	 2 - return concept component
+	 3 - return node component
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="component" type="str">
+    <ret id="instance#concept@node" status="$ACKNOWLEDGE">
+      <desc>
+         The component(s) requested are returned.
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="self.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      self.hyp
+    </example>
+  </examples>
+  <links />
+</func>

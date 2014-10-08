@@ -1,0 +1,38 @@
+<func id="exists">
+  <brief>
+    Test for the existance of a variable.
+  </brief>
+  <args>
+    <arg id="variable" type="list" isLvalue="1">
+      <desc>
+        A valid identifier. 
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="status" type="boolean">
+    <ret id="1" status="$ACKNOWLEDGE">
+      <desc>
+      The variable exists.
+      </desc>
+    </ret>
+    <ret id="0" status="%UNDEFINED">
+      <desc>
+      The variable does not exist.
+      </desc>
+    </ret>
+  </lvalue>
+  <body>
+    <desc>
+      Hyperscript variables can be defined and undefined on-the-fly, therefore it is often necessary to test for the
+      existance of a variable.   If the scope is local, the exists() function first tests for the existance of a a local
+      definition of the variable before testing for a global definition.
+    </desc>
+  </body>
+  <exceptions />
+  <examples>
+    <example>exists.hyp
+    </example>
+  </examples>
+  <links><link>undef</link></links>
+</func>
+

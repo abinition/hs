@@ -1,0 +1,48 @@
+<func id="merge">
+  <brief>
+    Merge one variable into another.
+  </brief>
+  <args>
+    <arg id="destination" type="list">
+      <desc>
+         The destination variable.
+      </desc>
+    </arg>
+    <arg id="source" type="list">
+      <desc>
+         The source variable.
+      </desc>
+    </arg>
+    <arg id="autoincrement" type="boolean" isOptional="1">
+      <desc>
+         If true, then variable names are auto-incremented V1, V2, V3.....
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="result" type="list">
+    <ret id="merged_result" status="$ACKNOWLEDGE">
+      <desc>
+         The result of the merge of source into destination.
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="merge.htm" />
+   <exceptions>
+      <exception status="%BOUNDS">
+         <desc>Source subscript is out of bounds in merge()</desc>
+      </exception>
+      <exception status="%BOUNDS">
+         <desc>Destination subscript is out of bounds in merge()</desc>
+      </exception>
+   </exceptions>  
+<examples>
+    <example>
+      merge.hyp
+    </example>
+    <example>
+      merge2.hyp
+    </example>
+  </examples>
+  <links><link>map</link></links>
+</func>
+

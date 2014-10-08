@@ -1,0 +1,32 @@
+<func id="pexec">
+  <brief>
+    Execute a stream of PROMIS tokens.
+  </brief>
+  <args>
+    <arg id="tokenStream" type="str">
+      <desc>
+        A stream of tokens, separated by spaces or comma's. 
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="result" type="list">
+    <ret id="lastLine" status="$ACKNOWLEDGE">
+      <desc>
+        The last line that PROMIS outputed after executing the token stream.
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="pexec.htm" />
+   <exceptions>
+      <exception status="%BOUNDS">
+         <desc>Subscript is out of bounds in pexec()</desc>
+      </exception>
+   </exceptions>
+   <examples>
+    <example>
+      pexec.hyp
+    </example>
+  </examples>
+  <links />
+</func>
+

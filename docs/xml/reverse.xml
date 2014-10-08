@@ -1,0 +1,36 @@
+<func id="reverse">
+  <brief>
+    Reverse sort the elements of a list variable.
+  </brief>
+  <args>
+    <arg id="variable" type="list" isLvalue="1">
+      <desc>
+         The list variable to reverse sort.  The variable cannot be a vector.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="status" type="str">
+    <ret id="$ACKNOWLEDGE" status="$ACKNOWLEDGE">
+      <desc>
+        The list is sorted.
+      </desc>
+    </ret>
+    <ret id="%UNDEFINED" status="%UNDEFINED">
+      <desc>
+        Cannot sort non-list variable.
+      </desc>
+    </ret>
+  </lvalue>
+  <body>
+  Reverse sort works on list variables.  
+  It does an item to item comparison based on the datatype of the items.
+  </body>
+  <exceptions />
+  <examples>
+    <example>
+      sort.hyp
+    </example>
+  </examples>
+  <links><link>sort</link></links>
+</func>
+

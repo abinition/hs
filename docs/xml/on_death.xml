@@ -1,0 +1,34 @@
+<func id="on_death" isStmt="1">
+  <brief>
+    Establish an death handler.
+  </brief>
+  <syntax>
+	<b>on_death</b> statement ;
+  </syntax>
+  <body>
+A death condition occurs when the program's lifetime expires (specified by the lifetime method). Control is transferred unconditionally to the statement following on_death. This statement is typically a handler method. 
+
+Once a death handler is used, it must be reestablished with the on_death statement to use it again. Typically, the on_death statement is called in the handler before returning. 
+
+When the handler statement completes the instance will exit. To prevent death, the handler must reinstate a new lifetime interval using the lifetime method before returning. If the HyperScript program was in the IDLE state, control returns to the IDLE state. If the HyperScript program was in the EXECUTE state, control returns to the point that was interrupted by the death condition, with no net effect. 
+
+If the HyperScript program was in the QUERY state, then control returns to the query method. The query method either fails and returns the value of STATUS (i.e.: "%DEATH") or continues to wait for a reply message if STATUS was changed to a success value such as "$ACKNOWLEDGE". 
+
+</body>
+  <exceptions />
+  <examples>
+    <example>
+      on_death.hyp
+    </example>
+  </examples>
+  <links>
+  <link>on_alarm</link>
+  <link>on_error</link>
+  <link>on_interrupt</link>
+  <link>on_message</link>
+  <link>on_hangup</link>
+  <link>on_pipe</link>
+  <link>on_timeout</link>
+  </links>
+</func>
+

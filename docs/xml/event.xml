@@ -1,0 +1,64 @@
+<func id="event">
+  <brief>
+     Send a message event.
+  </brief>
+  <args>
+    <arg id="target" type="str">
+      <desc>
+         The target, of the form [instance#]concept[.parent][@node]
+      </desc>
+    </arg>
+    <arg id="method" type="str">
+      <desc>
+         The method for the target to call.  The target must have the method enabled.
+      </desc>
+    </arg>
+    <arg id="TVargList" type="list" isOptional="1">
+      <desc>
+	   If an empty list, then the method arguments arg1, arg2, ... , argN follow.
+         If a non-empty list, then the arguments are contained in the TVargList
+The TVargList argument contains a list of the token/value pairs that are included in the message and passed as arguments to the method being executed on the target.
+To send a token variable and its values, the token variable should be referenced as &variable.
+In query messages, when a token is sent without its values, it means that the target should supply the token values in the reply message. To specify a token variable without values, you must either delete all the values in the variable before referencing it or simply put the variable name in quotes (for example, "variable").
+In a query message, the STATUS variable is implicitly included as the last token, without a value, so that the target is obligated to return a value for it in the reply message.
+      </desc>
+    </arg>
+    <arg id="arg1" type="list" isOptional="1">
+      <desc>
+         The first argument. 
+	   The TVargList must be {}.
+      </desc>
+    </arg>
+    <arg id="arg2" type="list" isOptional="1">
+      <desc>
+         The second argument.
+	   The TVargList must be {}.
+      </desc>
+    </arg>
+    <arg id="argN" type="list" isOptional="1">
+      <desc>
+         The Nth argument.
+	   The TVargList must be {}.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="status" type="str">
+    <ret id="$ACKNOWLEDGE" status="$ACKNOWLEDGE">
+      <desc>
+         The message was sent.
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="event_query.htm" />
+  <exceptions>
+  </exceptions>
+  <examples>
+    <example>
+      event.hyp
+    </example>
+  </examples>
+  <links>
+<link>query</link>
+<link>timeout</link>
+  </links>
+</func>

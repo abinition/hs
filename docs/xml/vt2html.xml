@@ -1,0 +1,32 @@
+<func id="vt2html">
+  <brief>
+    vt2html
+  </brief>
+  <args>
+    <arg id="arg1" type="list">
+      <desc>
+        
+      </desc>
+      
+    </arg>
+    
+  </args>
+  <lvalue id="status" type="list">
+    <ret id="1" status="$ACKNOWLEDGE">
+      <desc>
+        
+      </desc>
+      
+    </ret>
+    
+  </lvalue>
+  <body ref="vt2html.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      vt2html.hyp
+    </example>
+    
+  </examples>
+  <links />
+</func>

@@ -1,0 +1,24 @@
+<func id="instances">
+   <brief>The instances() function returns the names of all the instances.</brief>
+   <args>
+   </args>
+
+   <lvalue id="names" type="str">
+      <ret id="instanceNames" status="$ACKNOWLEDGE">
+         <desc>The names of all the instances.</desc>
+      </ret>
+   </lvalue>
+
+   <body ref="instance.htm" />
+
+   <exceptions />
+
+   <examples>
+      <example>instance.hyp</example>
+   </examples>
+
+   <links>
+      <link>instance</link>
+   </links>
+</func>
+

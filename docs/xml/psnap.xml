@@ -1,0 +1,23 @@
+<func id="psnap">
+  <brief>
+    Take a snapshot of the last 24 lines of the PROMIS virtual terminal screen.
+  </brief>
+  <args>
+  </args>
+  <lvalue id="SNAP" type="list">
+    <ret id="24 lines" status="$ACKNOWLEDGE">
+      <desc>
+        The last 24 lines of the PROMIS virtual terminal screen.
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="psnap.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      psnap.hyp
+    </example>
+  </examples>
+  <links />
+</func>
+

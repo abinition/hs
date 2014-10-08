@@ -1,0 +1,28 @@
+<func id="sql_connect">
+  <brief>
+    ** ORACLE Pro-C only *** Connect to an ORACLE database.
+  </brief>
+  <args>
+    <arg id="arg1" type="list">
+      <desc>
+        
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="status" type="str">
+    <ret id="$ACKNOWLEDGE" status="$ACKNOWLEDGE">
+      <desc>
+        
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="sql_connect.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      sql_connect.hyp
+    </example>
+  </examples>
+  <links />
+</func>
+

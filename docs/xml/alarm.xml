@@ -1,0 +1,32 @@
+<func id="alarm">
+   <brief>Set an alarm to trigger after a specified duration.</brief>
+
+   <args>
+      <arg id="seconds" type="int">
+         <desc>The number of seconds before the alarm is triggered.</desc>
+      </arg>
+   </args>
+
+   <lvalue id="status" type="boolean">
+      <ret id="1" status="$ACKNOWLEDGE">
+         <desc>The alarm was set.</desc>
+      </ret>
+
+      <ret id="0" status="%BOUNDS">
+         <desc>Invalid alarm seconds, not between 0 and 86400 seconds (1 day).</desc>
+      </ret>
+   </lvalue>
+
+   <body ref="alarm.htm" />
+
+   <exceptions />
+
+   <examples>
+      <example>alarm.hyp</example>
+   </examples>
+
+   <links>
+      <link>on_alarm</link>
+   </links>
+</func>
+

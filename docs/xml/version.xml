@@ -1,0 +1,23 @@
+<func id="version">
+  <brief>
+    Return the current version of HyperScript.
+  </brief>
+  <args>
+  </args>
+  <lvalue id="result" type="str">
+    <ret id="currentVersion" status="$ACKNOWLEDGE">
+      <desc>
+        Current Version.
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="version.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      version.hyp
+    </example>
+  </examples>
+  <links />
+</func>
+

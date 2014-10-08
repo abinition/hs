@@ -1,0 +1,23 @@
+<func id="sid">
+  <brief>
+    Return the system ID from the last incoming message.
+  </brief>
+  <args>
+  </args>
+  <lvalue id="status" type="str">
+    <ret id="YYYYMMDD:HHMMSS" status="$ACKNOWLEDGE">
+      <desc>
+        The system id is part of the message header. It is customarily a sortable timestamp, in the format "YYYYMMDD:HHMMSS"
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="sid.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      sid.hyp
+    </example>
+  </examples>
+  <links />
+</func>
+

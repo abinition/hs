@@ -1,0 +1,32 @@
+<func id="pack">
+  <brief>
+    pack
+  </brief>
+  <args>
+    <arg id="arg1" type="list">
+      <desc>
+        
+      </desc>
+      
+    </arg>
+    
+  </args>
+  <lvalue id="status" type="list">
+    <ret id="1" status="$ACKNOWLEDGE">
+      <desc>
+        
+      </desc>
+      
+    </ret>
+    
+  </lvalue>
+  <body ref="pack.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      pack.hyp
+    </example>
+    
+  </examples>
+  <links />
+</func>

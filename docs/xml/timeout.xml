@@ -1,0 +1,35 @@
+<func id="timeout">
+  <brief>
+    Set the timeout for query, secs_query, and port_query functions.
+  </brief>
+  <args>
+    <arg id="seconds" type="int">
+      <desc>
+        Number of seconds until timeout occurs.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="status" type="str">
+    <ret id="$ACKNOWLEDGE" status="$ACKNOWLEDGE">
+      <desc>
+        Timeout value was set.
+      </desc>
+    </ret>
+    <ret id="%BOUNDS" status="%BOUNDS">
+      <desc>
+        Invalid timeout seconds.
+      </desc>
+    </ret>
+  </lvalue>
+  <body>
+A timeout value can be set at any point before the query. When the query function is executed. the timer is started. If the timer expires before a reply message is received, then a timeout event is triggered. The query function will return with the STATUS value set to "%TIMEOUT".
+</body>
+  <exceptions />
+  <examples>
+    <example>
+      timeout.hyp
+    </example>
+  </examples>
+  <links />
+</func>
+

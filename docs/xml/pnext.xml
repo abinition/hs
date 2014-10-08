@@ -1,0 +1,43 @@
+<func id="pnext">
+  <brief>
+    Get the next record from the PROMIS file.
+  </brief>
+  <args>
+    <arg id="key" type="str">
+      <desc>
+         The key field name for the PROMIS file.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="status" type="str">
+    <ret id="$ACKNOWLEDGE" status="$ACKNOWLEDGE">
+      <desc>
+        The next record was fetched.
+      </desc>
+    </ret>
+    <ret id="%IO" status="%IO">
+      <desc>
+        The next record not fetched.
+      </desc>
+    </ret>
+  </lvalue>
+  <body>
+boolean ret = pget ( "actl.lotid", "ge", "E" ) ;
+while ( ret ) {
+<pre>
+  /* .
+     .
+     . */
+   ret = pnext ( "actl.lotid" ) ;
+}
+</pre>
+</body>
+  <exceptions />
+  <examples>
+    <example>
+      pnext.hyp
+    </example>
+  </examples>
+  <links />
+</func>
+

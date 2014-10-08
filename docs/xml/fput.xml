@@ -1,0 +1,53 @@
+<func id="fput">
+   <brief>Put data to a file.</brief>
+
+   <args>
+      <arg id="data" type="list">
+         <desc>The data to output.</desc>
+      </arg>
+
+      <arg id="fileHandle" type="handle">
+      <desc>The handle of a file opened for write access..</desc>
+
+      fp</arg>
+   </args>
+
+   <lvalue id="status" type="str">
+      <ret id="$ACKNOWLEDGE" status="$ACKNOWLEDGE">
+         <desc>The data was output.</desc>
+      </ret>
+   </lvalue>
+
+   <body ref="put.htm" />
+
+   <exceptions>
+      <exception status="%FILE">
+         <desc>Invalid file handle</desc>
+      </exception>
+
+      <exception status="%BOUNDS">
+         <desc>Subscript is out of bounds</desc>
+      </exception>
+   </exceptions>
+
+   <examples>
+      <example>fput.hyp</example>
+   </examples>
+
+   <links>
+      <link>put</link>
+
+      <link>puts</link>
+
+      <link>fputs</link>
+
+      <link>get</link>
+
+      <link>gets</link>
+
+      <link>fgets</link>
+
+      <link>fget</link>
+   </links>
+</func>
+

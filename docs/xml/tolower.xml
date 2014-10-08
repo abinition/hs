@@ -1,0 +1,33 @@
+<func id="tolower">
+  <brief>
+    Convert to lowercase.
+  </brief>
+  <args>
+    <arg id="data" type="list">
+      <desc>
+        Converts all strings in the list to lowercase.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="result" type="list" array="list">
+    <ret id="lowercased" status="$ACKNOWLEDGE">
+      <desc>
+         The list, with strings converted to lowercase.
+      </desc>
+    </ret>
+  </lvalue>
+  <body>
+str s = tolower ( "abc" ) ; /* s contains "ABC" */	
+  </body>
+   <exceptions>
+      <exception status="%BOUNDS">
+         <desc>Subscript is out of bounds in tolower()</desc>
+      </exception>
+   </exceptions>   <examples>
+    <example>
+      tolower.hyp
+    </example>
+  </examples>
+  <links />
+</func>
+

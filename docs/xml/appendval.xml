@@ -1,0 +1,32 @@
+<func id="appendval">
+  <brief>
+    appendval
+  </brief>
+  <args>
+    <arg id="arg1" type="list">
+      <desc>
+        
+      </desc>
+      
+    </arg>
+    
+  </args>
+  <lvalue id="status" type="list">
+    <ret id="1" status="$ACKNOWLEDGE">
+      <desc>
+        
+      </desc>
+      
+    </ret>
+    
+  </lvalue>
+  <body ref="appendval.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      appendval.hyp
+    </example>
+    
+  </examples>
+  <links />
+</func>

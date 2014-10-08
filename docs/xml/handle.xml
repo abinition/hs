@@ -1,0 +1,25 @@
+<func id="handle" isTypedef="1">
+	<brief>Create or convert a variable or value into a handle format</brief>
+	<args>
+		<arg id="value" type="list">
+			<desc>
+				A value of any type. 
+			</desc>
+		</arg>
+	</args>
+	<lvalue id="result" type="handle" array="vector">
+		<ret id="pointer" status="$ACKNOWLEDGE">
+			<desc>
+			A handle value is an internal pointer to a file or other structure.
+			It is represented as an 8 digit hex number. 
+		   </desc>
+		</ret>
+	</lvalue>
+	<exceptions>
+	</exceptions>
+	<examples>
+		<example>handle.hyp</example>
+	</examples>
+	<links>
+	</links>
+</func>

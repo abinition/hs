@@ -1,0 +1,41 @@
+<func id="map">
+   <brief>The map() function overlays a byte array onto a list structure.</brief>
+
+   <args>
+      <arg id="source" type="list">
+         <desc>The destination structure in which to map the source values.</desc>
+      </arg>
+
+      <arg id="destination" type="list">
+         <desc>The source variable containing the bytes of data to map to the destination structure.</desc>
+      </arg>
+   </args>
+
+   <lvalue id="result" type="list">
+      <ret id="mapped_result" status="$ACKNOWLEDGE">
+         <desc>The mapped result with the same structure as the destination list variable.</desc>
+      </ret>
+   </lvalue>
+
+   <body>The map() function is useful when decoding the contents of a byte array in which a hidden structure of data types are contained. The map() function does recognize the endianess of the architecture you are running the map function. For example, on little endian architecture, the byte array {0,0,0,1} maps to the int value of 1, whereas on big endian architecture the byte array {1,0,0,0} maps to the int value of 1.</body>
+
+   <exceptions>
+      <exception status="%BOUNDS">
+         <desc>Destination subscript is out of bounds in map()</desc>
+      </exception>
+
+      <exception status="%BOUNDS">
+         <desc>Source subscript is out of bounds in map()</desc>
+      </exception>
+   </exceptions>
+
+   <examples>
+      <example>map.hyp</example>
+      <example>map2.hyp</example>
+   </examples>
+
+   <links>
+      <link>merge</link>
+   </links>
+</func>
+

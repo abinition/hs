@@ -1,0 +1,25 @@
+<func id="list" isTypedef="1">
+	<brief>Create or convert a variable or value into a list format</brief>
+	<args>
+		<arg id="value" type="list">
+			<desc>
+				A value of any type. 
+			</desc>
+		</arg>
+	</args>
+	<lvalue id="result" type="list" array="list">
+		<ret id="listVariable" status="$ACKNOWLEDGE">
+			<desc>
+			A list is a array of 0 or more elements.
+		   </desc>
+		</ret>
+	</lvalue>
+	<exceptions>
+	</exceptions>
+	<examples>
+		<example>list.hyp</example>
+	</examples>
+	<links>
+		<link>str</link>
+	</links>
+</func>

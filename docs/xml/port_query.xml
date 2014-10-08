@@ -1,0 +1,54 @@
+<func id="port_query">
+  <brief>
+    Sebd a general message query and wait for a reply.
+  </brief>
+  <args>
+    <arg id="id" type="int">
+      <desc>
+         The device Id.
+	The device id must be port_assign()ed to a port handle created by port_open() or port_service().
+      </desc>
+    </arg>
+    <arg id="data" type="list">
+      <desc>
+         The data to send.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="status" type="str">
+    <ret id="$ACKNOWLEDGE" status="$ACKNOWLEDGE">
+      <desc>
+         The SECS message was sent and a reply SECS message received.
+      </desc>
+    </ret>
+    <ret id="%BOUNDS" status="%BOUNDS">
+      <desc>
+         Device Id is out of range.
+      </desc>
+    </ret>
+    <ret id="%PORT" status="%PORT">
+      <desc>
+Device id 'x' is not assigned. Use port_assign(id,fd)
+      </desc>
+    </ret>
+    <ret id="%PORT" status="%PORT">
+      <desc>
+No port connection (through port 'x') exists for device 'y'
+      </desc>
+    </ret>
+    <ret id="%PORT" status="%PORT">
+      <desc>
+Failed to send port message
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="port_query.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      port_query.hyp
+    </example>
+  </examples>
+  <links />
+</func>
+

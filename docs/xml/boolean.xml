@@ -1,0 +1,27 @@
+<func id="boolean" isTypedef="1">
+   <brief>Create or convert a variable or value into a boolean format</brief>
+
+   <args>
+      <arg id="value" type="list">
+         <desc>A value of any type.</desc>
+      </arg>
+   </args>
+
+   <lvalue id="result" type="boolean" array="vector">
+      <ret id="0 - 1" status="$ACKNOWLEDGE">
+         <desc>A boolean value is 1 byte. It is displayed as a 0 or 1. All strings convert to a value of 0x01 except when the string begins with a "%", then the boolean value is 0x00.</desc>
+      </ret>
+   </lvalue>
+
+   <exceptions>
+   </exceptions>
+
+   <examples>
+      <example>boolean.hyp</example>
+   </examples>
+
+   <links>
+      <link>hex</link>
+   </links>
+</func>
+

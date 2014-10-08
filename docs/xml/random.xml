@@ -1,0 +1,23 @@
+<func id="random">
+  <brief>
+    Generate a random number.
+  </brief>
+  <args>
+  </args>
+  <lvalue id="number" type="int">
+    <ret id="randomValue" status="$ACKNOWLEDGE">
+      <desc>
+         A random number, a long value.
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="random.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      random.hyp
+    </example>
+  </examples>
+  <links />
+</func>
+

@@ -1,0 +1,38 @@
+<func id="system">
+  <brief>
+    Execute a system shell command.
+  </brief>
+  <args>
+    <arg id="command" type="str">
+      <desc>
+        The command to execute.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="status" type="list">
+    <ret id="$ACKNOWLEDGE" status="$ACKNOWLEDGE">
+      <desc>
+        The command was executed.
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="system.htm" />
+  <exceptions>
+<exception status="%IO">
+<desc>
+Command string to long.
+</desc>
+</exception>
+      <exception status="%BOUNDS">
+         <desc>Subscript is out of bounds in exec()</desc>
+      </exception>
+
+</exceptions>
+  <examples>
+    <example>
+      system.hyp
+    </example>
+  </examples>
+  <links />
+</func>
+

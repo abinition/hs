@@ -1,0 +1,32 @@
+<func id="http_eagain">
+  <brief>
+    http_eagain
+  </brief>
+  <args>
+    <arg id="arg1" type="list">
+      <desc>
+        
+      </desc>
+      
+    </arg>
+    
+  </args>
+  <lvalue id="status" type="list">
+    <ret id="1" status="$ACKNOWLEDGE">
+      <desc>
+        
+      </desc>
+      
+    </ret>
+    
+  </lvalue>
+  <body ref="http_eagain.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      http_eagain.hyp
+    </example>
+    
+  </examples>
+  <links />
+</func>

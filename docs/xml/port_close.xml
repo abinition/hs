@@ -1,0 +1,36 @@
+<func id="port_close">
+  <brief>
+    Close a port II handle opened by port_open, port_service, or port_hsms.
+  </brief>
+  <args>
+    <arg id="socket" type="handle">
+      <desc>
+        The port II handle opened by port_open, port_service, or port_hsms.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="status" type="str">
+    <ret id="$ACKNOWLEDGE" status="$ACKNOWLEDGE">
+      <desc>
+         Socket is closed.
+      </desc>
+    </ret>
+    <ret id="0" status="%port">
+      <desc>
+         No such socket.
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="port_close.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      port_close.hyp
+    </example>
+  </examples>
+  <links>
+<link>port_open</link>
+</links>
+
+</func>
+

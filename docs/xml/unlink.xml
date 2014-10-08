@@ -1,0 +1,28 @@
+<func id="unlink">
+  <brief>
+    Delete, remove, or unlink a file.
+  </brief>
+  <args>
+    <arg id="filename" type="str">
+      <desc>
+        The name of the file to unlink.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="status" type="str">
+    <ret id="$ACKNOWLEDGE" status="$ACKNOWLEDGE">
+      <desc>
+        The file was successfully unlinked.
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="unlink.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      unlink.hyp
+    </example>
+  </examples>
+  <links />
+</func>
+

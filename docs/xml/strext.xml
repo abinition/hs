@@ -1,0 +1,46 @@
+<func id="strext">
+  <brief>
+    Extract a sub-string from a string.
+  </brief>
+  <args>
+    <arg id="string" type="str">
+      <desc>
+         The source string.
+      </desc>
+    </arg>
+    <arg id="offset" type="int">
+      <desc>
+         The offset in string where the sub-string starts.
+      </desc>
+    </arg>
+    <arg id="length" type="int">
+      <desc>
+         The length of the substring.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="substring" type="str">
+    <ret id="substring" status="$ACKNOWLEDGE">
+      <desc>
+         The extracted substring.
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="strext.htm" />
+  <warnings>
+    <warning status="%BOUNDS">
+	<desc>Invalid offset specified in strext. A null string is returned.
+    </warning>
+    <warning status="%BOUNDS">
+	<desc>Invalid length specified in strext. A null string is returned.
+    </warning>
+  </warnings>
+  <exceptions />
+  <examples>
+    <example>
+      strext.hyp
+    </example>
+  </examples>
+  <links />
+</func>
+

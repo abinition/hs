@@ -1,0 +1,28 @@
+<func id="count">
+   <brief>Returns the number of elements in the argument.</brief>
+
+   <args>
+      <arg id="variable" type="list">
+         <desc>An array (of any type or size) identifier, literal, or from an expression.</desc>
+      </arg>
+   </args>
+
+   <lvalue id="n" type="int">
+      <ret id="0 - n" status="$ACKNOWLEDGE">
+         <desc>A count of 0 through n elements.</desc>
+      </ret>
+   </lvalue>
+
+   <body ref="count.htm" />
+
+   <exceptions />
+
+   <examples>
+      <example>count.hyp</example>
+   </examples>
+
+   <links>
+      <link>exists</link>
+   </links>
+</func>
+

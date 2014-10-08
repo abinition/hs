@@ -1,0 +1,32 @@
+<func id="round">
+  <brief>
+    round
+  </brief>
+  <args>
+    <arg id="arg1" type="list">
+      <desc>
+        
+      </desc>
+      
+    </arg>
+    
+  </args>
+  <lvalue id="status" type="list">
+    <ret id="1" status="$ACKNOWLEDGE">
+      <desc>
+        
+      </desc>
+      
+    </ret>
+    
+  </lvalue>
+  <body ref="round.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      round.hyp
+    </example>
+    
+  </examples>
+  <links />
+</func>

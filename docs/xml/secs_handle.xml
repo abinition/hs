@@ -1,0 +1,38 @@
+<func id="secs_handle">
+  <brief>
+    Return the socket handle for a specific SECS device id.
+  </brief>
+  <args>
+    <arg id="id" type="int">
+      <desc>
+         SECS II device id.  Valid range from 0 to 65535. 
+	</desc>
+    </arg>
+  </args>
+  <lvalue id="socket" type="handle">
+    <ret id="socketHandle" status="$ACKNOWLEDGE">
+      <desc>
+        The socket handle in which the device id is assigned to.
+      </desc>
+    </ret>
+    <ret id="-1" status="%SECS">
+      <desc>
+        No socket handle exists for device id 'x'
+      </desc>
+    </ret>
+
+  </lvalue>
+  <body>
+The secs_handle function is used to return the socket handle that was automatically associated to a device id for incoming SECS I and HSMS connection requests.
+  </body>
+  <exceptions />
+  <examples>
+    <example>
+      secs_handle.hyp
+    </example>
+  </examples>
+  <links>
+	<link>secs_assign</link>
+  </links>
+</func>
+

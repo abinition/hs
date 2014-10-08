@@ -1,0 +1,32 @@
+<func id="port_recvmsg">
+  <brief>
+    port_recvmsg
+  </brief>
+  <args>
+    <arg id="arg1" type="list">
+      <desc>
+        
+      </desc>
+      
+    </arg>
+    
+  </args>
+  <lvalue id="status" type="list">
+    <ret id="1" status="$ACKNOWLEDGE">
+      <desc>
+        
+      </desc>
+      
+    </ret>
+    
+  </lvalue>
+  <body ref="port_recvmsg.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      port_recvmsg.hyp
+    </example>
+    
+  </examples>
+  <links />
+</func>

@@ -1,0 +1,26 @@
+<func id="while" isStmt="1">
+  <brief>
+    Iterative while statement.
+  </brief>
+  <syntax><b>while</b>( expression ) statement ;</syntax>
+  <body>
+<p>The <i> while</i> statement has the form: </p>
+<blockquote>
+<i>
+<b>while</b> ( expression ) statement
+</i>
+</blockquote>
+<p>The expression is evaluated before each execution, and the statement 
+is executed zero or more times, as long as the expression is not zero.</p>
+	</body>
+  <examples>
+    <example>
+      while.hyp
+    </example>
+  </examples>
+  <links>
+	<link>for</link>
+	<link>do</link>
+  </links>
+</func>
+

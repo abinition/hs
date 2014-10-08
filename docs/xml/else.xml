@@ -1,0 +1,14 @@
+<func id="else" isStmt="1">
+  <brief>
+    Conditional else statement.
+  </brief>
+  <syntax>if ( expression ) statement ; <b>else</b> statement ;</syntax>
+  <body ref="if_else.htm" />
+  <examples>
+    <example>
+      if_else.hyp
+    </example>
+  </examples>
+  <links><link>if</link></links>
+</func>
+

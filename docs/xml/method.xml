@@ -1,0 +1,28 @@
+<func id="method">
+  <brief>
+     Returns the name of the currently executing "message" method.
+  </brief>
+  <args></args>
+  <lvalue id="name" type="str">
+    <ret id="methodName" status="$ACKNOWLEDGE">
+      <desc>
+         The method name as a string.
+      </desc>
+    </ret>
+  </lvalue>
+  <body>
+The current method name refers to the method invoked by the last incoming EVENT or QUERY message. If the HyperScript program was self-started, without a message, then the method name is always "_main_".  Calling a method in a HyperScript program statement does not affect or change the current method name.
+</body>
+  <exceptions />
+  <examples>
+    <example>
+      method.hyp
+    </example>
+  </examples>
+<links>
+<link>mode</link>
+<link>self</link>
+<link>sender</link>
+</links>
+</func>
+

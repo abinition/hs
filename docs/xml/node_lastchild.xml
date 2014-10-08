@@ -1,0 +1,31 @@
+<func id="node_lastchild">
+   <brief>Returns the last child of a node.</brief>
+
+   <args>
+      <arg id="node" type="list">
+         <desc>A list variable.</desc>
+      </arg>
+   </args>
+
+   <lvalue id="result" type="list">
+      <ret id="element" status="$ACKNOWLEDGE">
+         <desc>Returns the last child node of the argument. Child nodes are of type list. If the node has no child nodes an empty string is returned</desc>
+      </ret>
+   </lvalue>
+
+   <body />
+
+   <links>
+      <link>node_name</link>
+      <link>node_root</link>
+      <link>node_parent</link>
+      <link>node_firstchild</link>
+      <link>node_lastchild</link>
+      <link>node_nextsibling</link>
+      <link>node_prevsibling</link>
+      <link>node_nextfirstcousin</link>
+      <link>node_nextfirstcousin</link>
+      <link>node_getnodebyattr</link>
+   </links>
+</func>
+

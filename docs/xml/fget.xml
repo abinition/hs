@@ -1,0 +1,40 @@
+<func id="fget">
+  <brief>
+    Get data from a file.
+  </brief>
+  <args>
+    <arg id="fileHandle" type="handle">
+      <desc>
+      The handle of a file opened for read access.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="result" type="list">
+    <ret id="list" status="$ACKNOWLEDGE">
+         <desc>
+         A list of values, appropriately 
+         typecast,  read from the file.  
+         Values are delimited 
+         by white space characters
+         </desc>    
+    </ret>
+    <ret id="NULLString" status="%EOF">
+     <desc>
+       At the end of stdin, the result is "".
+     </desc>
+    </ret>
+  </lvalue>
+  <body ref="get.htm" />
+  <exceptions>
+    <exception status="%FILE">
+      <desc>Invalid file handle.</desc>
+    </exception>
+  </exceptions>
+  <examples>
+    <example>
+      fget.hyp
+    </example>
+  </examples>
+  <links />
+</func>
+

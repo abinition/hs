@@ -1,0 +1,28 @@
+<func id="sql_close">
+  <brief>
+    Close a SQL database channel.
+  </brief>
+  <args>
+    <arg id="dbHandle" type="handle">
+      <desc>
+        A handle to the database.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="status" type="str">
+    <ret id="$ACKNOWLEDGE" status="$ACKNOWLEDGE">
+      <desc>
+        The database is closed.
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="sql_close.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      sql_close.hyp
+    </example>
+  </examples>
+  <links />
+</func>
+

@@ -1,0 +1,28 @@
+<func id="pclose">
+  <brief>
+    Close a PROMIS data base file.
+  </brief>
+  <args>
+    <arg id="file" type="str">
+      <desc>
+         The 4 character file name, in lowercase.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="status" type="str">
+    <ret id="$ACKNOWLEDGE" status="$ACKNOWLEDGE">
+      <desc>
+        The file was closed.
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="pclose.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      pclose.hyp
+    </example>
+  </examples>
+  <links />
+</func>
+

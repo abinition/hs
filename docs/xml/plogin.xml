@@ -1,0 +1,28 @@
+<func id="plogin">
+  <brief>
+    plogin
+  </brief>
+  <args>
+    <arg id="arg1" type="list">
+      <desc>
+        
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="status" type="list">
+    <ret id="1" status="$ACKNOWLEDGE">
+      <desc>
+        
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="plogin.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      plogin.hyp
+    </example>
+  </examples>
+  <links />
+</func>
+

@@ -1,0 +1,33 @@
+<func id="undef">
+  <brief>
+    The undef function undefines a variable.
+  </brief>
+  <args>
+    <arg id="variable" type="list" isLvalue="1">
+      <desc>
+        A valid identifier.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="status" type="str">
+    <ret id="$ACKNOWLEDGE" status="$ACKNOWLEDGE">
+      <desc>
+        The variable was undefined.
+      </desc>
+    </ret>
+  </lvalue>
+  <body>
+  A variable can be undefined with the undef() function. If in local scope, and both a local and 
+  global variable of the same name exist, then undef() will delete the local variable first.  If
+  in global scope, and both a local and global variable of the same name exist, then undef() will
+  delete the global variable.
+  </body>
+  <exceptions />
+  <examples>
+    <example>
+      undef.hyp
+    </example>
+  </examples>
+  <links><link>exists</link></links>
+</func>
+

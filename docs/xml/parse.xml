@@ -1,0 +1,33 @@
+<func id="parse">
+  <brief>
+    Parse from a file into a hyperscript variable.
+  </brief>
+  <args>
+    <arg id="filespec" type="str">
+      <desc>
+         The file specification containing the HyperScript structure.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="status" type="boolean">
+    <ret id="$ACKNOWLEDGE" status="$ACKNOWLEDGE">
+      <desc>
+         XML structure in file was successfully parsed.
+      </desc>
+    </ret>
+    <ret id="%FILE" status="%FILE">
+      <desc>
+         Could not open file.
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="parse.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      parse.hyp
+    </example>
+  </examples>
+  <links />
+</func>
+

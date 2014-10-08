@@ -1,0 +1,34 @@
+<func id="trim">
+  <brief>
+    Trim the trailing space characters from a string.
+  </brief>
+  <args>
+    <arg id="string" type="str">
+      <desc>
+        The string variable to trim.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="result" type="str">
+    <ret id="str" status="$ACKNOWLEDGE">
+      <desc>
+        The string with trailing space characters removed. 
+      </desc>
+    </ret>
+  </lvalue>
+  <body>
+This method works with str and list variables with a single string element. Only trailing space characters are removed. Leading white space characters and trailing tab characters are ignored.
+  </body>
+   <exceptions>
+      <exception status="%BOUNDS">
+         <desc>Subscript is out of bounds in trim()</desc>
+      </exception>
+   </exceptions> 
+  <examples>
+    <example>
+      trim.hyp
+    </example>
+  </examples>
+  <links />
+</func>
+

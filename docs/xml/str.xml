@@ -1,0 +1,25 @@
+<func id="str" isTypedef="1">
+	<brief>Create or convert a variable or value into a str format</brief>
+	<args>
+		<arg id="value" type="str">
+			<desc>
+				A value of any type. 
+			</desc>
+		</arg>
+	</args>
+	<lvalue id="result" type="str" array="str">
+		<ret id="strVariable" status="$ACKNOWLEDGE">
+			<desc>
+			A str is a array of 0 or more elements.
+		   </desc>
+		</ret>
+	</lvalue>
+	<exceptions>
+	</exceptions>
+	<examples>
+		<example>str.hyp</example>
+	</examples>
+	<links>
+		<link>list</link>
+	</links>
+</func>

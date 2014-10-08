@@ -1,0 +1,36 @@
+<func id="secs_close">
+  <brief>
+    Close a SECS II handle opened by secs_open, secs_service, or secs_hsms.
+  </brief>
+  <args>
+    <arg id="socket" type="handle">
+      <desc>
+        The SECS II handle opened by secs_open, secs_service, or secs_hsms.
+      </desc>
+    </arg>
+  </args>
+  <lvalue id="status" type="str">
+    <ret id="$ACKNOWLEDGE" status="$ACKNOWLEDGE">
+      <desc>
+         Socket is closed.
+      </desc>
+    </ret>
+    <ret id="0" status="%SECS">
+      <desc>
+         No such socket.
+      </desc>
+    </ret>
+  </lvalue>
+  <body ref="secs_close.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      secs_close.hyp
+    </example>
+  </examples>
+  <links>
+<link>secs_open</link>
+</links>
+
+</func>
+

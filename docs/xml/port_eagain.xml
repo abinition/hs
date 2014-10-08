@@ -1,0 +1,32 @@
+<func id="port_eagain">
+  <brief>
+    port_eagain
+  </brief>
+  <args>
+    <arg id="arg1" type="list">
+      <desc>
+        
+      </desc>
+      
+    </arg>
+    
+  </args>
+  <lvalue id="status" type="list">
+    <ret id="1" status="$ACKNOWLEDGE">
+      <desc>
+        
+      </desc>
+      
+    </ret>
+    
+  </lvalue>
+  <body ref="port_eagain.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      port_eagain.hyp
+    </example>
+    
+  </examples>
+  <links />
+</func>

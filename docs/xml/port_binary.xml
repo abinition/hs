@@ -1,0 +1,32 @@
+<func id="port_binary">
+  <brief>
+    port_binary
+  </brief>
+  <args>
+    <arg id="arg1" type="list">
+      <desc>
+        
+      </desc>
+      
+    </arg>
+    
+  </args>
+  <lvalue id="status" type="list">
+    <ret id="1" status="$ACKNOWLEDGE">
+      <desc>
+        
+      </desc>
+      
+    </ret>
+    
+  </lvalue>
+  <body ref="port_binary.htm" />
+  <exceptions />
+  <examples>
+    <example>
+      port_binary.hyp
+    </example>
+    
+  </examples>
+  <links />
+</func>
