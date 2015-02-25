@@ -40,5 +40,6 @@
 *.olb binary
 *.lib binary
 *.exe binary
+*.obj binary
 
 
