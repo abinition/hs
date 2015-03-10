@@ -568,7 +568,7 @@ static int lHyp_secs1_incoming ( sSecs1 *pSecs1,
 
       /* If we're nested too deep in handlers, then forget it */
       if ( giJmpLevel == MAX_JMP_LEVEL ) {
-	gHyp_util_logError ( "SECS1 RECV ENQ jump level overflow at %d", MAX_JMP_LEVEL ) ;
+	gHyp_util_logError ( "SECS-I RECV ENQ jump level overflow at %d", MAX_JMP_LEVEL ) ;
 	longjmp ( gsJmpStack[0], COND_FATAL ) ;
       }
 
@@ -756,7 +756,7 @@ static int lHyp_secs1_incoming ( sSecs1 *pSecs1,
 
       /* If we're nested too deep in handlers, then forget it */
       if ( giJmpLevel == MAX_JMP_LEVEL ) {
-	gHyp_util_logError ( "SECS1 RECV BLK jump level overflow at %d", MAX_JMP_LEVEL ) ;
+	gHyp_util_logError ( "SECS-I RECV BLK jump level overflow at %d", MAX_JMP_LEVEL ) ;
 	longjmp ( gsJmpStack[0], COND_FATAL ) ;
       }
 
@@ -930,7 +930,7 @@ static int lHyp_secs1_incoming ( sSecs1 *pSecs1,
 	  /* Still haven't received length byte. */
 	  if ( mtime > mt2 ) {
 	    /* Too much time waiting for the length byte */
-	    gHyp_util_logError ( "SECS1 T2 timeout, sending <NAK>" ) ;
+	    gHyp_util_logError ( "SECS-I T2 timeout, sending <NAK>" ) ;
 
 	    retry-- ;
 	    if ( retry > 0 ) {
@@ -952,8 +952,19 @@ static int lHyp_secs1_incoming ( sSecs1 *pSecs1,
 	  if ( mtime > mt1 ) {
 	    /* Too much time waiting between characters */
 	    gHyp_util_logError ( "SECS-I T1 timeout, sending <NAK>" ) ;
-	    pSecs1->state = SECS_EXPECT_SEND_NAK ;
-	    break ;
+	    retry-- ;
+	    if ( retry > 0 ) {
+	      pSecs1->state = SECS_EXPECT_SEND_NAK ;
+	      break ;
+	    }
+	    else {
+	      gHyp_util_logError ( "Failed to receive a byte after %d tries",
+				   pSecs1->rty ) ;
+	      pSecs1->state = SECS_EXPECT_RECV_ENQ ;
+              pSecs1->errorCount++ ;
+	      gHyp_instance_signalPipe ( pAI, (int) pSecs1->fd, pSecs1->modifier, id ) ;
+	      return COND_SILENT ;
+	    }
 	  }
 	}
 	/*
@@ -970,7 +981,7 @@ static int lHyp_secs1_incoming ( sSecs1 *pSecs1,
 
       /* If we're nested too deep in handlers, then forget it */
       if ( giJmpLevel == MAX_JMP_LEVEL ) {
-	gHyp_util_logError ( "SECS1 RECV GBG jump level overflow at %d", MAX_JMP_LEVEL ) ;
+	gHyp_util_logError ( "SECS-I RECV GBG jump level overflow at %d", MAX_JMP_LEVEL ) ;
 	longjmp ( gsJmpStack[0], COND_FATAL ) ;
       }
 
@@ -1040,7 +1051,7 @@ static int lHyp_secs1_incoming ( sSecs1 *pSecs1,
       }
 
       pSecs1->state = SECS_EXPECT_RECV_ENQ ;
-      blockReceived = TRUE ;
+      /*blockReceived = TRUE ;*/
       /* Retry */
       cond = COND_SILENT ;
       ix = 0 ;
@@ -1587,7 +1598,7 @@ int gHyp_secs1_outgoing ( sSecs1 *pSecs1,
 
       /* If we're nested too deep in handlers, then forget it */
       if ( giJmpLevel == MAX_JMP_LEVEL ) {
-	gHyp_util_logError ( "SECS1 RECV EOT jump level overflow at %d", MAX_JMP_LEVEL ) ;
+	gHyp_util_logError ( "SECS-I RECV EOT jump level overflow at %d", MAX_JMP_LEVEL ) ;
 	longjmp ( gsJmpStack[0], COND_FATAL ) ;
       }
 
@@ -1810,7 +1821,7 @@ int gHyp_secs1_outgoing ( sSecs1 *pSecs1,
 
       /* If we're nested too deep in handlers, then forget it */
       if ( giJmpLevel == MAX_JMP_LEVEL ) {
-	gHyp_util_logError ( "SECS1 RECV ACK jump level overflow at %d", MAX_JMP_LEVEL ) ;
+	gHyp_util_logError ( "SECS-I RECV ACK jump level overflow at %d", MAX_JMP_LEVEL ) ;
 	longjmp ( gsJmpStack[0], COND_FATAL ) ;
       }
 
