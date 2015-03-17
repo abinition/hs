@@ -1554,7 +1554,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 								case SQLVARCHAR :
 								case SQLCHAR :
 									if ( n == 0 ) 
-									gHyp_data_setStr_n (pData, "NULL", 4 ) ; /*gHyp_data_setStr_n (pData, " ", 1 ) ;*/
+									gHyp_data_setStr_n (pData, " ", 1 ) ; /*gHyp_data_setStr_n (pData, "NULL", 4 ) ;*/
 
 									else if ( colLens[i] <= INTERNAL_VALUE_SIZE )
 									gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
@@ -1610,7 +1610,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 									MAX_BUFFER_SIZE);
 
 									if ( n == 0 ) 
-									gHyp_data_setStr_n (pData, "NULL", 4 ) ; /*gHyp_data_setStr_n (pData, " ", 1 ) ;*/
+									gHyp_data_setStr_n (pData, " ", 1 ) ; /*gHyp_data_setStr_n (pData, "NULL", 4 ) ;*/
 
 									else if ( colLens[i] <= INTERNAL_VALUE_SIZE )
 									gHyp_data_setStr_n ( pData, (char*) buffer, n ) ;
@@ -1769,7 +1769,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 								case FIELD_TYPE_STRING :
 								case FIELD_TYPE_VAR_STRING :
 									if ( n == 0 ) 
-									gHyp_data_setStr_n (pData, "NULL", 4 ) ; /*gHyp_data_setStr_n (pData, " ", 1 ) ;*/
+									gHyp_data_setStr_n (pData, " ", 1 ) ; /*gHyp_data_setStr_n (pData, "NULL", 4 ) ;*/
 
 									else if ( colLens[i] <= INTERNAL_VALUE_SIZE )
 									gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
@@ -1802,7 +1802,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 								default:
 
 									if ( n == 0 ) 
-									gHyp_data_setStr_n (pData, "NULL", 4 ) ; /*gHyp_data_setStr_n (pData, " ", 1 ) ;*/
+									gHyp_data_setStr_n (pData, " ", 1 ) ; /*gHyp_data_setStr_n (pData, "NULL", 4 ) ;*/
 									else if ( colLens[i] <= INTERNAL_VALUE_SIZE )
 									gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
 									else {
@@ -1991,7 +1991,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
 								/* Text */
 								if ( n == 0 ) 
-								gHyp_data_setStr_n (pData, "NULL", 4 ) ; /*gHyp_data_setStr_n (pData, " ", 1 ) ;*/
+								gHyp_data_setStr_n (pData, " ", 1 ) ; /*gHyp_data_setStr_n (pData, "NULL", 4 ) ;*/
 
 								else if ( colLens[col] <= INTERNAL_VALUE_SIZE )
 								gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
@@ -2011,7 +2011,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
 								default :
 								if ( n == 0 ) 
-								gHyp_data_setStr_n (pData, "NULL", 4 ) ; /*gHyp_data_setStr_n (pData, " ", 1 ) ;*/
+								gHyp_data_setStr_n (pData, " ", 1 ) ; /*gHyp_data_setStr_n (pData, "NULL", 4 ) ;*/
 								else if ( colLens[col] <= INTERNAL_VALUE_SIZE )
 								gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
 								else {
@@ -2269,7 +2269,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
 								/* VARCHAR2 */
 								if ( n == 0 ) 
-								gHyp_data_setStr_n (pData, "NULL", 4 ) ; /*gHyp_data_setStr_n (pData, " ", 1 ) ;*/
+								gHyp_data_setStr_n (pData, " ", 1 ) ; /*gHyp_data_setStr_n (pData, "NULL", 4 ) ;*/
 
 								else if ( colLens[col] <= INTERNAL_VALUE_SIZE )
 								gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
@@ -2349,7 +2349,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 								default :
 								
 								if ( n == 0 ) 
-								gHyp_data_setStr_n (pData, "NULL", 4 ) ; /*gHyp_data_setStr_n (pData, " ", 1 ) ;*/
+								gHyp_data_setStr_n (pData, " ", 1 ) ; /*gHyp_data_setStr_n (pData, "NULL", 4 ) ;*/
 								else if ( colLens[col] <= INTERNAL_VALUE_SIZE )
 								gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
 								else {
