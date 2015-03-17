@@ -2767,9 +2767,11 @@ void gHyp_fileio_log ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       gzLogName[0] = '\0' ;
     }
     else if ( !pFILElog 
+/*
 #ifdef AS_WINDOWS
       || !pFILElog->_ptr
 #endif
+*/
       ) {
     
       if ( (guRunFlags & RUN_RESTRICTED) ) 

@@ -32,6 +32,7 @@
  *
  */
 
+
 /********************** AUTOROUTER INTERFACE ********************************/
 
 #ifdef WIN32
@@ -112,19 +113,6 @@ typedef struct oracle_t	sORACLE ;
 sORACLE *gsORACLE ;
 
 /*#define ORACLE_AUTO_RECONNECT 1*/
-
-
-/* for sql_bind */
-struct bind_t {
-	OCIStmt    *stmthp;
-  char       table[TOKEN_SIZE+1];     /* Eg: actl */
-  char       counter[TOKEN_SIZE+1];   /* Eg: noevents */
-  sData*     pData ;
-  dvoid      *valuep[MAX_SQL_ITEMS] ; 
-  ub2        *alenp[MAX_SQL_ITEMS] ;
-}  ;
-
-typedef struct bind_t	sBIND ;
 
 #endif
 
@@ -245,8 +233,7 @@ static sb4 lHyp_sql_readLob ( dvoid *ctxp, CONST dvoid *bufxp, ub4 len, ub1 piec
 	case OCI_NEXT_PIECE:
 
 		/* process buffer bufxp */
-                if ( guDebugFlags & DEBUG_SQL) gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SQL,
-		"sql : callback read the %d  piece\n", piece_count);
+		/*gHyp_util_debug("callback read the %d th piece\n", piece_count);*/
 		gHyp_util_breakStream ( (char*) bufxp, len, (sData*) ctxp, TRUE ) ;
 
 		break;
@@ -442,11 +429,11 @@ void gHyp_sql_bind ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
 		sData
 		  *pStatus,
+      *pVariable,
 		  *pData,
 		  *pData2,
       *pData3,
-      *pData4,
-      *pData5,
+      *pValue,
 		  *pResult ;
 
 		sLOGICAL
@@ -465,25 +452,10 @@ void gHyp_sql_bind ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 		  *pEndSQL,
 		  sql_stmt[MAX_SQL_STMT_LENGTH+1] ;
 
-    void *dbbind = NULL ;
-    void *dbproc = NULL ;
-
 #ifdef AS_SQL
-
-		sLOGICAL
-		  isSelect ;
-    int 
-       n ;
 		
-#endif
-
-#ifdef AS_SQL
-
-#ifdef AS_ORACLE
-
 		sData
-      *pValue,
-      *pVariable ;
+		  *pArgs=NULL ;
 		
     int
 		  i,
@@ -492,6 +464,7 @@ void gHyp_sql_bind ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       dataType,
       precision,
 		  numCols,
+		  n, 
       msgLen ;
 
 		char
@@ -500,9 +473,15 @@ void gHyp_sql_bind ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       msg[MAX_OUTPUT_LENGTH+1] ;
 
 		sLOGICAL
-      isFloat ;
+      isFloat,
+		  isSelect ;
+		
+#endif
 
-    sBIND *dbbind ;
+#ifdef AS_SQL
+
+#ifdef AS_ORACLE
+
     dvoid* data_buffer; 
     sb4 data_bufferlen ;
 		sORACLE	*dbproc ;
@@ -521,12 +500,10 @@ void gHyp_sql_bind ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 		OCILobLocator* pLobLocator[MAX_SQL_ITEMS];
 		sb2	indicator[MAX_SQL_ITEMS] ;
 
-#else
-    short results = 0 ;
-		void *dbproc = NULL ;
-    void *dbbind = NULL ;
 #endif
 
+#else
+		void *dbproc ;
 #endif
 
 		/* Assume success */
@@ -536,15 +513,9 @@ void gHyp_sql_bind ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 		pStatus = gHyp_frame_createVariable ( pAI, pFrame, "_sql_status_" ) ;
 		gHyp_data_deleteValues ( pStatus ) ;
 
-		if ( argCount != 5 )
+		if ( argCount != 3 )
 		gHyp_instance_error ( pAI, STATUS_ARGUMENT,
-		"Invalid arguments. Usage: sql_bind ( stmt, handle, bindVariables, table, counter )" ) ;
-
-		/* Get the Bind counter name */
-		pData5 = gHyp_stack_popRdata ( pStack, pAI ) ;
-
-		/* Get the Bind table name */
-		pData4 = gHyp_stack_popRdata ( pStack, pAI ) ;
+		"Invalid arguments. Usage: sql_bind ( stmt, handle, bindVariables )" ) ;
 
 		/* Get the Bind list */
 		pData3 = gHyp_stack_popRdata ( pStack, pAI ) ;
@@ -625,9 +596,7 @@ void gHyp_sql_bind ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 		/* Use OCIHandleAlloc/OCIStmtPrepare/OCIHandleFree  */
 
 		/* Create handle for the statement */ 
-                if ( guDebugFlags & DEBUG_SQL) gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SQL,
-                         "sql : Creating first stmt handle.");
-
+		/*gHyp_util_debug("Creating first stmt handle.");*/
 		rc = OCIHandleAlloc(  (dvoid *) dbproc->envhp, 
 		                      (dvoid **) &stmthp, 
 		                      OCI_HTYPE_STMT,
@@ -636,20 +605,8 @@ void gHyp_sql_bind ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
 		lHyp_sql_checkErr ( dbproc->errhp, rc ) ;
 		
-    /* Create the bind handle */
-    dbbind = (sBIND*) AllocMemory ( sizeof ( sBIND ) ) ;
-    dbbind->stmthp = stmthp ;
-
-    context = -1 ;
-		isVector = (gHyp_data_getDataType(pData5) > TYPE_STRING);
-		valueLen = gHyp_data_getStr ( pData5, dbbind->counter, MAX_INPUT_LENGTH, context, isVector ) ;
-		isVector = (gHyp_data_getDataType(pData4) > TYPE_STRING);
-		valueLen = gHyp_data_getStr ( pData4, dbbind->table, MAX_INPUT_LENGTH, context, isVector ) ;
-    dbbind->pData = pData3 ;
-
 		/* Prepare the statement */
-                if ( guDebugFlags & DEBUG_SQL) gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SQL,
-		"sql : Preparing first stmt.");
+		/*gHyp_util_debug("Preparing first stmt.");*/
 		if ( rc == OCI_SUCCESS ) 
 		rc = OCIStmtPrepare(  stmthp, 
 		                      dbproc->errhp, 
@@ -662,8 +619,7 @@ void gHyp_sql_bind ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
 		/* Use OCIStmtPrepare2/OCIStmtRelease */
 
-                if ( guDebugFlags & DEBUG_SQL) gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SQL,
-		"sql : Preparing first stmt.");
+		/*gHyp_util_debug("Preparing first stmt.");*/
 		rc = OCIStmtPrepare2 (  dbproc->svchp,
 		                        &stmthp,
 		                        dbproc->errhp,
@@ -740,8 +696,7 @@ void gHyp_sql_bind ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 					colName[colNameLen] = '\0' ;
 					pColName = colName ;
           gHyp_util_upperCase ( colName, colNameLen ) ;
-                if ( guDebugFlags & DEBUG_SQL) gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SQL,
-					"sql : Column name %d is %s, typ=%d",i,pColName,dataType);
+					/*gHyp_util_debug("Column name %d is %s, typ=%d",i,pColName,dataType);*/
 
 				  pVariable = gHyp_frame_createVariable ( pAI, pFrame, colName ) ;
 					gHyp_data_deleteValues ( pVariable ) ;
@@ -870,30 +825,23 @@ void gHyp_sql_bind ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
           case TYPE_LIST:
           case TYPE_STRING:
           default:
-            dataType = SQLT_CHR ;
+            dataType = SQLT_STR ;
             break ;
         }
-  pValue = gHyp_data_getValue(pVariable,0,TRUE) ;
-
-  data_bufferlen = (sb4) gHyp_data_bufferLen ( pValue,0 );
-  data_buffer = (dvoid *) gHyp_data_buffer ( pValue, 0 ) ;
-  
-  dbbind->valuep[i] = data_buffer ;
-  dbbind->alenp[i] = (ub2*) gHyp_data_dataLenPtr ( pValue );
-
-                if ( guDebugFlags & DEBUG_SQL) gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SQL,
-        "sql : Binding %s, type %d, buf=%x, len=%d,%d",
-        colName,dataType,dbbind->valuep[i],data_bufferlen,(short)*dbbind->alenp[i]);
+pValue = gHyp_data_getValue(pVariable,0,TRUE) ;
+data_buffer = (dvoid *) gHyp_data_buffer ( pValue, 0 );
+data_bufferlen = (sb4) gHyp_data_bufferLen ( pValue,0 );
+gHyp_util_debug("Binding %s, type %d, buf=%x, len=%d",colName,dataType,data_buffer,data_bufferlen);
 				rc = OCIBindByName( stmthp, 
 					                  &bindp[i], 
 					                  dbproc->errhp,
 					                  (text *) colName, 
                             (sb4) strlen ( colName ),
-						                (dvoid*) dbbind->valuep[i],
-                            (sb4) data_bufferlen, 
+						                data_buffer,
+                            data_bufferlen, 
 					                  (ub2) dataType,
 					                  (dvoid *) 0, /*&indicator[i]*/ 
-					                  (ub2 *) dbbind->alenp[i],
+					                  (ub2 *) 0, /*&dataLen[i]*/
 					                  (ub2) 0, 
 					                  (ub4) 0, 
 					                  (ub4 *) 0, 
@@ -917,16 +865,12 @@ void gHyp_sql_bind ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 			status = FALSE ;
 
 		}
-		else
-                if ( guDebugFlags & DEBUG_SQL) gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SQL,
-			"sql : Bound %d columns",i);
-
 #endif
 
 #endif    /* from AS_SQL way up above  */
 
 		pResult = gHyp_data_new ( NULL ) ;
-    gHyp_data_setHandle ( pResult, (void*) dbbind ) ;
+    gHyp_data_setHandle ( pResult, (void*) stmthp ) ;
 		gHyp_stack_push ( pStack, pResult ) ;
 		return ;
 	}
@@ -1038,7 +982,6 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 		DBPROCESS  *dbproc ;
 		RETCODE    results ;
 		char      buffer[MAX_BUFFER_SIZE+1];
-    void* dbbind = NULL;
 
 #elif AS_MYSQL
 
@@ -1047,7 +990,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 		MYSQL_FIELD *field ;
 		MYSQL_ROW row ;
 		unsigned long *length ;
-    void* dbbind = NULL;
+
 #elif AS_PGSQL
 
 		PGconn      *dbproc ;
@@ -1056,21 +999,18 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 		numRows,
 		isDataBinary[MAX_SQL_ITEMS],
 		row,col;
-    void* dbbind = NULL;
+
 #elif AS_ORACLE
 
 		sORACLE	*dbproc ;
 		sword	results ;
 		sword	rc ; 
-    sBIND* dbbind = NULL ;
 		OCIStmt    *stmthp;
 		OCIParam   *mypard;
 		void*	dataBuffer[MAX_SQL_ITEMS] ;
 		ub4	dataBufferLen[MAX_SQL_ITEMS] ;
 		ub4	amount ;
 		ub4	offset ;
-    ub4 iters ;
-
 #ifdef AS_ORACLE_DO_PREPARE2
 		OraText	*key = "mykey" ;
     ub4	keylen = strlen (key) ;
@@ -1093,8 +1033,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 #endif
 
 #else
-		void *dbproc = NULL;
-		void *dbbind = NULL;
+		void *dbproc ;
 #endif
 
 		/* Assume success */
@@ -1146,17 +1085,11 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 		if ( gHyp_data_getDataType ( pData2 ) == TYPE_HANDLE ) {
 			isStmtBound = TRUE ;
 #ifdef AS_ORACLE
-			dbbind = (sBIND*) gHyp_data_getHandle ( pData2, 0, TRUE ) ;
-      stmthp = dbbind->stmthp ;
+			stmthp = (OCIStmt*) gHyp_data_getHandle ( pData2, 0, TRUE ) ;
 #endif
 		}
 		else {
-			dbbind = 
-#ifdef AS_ORACLE
-        (sBIND*) NULL ;
-#else
-         (void*) NULL ;
-#endif
+			stmthp = (OCIStmt*) NULL ;
 			isStmtBound = FALSE ;
 		}
 
@@ -1249,8 +1182,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 		if ( !isStmtBound ) {
 
 			/* Create handle for the statement */ 
-                if ( guDebugFlags & DEBUG_SQL) gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SQL,
-			"sql : Creating first stmt handle.");
+			/*gHyp_util_debug("Creating first stmt handle.");*/
 			rc = OCIHandleAlloc(  (dvoid *) dbproc->envhp, 
 			(dvoid **) &stmthp, 
 			OCI_HTYPE_STMT,
@@ -1260,8 +1192,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 			lHyp_sql_checkErr ( dbproc->errhp, rc ) ;
 			
 			/* Prepare the statement */
-                if ( guDebugFlags & DEBUG_SQL) gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SQL,
-			"sql : Preparing first stmt.");
+			/*gHyp_util_debug("Preparing first stmt.");*/
 			if ( rc == OCI_SUCCESS ) 
 			rc = OCIStmtPrepare(stmthp, 
 			dbproc->errhp, 
@@ -1274,8 +1205,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
 			/* Use OCIStmtPrepare2/OCIStmtRelease */
 
-                if ( guDebugFlags & DEBUG_SQL) gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SQL,
-			"sql : Preparing first stmt.");
+			/*gHyp_util_debug("Preparing first stmt.");*/
 			rc = OCIStmtPrepare2 ( dbproc->svchp,
 			&stmthp,
 			dbproc->errhp,
@@ -1295,40 +1225,20 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 #else
 			orientation = isSelect ? OCI_DESCRIBE_ONLY : OCI_COMMIT_ON_SUCCESS ;
 #endif
-      iters = 1 ; 
 		}
 		else {
 			/* Bound stmt */
 			rc = OCI_SUCCESS ;
 			isSelect = FALSE ;
 			orientation = OCI_DEFAULT  ;
-
-      /* Populate the bind arrays */
-
-      pData = dbbind->pData ;
-      pTable = gHyp_frame_findVariable ( pAI, pFrame, dbbind->table ) ;
-      pData2 = gHyp_data_getChildByName ( pTable, dbbind->counter ) ;
-      iters = 1 ; /*gHyp_data_getInt ( pData2, 0, TRUE ) ;*/
-
-		  pResult = NULL ;
-		  ss = 0 ;
-		  context = -1 ;
-		  isVector = (gHyp_data_getDataType(pTable) > TYPE_STRING);
-      i = 0 ;
-		  while ( (pResult = gHyp_data_nextValue ( pTable, pResult, &context, ss ) ) ) {  
-        dbbind->valuep[i] = (dvoid*) gHyp_data_buffer ( pResult, 0 ) ;
-        dbbind->alenp[i] = (ub2*) gHyp_data_dataLenPtr ( pResult );
-        i++ ;
-      }
     }
 
 		if ( rc == OCI_SUCCESS ) {
-                if ( guDebugFlags & DEBUG_SQL) gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SQL,
-			"sql : Executing first stmt");
+			/*gHyp_util_debug("Executing first stmt");*/
 			rc = OCIStmtExecute(  dbproc->svchp, 
 			                      stmthp,
 			                      dbproc->errhp,
-			                      (ub4) iters, 
+			                      (ub4) 1, 
 			                      (ub4) 0,
 			                      (CONST OCISnapshot *) NULL, 
 			                      (OCISnapshot *) NULL, 
@@ -1644,7 +1554,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 								case SQLVARCHAR :
 								case SQLCHAR :
 									if ( n == 0 ) 
-									gHyp_data_setStr_n (pData, "NULL", 4 ) ;
+									gHyp_data_setStr_n (pData, " ", 1 ) ;
 
 									else if ( colLens[i] <= INTERNAL_VALUE_SIZE )
 									gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
@@ -1700,7 +1610,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 									MAX_BUFFER_SIZE);
 
 									if ( n == 0 ) 
-									gHyp_data_setStr_n (pData, "NULL", 4 ) ;
+									gHyp_data_setStr_n (pData, " ", 1 ) ;
 
 									else if ( colLens[i] <= INTERNAL_VALUE_SIZE )
 									gHyp_data_setStr_n ( pData, (char*) buffer, n ) ;
@@ -1859,7 +1769,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 								case FIELD_TYPE_STRING :
 								case FIELD_TYPE_VAR_STRING :
 									if ( n == 0 ) 
-									gHyp_data_setStr_n (pData, "NULL", 4 ) ;
+									gHyp_data_setStr_n (pData, " ", 1 ) ;
 
 									else if ( colLens[i] <= INTERNAL_VALUE_SIZE )
 									gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
@@ -1892,7 +1802,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 								default:
 
 									if ( n == 0 ) 
-									gHyp_data_setStr_n (pData, "NULL", 4 ) ;
+									gHyp_data_setStr_n (pData, " ", 1 ) ;
 									else if ( colLens[i] <= INTERNAL_VALUE_SIZE )
 									gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
 									else {
@@ -2081,7 +1991,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
 								/* Text */
 								if ( n == 0 ) 
-								gHyp_data_setStr_n (pData, "NULL", 4 ) ;
+								gHyp_data_setStr_n (pData, " ", 1 ) ;
 
 								else if ( colLens[col] <= INTERNAL_VALUE_SIZE )
 								gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
@@ -2101,7 +2011,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
 								default :
 								if ( n == 0 ) 
-								gHyp_data_setStr_n (pData, "NULL", 4 ) ;
+								gHyp_data_setStr_n (pData, " ", 1 ) ;
 								else if ( colLens[col] <= INTERNAL_VALUE_SIZE )
 								gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
 								else {
@@ -2221,13 +2131,11 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
 					/* Use OCIHandleAlloc/OCIStmtPrepare/OCIHandleFree */
 
-                if ( guDebugFlags & DEBUG_SQL) gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SQL,
-					"sql : Freeing first stmt handle");
+					/*gHyp_util_debug("Freeing first stmt handle");*/
 					if ( stmthp )
 					OCIHandleFree( (dvoid *)stmthp, (ub4) OCI_HTYPE_STMT);
 
-                if ( guDebugFlags & DEBUG_SQL) gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SQL,
-					"sql : Creating second stmt handle.");
+					/*gHyp_util_debug("Creating second stmt handle.");*/
 					rc = OCIHandleAlloc(	
 					(dvoid *) dbproc->envhp, 
 					(dvoid **) &stmthp, 
@@ -2237,8 +2145,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
 					lHyp_sql_checkErr ( dbproc->errhp, rc ) ;
 
-                if ( guDebugFlags & DEBUG_SQL) gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SQL,
-					"sql : Preparing second stmt.");
+					/*gHyp_util_debug("Preparing second stmt.");*/
 
 					rc = OCIStmtPrepare(
 					stmthp, 
@@ -2251,8 +2158,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
 #else
 					/* Use OCIStmtPrepare2/OCIStmtRelease */
-                if ( guDebugFlags & DEBUG_SQL) gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SQL,
-					"sql : First stmt released, key = %s",key );
+					/*gHyp_util_debug("First stmt released, key = %s",key );*/
 					rc = OCIStmtRelease ( 
 					stmthp,  
 					dbproc->errhp,
@@ -2261,8 +2167,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 					(ub4) OCI_DEFAULT );  
 					lHyp_sql_checkErr (	dbproc->errhp, rc ) ;
 
-                if ( guDebugFlags & DEBUG_SQL) gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SQL,
-					"sql : Preparing second stmt");
+					/*gHyp_util_debug("Preparing second stmt");*/
 					if ( rc == OCI_SUCCESS ) 
 					rc = OCIStmtPrepare2 ( 
 					dbproc->svchp,
@@ -2318,8 +2223,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 						}
 					}
 					/*  Process ORACLE rows  */
-                if ( guDebugFlags & DEBUG_SQL) gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SQL,
-					"sql:  Executing second stmt.");
+					/*gHyp_util_debug("Executing second stmt.");*/
 					rc = OCIStmtExecute(
 					dbproc->svchp, 
 					stmthp,
@@ -2365,7 +2269,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
 								/* VARCHAR2 */
 								if ( n == 0 ) 
-								gHyp_data_setStr_n (pData, "NULL", 4 ) ;
+								gHyp_data_setStr_n (pData, " ", 1 ) ;
 
 								else if ( colLens[col] <= INTERNAL_VALUE_SIZE )
 								gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
@@ -2445,7 +2349,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 								default :
 								
 								if ( n == 0 ) 
-								gHyp_data_setStr_n (pData, "NULL", 4 ) ;
+								gHyp_data_setStr_n (pData, " ", 1 ) ;
 								else if ( colLens[col] <= INTERNAL_VALUE_SIZE )
 								gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
 								else {
@@ -2578,14 +2482,12 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 					if ( stmthp ) {
 #ifndef AS_ORACLE_DO_PREPARE2
 						
-                if ( guDebugFlags & DEBUG_SQL) gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SQL,
-						"sql : Releasing second stmt handle.");
+						/*gHyp_util_debug("Releasing second stmt handle.");*/
 						OCIHandleFree( (dvoid *)stmthp, (ub4) OCI_HTYPE_STMT);
 
 #else
 						/* Use OCIStmtPrepare2/OCIStmtRelease */
-                if ( guDebugFlags & DEBUG_SQL) gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SQL,
-						"sql : Releasing second stmt.");
+						/*gHyp_util_debug("Releasing second stmt.");*/
 						rc = OCIStmtRelease ( 
 						stmthp,  
 						dbproc->errhp,
@@ -2669,13 +2571,11 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
 #ifndef AS_ORACLE_DO_PREPARE2
 
-                if ( guDebugFlags & DEBUG_SQL) gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SQL,
-			"sql : No Data: Releasing first stmt handle.");
+			/*gHyp_util_debug("No Data: Releasing first stmt handle.");*/
 			OCIHandleFree( (dvoid *)stmthp, (ub4) OCI_HTYPE_STMT);
 			
 #else
-                if ( guDebugFlags & DEBUG_SQL) gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_SQL,
-			"sql : No Data: first stmt released");
+			/*gHyp_util_debug("No Data: first stmt released");*/
 			rc = OCIStmtRelease ( 
 			stmthp,  
 			dbproc->errhp,
@@ -2686,8 +2586,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 #endif
 		}
 #endif
-#else
-	}
+
 #endif    /* from AS_SQL way up above  */
 
 		pResult = gHyp_data_new ( NULL ) ;
@@ -3477,7 +3376,7 @@ void gHyp_sql_datetime ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 			ts = gsCurTime = time(NULL) ;
 			pstm = localtime ( &ts ) ;
 			if ( !pstm || pstm->tm_year > 138 ) {
-				strcpy ( timeStamp, " " ) ;
+				strcpy ( timeStamp, "NULL" ) ;
 			}
 			else {
 				sprintf (timeStamp, 
@@ -3507,7 +3406,7 @@ void gHyp_sql_datetime ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 				ts = gHyp_data_getRaw ( pValue, context, TRUE  ) ;
 				pstm = localtime ( &ts ) ;
 				if ( !pstm || pstm->tm_year > 138 ) {
-					strcpy ( timeStamp, " " ) ;
+					strcpy ( timeStamp, "NULL" ) ;
 				}
 				else {
 					sprintf ( timeStamp, 
@@ -3529,4 +3428,3 @@ void gHyp_sql_datetime ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 		}
 	}
 }
-

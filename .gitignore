@@ -1,0 +1,10 @@
+# Logs
+logs
+*.log
+*.obj
+
+# Runtime data
+pids
+*.pid
+*.seed
+
