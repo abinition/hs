@@ -10,3 +10,13 @@ pids
 
 *.exe
 *.map
+*.manifest
+*.res
+*.ilk
+*.pdb
+*.dep
+*.idb
+*.user
+*.ncb
+*.suo
+*.htm
