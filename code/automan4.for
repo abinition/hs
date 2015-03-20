@@ -2870,7 +2870,7 @@
 !   Code:
 
 	bufflen = TLOG__MAXRECSIZ
-      tlog.recnum = 0 ;  ! must initialize
+
       call Fil_Rms_GetRec( 	aeqSsp_autofil_tlogRab, 
      &				0, 
      &				TLOG_S_RECNUM,
