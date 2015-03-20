@@ -8,3 +8,5 @@ pids
 *.pid
 *.seed
 
+*.exe
+*.map

@@ -1,37 +1,261 @@
 /*****************************************************************************!
 !                HyperScript Software Source Code.                            !
 !                                                                             !
-!          ***** Copyright: (c) 2002 Abinition (TM), Inc                      !
-!          ***** Program property of Abinition, Inc                           !
-!          ***** All rights reserved - Licensed Material.                     !
-!
 !          ***** Copyright: (c) 1994 Ab Initio Software                       !
-!          ***** Program property of Ab Initio Software                       !
 !          ***** All rights reserved - Licensed Material.                     !
+!          ***** Program property of Ab Initio Software                       !
 !                                                                             !
 !*****************************************************************************/
 
 /*
- *  This program is dual-licensed: either;
- *
- *  Under the terms of the GNU General Public License version 3 as 
- *  published by the Free Software Foundation. For the terms of this 
- *  license, see licenses/gplv3.md or <http://www.gnu.org/licenses/>;
- *
- *  Under the terms of the Commercial License as set out in 
- *  licenses/commercial.md
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of 
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License or Commerical License for more details.
- */
-
-/*
- * Modifications:
- *
- */
-
+* Modifications:
+*
+*
+* Modified:
+*
+* $Log: sql.c,v $
+* Revision 1.80  2013-01-02 19:10:43  bergsma
+* CVS Issues
+*
+* Revision 1.78  2012-08-11 00:15:04  bergsma
+* Add AS_ORACLE_COMMIT_ON_SUCCESS
+*
+* Revision 1.77  2012-07-23 03:59:33  bergsma
+* Enclose ORACLE Failover Callback as AS_ORA_CALLBACK
+*
+* Revision 1.76  2011-12-24 01:42:12  bergsma
+* Handle OCI_NO_DATA condition on UPDATE or INSERT statements.
+*
+* Revision 1.75  2011-07-03 16:36:56  bergsma
+* gHyp_sock_usleep, not gHyp_util_usleep
+*
+* Revision 1.74  2011-06-09 22:31:40  bergsma
+* Integrate ORACLE failover
+*
+* Revision 1.73  2011-01-08 21:42:56  bergsma
+* New args to frame Variable functions.
+* Increase in buffer size.
+*
+* Revision 1.72  2010-05-28 18:08:43  bergsma
+* Fix for sql_datetime not entirely correct.
+*
+* Revision 1.71  2010-04-13 21:07:24  bergsma
+* sql_datetime fixed
+*
+* Revision 1.70  2010-03-17 08:17:37  bergsma
+* Fix memory leak for sql_external and meaning of second argument.
+*
+* Revision 1.69  2010-03-05 06:05:24  bergsma
+* SJM Changes
+* 1. ORACLE_COMMIT_ON_SUCCESS for non-SELECT statements
+* 2, sql_toexternal with DoNotTrim==1 now trims, but never returns NULL
+*
+* Revision 1.68  2009-09-28 05:28:33  bergsma
+* Misplaced bracket
+*
+* Revision 1.67  2009-09-28 05:23:31  bergsma
+* Free ORACLE stmt handle memory leak causing
+* ORA-01000: maximum open cursors exceeded
+*
+* Revision 1.66  2009-09-21 05:20:38  bergsma
+* Better detection of NULL sql_datetime values
+*
+* Revision 1.65  2009-06-17 22:49:02  bergsma
+* For sql_datetime and datetime, reject erroreous dates, SPECIFICALLY from
+* PROMIS, a NULL date is -1200798848
+*
+* Revision 1.64  2008-10-16 23:41:31  bergsma
+* Bad datetime dbconv in SQLSERVER
+*
+* Revision 1.63  2008-09-11 00:46:28  bergsma
+* Bad conversion of empty values to NULL using sql_toexternal
+*
+* Revision 1.62  2008-08-25 12:49:07  bergsma
+* Typo (in support of PGSQL, missing { in function
+*
+* Revision 1.61  2008-08-21 11:08:55  bergsma
+* For adapting to FreeTDS
+*
+* Revision 1.60  2008-07-01 23:48:54  bergsma
+* When doing 'toexternal', make room for VALUE_SIZE*4
+*
+* Revision 1.59  2008-06-13 04:22:00  bergsma
+* Make CLOB _data_
+*
+* Revision 1.58  2008-05-27 16:12:25  bergsma
+* Make sure _data_ is used for colLens > INTERNAL_VALUE_SIZE
+*
+* Revision 1.57  2008-05-27 00:25:13  bergsma
+* no message
+*
+* Revision 1.56  2008-05-26 00:32:41  bergsma
+* no message
+*
+* Revision 1.55  2008-05-26 00:08:57  bergsma
+* OCIlobRead function problems
+*
+* Revision 1.54  2008-05-25 02:30:40  bergsma
+* OCIlobRead function problems
+*
+* Revision 1.53  2008-05-23 05:44:51  bergsma
+* ORACLE CLOB Reading changes
+*
+* Revision 1.52  2008-05-19 01:07:40  bergsma
+* For ORACLE clob, allow maximum 512K input buffer.
+*
+* Revision 1.49  2007-12-01 02:00:18  bergsma
+* For pgsql, use PQfmod to get varchar value
+*
+* Revision 1.48  2007-11-29 18:03:03  bergsma
+* sql_toexternal, 2nd argument was reversed, trim was broken
+*
+* Revision 1.47  2007-06-20 22:31:41  bergsma
+* no message
+*
+* Revision 1.46  2007-06-20 21:09:24  bergsma
+* Use popRdata, not popRvalue, when subsequently doing a data_getNext
+*
+* Revision 1.45  2007-06-16 17:57:25  bergsma
+* Optional arg for sql_toexternal to notTrim(1) or Trim(0), default = 0.
+*
+* Revision 1.44  2007-05-26 01:46:40  bergsma
+* Make sql_datetime and sql_toexternal return quotes around the
+* result, or NULL if invalid.
+*
+* Revision 1.43  2007-05-03 17:02:33  bergsma
+* For sql_datetime, return NULL for errors.
+*
+* Revision 1.42  2007-03-22 16:45:23  bergsma
+* No NL at eof.
+*
+* Revision 1.41  2007-03-15 01:08:48  bergsma
+* Added sql_datetime function
+*
+* Revision 1.40  2006-10-15 18:52:35  bergsma
+* SQLTEXT is _data_
+*
+* Revision 1.39  2006/10/12 23:08:42  bergsma
+* TEXTOID for POSTGRESQL is _data_
+*
+* Revision 1.38  2006/10/12 00:33:14  bergsma
+* Typedef required on setstr_n
+*
+* Revision 1.37  2006/10/11 16:16:42  bergsma
+* Firx compile warnings.
+*
+* Revision 1.36  2006/10/01 16:27:16  bergsma
+* Typo, change C++ comment to C style.
+*
+* Revision 1.35  2006/09/25 05:02:15  bergsma
+* Convert ll results from SQL query to actual data type of column
+*
+* Revision 1.34  2006/09/16 20:06:28  bergsma
+* Datatyping for columns.
+* Added _sqlattr_ to further help distinguish datetime types.
+*
+* Revision 1.33  2006/09/14 17:09:12  bergsma
+* Fixes for ORACLE.
+* Also, make sure _sql_status_ is defined for each SQL db type.
+*
+* Revision 1.32  2006/08/17 05:04:40  bergsma
+* Addd ORACLE OCI interface
+*
+* Revision 1.31  2006/02/06 02:52:30  bergsma
+* Detect all successful PostgreSQL status valiues.
+*
+* Revision 1.30  2006/01/29 16:00:57  bergsma
+* Postgresl include area is something else
+*
+* Revision 1.29  2006/01/17 15:59:45  bergsma
+* no message
+*
+* Revision 1.28  2005/09/17 17:10:49  bergsma
+* Only PostgreSQL must force uppercase column names.
+*
+* Revision 1.27  2005/09/08 09:13:30  bergsma
+* Postgres DEC MCS to Unicode Handling
+*
+* Revision 1.23  2005/06/14 23:45:40  bergsma
+* no message
+*
+* Revision 1.22  2005/06/12 16:46:21  bergsma
+* HS 3.6.1
+*
+* Revision 1.21  2005/04/19 16:41:10  bergsma
+* Do not use parsestring on VARCHAR fields fetched in select statements.
+*
+* Revision 1.20  2005/04/18 19:20:57  bergsma
+* TEXT fields in SQLSERVER needs _data_.
+*
+* Revision 1.19  2005/04/13 13:45:54  bergsma
+* HS 3.5.6
+* Added sql_toexternal.
+* Fixed handling of strings ending with bs (odd/even number of backslashes)
+* Better handling of exception condition.
+*
+* Revision 1.18  2005/03/21 18:06:41  bergsma
+* For unknown "default" datatypes in SQLSERVER, use buffer instead of value
+* to receive data.
+*
+* Revision 1.17  2004/12/13 04:53:23  bergsma
+* Let strings be longer than VALUE_SIZE bytes.
+*
+* Revision 1.16  2004/11/02 23:00:24  bergsma
+* (char*) mismatch with (sBYTE*)
+*
+* Revision 1.15  2004/10/27 18:24:07  bergsma
+* HS 3.3.2
+* 1. Fix bug with SQL read when str size is > 512 bytes, use _data_ blobs
+* 2. Fix bug with XML output, forgetting ";" in unicode output.
+* 3. In |TOKEN|VALUE|VALUE| part of message, use unparse on TOKEN
+* as well as VALUE.
+* 4. Add utility function util_breakStream.
+*
+* Revision 1.14  2004/10/16 05:10:06  bergsma
+* MySql bug, improper return value from sql_query.
+* -1 = error
+* 0 = no rows processed or retrieved
+* >1 number of rows processed or retrieved
+*
+*
+* Revision 1.12  2004/07/28 00:49:18  bergsma
+* Version 3.3.0
+*
+* Revision 1.12  2004/07/27 15:44:16  bergsma
+* Remove ^M
+*
+* Revision 1.11  2004/07/01 02:01:42  bergsma
+* For Mysql, Make Sure -1 Means Sql Error, 0 Means No Rows Affected.
+*
+* Revision 1.10  2004/05/15 02:08:01  bergsma
+* Remove ^M
+*
+* Revision 1.8  2004/04/29 02:03:55  bergsma
+* Added support for sql. Modified by Michael Yockey.
+*
+* Revision 1.7  2003/02/05 23:58:16  bergsma
+* Removed redundant line "pResult = gHyp_data_new()"
+*
+* Revision 1.6  2003/01/09 01:21:17  bergsma
+* V3.1.0
+* 1. Change util_logError to instance_warning
+* 2. Incorportate instance_pushSTATUS
+*
+* Revision 1.5  2002/11/28 14:34:50  bergsma
+* Typo, || should be &&, optional isSecure arg in sql_open()
+*
+* Revision 1.4  2002/11/21 23:57:03  bergsma
+* Add isSecure argument to sql_open, for SQLSERVER
+*
+* Revision 1.3  2002/09/21 22:16:53  bergsma
+* MySQL returns all results in ascii form, not in binary form as does SQLSERVER.
+* Substituted gHyp_data_newConstant2 for gHyp_data_newConstant3.
+*
+* Revision 1.2  2002/09/20 00:05:17  bergsma
+* Cleaned up the logic for the optional 3 last arguments of sql_query.
+*
+*
+*/
 
 /********************** AUTOROUTER INTERFACE ********************************/
 
@@ -504,7 +728,6 @@ void gHyp_sql_bind ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
 #else
 		void *dbproc ;
-				void    *stmthp;
 #endif
 
 		/* Assume success */
@@ -826,7 +1049,7 @@ void gHyp_sql_bind ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
           case TYPE_LIST:
           case TYPE_STRING:
           default:
-            dataType = SQLT_STR ;
+            dataType = SQLT_CHR ;
             break ;
         }
 pValue = gHyp_data_getValue(pVariable,0,TRUE) ;
@@ -977,11 +1200,6 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 		isCommit ;
 #endif
 
-#ifndef AS_SQL
-		void *dbproc ;
-		void    *stmthp;
-#endif
-
 #ifdef AS_SQL
 #ifdef AS_SQLSERVER
 
@@ -1038,6 +1256,9 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
 #endif
 
+#else
+		void *dbproc ;
+#endif
 
 		/* Assume success */
 		gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
@@ -1069,7 +1290,6 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 		/* Get the handle name for database */
 		pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
 		dbproc =
-
 #ifdef AS_SQLSERVER
 		(DBPROCESS*)
 #elif AS_MYSQL
@@ -1093,7 +1313,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 #endif
 		}
 		else {
-			stmthp = NULL ;
+			stmthp = (OCIStmt*) NULL ;
 			isStmtBound = FALSE ;
 		}
 
@@ -1138,6 +1358,8 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 			pEndSQL = pSQL ;
 			*pEndSQL = '\0' ;
 			pSQL = sql_stmt ;
+
+#ifdef AS_SQL
 
 			/* See if the first token is a "select" */
 			isSelect = FALSE ;
@@ -1556,7 +1778,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 								case SQLVARCHAR :
 								case SQLCHAR :
 									if ( n == 0 ) 
-									gHyp_data_setStr_n (pData, " ", 1 ) ; /*gHyp_data_setStr_n (pData, "NULL", 4 ) ;*/
+									gHyp_data_setStr_n (pData, "NULL", 4 ) ;
 
 									else if ( colLens[i] <= INTERNAL_VALUE_SIZE )
 									gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
@@ -1612,7 +1834,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 									MAX_BUFFER_SIZE);
 
 									if ( n == 0 ) 
-									gHyp_data_setStr_n (pData, " ", 1 ) ; /*gHyp_data_setStr_n (pData, "NULL", 4 ) ;*/
+									gHyp_data_setStr_n (pData, "NULL", 4 ) ;
 
 									else if ( colLens[i] <= INTERNAL_VALUE_SIZE )
 									gHyp_data_setStr_n ( pData, (char*) buffer, n ) ;
@@ -1771,7 +1993,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 								case FIELD_TYPE_STRING :
 								case FIELD_TYPE_VAR_STRING :
 									if ( n == 0 ) 
-									gHyp_data_setStr_n (pData, " ", 1 ) ; /*gHyp_data_setStr_n (pData, "NULL", 4 ) ;*/
+									gHyp_data_setStr_n (pData, "NULL", 4 ) ;
 
 									else if ( colLens[i] <= INTERNAL_VALUE_SIZE )
 									gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
@@ -1804,7 +2026,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 								default:
 
 									if ( n == 0 ) 
-									gHyp_data_setStr_n (pData, " ", 1 ) ; /*gHyp_data_setStr_n (pData, "NULL", 4 ) ;*/
+									gHyp_data_setStr_n (pData, "NULL", 4 ) ;
 									else if ( colLens[i] <= INTERNAL_VALUE_SIZE )
 									gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
 									else {
@@ -1993,7 +2215,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
 								/* Text */
 								if ( n == 0 ) 
-								gHyp_data_setStr_n (pData, " ", 1 ) ; /*gHyp_data_setStr_n (pData, "NULL", 4 ) ;*/
+								gHyp_data_setStr_n (pData, "NULL", 4 ) ;
 
 								else if ( colLens[col] <= INTERNAL_VALUE_SIZE )
 								gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
@@ -2013,7 +2235,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
 								default :
 								if ( n == 0 ) 
-								gHyp_data_setStr_n (pData, " ", 1 ) ; /*gHyp_data_setStr_n (pData, "NULL", 4 ) ;*/
+								gHyp_data_setStr_n (pData, "NULL", 4 ) ;
 								else if ( colLens[col] <= INTERNAL_VALUE_SIZE )
 								gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
 								else {
@@ -2271,7 +2493,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
 								/* VARCHAR2 */
 								if ( n == 0 ) 
-								gHyp_data_setStr_n (pData, " ", 1 ) ; /*gHyp_data_setStr_n (pData, "NULL", 4 ) ;*/
+								gHyp_data_setStr_n (pData, "NULL", 4 ) ;
 
 								else if ( colLens[col] <= INTERNAL_VALUE_SIZE )
 								gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
@@ -2351,7 +2573,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 								default :
 								
 								if ( n == 0 ) 
-								gHyp_data_setStr_n (pData, " ", 1 ) ; /*gHyp_data_setStr_n (pData, "NULL", 4 ) ;*/
+								gHyp_data_setStr_n (pData, "NULL", 4 ) ;
 								else if ( colLens[col] <= INTERNAL_VALUE_SIZE )
 								gHyp_data_setStr_n ( pData, (char*) pBytes, n ) ;
 								else {
@@ -3378,7 +3600,7 @@ void gHyp_sql_datetime ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 			ts = gsCurTime = time(NULL) ;
 			pstm = localtime ( &ts ) ;
 			if ( !pstm || pstm->tm_year > 138 ) {
-				strcpy ( timeStamp, "NULL" ) ;
+				strcpy ( timeStamp, " " ) ;
 			}
 			else {
 				sprintf (timeStamp, 
@@ -3408,7 +3630,7 @@ void gHyp_sql_datetime ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 				ts = gHyp_data_getRaw ( pValue, context, TRUE  ) ;
 				pstm = localtime ( &ts ) ;
 				if ( !pstm || pstm->tm_year > 138 ) {
-					strcpy ( timeStamp, "NULL" ) ;
+					strcpy ( timeStamp, " " ) ;
 				}
 				else {
 					sprintf ( timeStamp, 
