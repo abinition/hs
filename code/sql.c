@@ -838,7 +838,7 @@ void gHyp_sql_bind ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 pValue = gHyp_data_getValue(pVariable,0,TRUE) ;
 data_buffer = (dvoid *) gHyp_data_buffer ( pValue, 0 );
 data_bufferlen = (sb4) gHyp_data_bufferLen ( pValue,0 ) ;
-if ( dt == SQLT_STR ) data_bufferlen++ 
+if ( dt == SQLT_STR ) data_bufferlen++ ;
 gHyp_util_debug("Binding %s, type %d(%d), buf=%x, len=%d",colName,dataType,dt,data_buffer,data_bufferlen);
 				rc = OCIBindByName( stmthp, 
 					                  &bindp[i], 
