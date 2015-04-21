@@ -493,6 +493,7 @@ void gHyp_sql_bind ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 #ifdef AS_ORACLE_DO_PREPARE2
 		OraText	*key = "mykey" ;
     ub4	keylen = strlen (key) ;
+    ub2 dt ;
 #endif
 		ub2	dataLen[MAX_SQL_ITEMS] ;
 		OCIBind*	bindp[MAX_SQL_ITEMS] ;
@@ -821,22 +822,23 @@ void gHyp_sql_bind ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
           case TYPE_SHORT:
           case TYPE_LONG:
           case TYPE_INTEGER:
-            dataType = SQLT_INT ;
+            dt = SQLT_INT ;
             break ;
           case TYPE_FLOAT:
           case TYPE_DOUBLE:
-            dataType = SQLT_FLT ;
+            dt = SQLT_FLT ;
             break ;
           case TYPE_LIST:
           case TYPE_STRING:
           default:
-            dataType = SQLT_STR ;
+            dt = SQLT_STR ;
             break ;
         }
 pValue = gHyp_data_getValue(pVariable,0,TRUE) ;
 data_buffer = (dvoid *) gHyp_data_buffer ( pValue, 0 );
-data_bufferlen = (sb4) gHyp_data_bufferLen ( pValue,0 ) + 1 ;
-gHyp_util_debug("Binding %s, type %d, buf=%x, len=%d",colName,dataType,data_buffer,data_bufferlen);
+data_bufferlen = (sb4) gHyp_data_bufferLen ( pValue,0 ) ;
+if ( dt == SQLT_STR ) data_bufferlen++ 
+gHyp_util_debug("Binding %s, type %d(%d), buf=%x, len=%d",colName,dataType,dt,data_buffer,data_bufferlen);
 				rc = OCIBindByName( stmthp, 
 					                  &bindp[i], 
 					                  dbproc->errhp,
@@ -844,7 +846,7 @@ gHyp_util_debug("Binding %s, type %d, buf=%x, len=%d",colName,dataType,data_buff
                             (sb4) strlen ( colName ),
 						                data_buffer,
                             data_bufferlen, 
-					                  (ub2) dataType,
+					                  (ub2) dt,
 					                  (dvoid *) 0, /*&indicator[i]*/ 
 					                  (ub2 *) 0, /*&dataLen[i]*/
 					                  (ub2) 0, 
