@@ -500,6 +500,10 @@ void gHyp_sql_bind ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 		OCILobLocator* pLobLocator[MAX_SQL_ITEMS];
 		sb2	indicator[MAX_SQL_ITEMS] ;
 
+#else
+		int results ;
+		void *dbproc ;
+				void    *stmthp;
 #endif
 
 #else
@@ -831,7 +835,7 @@ void gHyp_sql_bind ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
         }
 pValue = gHyp_data_getValue(pVariable,0,TRUE) ;
 data_buffer = (dvoid *) gHyp_data_buffer ( pValue, 0 );
-data_bufferlen = (sb4) gHyp_data_bufferLen ( pValue,0 );
+data_bufferlen = (sb4) gHyp_data_bufferLen ( pValue,0 ) + 1 ;
 gHyp_util_debug("Binding %s, type %d, buf=%x, len=%d",colName,dataType,data_buffer,data_bufferlen);
 				rc = OCIBindByName( stmthp, 
 					                  &bindp[i], 
@@ -975,9 +979,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 		sLOGICAL
 		isSelect,
 		isCommit ;
-#endif
-
-#ifndef AS_SQL
+#else
 		void *dbproc ;
 		void    *stmthp;
 #endif
@@ -987,6 +989,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
 		DBPROCESS  *dbproc ;
 		RETCODE    results ;
+		void    *stmthp;
 		char      buffer[MAX_BUFFER_SIZE+1];
 
 #elif AS_MYSQL
@@ -996,6 +999,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 		MYSQL_FIELD *field ;
 		MYSQL_ROW row ;
 		unsigned long *length ;
+		void    *stmthp;
 
 #elif AS_PGSQL
 
@@ -1005,6 +1009,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 		numRows,
 		isDataBinary[MAX_SQL_ITEMS],
 		row,col;
+		void    *stmthp;
 
 #elif AS_ORACLE
 
@@ -1499,7 +1504,7 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 						case SQLBINARY :
 						case SQLVARBINARY :
 							hyperscript_datatype[i] = TYPE_STRING ;
-							reak ;
+							break ;
 						case SQLDATETIME:
 							hyperscript_datatype[i] = TYPE_DATETIME ;
 							break ;
