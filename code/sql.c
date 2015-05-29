@@ -3386,7 +3386,7 @@ void gHyp_sql_datetime ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 			ts = gsCurTime = time(NULL) ;
 			pstm = localtime ( &ts ) ;
 			if ( !pstm || pstm->tm_year > 138 ) {
-				strcpy ( timeStamp, "NULL" ) ;
+				strcpy ( timeStamp, " " ) ;
 			}
 			else {
 				sprintf (timeStamp, 
