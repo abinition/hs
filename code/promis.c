@@ -537,8 +537,11 @@ static int lHyp_promis_parseRecord ( sData *pTV,
 	if ( fieldNameCount > 0 && j < fieldNameCount )
 	  strcpy ( token, (*name)[j] ) ;
 	else
+#if AS_UNDERSCORE_XML
 	  sprintf ( token, "%s_%d", pFieldName, j ) ;
-	
+#else
+	  sprintf ( token, "%s", pFieldName ) ;
+#endif
         pData = gHyp_data_new ( token ) ;
 
         gHyp_data_append ( pStruct, pData ) ;
@@ -901,7 +904,12 @@ static int lHyp_promis_tresData ( sInstance *pAI,
   j = numDims - 1 ;
   for ( i=0; i<numTestDi; i++ ) {
 
+#if AS_UNDERSCORE_XML
    sprintf ( token, "di_%d", i ) ;
+#else
+   sprintf ( token, "di" ) ;
+#endif
+
    pTRES_DII     = gHyp_data_getChildByName ( pTRES_DI, token ) ;
    pTRES_TYPE    = gHyp_data_getChildByName ( pTRES_DII, "type" ) ;
    pTRES_BYTELEN = gHyp_data_getChildByName ( pTRES_DII, "bytelen" ) ;
@@ -922,10 +930,20 @@ static int lHyp_promis_tresData ( sInstance *pAI,
        gHyp_util_unparseString(token,value,n,TOKEN_SIZE,FALSE,FALSE,FALSE,"'");
      }
      else
+#if AS_UNDERSCORE_XML
        sprintf ( token, "item_%d", i ) ;
+#else
+	sprintf ( token, "item" ) ;
+#endif
+
    }
    else
+#if AS_UNDERSCORE_XML
      sprintf ( token, "item_%d", i ) ;
+#else
+     sprintf ( token, "item" ) ;
+#endif
+
 
    (*name)[0] = (char*) AllocMemory ( strlen( token ) + 1 ) ;
    assert ( (*name)[0] ) ;
@@ -997,7 +1015,12 @@ static int lHyp_promis_tresData ( sInstance *pAI,
 			   TRUE ) ;
 	found = TRUE ;
       }	
+#if AS_UNDERSCORE_XML
       if ( !found ) sprintf ( token, "comp_%d", i ) ;
+#else
+      if ( !found ) sprintf ( token, "comp" ) ;
+#endif
+
 
       /* Put the token for the component 'i' in the name list */
       (*name)[i] = (char*) AllocMemory ( strlen( token ) + 1 ) ;
@@ -1037,8 +1060,13 @@ static int lHyp_promis_tresData ( sInstance *pAI,
 	  }
 	  miscIndex++ ;
         }
-      }        	  
+      }      
+#if AS_UNDERSCORE_XML
       if ( !found ) sprintf ( token, "site_%d", i ) ;
+#else
+      if ( !found ) sprintf ( token, "site" ) ;
+#endif
+
 
       /* Put the token for the component 'i' in the name list */
       (*name)[i] = (char*) AllocMemory ( strlen( token ) + 1 ) ;
@@ -1093,7 +1121,12 @@ static int lHyp_promis_tresData ( sInstance *pAI,
 			   TRUE ) ;
 	found = TRUE ;
       }
+#if AS_UNDERSCORE_XML
       if ( !found ) sprintf ( token, "comp_%d", i ) ;
+#else
+      if ( !found ) sprintf ( token, "comp" ) ;
+#endif
+
 
       (*name)[i] = (char*) AllocMemory ( strlen( token ) + 1 ) ;
       assert ( (*name)[i] ) ;
@@ -1698,7 +1731,7 @@ sLOGICAL gHyp_promis_hs (	sDescr*		token_d,
 
 	/* First time running - check OPTION_HYPERSCRIPT */
 
-	/*
+#ifdef AS_OPTION_HYPERSCRIPT
         if ( ( pResult = getenv ( "OPTION_HYPERSCRIPT" ) ) != NULL ) {
 
 	  gHyp_util_upperCase ( pResult, strlen ( pResult ) ) ;
@@ -1708,13 +1741,18 @@ sLOGICAL gHyp_promis_hs (	sDescr*		token_d,
 	  else
 	    isOPTION_HYPERSCRIPT = - 1 ;
 	}
-	*/
+#endif
+  
+#ifdef AS_UAF_ENABLED
 	if ( uaf_info_hyperscript() )
 	  isOPTION_HYPERSCRIPT = 1 ;
 	else
 	  isOPTION_HYPERSCRIPT = - 1 ;
-      }	
-
+#else 
+	  isOPTION_HYPERSCRIPT = 1 ;
+#endif
+      } 
+      
       if ( isOPTION_HYPERSCRIPT == 1 ) {	
 
         char self[TARGET_SIZE+1] ;
@@ -1844,6 +1882,7 @@ sLOGICAL gHyp_promis_hs (	sDescr*		token_d,
       *pIsHSenabled = giIsHSenabled = FALSE ;
       return FALSE ;
     }
+#ifdef AS_ITANIUM
     if ( resultLen != 0 ) {
       /* A pexec() caused an INISTRING, a suggested token
        * from PROMIS to be used in the the current prompt.
@@ -1861,6 +1900,7 @@ sLOGICAL gHyp_promis_hs (	sDescr*		token_d,
 				      hypIndex, 
 				      pHyp ) ;
     }
+#endif
   }
 
   if ( *pStream ) {
