@@ -4,54 +4,6 @@ $ ! *** YOU SHOULD CREATE YOUR OWN CONFIG.COM ***
 $ !
 $ ! Modifications:
 $ !
-$ ! 	$Log: config_template.com,v $
-$ ! 	Revision 1.16  2010-03-05 06:12:25  bergsma
-$ ! 	Typo on list_spool
-$ ! 	
-$ ! 	Revision 1.15  2009-11-17 16:07:01  bergsma
-$ ! 	Better integration with AUTOSQLSERVER2
-$ ! 	
-$ ! 	Revision 1.14  2009-10-09 13:26:03  bergsma
-$ ! 	Germany - October 2009 - Updates
-$ ! 	
-$ ! 	Revision 1.13  2008-05-06 02:16:21  bergsma
-$ ! 	no message
-$ ! 	
-$ ! 	Revision 1.12  2005-12-08 03:04:41  bergsma
-$ ! 	Added AUTOMGR, AUTOSTAT, AUTODCOP
-$ ! 	
-$ ! 	Revision 1.11  2005/09/25 20:10:40  bergsma
-$ ! 	Up to V3.6.3
-$ ! 	Add opcert code.
-$ ! 	Changes to function VT2HTML
-$ ! 	Bug in EAGAIN waiting for UNIX fifo's or network sockets
-$ ! 	AUTOROUTER loigical must be uppercase on VMS
-$ ! 	
-$ ! 	Revision 1.10  2005/03/07 21:45:35  bergsma
-$ ! 	Added OPTION_AUTO, it used to be defined in ROUTER.COM and turned off
-$ ! 	there as well.
-$ ! 	
-$ ! 	Revision 1.9  2005/02/25 18:17:12  bergsma
-$ ! 	HS 3.4.5
-$ ! 	
-$ ! 	Revision 1.8  2005/02/15 07:10:17  bergsma
-$ ! 	Added AUTOSQLSERVER
-$ ! 	
-$ ! 	Revision 1.7  2004/10/16 04:32:45  bergsma
-$ ! 	Added AUTOPORT logical.  Created default values for other logicals.
-$ ! 	
-$ ! 	Revision 1.6  2004/06/13 14:11:40  bergsma
-$ ! 	For PROMIS, in the CONFIG_TEMPLATE.COM, an invalid username sets the
-$ ! 	automation logicals to default values - JOB only, not GROUP.
-$ ! 	
-$ ! 	Revision 1.5  2003/02/17 09:53:56  bergsma
-$ ! 	Added AUTOBIN
-$ ! 	
-$ ! 	Revision 1.4  2002/11/22 16:07:56  bergsma
-$ ! 	Restore to V3.0.6 copy.
-$ ! 	
-$ ! 	Revision 1.2  2002/09/03 21:20:08  bergsma
-$ ! 	Added AUTOSPOOL logical.
 $ ! 	
 $ !
 $ !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -85,7 +37,7 @@ $ defaultLog   = "''f$trnlnm(""AEQ_SSP"")'" - "]" + ".LOG]"
 $ list_log     = "/''defaultLog'/''defaultLog'/''defaultLog'/"
 $
 $ ! 7. List of detached services to start up. Separate with ":"
-$ defaultDet   = ":tp_info:"
+$ defaultDet   = ":tp_info:"
 $ list_det     = "/''defaultDet'/''defaultDet'/''defaultDet'/"
 $
 $ ! 8. Whether OPTION_AUTO should be set to YES or NO
