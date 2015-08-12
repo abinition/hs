@@ -2483,10 +2483,10 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 					lHyp_sql_checkErr ( dbproc->errhp, results ) ;
 
 					for ( i=0; i<numCols; i++ ) {
-						ReleaseMemory ( dataBuffer[i] ) ;
 						if ( colTypes[i] == SQLT_CLOB || colTypes[i] == SQLT_BLOB ) {
 							OCIDescriptorFree(pLobLocator[i], (ub4) OCI_DTYPE_LOB);
 						}
+						ReleaseMemory ( dataBuffer[i] ) ;
 					}
 
 					if ( stmthp ) {
@@ -3416,7 +3416,7 @@ void gHyp_sql_datetime ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 				ts = gHyp_data_getRaw ( pValue, context, TRUE  ) ;
 				pstm = localtime ( &ts ) ;
 				if ( !pstm || pstm->tm_year > 138 ) {
-					strcpy ( timeStamp, "NULL" ) ;
+					strcpy ( timeStamp, " " ) ;
 				}
 				else {
 					sprintf ( timeStamp, 
