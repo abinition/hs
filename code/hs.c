@@ -594,7 +594,7 @@ BOOL APIENTRY DllMain(HINSTANCE hModule,
 static unsigned int lHyp_hs_exceptionHandler ( void *sigarr, void *mecharr )
 {
   /* Called when VMS exception occurs, re-signals to 'C' handlers */
-  gHyp_util_log ( "Exception condition occurred - exiting" ) ;
+  gHyp_util_logInfo ( "Exception condition occurred (%u)",giCondition ) ;
 
   if ( gpsConcept ) {
     /* If the method was invoked from a query, then send all replies */

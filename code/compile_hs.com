@@ -252,8 +252,20 @@ automan3.obj+-
 automan4.obj+-
 batch.obj
 $!
-$
 $ compile_hs == 1
+$
+$! Bootstrap uaf_info_hyperscript
+$ on error then $ goto BOOTSTRAP
+$ libr prom:promis/extract=uaf_info_hyperscript/out=info.obj
+$ ! UAF:INFO.FOR has already been patched. 
+$ goto DONE
+$ 
+$BOOTSTRAP:
+$ ! There is no uaf_info_hyperscript.  Inialize one.
+$ on error then $ goto ERROR
+$ coomp info.for
+$ libr prom:promis info.obj
+$
 $DONE:
 $!
 $! Cleanup the directory

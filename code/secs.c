@@ -1393,7 +1393,7 @@ static void lHyp_secs_QE (	sInstance 	*pAI,
     status = FALSE ;
   }
   else if ( pAI != pAIassigned ) {
-    gHyp_instance_warning ( pAI,STATUS_HTTP, 
+    gHyp_instance_warning ( pAI,STATUS_SECS, 
 			    "Device id %d is assigned to %s, not %s",
 			    id,
                             gHyp_instance_getTargetId(pAIassigned), 

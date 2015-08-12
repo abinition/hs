@@ -1,36 +1,12 @@
 /*****************************************************************************!
 !                HyperScript Software Source Code.                            !
 !                                                                             !
-!          ***** Copyright: (c) 2002 Abinition (TM), Inc                      !
-!          ***** Program property of Abinition, Inc                           !
-!          ***** All rights reserved - Licensed Material.                     !
-!
 !          ***** Copyright: (c) 1994 Ab Initio Software                       !
-!          ***** Program property of Ab Initio Software                       !
 !          ***** All rights reserved - Licensed Material.                     !
+!          ***** Program property of Ab Initio Software                       !
 !                                                                             !
-!*****************************************************************************/
+!****************************************************************************/
 
-/*
- *  This program is dual-licensed: either;
- *
- *  Under the terms of the GNU General Public License version 3 as 
- *  published by the Free Software Foundation. For the terms of this 
- *  license, see licenses/gplv3.md or <http://www.gnu.org/licenses/>;
- *
- *  Under the terms of the Commercial License as set out in 
- *  licenses/commercial.md
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of 
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License or Commerical License for more details.
- */
-
-/*
- * Modifications:
- *
- */
 /********************** HYPERSCRIPT INTERFACE ********************************/
 
 #include "auto.h"	/* System Interface and Function Prototypes */
@@ -45,8 +21,8 @@
 
 /**********************	INTERNAL GLOBAL VARIABLES ****************************/
 
-/*static sInstance *gpAI = NULL ;*/	/* HyperScript instance */
-/*static sInstance *gpAImain = NULL ;*/	/* Main HyperScript instance */
+static sInstance *gpAI = NULL ;	/* HyperScript instance */
+static sInstance *gpAImain = NULL ;	/* Main HyperScript instance */
 static char		gzResult[MAX_PROMIS_RESULT_SIZE+1] ;
 static sData		*gpData ;
 static sLOGICAL         giIsHSenabled = FALSE ;
@@ -57,7 +33,6 @@ static sLOGICAL         giIsCallbackEnabled = FALSE ;
 #define MAX_PROMIS_ENTRIES (MAX_PROMIS_FILES+MAX_PROMIS_TABLES)
 #define MAX_PROMIS_FIELDS 500
 #define PROMIS_DATE_OFFSET  946684800
-#define MAX_PROMIS_KEY_SIZE 92
 static sField    (*gpsFieldCache[MAX_PROMIS_ENTRIES])[MAX_PROMIS_FIELDS] ;
 static int 	 giNumFields[MAX_PROMIS_ENTRIES] ;
 static long	 gzTableNames[MAX_PROMIS_TABLES] ;
@@ -282,7 +257,7 @@ static sData* lHyp_promis_snap (	sInstance	*pAI,
   makeDSCs	( result_d, result );
 
   /* deprecated *
-  pVariable = gHyp_frame_createVariable ( pAI, pFrame, "SNAP" ) ;
+  pVariable = gHyp_frame_createVariable ( pFrame, "SNAP" ) ;
   gHyp_data_deleteValues ( pVariable ) ;
   */
 
@@ -368,11 +343,10 @@ void gHyp_promis_exitHandler ( int status )
   if ( gpsConcept ) {
     /* If the method was invoked from a query, then send all replies */
     lHyp_promis_logclose() ;
-    if ( gpAImain ) {
-      while ( gHyp_instance_replyMessage ( 
-	      gpAImain,
-	      gHyp_frame_getMethodData(gHyp_instance_frame(gpAImain) ) ) ) ;
-    }
+    while ( gHyp_instance_replyMessage ( 
+            gpAImain,
+	    gHyp_frame_getMethodData(gHyp_instance_frame(gpAImain) ) ) ) ;
+
     guRunFlags &= ~RUN_QUIET ;
     /*gHyp_util_log("PROMIS image is exiting - HyperScript must terminate");*/
     aeqSsp_autoMan_closeFiles ( ) ;
@@ -455,8 +429,6 @@ static int lHyp_promis_parseRecord ( sData *pTV,
   struct tm 
     *pstm ;
 
-  /* NOTE: PROMIS DataBase datatypes are in BIG ENDIAN FORMAT */
-
   i = 0 ;
   while ( i < numFields ) {
 
@@ -537,11 +509,8 @@ static int lHyp_promis_parseRecord ( sData *pTV,
 	if ( fieldNameCount > 0 && j < fieldNameCount )
 	  strcpy ( token, (*name)[j] ) ;
 	else
-#ifndef AS_UNDERSCORE_XML
 	  sprintf ( token, "%s_%d", pFieldName, j ) ;
-#else
-	  sprintf ( token, "%s", pFieldName ) ;
-#endif
+	
         pData = gHyp_data_new ( token ) ;
 
         gHyp_data_append ( pStruct, pData ) ;
@@ -621,7 +590,7 @@ static int lHyp_promis_parseRecord ( sData *pTV,
         else
           for ( j=0; j<fieldSize; j++ ) endian.x.b[j] = *pBuf++ ;
 	
-	/* UTC value for year 2000 == PROMIS "0" time */
+	/* Ansi time for year 2000 == PROMIS "0" time */
 	ts = endian.x.sl + PROMIS_DATE_OFFSET ;
 	pstm = localtime ( &ts ) ;
 	ts = ts - pstm->tm_gmtoff ;
@@ -834,10 +803,6 @@ static int lHyp_promis_tresData ( sInstance *pAI,
   n = gHyp_data_getStr ( pTRES_TESTOPNO, value, VALUE_SIZE, -1, TRUE ) ;
   pValue = value ;
   pTEST = NULL ;
-
-  /* Close it and reopen it */
-  lHyp_promis_closeFile ( pAI, pFrame, "TEST" ) ;
-  lHyp_promis_openFile ( pAI, pFrame, "TEST" ) ;
   if ( lHyp_promis_getrec (pAI,pFrame,"test.opno",CMP_EQ,pValue,n) )
     pTEST = gHyp_promis_parseRecord ( pAI, pFrame, "test", pTEST ) ;
 
@@ -849,9 +814,7 @@ static int lHyp_promis_tresData ( sInstance *pAI,
   numDims   = gHyp_data_getInt ( pTRES_NUMDIMS, -1, TRUE ) ;
 
   numFields = numDims + numTestDi - 1 ;
-  if ( numFields <= 0 ) return 0 ;
-  if ( numDims  > 4 ) return 0 ;
-  
+
   /* numDims Field 0  Field 1  Field 2  Field 3  ...Field (numTestDi+numDims-1)
    * -----------------------------------------------------------------------
    *    3    compId   siteId   item[0]  item[1]  ...item[numTestDi-1]
@@ -904,12 +867,7 @@ static int lHyp_promis_tresData ( sInstance *pAI,
   j = numDims - 1 ;
   for ( i=0; i<numTestDi; i++ ) {
 
-#ifndef AS_UNDERSCORE_XML
    sprintf ( token, "di_%d", i ) ;
-#else
-   sprintf ( token, "di" ) ;
-#endif
-
    pTRES_DII     = gHyp_data_getChildByName ( pTRES_DI, token ) ;
    pTRES_TYPE    = gHyp_data_getChildByName ( pTRES_DII, "type" ) ;
    pTRES_BYTELEN = gHyp_data_getChildByName ( pTRES_DII, "bytelen" ) ;
@@ -930,20 +888,10 @@ static int lHyp_promis_tresData ( sInstance *pAI,
        gHyp_util_unparseString(token,value,n,TOKEN_SIZE,FALSE,FALSE,FALSE,"'");
      }
      else
-#ifndef AS_UNDERSCORE_XML
        sprintf ( token, "item_%d", i ) ;
-#else
-	sprintf ( token, "item" ) ;
-#endif
-
    }
    else
-#ifndef AS_UNDERSCORE_XML
      sprintf ( token, "item_%d", i ) ;
-#else
-     sprintf ( token, "item" ) ;
-#endif
-
 
    (*name)[0] = (char*) AllocMemory ( strlen( token ) + 1 ) ;
    assert ( (*name)[0] ) ;
@@ -1015,12 +963,7 @@ static int lHyp_promis_tresData ( sInstance *pAI,
 			   TRUE ) ;
 	found = TRUE ;
       }	
-#ifndef AS_UNDERSCORE_XML
       if ( !found ) sprintf ( token, "comp_%d", i ) ;
-#else
-      if ( !found ) sprintf ( token, "comp" ) ;
-#endif
-
 
       /* Put the token for the component 'i' in the name list */
       (*name)[i] = (char*) AllocMemory ( strlen( token ) + 1 ) ;
@@ -1060,13 +1003,8 @@ static int lHyp_promis_tresData ( sInstance *pAI,
 	  }
 	  miscIndex++ ;
         }
-      }      
-#ifndef AS_UNDERSCORE_XML
+      }        	  
       if ( !found ) sprintf ( token, "site_%d", i ) ;
-#else
-      if ( !found ) sprintf ( token, "site" ) ;
-#endif
-
 
       /* Put the token for the component 'i' in the name list */
       (*name)[i] = (char*) AllocMemory ( strlen( token ) + 1 ) ;
@@ -1121,12 +1059,7 @@ static int lHyp_promis_tresData ( sInstance *pAI,
 			   TRUE ) ;
 	found = TRUE ;
       }
-#ifndef AS_UNDERSCORE_XML
       if ( !found ) sprintf ( token, "comp_%d", i ) ;
-#else
-      if ( !found ) sprintf ( token, "comp" ) ;
-#endif
-
 
       (*name)[i] = (char*) AllocMemory ( strlen( token ) + 1 ) ;
       assert ( (*name)[i] ) ;
@@ -1244,7 +1177,7 @@ static sLOGICAL lHyp_promis_addTBLS ( long fileId,
   sData
     *pTABLE,
     *pTBLS_TABLENAME,
-    *pData,
+    *pRecord,
     *pValue ;
 
   char
@@ -1319,11 +1252,11 @@ static sLOGICAL lHyp_promis_addTBLS ( long fileId,
   gHyp_data_setHashed ( pTABLE, TRUE ) ;
 
   /* Add the name of it to the end of the pTBLS data structure */
-  pData = gHyp_data_new ( "record" ) ;
+  pRecord = gHyp_data_new ( "record" ) ;
   pValue = gHyp_data_new ( NULL ) ;
   gHyp_data_setStr ( pValue, tableName ) ;
-  gHyp_data_append ( pData, pValue ) ;
-  gHyp_data_append ( pTBLS, pData ) ;
+  gHyp_data_append ( pRecord, pValue ) ;
+  gHyp_data_append ( pTBLS, pRecord ) ;
 
   /* Set the fileIndex of tables offset to the main PROMIS files */
   fileIndex = MAX_PROMIS_FILES + recId ;
@@ -1372,14 +1305,13 @@ static sLOGICAL lHyp_promis_addTLOG (	long fileId,
     *pTLOG_RECID,
     *pTLOG_FLAGS,
     *pTLOG_LENGTH,
-    *pData,
+    *pRecord,
     *pValue ;
 
   char
     *pStr,
     recid[1+1],
-    tableName[4+1],
-    ukeyvalue[MAX_PROMIS_KEY_SIZE+1];
+    tableName[4+1] ;
    
   sBYTE
     flags ;
@@ -1391,7 +1323,6 @@ static sLOGICAL lHyp_promis_addTLOG (	long fileId,
   long
     stat,
     recId,
-    fileId2,
     length,
     bufSize,
     numFields,
@@ -1399,14 +1330,12 @@ static sLOGICAL lHyp_promis_addTLOG (	long fileId,
     firstFieldId,
     fieldType,
     fieldOffset,
-    fieldOffset2,
     fieldSize,
     fieldCount,
     fileIndex,
     fieldId ;
 
   int
-    n,
     offset ;
   
   sField 
@@ -1417,9 +1346,6 @@ static sLOGICAL lHyp_promis_addTLOG (	long fileId,
     long id ;
     char name[5] ;
   } rec ;
-
-  char		keyField[VALUE_SIZE+1] ;
-  makeDSCs	( keyField_d, keyField );
 
   makeDSCz	( fieldName_d, fieldName ) ;
 
@@ -1440,23 +1366,13 @@ static sLOGICAL lHyp_promis_addTLOG (	long fileId,
    *  "Update",
    *  "Journal",
    *  "Delete" records where TLOG_M_JOURNAL = 4 (Delete record contains a before image)
-   *
-   * NOW THIS IS COMMENTED OUT *
-   *
+   */
   if ( recid[0] != 'P' && 
        recid[0] != 'U' &&
        recid[0] != 'J' &&
-    (recid[0] != 'D' || !(flags & 4) ) ) return TRUE ;
-  *
-  *
-  */
+       (recid[0] != 'D' || !(flags & 4) ) ) return TRUE ;
 
-  /* Get the fieldName_d 'BUFFERA' 
-   * This would be the start of the contained record.
-   * The recId is zero of course.
-   * The fileId is TLOG
-
-   */
+  /* Get the field 'BUFFERA' */
   recId = 0 ;
   stat = Fil_Tbl_RecFieldInfo (	&fileId, 
 				&recId, 
@@ -1468,148 +1384,45 @@ static sLOGICAL lHyp_promis_addTLOG (	long fileId,
 				&fieldId ) ;
   if ( !(stat & 1) ) return FALSE ;
 
-  if (  recid[0] == 'P' || 
-        recid[0] == 'U' ||
-        recid[0] == 'J' ||
-        recid[0] == 'D' ) {
+  strncpy ( tableName, (const char*) pBuf+fieldOffset-1, 4 ) ; 
+  tableName[4] = '\0' ;
 
-    /* The filename comes files - 4 characters */
-    strncpy ( tableName, (const char*) pBuf+fieldOffset-1, 4 ) ; 
-    tableName[4] = '\0' ;
-
-    /* Find the PROMIS file name info */
-    strcpy ( rec.name, tableName ) ;
-    recId = 0 ;
-    stat = Fil_Tbl_FileIndex ( &rec.id, &fileIndex ) ; 
-    if ( !(stat & 1) ) return FALSE ;
-    stat = Fil_Tbl_FileInfo(	&rec.id,	   
+  /* Find the PROMIS file name info */
+  strcpy ( rec.name, tableName ) ;
+  recId = 0 ;
+  stat = Fil_Tbl_FileIndex ( &rec.id, &fileIndex ) ; 
+  if ( !(stat & 1) ) return FALSE ;
+  stat = Fil_Tbl_FileInfo(	&rec.id,	   
 			     	0,
 			     	&fileType,
 			     	&bufSize,
 			     	&numFields,
 			     	&firstFieldId ) ;
-    if ( !(stat & 1) ) return FALSE ;
+  if ( !(stat & 1) ) return FALSE ;
 
-    /* Save the filename */
-    strcpy ( fileName, tableName ) ;
-    fileName_d.dsc_w_length = 4 ;
+  /* Save the filename */
+  strcpy ( fileName, tableName ) ;
+  fileName_d.dsc_w_length = 4 ;
 
-    /* Add the name of the file to the end of the pTLOG data structure */
-    pData = gHyp_data_new ( "record" ) ;
-    pValue = gHyp_data_new ( NULL ) ;
-    gHyp_util_lowerCase ( tableName, 4 ) ;
-    gHyp_data_setStr ( pValue, tableName ) ;
-    gHyp_data_append ( pData, pValue ) ;
-    gHyp_data_append ( pTLOG, pData ) ;
+  /* Add the name of the file to the end of the pTLOG data structure */
+  pRecord = gHyp_data_new ( "record" ) ;
+  pValue = gHyp_data_new ( NULL ) ;
+  gHyp_util_lowerCase ( tableName, 4 ) ;
+  gHyp_data_setStr ( pValue, tableName ) ;
+  gHyp_data_append ( pRecord, pValue ) ;
+  gHyp_data_append ( pTLOG, pRecord ) ;
 
-    /* Get the beginning of the record */
-    fieldOffset += 4 ;  /* Skip past filename */
+  /* Get the beginning of the record */
+  fieldOffset += 4 ;  /* Skip past filename */
+  if ( recid[0] != 'P' ) fieldOffset += 92 ; /* Skip past maxkeysize */
 
-    if ( recid[0] != 'P' ) {
+  /* Unpack the intername record */
+  length = length - fieldOffset + 1; 
+  stat = aeqSsp_automan_unpack ( &fileId, &rec.id, &length, 
+				 pBuf+fieldOffset-1 ) ;
+  if ( !(stat & 1) ) return FALSE ;
 
-      /* There's at least a key value - snatch it */
-      strncpy ( ukeyvalue, (const char*) pBuf+fieldOffset-1, MAX_PROMIS_KEY_SIZE ) ; 
-      ukeyvalue[MAX_PROMIS_KEY_SIZE] = '\0' ;
-
-      /* But we need the key info for the record - the actual field size */
-      fileId2 = rec.id ;
-      stat = Fil_Tbl_FieldName ( &fileId2, &firstFieldId, &keyField_d ) ;
-      recId = 0 ;
-      stat = Fil_Tbl_RecFieldInfo (	
-                                &fileId2, 
-				&recId,
-				&keyField_d, 
-				&fieldType,
-     				&fieldOffset2, 
-				&fieldSize,
-     				&fieldCount, 
-				&fieldId ) ;
-  
-      /* Add the key */
-      pData = gHyp_data_new ( "ukeyvalue" ) ;
-      pValue = gHyp_data_new ( NULL ) ;
-      gHyp_data_setStr_n ( pValue, ukeyvalue, fieldSize ) ;
-      gHyp_data_append ( pData, pValue ) ;
-      gHyp_data_append ( pTLOG, pData ) ;
-
-      if ( recid[0] == 'D' && !(flags&4) ) {
-         /* A DELETE record with no buffer.  
-          * Make the ukeyvalue the buffer. 
-          * It will cause the record to have at least the first 
-          * few fields that make up the key.
-          * The rest of the buffer will have to be initialized
-          * using Fil_BufInit( file.Id , aeqSsp_autoFil_file(newselect).buffer )
-          * The total length of useable data is as follows:
-          */
-        length = fieldOffset + fieldSize - 1 ;
-      }
-      else 
-        fieldOffset += MAX_PROMIS_KEY_SIZE ; /* Skip past maxkeysize */
-    }
-
-    /* Unpack the internal record */
-    length = length - fieldOffset + 1; 
-    
-    /*
-    *gHyp_util_debug("Unpacking %d bytes at %d for %s", 
-      length,fieldOffset,tableName);
-    */
-
-    stat = aeqSsp_automan_unpack (  &fileId, &rec.id, &length, 
-				      pBuf+fieldOffset-1 ) ;
-    if ( !(stat & 1) ) return FALSE ;
-   
-    return TRUE ;
-
-  }
-  else if (recid[0] == 'G' || 
-          recid[0] == 'S' ||
-          recid[0] == 'T' ||
-          recid[0] == 'M' ||
-          recid[0] == 'V' ) {
-
-    strncpy ( rec.name, (const char*) pBuf+fieldOffset-1, 4 ) ; 
-    rec.name[4] = '\0' ;
-    pData = gHyp_data_new ( "logtime" ) ;
-    pValue = gHyp_data_new ( NULL ) ;
-    gHyp_data_setInt ( pValue, rec.id ) ;
-    gHyp_data_append ( pData, pValue ) ;
-    gHyp_data_append ( pTLOG, pData ) ;
-
-    fieldOffset += 4 ;
-  }
-  else if ( recid[0] == 'H' ) {
-
-    strncpy ( rec.name, (const char*) pBuf+fieldOffset-1, 4 ) ; 
-    rec.name[4] = '\0' ;
-    pData = gHyp_data_new ( "primwritetime" ) ;
-    pValue = gHyp_data_new ( NULL ) ;
-    gHyp_data_setInt ( pValue, rec.id ) ;
-    gHyp_data_append ( pData, pValue ) ;
-    gHyp_data_append ( pTLOG, pData ) ;
-
-    fieldOffset += 4 ;
-
-    strncpy ( rec.name, (const char*) pBuf+fieldOffset-1, 4 ) ; 
-    rec.name[4] = '\0' ;
-    pData = gHyp_data_new ( "secreceivetime" ) ;
-    pValue = gHyp_data_new ( NULL ) ;
-    gHyp_data_setInt ( pValue, rec.id ) ;
-    gHyp_data_append ( pData, pValue ) ;
-    gHyp_data_append ( pTLOG, pData ) ;
-
-    fieldOffset += 4 ;
-
-    strncpy ( rec.name, (const char*) pBuf+fieldOffset-1, 4 ) ; 
-    rec.name[4] = '\0' ;
-    pData = gHyp_data_new ( "secapplytime" ) ;
-    pValue = gHyp_data_new ( NULL ) ;
-    gHyp_data_setInt ( pValue, rec.id ) ;
-    gHyp_data_append ( pData, pValue ) ;
-    gHyp_data_append ( pTLOG, pData ) ;
-
-    fieldOffset += 4 ;
-  }
+  return TRUE ;
 }
 
 sLOGICAL gHyp_promis_hs (	sDescr*		token_d,
@@ -1683,8 +1496,7 @@ sLOGICAL gHyp_promis_hs (	sDescr*		token_d,
     result[VALUE_SIZE+1] ;
 
   int
-    hypIndex,
-    i,j,
+    i,
     stat,
     resultLen = *pResultLen ;
 
@@ -1731,7 +1543,7 @@ sLOGICAL gHyp_promis_hs (	sDescr*		token_d,
 
 	/* First time running - check OPTION_HYPERSCRIPT */
 
-#ifdef AS_OPTION_HYPERSCRIPT
+	/*
         if ( ( pResult = getenv ( "OPTION_HYPERSCRIPT" ) ) != NULL ) {
 
 	  gHyp_util_upperCase ( pResult, strlen ( pResult ) ) ;
@@ -1741,18 +1553,13 @@ sLOGICAL gHyp_promis_hs (	sDescr*		token_d,
 	  else
 	    isOPTION_HYPERSCRIPT = - 1 ;
 	}
-#endif
-  
-#ifdef AS_UAF_ENABLED
+	*/
 	if ( uaf_info_hyperscript() )
 	  isOPTION_HYPERSCRIPT = 1 ;
 	else
 	  isOPTION_HYPERSCRIPT = - 1 ;
-#else 
-	  isOPTION_HYPERSCRIPT = 1 ;
-#endif
-      } 
-      
+      }	
+
       if ( isOPTION_HYPERSCRIPT == 1 ) {	
 
         char self[TARGET_SIZE+1] ;
@@ -1790,7 +1597,7 @@ sLOGICAL gHyp_promis_hs (	sDescr*		token_d,
         pEndStream = stream + MAX_INPUT_LENGTH ;
 
 #ifdef AS_VMS
-        /* Because there's no main(), this is required */
+        /* Because there's not main(), this is required */
         VAXC$CRTL_INIT () ;
 	/* VMS says this handler prevents bad behavior from longjmp */
 	VAXC$ESTABLISH ( &lHyp_promis_exceptionHandler ) ;
@@ -1869,11 +1676,10 @@ sLOGICAL gHyp_promis_hs (	sDescr*		token_d,
 
     /* Load from stream. */
     pHyp = gHyp_frame_getHyp ( gHyp_instance_frame ( gpAI ) ) ;
-    hypIndex = gHyp_hyp_getHypCount ( pHyp ) ;
     pStream = gHyp_load_fromStream ( gpAI, pHyp, stream, lineCount ) ;
  
     /* If load was fatal, (-1) then quit */
-    if ( !pStream || *pStream ) { 
+    if ( pStream == NULL ) { 
 
       aeqSsp_autoMan_closeFiles ( ) ;
       gHyp_promis_cleanFields ( -1 ) ;
@@ -1882,25 +1688,6 @@ sLOGICAL gHyp_promis_hs (	sDescr*		token_d,
       *pIsHSenabled = giIsHSenabled = FALSE ;
       return FALSE ;
     }
-#ifdef AS_ITANIUM
-    if ( resultLen != 0 ) {
-      /* A pexec() caused an INISTRING, a suggested token
-       * from PROMIS to be used in the the current prompt.
-       *
-       * The token is returned from GETTOKEN or INQUIRE in 
-       * the form:
-       *
-       *      {_promis_tokens_="token";}
-       *
-       * It has to be executed like a dereference so that
-       * it doesn't add to the program space.
-       */
-      /*gHyp_util_debug("Deref from operator");*/
-      gHyp_instance_setDerefHandler ( gpAI, 
-				      hypIndex, 
-				      pHyp ) ;
-    }
-#endif
   }
 
   if ( *pStream ) {
@@ -1925,19 +1712,11 @@ sLOGICAL gHyp_promis_hs (	sDescr*		token_d,
   /* Check for pexec() result */
   if ( resultLen != 0 ) {
 
-    memcpy ( result, result_d->dsc_a_pointer, resultLen ) ;
-    /* Fix for nulls in string */
-    for ( i=0, j=0; i<resultLen; i++ ) {
-      if ( result[i] != '\0' ) {
-	if ( i > j ) result[j] = result[i] ;
-	j++ ;
-      }
-    }
-    resultLen = j ;
+    strncpy ( result, result_d->dsc_a_pointer, resultLen ) ;
     result[resultLen] = '\0' ;
     pStack = gHyp_frame_stack ( gHyp_instance_frame ( gpAI ) ) ;
     pData = gHyp_stack_pop ( pStack ) ;
-    gHyp_data_setStr_n ( pData, result, resultLen ) ;
+    gHyp_data_setStr ( pData, result ) ;
     gHyp_stack_push ( pStack, pData ) ;
 
   }
@@ -1986,7 +1765,8 @@ sLOGICAL gHyp_promis_hs (	sDescr*		token_d,
 	/* Check to see if we are going back for more input */
         if ( gpAI == gpAImain &&
 	     gHyp_concept_returnToStdIn ( gpsConcept ) &&
-	     gHyp_instance_getState ( gpAImain ) != STATE_QUERY ) {
+	     (gHyp_instance_getState ( gpAImain ) != STATE_QUERY &&
+	      gHyp_instance_getState ( gpAImain ) != STATE_SLEEP) ) {
       
           /* HyperScript finished running */
           giJmpLevel = -1 ;	/* Disallow longjmp */
@@ -2539,13 +2319,7 @@ void gHyp_promis_pexec ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
      */
     lHyp_promis_setResult ( message ) ;
     gHyp_frame_setHypIndex ( pFrame, gHyp_frame_getHypIndex(pFrame) - 1 ) ;
-
-    giJmpRootLevel=1;
-    if ( guDebugFlags & DEBUG_FRAME )
-      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME, 
-			   "frame: EXEC PROMIS (longjmp to %d from frame %d)",
-			   giJmpRootLevel,gHyp_frame_depth(pFrame) ) ;
-    longjmp ( gsJmpStack[giJmpLevel=giJmpRootLevel], COND_NORMAL ) ;
+    longjmp ( gsJmpStack[giJmpLevel=1], COND_NORMAL ) ;
   }
 }
 
@@ -2936,7 +2710,7 @@ sData *gHyp_promis_parseRecord ( sInstance *pAI,
   /* Parse the record */
 
   /* Initialize the file variable */
-  if ( !pTV ) pTV = gHyp_frame_createVariable (pAI, pFrame,recordName);
+  if ( !pTV ) pTV = gHyp_frame_createVariable (pAI,pFrame,recordName);
   gHyp_data_deleteValues ( pTV ) ;
   gHyp_data_setHashed ( pTV, TRUE ) ;
 

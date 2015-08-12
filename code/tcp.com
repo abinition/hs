@@ -73,7 +73,7 @@ $ if f$logical ( "MULTINET_SOCKET_LIBRARY" ) .nes. ""
 $ then
 $
 $   ! Multinet
-$   tcpdef == ",AS_MULTINET"
+$   tcpdef == ",AS_MULTI"
 $   runlib == "MULTINET:MULTINET_SOCKET_LIBRARY.exe/share"
 $
 $   ! Set logicals in case we are using VAXC
