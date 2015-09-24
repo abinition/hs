@@ -38,7 +38,14 @@ CONNECT()
   timestamp (1);
 
   /* Make immortal (disable death timer) */
-  lifetime (0) ;
+  /*lifetime (0) ;*/
+  /* Establish death timer for start of a new day */
+  ansi_now = timestamp() ;
+  ansi_newDay = parsedate( date()+":235959" ) + 2 ;
+
+  secondsToDeath = ansi_newDay - ansi_now ;
+  if ( secondsToDeath <= 0 ) secondsToDeath = 1 ;
+  lifetime ( secondsToDeath ) ;
 
   /* Wait for requests */
   idle () ;
@@ -120,7 +127,7 @@ list GET_EQPID_STATUS()
 
   if ( !exists ( COMMENTS ) )
     return DONE_GET_EQPID_STATUS ( trim eqps.status ) ;
-  
+
   list COMMENTS = eqps.eqpscomment ;
   int COMMENTCOUNT = eqps.commentcount ;
   if ( COMMENTCOUNT == 0 ) COMMENTCOUNT = 1 ;
@@ -189,7 +196,7 @@ list GET_FILE_FIELDS()
 
   str promis_key = promis_file + "." + tolower KEYNAME ;
 
-  str promis_key_value = /*trim*/ str KEYVALUE; /*trim pack str KEYVALUE ;*/
+  str promis_key_value = trim str KEYVALUE; /*trim pack str KEYVALUE ;*/
   if ( count promis_key_value == 0 || promis_key_value == "" ) 
     promis_key_value = " " ;
   puts {"Retrieving ",promis_key," == ",promis_key_value } ;
@@ -216,7 +223,7 @@ list GET_FILE_FIELDS()
 
   n = count args ;
 
-  for ( i=0; i<n; i++ ) {
+  for ( i=3; i<n; i++ ) {
 
     str fieldname = args[i] ;
 
@@ -264,7 +271,14 @@ ENTERDATA( str LOTID, str DATA_ARRAY )
   popen("actl");
   pget("actl.lotid","ge",LOTID);
   str location = actl.location;
+  str prodarea = actl.prodarea;
   pclose("actl");
+  if ( !(stat=TRANSACT (
+          "Set area for "+LOTID,
+          "quit oper set area "+prodarea,
+          "Function"
+          ) ) ) 
+    return DONE_ENTERDATA( stat ) ;
   if ( !(stat=TRANSACT (
           "Passive attach "+LOTID,
           "quit oper pass "+location,

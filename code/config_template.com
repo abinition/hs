@@ -4,13 +4,12 @@ $ ! *** YOU SHOULD CREATE YOUR OWN CONFIG.COM ***
 $ !
 $ ! Modifications:
 $ !
-$ ! 	
 $ !
 $ !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 $ !
 $ !  M O D I F Y   T H I S  S E C T I O N  O N L Y
 $ !
-$ ! There can only be one AUTOROUTER per node.
+$ ! There can only be one AUTOROUTER per port, see option 13
 $ ! This command procedure assumes two nodes, production and development
 $ ! Add more nodes as needed.
 $ !
@@ -67,11 +66,7 @@ $ list_Port     = "/''defaultPort'/''defaultPort'/''defaultPort'/"
 $
 $ ! 14. AutoSqlServer .
 $ defaultSQLserver   = "sql_server"  
-$ defaultSQLserver2   = "sql_server"  
-$ defaultSQLserver3   = "sql_server"  
 $ list_SQLserver     = "/''defaultSQLserver'/''defaultSQLserver'/''defaultSQLserver'/"
-$ list_SQLserver2     = "/''defaultSQLserver2'/''defaultSQLserver2'/''defaultSQLserver2'/"
-$ list_SQLserver3     = "/''defaultSQLserver3'/''defaultSQLserver3'/''defaultSQLserver3'/"
 $
 $ ! 15. Auto DCOP directory for DCOP/prompt mapping
 $ defaultDCOP = "''f$trnlnm(""AEQ_SSP"")'" - "]" + ".DCOPS]"
@@ -83,7 +78,7 @@ $ list_stat       = "/''defaultStat'/''defaultStat'/''defaultStat'/
 $
 $ ! 17. Automation owner of detached processes started by START.COM
 $ ! Set to same name as user command procedure.... 
-$ list_mgr    = "/PROMISOPS/PROMISDEV/PROMISTST/"
+$ list_mgr    = list_user
 $ 
 $ !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 $ 
@@ -193,9 +188,10 @@ $ xclose :== @AEQ_SSP:stop
 $ xopen  :== @AEQ_SSP:start
 $ xstop  :== @AEQ_SSP:stop
 $ xstart :== @AEQ_SSP:start
-$ xmenu  :== @AUTORUN:menu
 $ hss    :== $AEQ_SSP:HSS
 $ hsp    :== $AEQ_SSP:HSP
 $ hse    :== $AEQ_SSP:HS
+$ dird   :== dir/size/date=modified
+$ grp    :== @IPSA_UTIL:GRP
 $
 $ exit

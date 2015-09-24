@@ -256,15 +256,21 @@ $ compile_hs == 1
 $
 $! Bootstrap uaf_info_hyperscript
 $ on error then $ goto BOOTSTRAP
+$ set mess/nofac/noid/nosev/notex
 $ libr prom:promis/extract=uaf_info_hyperscript/out=info.obj
-$ ! UAF:INFO.FOR has already been patched. 
+$ set mess/fac/id/sev/text
+$ write sys$output "UAF_INFO_HYPERSCRIPT already in PROMIS library"
+$ ! UAF:INFO.FOR has already been patched.
 $ goto DONE
-$ 
+$
 $BOOTSTRAP:
+$ set mess/fac/id/sev/text
+$ write sys$output "No UAF_INFO_HYPERSCRIPT, bootstapping new one"
 $ ! There is no uaf_info_hyperscript.  Inialize one.
 $ on error then $ goto ERROR
-$ coomp info.for
+$ comp info.for
 $ libr prom:promis info.obj
+$
 $
 $DONE:
 $!
