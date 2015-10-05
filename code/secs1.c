@@ -1147,24 +1147,21 @@ static int lHyp_secs1_incoming ( sSecs1 *pSecs1,
            * - Any message type can always interrupt a message whose last block has been received.
            *   (example: S1F4 interrupting a completed S6F3).
            */
-          if ( header.isPrimaryMsg || !pHeader->isPrimaryMsg || pHeader->isLastBlock ) {
+          if ( !header.isPrimaryMsg && pHeader->isPrimaryMsg && !pHeader->isLastBlock ) {
 
-	    /* Just reset secsII buffer. Start over. */
-	    gHyp_secs2_resetBuf ( pSecs2, SECS_INCOMING ) ;
-
-	    /* A new primary message can interrupt the one in progress. */
-	    pHeader = gHyp_secs2_newSecsHeader ( pSecs2, SECS_INCOMING ) ;
-	    *pHeader = header ;	  
-
-	  }
-	  else {
-	    gHyp_util_logError ( 
-	     "SECS-II, non-primary message incoming S%dF%d cannot interrupt current incoming S%dF%d",
+	    gHyp_util_logWarning ( 
+	     "SECS-II, non-primary message incoming S%dF%d is interrupting, discarding imcomplete S%dF%d",
              gHyp_secs2_stream ( &header ), gHyp_secs2_function ( &header ),
 	     gHyp_secs2_stream ( pHeader ), gHyp_secs2_function ( pHeader ) );
-	    pSecs1->state = SECS_EXPECT_SEND_S9F7 ;
-	    break ;
 	  }
+	  
+	  /* Reset secsII buffer. Start over. */
+	  gHyp_secs2_resetBuf ( pSecs2, SECS_INCOMING ) ;
+
+	  /* A new primary message can interrupt the one in progress. */
+	  pHeader = gHyp_secs2_newSecsHeader ( pSecs2, SECS_INCOMING ) ;
+	  *pHeader = header ;	  
+
 	}
 	else {
 	  /* Header does not exist. 
