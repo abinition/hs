@@ -391,7 +391,8 @@ static int lHyp_promis_parseRecord ( sData *pTV,
 				     sField (*field)[MAX_PROMIS_FIELDS],
 				     int numFields,
 				     int offset,
-				     sLOGICAL isLittleEndian )
+				     sLOGICAL isLittleEndian,
+				     char *target )
 {
   char
     sb,
@@ -455,6 +456,7 @@ static int lHyp_promis_parseRecord ( sData *pTV,
   struct tm 
     *pstm ;
 
+  sLOGICAL isData = strcmp ( target, "data" ) == 0 ;
   /* NOTE: PROMIS DataBase datatypes are in BIG ENDIAN FORMAT */
 
   i = 0 ;
@@ -554,7 +556,8 @@ static int lHyp_promis_parseRecord ( sData *pTV,
 					 pFields,
 					 numStructFields,
 					 componentOffset,
-					 isLittleEndian ) ;
+					 isLittleEndian,
+					 target ) ;
 	if ( stat <= 0 ) return -1 ;
       }
 
@@ -653,11 +656,10 @@ static int lHyp_promis_parseRecord ( sData *pTV,
 	value[j] = '\0' ;
 	*/
 
-	/* Don't want to do trim, we cannot be sure
+	/* Don't want to do trim, unless data, we cannot be sure
 	 * the trailing spaces are unimportant, one example
-	 * is for constructing database key fields.
-	 gHyp_util_trim ( value ) ;
-	*/
+	 * is for constructing database key fields. */
+	if ( isData ) j = gHyp_util_trim ( value ) ;
 
 	gHyp_data_setStr_n ( pValue, value, j ) ;
         gHyp_data_append ( pData, pValue ) ;
@@ -927,6 +929,7 @@ static int lHyp_promis_tresData ( sInstance *pAI,
      if ( pTEST_DII ) {
        pTEST_DII_PROMPT = gHyp_data_getChildByName ( pTEST_DII, "prompt" ) ;
        n = gHyp_data_getStr (pTEST_DII_PROMPT,value,VALUE_SIZE,-1,TRUE);
+       n = gHyp_util_trim ( value ) ;
        gHyp_util_unparseString(token,value,n,TOKEN_SIZE,FALSE,FALSE,FALSE,"'");
      }
      else
@@ -1003,6 +1006,7 @@ static int lHyp_promis_tresData ( sInstance *pAI,
 			       TOKEN_SIZE, 
 			       miscIndex,
 			       TRUE ) ;
+	    gHyp_util_trim ( token ) ;
           }
           miscIndex++ ;
         }  
@@ -1013,6 +1017,7 @@ static int lHyp_promis_tresData ( sInstance *pAI,
 			   TOKEN_SIZE, 
 			   i,
 			   TRUE ) ;
+	gHyp_util_trim ( token ) ;
 	found = TRUE ;
       }	
 #ifndef AS_UNDERSCORE_XML
@@ -1057,6 +1062,7 @@ static int lHyp_promis_tresData ( sInstance *pAI,
 			       TOKEN_SIZE, 
 			       miscIndex,
 			       TRUE ) ;
+	    gHyp_util_trim ( token ) ;
 	  }
 	  miscIndex++ ;
         }
@@ -1104,11 +1110,12 @@ static int lHyp_promis_tresData ( sInstance *pAI,
 			     TRUE ) ;
 	  if ( value[0] == 'W' ) {
             found = TRUE ; 
-	     gHyp_data_getStr ( pTEST_MISCNAMES,
+	    gHyp_data_getStr ( pTEST_MISCNAMES,
 				token,
 				TOKEN_SIZE, 
 				miscIndex,
 				TRUE ) ;
+	    gHyp_util_trim ( token ) ;
 	  }
 	  miscIndex++ ;
         }
@@ -1119,6 +1126,7 @@ static int lHyp_promis_tresData ( sInstance *pAI,
 			   TOKEN_SIZE, 
 			   i,
 			   TRUE ) ;
+	gHyp_util_trim ( token ) ;
 	found = TRUE ;
       }
 #ifndef AS_UNDERSCORE_XML
@@ -1153,7 +1161,8 @@ static int lHyp_promis_tresData ( sInstance *pAI,
 					pFields,
 					numFields,
 					offset,
-					isLittleEndian ) ;
+					isLittleEndian,
+					"data" ) ;
   
   /* Since the fields for the virtual DATA file always change, 
    * it cannot be cached 
@@ -1352,7 +1361,8 @@ static sLOGICAL lHyp_promis_addTBLS ( long fileId,
 					  		pFields,
 				  			numFields,
  				  			offset,
-				  			isLittleEndian ) ;
+				  			isLittleEndian,
+							"tbls" ) ;
   if ( numFields > 0 ) 
     return TRUE ;
   else
@@ -2980,7 +2990,8 @@ sData *gHyp_promis_parseRecord ( sInstance *pAI,
 					pFields,
 					numFields,
 					offset,
-					isLittleEndian ) ;
+					isLittleEndian,
+					gHyp_data_getLabel(pTV) ) ;
   if ( numFields <= 0 ) return NULL ;
 
   if ( isTRES ) {
