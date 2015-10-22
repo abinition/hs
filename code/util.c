@@ -2015,11 +2015,17 @@ int gHyp_util_unparseString ( char *pDstStr,
       break ;
 
     case '"' :
-      /* Double quote */
-      if ( pDst+2 > pEndDst ) break ;
-      *pDst++ = '\\' ;
-      *pDst++ = '"' ;
-      break ;
+	/* Double quote */
+	if ( !isForSQL ) {
+
+	  if ( pDst+2 > pEndDst ) break ;
+	  *pDst++ = '\\' ;
+	  *pDst++ = '"' ;
+	}
+	else
+	  *pDst++ = '"' ;
+
+	break ;
            
     case '|' :
       if ( isForMSG ) {
