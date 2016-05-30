@@ -283,7 +283,7 @@ static void lHyp_instance_consumeMessage ( sInstance *pAI,
    * Why is pReplyTV passed.  
    * Because if we abort, we need to delete it, otherwise it will leak.
    */
-  pResult = gHyp_env_mergeData ( pMethodArgs, pTV, pAI, 0, FALSE, TRUE, FALSE, pReplyTV ) ;
+  pResult = gHyp_env_mergeData ( pMethodArgs, pTV, pAI, 0, FALSE, TRUE, FALSE, pReplyTV, 0 ) ;
   
   /* Process pResult .*/
   pValue = NULL ;
@@ -3548,7 +3548,7 @@ static sLOGICAL lHyp_instance_handleMethod ( sInstance * pAI )
   pMethodArgs = gHyp_method_getArgs ( pMethod ) ;
 
   /* Merge the arguments into the defined method args */
-  pResult = gHyp_env_mergeData ( pMethodArgs, pArgs, pAI, 0, FALSE, FALSE, FALSE, NULL ) ;
+  pResult = gHyp_env_mergeData ( pMethodArgs, pArgs, pAI, 0, FALSE, FALSE, FALSE, NULL, 0 ) ;
 
   /* The merged arguments in 'pResult' can be integrated into the method */
   pValue = NULL ;

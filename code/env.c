@@ -1940,7 +1940,7 @@ void gHyp_env_merge ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     }
     pSrcData = gHyp_stack_popRdata ( pStack, pAI ) ;
     pDstData = gHyp_stack_popRdata ( pStack, pAI ) ;
-    pResult = gHyp_env_mergeData ( pDstData, pSrcData, pAI, 0, autoIncrement, FALSE, FALSE, NULL ) ;
+    pResult = gHyp_env_mergeData ( pDstData, pSrcData, pAI, 0, autoIncrement, FALSE, FALSE, NULL, 0 ) ;
 
     if ( gHyp_parse_exprCount ( pParse ) == 0 ) {
 
@@ -1975,7 +1975,7 @@ void gHyp_env_sjm ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 {
   /* Description:
    *
-   *	PARSE or EXECUTE the built-in function: sjm ( variable, variable )
+   *	PARSE or EXECUTE the built-in function: sjm ( variable, variable, arrayCount )
    *
    * Arguments:
    *
@@ -2005,22 +2005,39 @@ void gHyp_env_sjm ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
       *pStack = gHyp_frame_stack ( pFrame ) ;
 
     sData
+      *pData,
       *pSrcData,
       *pDstData,
       *pVariable,
       *pResult ;
 
     int
+      arrayCount = 0,
       argCount = gHyp_parse_argCount ( pParse ) ;
     
     gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
 
-    if ( argCount != 2 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-	"Invalid arguments. Usage: sjm ( destination, source )" ) ;
+    if ( argCount != 2 && argCount != 3 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
+	"Invalid arguments. Usage: sjm ( destination, source [, arrayCount] )" ) ;
+
+    if ( argCount == 3 ) {
+      pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
+      arrayCount = gHyp_data_getInt ( pData,
+				      gHyp_data_getSubScript ( pData ),
+				      TRUE ) ;  
+    }
 
     pSrcData = gHyp_stack_popRdata ( pStack, pAI ) ;
     pDstData = gHyp_stack_popRdata ( pStack, pAI ) ;
-    pResult = gHyp_env_mergeData ( pDstData, pSrcData, pAI, 0, FALSE, FALSE, TRUE, NULL ) ;
+
+    pResult = gHyp_env_mergeData ( pDstData, pSrcData, pAI, 
+					0, 
+					FALSE,	/* Not data merge */
+					FALSE,	/* Not msg merge */
+					TRUE,	/* SMART MERGE */
+					NULL,	/* no tmp */
+					arrayCount	/* Truncation */
+					) ;
 
     if ( gHyp_parse_exprCount ( pParse ) == 0 ) {
 
@@ -2058,7 +2075,8 @@ sData* gHyp_env_mergeData ( sData *pDst,
 			    sLOGICAL isDataMerge,
 			    sLOGICAL isMsgMerge,
 			    sLOGICAL isSmartMerge,
-			    sData *pTmp ) {
+			    sData *pTmp,
+			    int arrayCount ) {
 
   sData	
     *pResult,
@@ -2079,12 +2097,14 @@ sData* gHyp_env_mergeData ( sData *pDst,
 
   int
     context,
+    context2,
     contextSrc,
     contextDst,
     n,
     ssv=-1,
     sdv=-1,
     ss,
+    ss2,
     sss,
     ssd,
     count,
@@ -2117,7 +2137,8 @@ sData* gHyp_env_mergeData ( sData *pDst,
     *pStr,
     *pStream,
     *pLabel,
-    value[VALUE_SIZE+1] ;
+    value[VALUE_SIZE+1],
+    value2[VALUE_SIZE+1] ;
   
   sHyp
     *pHyp = gHyp_frame_getHyp ( pFrame ) ;
@@ -2589,7 +2610,9 @@ sData* gHyp_env_mergeData ( sData *pDst,
 					isDataMerge,
 					FALSE,
 					FALSE,
-					NULL ) ;
+					NULL,
+					0 ) ;
+
 
 	  if ( dstDataType == TYPE_STRING ) {
 
@@ -2629,7 +2652,58 @@ sData* gHyp_env_mergeData ( sData *pDst,
 
       /*gHyp_util_debug ( "No dest value, smart=%d, but still some source",isSmartMerge ) ;*/
 
-      if ( isSmartMerge ) break ;
+      if ( isSmartMerge ) {
+        /* Get rid of NULLs and trailing ghost characters, and truncate the array if requested. 
+
+	   list events.'evvariant'[ACTL_EVCOUNT];
+	   for (ic=0;ic<ACTL_EVCOUNT;ic++) {
+	    tmp = pack trim events.'evvariant'[ic] ;
+	    if ( tmp == "" ) tmp = " ";
+	    events.'evvariant'[ic] = tmp ;
+	  }
+
+	*/
+	if ( arrayCount > 0 ) {
+		ss = -1 ; 
+		context = -1 ;
+		pData = NULL ;
+		while ( (pData = gHyp_data_nextValue ( pResult, 
+						    pData, 
+						    &context,
+						    ss ) ) ) {
+
+			if ( gHyp_data_getDataType( pData ) <= TYPE_STRING ) {
+
+				ss2 = -1 ; 
+				context2 = -1 ;
+				pValue = NULL ;
+				while ( (pValue = gHyp_data_nextValue ( pData, 
+							    pValue, 
+							    &context2,
+							    ss2 ))) {
+			
+					n = gHyp_data_getStr ( pValue, 
+							     value, 
+							     MAX_INPUT_LENGTH, 
+							     context2, 
+							     FALSE ) ;
+					pStr = value ;
+					memcpy ( value2, pStr, n ) ;
+					value2[n] = '\0' ;
+					n = gHyp_util_trim ( value2 ) ;
+					if ( arrayCount > 0 && n == 0 ) { value2[0] = ' ' ; n = 1 ; }
+					value2[n] = '\0' ;
+					gHyp_data_setStr ( pValue, value2 ) ;
+				}
+
+			}
+			if ( arrayCount > 0 ) {
+				    gHyp_data_setSize ( pData, arrayCount ) ; 
+			}
+		}
+	}
+	break ;
+      }
 
       /* No more destination values, but still some source values */
       if ( isVectorDst ) {
@@ -2665,7 +2739,8 @@ sData* gHyp_env_mergeData ( sData *pDst,
 						   isDataMerge,
 						   FALSE,
 						   FALSE,
-						   NULL ));
+						   NULL,
+						   0));
 	}
 	else {
 
