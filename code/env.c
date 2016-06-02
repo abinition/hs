@@ -1940,7 +1940,7 @@ void gHyp_env_merge ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
     }
     pSrcData = gHyp_stack_popRdata ( pStack, pAI ) ;
     pDstData = gHyp_stack_popRdata ( pStack, pAI ) ;
-    pResult = gHyp_env_mergeData ( pDstData, pSrcData, pAI, 0, autoIncrement, FALSE, FALSE, NULL, 0 ) ;
+    pResult = gHyp_env_mergeData ( pDstData, pSrcData, pAI, 0, autoIncrement, FALSE, FALSE, FALSE, NULL, 0 ) ;
 
     if ( gHyp_parse_exprCount ( pParse ) == 0 ) {
 
@@ -2035,6 +2035,7 @@ void gHyp_env_sjm ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 					FALSE,	/* Not data merge */
 					FALSE,	/* Not msg merge */
 					TRUE,	/* SMART MERGE */
+					FALSE,  /* SMART MERGE 2 */
 					NULL,	/* no tmp */
 					arrayCount	/* Truncation */
 					) ;
@@ -2075,6 +2076,7 @@ sData* gHyp_env_mergeData ( sData *pDst,
 			    sLOGICAL isDataMerge,
 			    sLOGICAL isMsgMerge,
 			    sLOGICAL isSmartMerge,
+			    sLOGICAL isSmartMerge2,
 			    sData *pTmp,
 			    int arrayCount ) {
 
@@ -2138,11 +2140,15 @@ sData* gHyp_env_mergeData ( sData *pDst,
     *pStream,
     *pLabel,
     value[VALUE_SIZE+1],
-    value2[VALUE_SIZE+1] ;
+    value2[VALUE_SIZE+1],
+    timeStamp[SQL_DATETIME_SIZE+1] ;
+
+  time_t ts ;
+  
+  struct tm *pstm ;
   
   sHyp
     *pHyp = gHyp_frame_getHyp ( pFrame ) ;
-
 
   hypIndex = gHyp_hyp_getHypCount ( pHyp ) ;
   srcTokenType = gHyp_data_getTokenType ( pSrc ) ;
@@ -2266,7 +2272,7 @@ sData* gHyp_env_mergeData ( sData *pDst,
       /* If this is a smart merge, then get the source value that
        * has the same name as the destination value
        */
-      if ( isSmartMerge && pDstValue ) {
+      if ( isSmartMerge && pDstValue /*&& gHyp_data_getTokenType ( pDstValue ) == TOKEN_VARIABLE */ ) {
 	pNextSrcValue = gHyp_data_getChildByName ( pSrc, gHyp_data_getLabel ( pDstValue ) ) ;
 	ssv = 0 ;
       }
@@ -2500,12 +2506,35 @@ sData* gHyp_env_mergeData ( sData *pDst,
  
 	/* Replace destination element constant/literal with that from source*/
 	if ( isVectorSrc ) {
+
+		if ( isSmartMerge2 && 
+			dstTokenType == TOKEN_LITERAL &&
+			srcTokenType == TOKEN_VARIABLE &&
+			   srcDataType == TYPE_LONG ) {
+
+			ts = gHyp_data_getRaw ( pSrcValue, ssv, TRUE  ) ;
+			pstm = localtime ( &ts ) ;
+			if ( !pstm || pstm->tm_year > 138 ) {
+			  strcpy ( timeStamp, " " ) ;
+			}
+			else {
+			  sprintf ( timeStamp, 
+				"%04d-%02d-%02d %02d:%02d:%02d", 
+				pstm->tm_year+1900, pstm->tm_mon+1, pstm->tm_mday,
+				pstm->tm_hour, pstm->tm_min, pstm->tm_sec ) ;
+			}
+			pValue = gHyp_data_new ( NULL ) ;
+			gHyp_data_setStr ( pValue, timeStamp ) ;
+
+		}
+		else {
       
-	  pValue = gHyp_data_new ( NULL ) ;
-	  gHyp_data_newConstant ( pValue, 
-				  srcDataType, 
-				  pSrcValue, 
-				  ssv ) ;
+		  pValue = gHyp_data_new ( NULL ) ;
+		  gHyp_data_newConstant ( pValue, 
+					  srcDataType, 
+					  pSrcValue, 
+					  ssv ) ;
+		}
 	}
 	else 
 	  pValue = gHyp_data_copyAll ( pSrcValue ) ;
@@ -2610,6 +2639,7 @@ sData* gHyp_env_mergeData ( sData *pDst,
 					isDataMerge,
 					FALSE,
 					FALSE,
+					isSmartMerge,
 					NULL,
 					0 ) ;
 
@@ -2651,59 +2681,7 @@ sData* gHyp_env_mergeData ( sData *pDst,
     else {
 
       /*gHyp_util_debug ( "No dest value, smart=%d, but still some source",isSmartMerge ) ;*/
-
-      if ( isSmartMerge ) {
-        /* Get rid of NULLs and trailing ghost characters, and truncate the array if requested. 
-
-	   list events.'evvariant'[ACTL_EVCOUNT];
-	   for (ic=0;ic<ACTL_EVCOUNT;ic++) {
-	    tmp = pack trim events.'evvariant'[ic] ;
-	    if ( tmp == "" ) tmp = " ";
-	    events.'evvariant'[ic] = tmp ;
-	  }
-
-	*/
-	if ( arrayCount > 0 ) {
-		ss = -1 ; 
-		context = -1 ;
-		pData = NULL ;
-		while ( (pData = gHyp_data_nextValue ( pResult, 
-						    pData, 
-						    &context,
-						    ss ) ) ) {
-
-			if ( gHyp_data_getDataType( pData ) <= TYPE_STRING ) {
-
-				ss2 = -1 ; 
-				context2 = -1 ;
-				pValue = NULL ;
-				while ( (pValue = gHyp_data_nextValue ( pData, 
-							    pValue, 
-							    &context2,
-							    ss2 ))) {
-			
-					n = gHyp_data_getStr ( pValue, 
-							     value, 
-							     MAX_INPUT_LENGTH, 
-							     context2, 
-							     FALSE ) ;
-					pStr = value ;
-					memcpy ( value2, pStr, n ) ;
-					value2[n] = '\0' ;
-					n = gHyp_util_trim ( value2 ) ;
-					if ( arrayCount > 0 && n == 0 ) { value2[0] = ' ' ; n = 1 ; }
-					value2[n] = '\0' ;
-					gHyp_data_setStr ( pValue, value2 ) ;
-				}
-
-			}
-			if ( arrayCount > 0 ) {
-				    gHyp_data_setSize ( pData, arrayCount ) ; 
-			}
-		}
-	}
-	break ;
-      }
+      if ( isSmartMerge ) break ;
 
       /* No more destination values, but still some source values */
       if ( isVectorDst ) {
@@ -2739,6 +2717,7 @@ sData* gHyp_env_mergeData ( sData *pDst,
 						   isDataMerge,
 						   FALSE,
 						   FALSE,
+						   FALSE,
 						   NULL,
 						   0));
 	}
@@ -2747,11 +2726,33 @@ sData* gHyp_env_mergeData ( sData *pDst,
 	  /* Source is a list/vector and destination is either a CONSTANT,LITERAL,or REFERENCE*/
 	  if ( isVectorSrc ) {
 	    
-	    pValue = gHyp_data_new ( NULL ) ;
-	    gHyp_data_newConstant ( pValue, 
+    	    if ( isSmartMerge2 && 
+		 dstTokenType == TOKEN_LITERAL &&
+		 srcTokenType == TOKEN_VARIABLE &&
+		 srcDataType == TYPE_LONG ) {
+
+	      ts = gHyp_data_getRaw ( pSrcValue, ssv, TRUE  ) ;
+	      pstm = localtime ( &ts ) ;
+	      if ( !pstm || pstm->tm_year > 138 ) {
+		strcpy ( timeStamp, " " ) ;
+	      }
+	      else {
+		sprintf ( timeStamp, 
+			"%04d-%02d-%02d %02d:%02d:%02d", 
+			pstm->tm_year+1900, pstm->tm_mon+1, pstm->tm_mday,
+			pstm->tm_hour, pstm->tm_min, pstm->tm_sec ) ;
+	      }
+	      pValue = gHyp_data_new ( NULL ) ;
+	      gHyp_data_setStr ( pValue, timeStamp ) ;
+
+	    }
+	    else {
+	      pValue = gHyp_data_new ( NULL ) ;
+	      gHyp_data_newConstant ( pValue, 
 				    srcDataType, 
 				    pSrcValue, 
 				    ssv ) ;
+	    }
 	  }
 	  else {
 
@@ -2797,6 +2798,60 @@ sData* gHyp_env_mergeData ( sData *pDst,
 	}
       }
     }
+  }
+
+  if ( isSmartMerge ) {
+    /* Get rid of NULLs and trailing ghost characters, and truncate the array if requested. 
+
+	list events.'evvariant'[ACTL_EVCOUNT];
+	   for (ic=0;ic<ACTL_EVCOUNT;ic++) {
+	    tmp = pack trim events.'evvariant'[ic] ;
+	    if ( tmp == "" ) tmp = " ";
+	    events.'evvariant'[ic] = tmp ;
+	  }
+
+    */
+    /*if ( arrayCount > 0 ) {*/
+      ss = -1 ; 
+      context = -1 ;
+      pData = NULL ;
+      while ( (pData = gHyp_data_nextValue ( pResult, 
+						    pData, 
+						    &context,
+						    ss ) ) ) {
+
+	if ( gHyp_data_getDataType( pData ) <= TYPE_STRING ) {
+
+	  ss2 = -1 ; 
+	  context2 = -1 ;
+	  pValue = NULL ;
+	  while ( (pValue = gHyp_data_nextValue ( pData, 
+							    pValue, 
+							    &context2,
+							    ss2 ))) {
+			
+	    n = gHyp_data_getStr ( pValue, 
+							     value, 
+							     MAX_INPUT_LENGTH, 
+							     context2, 
+							     FALSE ) ;
+	    pStr = value ;
+	    memcpy ( value2, pStr, n ) ;
+	    value2[n] = '\0' ;
+	    n = gHyp_util_parseString ( value2 ) ;
+	    value2[n] = '\0' ;
+	    n = gHyp_util_trim ( value2 ) ;
+	    if ( arrayCount > 0 && n == 0 ) { value2[0] = ' ' ; n = 1 ; }
+	    value2[n] = '\0' ;
+	    gHyp_data_setStr ( pValue, value2 ) ;
+				}
+
+	}
+	if ( arrayCount > 0 ) {
+	  gHyp_data_setSize ( pData, arrayCount ) ; 
+	}
+      }
+    /*}*/
   }
 
   if ( doDereference ) {
