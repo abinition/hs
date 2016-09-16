@@ -43,7 +43,18 @@
 static char gzStream[(MAX_INPUT_LENGTH*4)+1] ;
 
 /********************** INTERNAL OBJECT STRUCTURES ************************/
-
+#if defined ( AS_VMS ) && defined ( AS_PROMIS )
+#define PROMIS_DATE_OFFSET  946684800
+#ifdef __cplusplus
+extern "C" int sys$asctim ( int*, sDescr*, int(*)[2], int ) ;
+extern "C" int sys$gettim( int(*)[2] );
+extern "C" int Gut_Cnv32to64 ( int*,  int (*)[2]);
+#else
+extern int sys$asctim ( int*, sDescr*, int (*)[2], int ) ;
+extern int sys$gettim( int(*)[2] );
+extern int Gut_Cnv32to64 ( int*,  int (*)[2]);
+#endif
+#endif
 /**********************	FUNCTION DEFINITIONS ********************************/
 
 void gHyp_env_count ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
@@ -2147,6 +2158,20 @@ sData* gHyp_env_mergeData ( sData *pDst,
   
   struct tm *pstm ;
   
+#if defined ( AS_VMS ) && defined ( AS_PROMIS )
+		char vmsTimeStamp[24];
+		int vms_time[2];
+		int timelen ;
+  		makeDSCs ( vmsTimeStamp_d, vmsTimeStamp ) ;
+  		int promis_time,ret ;
+		char* months="JAN/FEB/MAR/APR/MAY/JUN/JUL/AUG/SEP/OCT/NOV/DEC/" ;
+		int month ;
+		char monthStr[4] ;
+		char yearStr[5] ;
+		char timeStr[9] ;
+		char dayStr[3] ;
+#endif
+
   sHyp
     *pHyp = gHyp_frame_getHyp ( pFrame ) ;
 
@@ -2513,7 +2538,26 @@ sData* gHyp_env_mergeData ( sData *pDst,
 			   srcDataType == TYPE_LONG ) {
 
 			ts = gHyp_data_getRaw ( pSrcValue, ssv, TRUE  ) ;
-			pstm = localtime ( &ts ) ;
+	                pstm = localtime ( &ts ) ;
+#if defined( AS_VMS ) && defined ( AS_PROMIS )
+			promis_time = (int) ts - PROMIS_DATE_OFFSET + pstm->tm_gmtoff + (pstm->tm_isdst?0:3600);
+			ret =Gut_Cnv32to64 ( &promis_time, &vms_time);
+			ret =sys$asctim( &timelen, &vmsTimeStamp_d, &vms_time, 0 ) ;
+                        strncpy ( monthStr, vmsTimeStamp+3, 3 ) ;
+                        monthStr[3] = '\0;' ;
+                        strncpy ( timeStr, vmsTimeStamp+12,8 ) ;
+                        timeStr[8] = '\0;' ;
+                        strncpy ( yearStr, vmsTimeStamp+7,4 ) ;
+                        yearStr[4] = '\0' ;
+                        strncpy ( dayStr, vmsTimeStamp, 2 ) ;
+                        dayStr[3] = '\0' ;
+                        if (dayStr[0] == ' ' ) dayStr[0] = '0' ;
+                        month = ( strstr ( months, monthStr ) - months )/ 4 ;
+                        sprintf (timeStamp,
+                                "%s-%02d-%s %s",
+                                yearStr,month+1,dayStr,timeStr );
+
+#else
 			if ( !pstm || pstm->tm_year > 138 ) {
 			  strcpy ( timeStamp, " " ) ;
 			}
@@ -2523,6 +2567,7 @@ sData* gHyp_env_mergeData ( sData *pDst,
 				pstm->tm_year+1900, pstm->tm_mon+1, pstm->tm_mday,
 				pstm->tm_hour, pstm->tm_min, pstm->tm_sec ) ;
 			}
+#endif
 			pValue = gHyp_data_new ( NULL ) ;
 			gHyp_data_setStr ( pValue, timeStamp ) ;
 
@@ -2733,6 +2778,26 @@ sData* gHyp_env_mergeData ( sData *pDst,
 
 	      ts = gHyp_data_getRaw ( pSrcValue, ssv, TRUE  ) ;
 	      pstm = localtime ( &ts ) ;
+#if defined( AS_VMS ) && defined ( AS_PROMIS )
+			promis_time = (int) ts - PROMIS_DATE_OFFSET + pstm->tm_gmtoff + (pstm->tm_isdst?0:3600);
+			ret =Gut_Cnv32to64 ( &promis_time, &vms_time);
+			ret =sys$asctim( &timelen, &vmsTimeStamp_d, &vms_time, 0 ) ;
+                        strncpy ( monthStr, vmsTimeStamp+3, 3 ) ;
+                        monthStr[3] = '\0;' ;
+                        strncpy ( timeStr, vmsTimeStamp+12,8 ) ;
+                        timeStr[8] = '\0;' ;
+                        strncpy ( yearStr, vmsTimeStamp+7,4 ) ;
+                        yearStr[4] = '\0' ;
+                        strncpy ( dayStr, vmsTimeStamp, 2 ) ;
+                        dayStr[3] = '\0' ;
+                        if (dayStr[0] == ' ' ) dayStr[0] = '0' ;
+                        month = ( strstr ( months, monthStr ) - months )/ 4 ;
+                        sprintf (timeStamp,
+                                "%s-%02d-%s %s",
+                                yearStr,month+1,dayStr,timeStr );
+
+#else
+	      pstm = localtime ( &ts ) ;
 	      if ( !pstm || pstm->tm_year > 138 ) {
 		strcpy ( timeStamp, " " ) ;
 	      }
@@ -2742,6 +2807,7 @@ sData* gHyp_env_mergeData ( sData *pDst,
 			pstm->tm_year+1900, pstm->tm_mon+1, pstm->tm_mday,
 			pstm->tm_hour, pstm->tm_min, pstm->tm_sec ) ;
 	      }
+#endif
 	      pValue = gHyp_data_new ( NULL ) ;
 	      gHyp_data_setStr ( pValue, timeStamp ) ;
 
@@ -5255,3 +5321,4 @@ void gHyp_env_node_getnodebyname ( sInstance *pAI, sCode *pCode, sLOGICAL isPARS
 {
   /* YET TO BE COMPLETED */
 }
+

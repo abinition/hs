@@ -52,6 +52,18 @@ typedef const LPBYTE LPCBYTE ;
 
 /********************** INTERNAL OBJECT STRUCTURES ***************************/
 
+#if defined ( AS_VMS ) && defined ( AS_PROMIS )
+#define PROMIS_DATE_OFFSET  946684800
+#ifdef __cplusplus
+extern "C" int sys$asctim ( int*, sDescr*, int(*)[2], int ) ;
+extern "C" int sys$gettim( int(*)[2] );
+extern "C" int Gut_Cnv32to64 ( int*,  int (*)[2]);
+#else
+extern int sys$asctim ( int*, sDescr*, int (*)[2], int ) ;
+extern int sys$gettim( int(*)[2] );
+extern int Gut_Cnv32to64 ( int*,  int (*)[2]);
+#endif
+#endif
 /********************** FUNCTION DEFINITIONS ********************************/
 
 
@@ -548,6 +560,7 @@ void gHyp_sql_bind ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 		pSQL = sql_stmt ;
 		pEndSQL = pSQL + MAX_SQL_STMT_LENGTH ;
 
+		stmthp = NULL ;
 		pResult = NULL ;
 		ss = gHyp_data_getSubScript ( pData2 ) ;
 		context = -1 ;
@@ -3362,15 +3375,28 @@ void gHyp_sql_datetime ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 		struct tm	*pstm ;	
 
 		char
-		timeStamp[SQL_DATETIME_SIZE+1] ;
+		timeStamp[SQL_DATETIME_SIZE+20] ;
 
 		time_t
 		ts ;
-
+#if defined ( AS_VMS ) && defined ( AS_PROMIS )
+		char vmsTimeStamp[24];
+		int vms_time[2];
+		int timelen ;
+  		makeDSCs ( vmsTimeStamp_d, vmsTimeStamp ) ;
+  		int promis_time ;
+		char* months="JAN/FEB/MAR/APR/MAY/JUN/JUL/AUG/SEP/OCT/NOV/DEC/" ;
+		int month ;
+		char monthStr[4] ;
+		char yearStr[5] ;
+		char timeStr[9] ;
+		char dayStr[3] ;
+#endif
 		sLOGICAL
 		isVector ;
 
 		int
+		ret,
 		ss,
 		context,
 		argCount = gHyp_parse_argCount ( pParse ) ;
@@ -3383,6 +3409,25 @@ void gHyp_sql_datetime ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
 		if ( argCount == 0 ) {
 
+#if defined( AS_VMS ) && defined ( AS_PROMIS )		  
+			ret = sys$gettim( &vms_time );
+			ret =sys$asctim( &timelen, &vmsTimeStamp_d, &vms_time, 0 ) ;
+			strncpy ( monthStr, vmsTimeStamp+3, 3 ) ;
+			monthStr[3] = '\0;' ;
+			strncpy ( timeStr, vmsTimeStamp+12,8 ) ;
+			timeStr[8] = '\0;' ;
+			strncpy ( yearStr, vmsTimeStamp+7,4 ) ;
+			yearStr[4] = '\0' ;
+			strncpy ( dayStr, vmsTimeStamp, 2 ) ;
+			dayStr[3] = '\0' ;
+			if (dayStr[0] == ' ' ) dayStr[0] = '0' ;
+			month = ( strstr ( months, monthStr ) - months )/ 4 ;
+			sprintf (timeStamp,
+                                "%s-%02d-%s %s",
+                                yearStr,month+1,dayStr,timeStr );
+
+#else
+
 			ts = gsCurTime = time(NULL) ;
 			pstm = localtime ( &ts ) ;
 			if ( !pstm || pstm->tm_year > 138 ) {
@@ -3394,9 +3439,11 @@ void gHyp_sql_datetime ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 				pstm->tm_year+1900, pstm->tm_mon+1, pstm->tm_mday,
 				pstm->tm_hour, pstm->tm_min, pstm->tm_sec ) ;
 			}
+#endif
 			pResult = gHyp_data_new ( NULL ) ;
 			gHyp_data_setStr ( pResult, timeStamp ) ;
 			gHyp_stack_push ( pStack, pResult ) ;
+
 		}
 		else {
 
@@ -3412,9 +3459,28 @@ void gHyp_sql_datetime ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 			                                        pValue, 
 			                                        &context,
 			                                        ss ) ) ) {
-				
-				ts = gHyp_data_getRaw ( pValue, context, TRUE  ) ;
-				pstm = localtime ( &ts ) ;
+
+				ts = gHyp_data_getRaw ( pValue, context, TRUE  ) ;	
+	                        pstm = localtime ( &ts ) ;
+#if defined( AS_VMS ) && defined ( AS_PROMIS )
+			promis_time = (int) ts - PROMIS_DATE_OFFSET + pstm->tm_gmtoff + (pstm->tm_isdst?0:3600);
+			ret =Gut_Cnv32to64 ( &promis_time, &vms_time);
+			ret =sys$asctim( &timelen, &vmsTimeStamp_d, &vms_time, 0 ) ;
+                        strncpy ( monthStr, vmsTimeStamp+3, 3 ) ;
+                        monthStr[3] = '\0;' ;
+                        strncpy ( timeStr, vmsTimeStamp+12,8 ) ;
+                        timeStr[8] = '\0;' ;
+                        strncpy ( yearStr, vmsTimeStamp+7,4 ) ;
+                        yearStr[4] = '\0' ;
+                        strncpy ( dayStr, vmsTimeStamp, 2 ) ;
+                        dayStr[3] = '\0' ;
+                        if (dayStr[0] == ' ' ) dayStr[0] = '0' ;
+                        month = ( strstr ( months, monthStr ) - months )/ 4 ;
+                        sprintf (timeStamp,
+                                "%s-%02d-%s %s",
+                                yearStr,month+1,dayStr,timeStr );
+
+#else
 				if ( !pstm || pstm->tm_year > 138 ) {
 					strcpy ( timeStamp, " " ) ;
 				}
@@ -3424,6 +3490,7 @@ void gHyp_sql_datetime ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 					pstm->tm_year+1900, pstm->tm_mon+1, pstm->tm_mday,
 					pstm->tm_hour, pstm->tm_min, pstm->tm_sec ) ;
 				}
+#endif
 				pValue2 = gHyp_data_new ( NULL ) ;
 				gHyp_data_setStr ( pValue2, timeStamp ) ;
 				gHyp_data_append ( pResult, pValue2 ) ;
