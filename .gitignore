@@ -8,7 +8,6 @@ pids
 *.pid
 *.seed
 
-*.exe
 *.map
 *.manifest
 *.res
