@@ -51,8 +51,8 @@ typedef const LPBYTE LPCBYTE ;
 /********************** INTERNAL GLOBAL VARIABLES ****************************/
 
 /********************** INTERNAL OBJECT STRUCTURES ***************************/
-
-#if defined ( AS_VMS ) && defined ( AS_PROMIS )
+ 
+#if defined ( AS_VMS ) && defined ( AS_PROMIS ) && defined ( AS_VMSCLOCK )
 #define PROMIS_DATE_OFFSET  946684800
 #ifdef __cplusplus
 extern "C" int sys$asctim ( int*, sDescr*, int(*)[2], int ) ;
@@ -3379,7 +3379,7 @@ void gHyp_sql_datetime ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
 		time_t
 		ts ;
-#if defined ( AS_VMS ) && defined ( AS_PROMIS )
+#if defined ( AS_VMS ) && defined ( AS_PROMIS ) && defined ( AS_VMSCLOCK ) && defined ( AS_VMSCLOCK )
 		char vmsTimeStamp[24];
 		int vms_time[2];
 		int timelen ;
@@ -3409,7 +3409,7 @@ void gHyp_sql_datetime ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
 		if ( argCount == 0 ) {
 
-#if defined( AS_VMS ) && defined ( AS_PROMIS )		  
+#if defined( AS_VMS ) && defined ( AS_PROMIS ) && defined ( AS_VMSCLOCK )	  
 			ret = sys$gettim( &vms_time );
 			ret =sys$asctim( &timelen, &vmsTimeStamp_d, &vms_time, 0 ) ;
 			strncpy ( monthStr, vmsTimeStamp+3, 3 ) ;
@@ -3462,7 +3462,7 @@ void gHyp_sql_datetime ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
 				ts = gHyp_data_getRaw ( pValue, context, TRUE  ) ;	
 	                        pstm = localtime ( &ts ) ;
-#if defined( AS_VMS ) && defined ( AS_PROMIS )
+#if defined( AS_VMS ) && defined ( AS_PROMIS ) && defined ( AS_VMSCLOCK )
 			promis_time = (int) ts - PROMIS_DATE_OFFSET + pstm->tm_gmtoff + (pstm->tm_isdst?0:3600);
 			ret =Gut_Cnv32to64 ( &promis_time, &vms_time);
 			ret =sys$asctim( &timelen, &vmsTimeStamp_d, &vms_time, 0 ) ;

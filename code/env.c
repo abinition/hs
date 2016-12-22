@@ -43,7 +43,7 @@
 static char gzStream[(MAX_INPUT_LENGTH*4)+1] ;
 
 /********************** INTERNAL OBJECT STRUCTURES ************************/
-#if defined ( AS_VMS ) && defined ( AS_PROMIS )
+#if defined ( AS_VMS ) && defined ( AS_PROMIS )  && defined ( AS_VMSCLOCK )
 #define PROMIS_DATE_OFFSET  946684800
 #ifdef __cplusplus
 extern "C" int sys$asctim ( int*, sDescr*, int(*)[2], int ) ;
@@ -2158,7 +2158,7 @@ sData* gHyp_env_mergeData ( sData *pDst,
   
   struct tm *pstm ;
   
-#if defined ( AS_VMS ) && defined ( AS_PROMIS )
+#if defined ( AS_VMS ) && defined ( AS_PROMIS ) && defined ( AS_VMSCLOCK )
 		char vmsTimeStamp[24];
 		int vms_time[2];
 		int timelen ;
@@ -2539,7 +2539,7 @@ sData* gHyp_env_mergeData ( sData *pDst,
 
 			ts = gHyp_data_getRaw ( pSrcValue, ssv, TRUE  ) ;
 	                pstm = localtime ( &ts ) ;
-#if defined( AS_VMS ) && defined ( AS_PROMIS )
+#if defined( AS_VMS ) && defined ( AS_PROMIS ) && defined ( AS_VMSCLOCK )
 			promis_time = (int) ts - PROMIS_DATE_OFFSET + pstm->tm_gmtoff + (pstm->tm_isdst?0:3600);
 			ret =Gut_Cnv32to64 ( &promis_time, &vms_time);
 			ret =sys$asctim( &timelen, &vmsTimeStamp_d, &vms_time, 0 ) ;
@@ -2778,7 +2778,7 @@ sData* gHyp_env_mergeData ( sData *pDst,
 
 	      ts = gHyp_data_getRaw ( pSrcValue, ssv, TRUE  ) ;
 	      pstm = localtime ( &ts ) ;
-#if defined( AS_VMS ) && defined ( AS_PROMIS )
+#if defined( AS_VMS ) && defined ( AS_PROMIS ) && defined ( AS_VMSCLOCK )
 			promis_time = (int) ts - PROMIS_DATE_OFFSET + pstm->tm_gmtoff + (pstm->tm_isdst?0:3600);
 			ret =Gut_Cnv32to64 ( &promis_time, &vms_time);
 			ret =sys$asctim( &timelen, &vmsTimeStamp_d, &vms_time, 0 ) ;
