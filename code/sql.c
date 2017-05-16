@@ -1244,9 +1244,9 @@ void gHyp_sql_query ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 
 			/* We generally do NOT want AS_ORACLE_COMMIT_ON_SUCCESS as it slows down performance for high volumne transactions. */
 #ifdef AS_ORACLE_COMMIT_ON_SUCCESS
-			orientation = isSelect ? OCI_DESCRIBE_ONLY : (isCommit ? OCI_COMMIT_ON_SUCCESS : OCI_DEFAULT ) ;
+			orientation = isSelect ? OCI_DESCRIBE_ONLY : (isCommit ? OCI_DEFAULT : OCI_COMMIT_ON_SUCCESS ) ;
 #else
-			orientation = isSelect ? OCI_DESCRIBE_ONLY : OCI_COMMIT_ON_SUCCESS ;
+			orientation = isSelect ? OCI_DESCRIBE_ONLY : OCI_DEFAULT ;
 #endif
 		}
 		else {
