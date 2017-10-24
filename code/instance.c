@@ -1369,6 +1369,7 @@ int gHyp_instance_readQueue ( sInstance* pAI )
     return COND_NORMAL ;
   }
 
+  
   return COND_SILENT ;
 }
 
@@ -2659,14 +2660,22 @@ sAImsg *gHyp_instance_incomingMsg ( sInstance *pAI )
   if ( pAI->msg.endQQ >= MAX_QUEUE_DEPTH ) pAI->msg.endQQ = 0 ;
   n = pAI->msg.endQQ ;
 
+  if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
+    "Queue = Start [%d:%s], End [%d:%s]",
+      pAI->msg.startQQ,
+      pAI->msg.qq[pAI->msg.startQQ]?gHyp_aimsg_tokensValues(pAI->msg.qq[pAI->msg.startQQ]):"empty"
+      pAI->msg.endQQ,
+      pAI->msg.qq[pAI->msg.endQQ]?gHyp_aimsg_tokensValues(pAI->msg.qq[pAI->msg.endQQ]):"empty" ) ;
+
   if ( pAI->msg.qq[n] ) {
     /* Overflow!! */
     gHyp_util_logWarning("Message queue overflow at %d",MAX_QUEUE_DEPTH);
-    gHyp_aimsg_delete ( pAI->msg.qq[n] ) ;
+    /*gHyp_aimsg_delete ( pAI->msg.qq[n] ) ;*/
   }
-      
-  pAI->msg.qq[n] = gHyp_aimsg_new() ;
-
+  else {
+    pAI->msg.qq[n] = gHyp_aimsg_new() ;
+  }
   /* We call signalMsg() here as well as in readQueue(),
    * because it sets uMSG, which is used by gHyp_instance_isSignal(),
    * which in turn makes sure the select() timeout is zero.
@@ -2676,7 +2685,10 @@ sAImsg *gHyp_instance_incomingMsg ( sInstance *pAI )
    */
   gHyp_instance_signalMsg ( pAI ) ;
 
-  /*gHyp_util_logInfo("Initialize new message in qq[%d]",n ) ;*/
+  if ( guDebugFlags & DEBUG_DIAGNOSTICS )
+    gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_DIAGNOSTICS,
+      "Initialize new message in qq[%d]",n ) ;
+
   return pAI->msg.qq[n] ;
 }
 

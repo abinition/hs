@@ -81,7 +81,7 @@ c Code:
 	  !!!goto 101
 
 	endif
-	if ( doGOTO_101 ) goto 101
+	if ( doGOTO_101 ) goto 180
 !E-HS!
 >IE
 >ES

@@ -35,8 +35,8 @@
 #define __HYPDEF_H_
 
 #define 	VERSION_HYPERSCRIPT	    "3.9.4"
-#define 	VERSION_BUILD		    "161221"
-#define 	VERSION_HYPERSCRIPT_BUILD   "3.9.4-161221"
+#define 	VERSION_BUILD		    "171024"
+#define 	VERSION_HYPERSCRIPT_BUILD   "3.9.4-171024"
 
 #define		MAX_STACK_DEPTH		128  		    /* HyperScript stack */
 #define		MAX_EXPRESSION		MAX_STACK_DEPTH * 2 /* Twice the expression length */
@@ -56,8 +56,8 @@
 #define		FRAME_DEPTH_NULL	MAX_FRAME_DEPTH+1
 #define		MAX_SIGNALS		8
 #define		MAX_PROMIS_RESULT_SIZE	256
-#define		MAX_REPLY_DEPTH		32
-#define		MAX_QUEUE_DEPTH		32 
+#define		MAX_REPLY_DEPTH		64
+#define		MAX_QUEUE_DEPTH		64 
 #define		MAX_HASH_TABLE_SIZE	257
 #define		HEARTBEAT_INTERVAL	60 * 10   /* 10 minutes */
 #define		IDLE_INTERVAL		180	  /* 3 min */
