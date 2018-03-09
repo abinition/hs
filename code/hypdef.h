@@ -35,8 +35,8 @@
 #define __HYPDEF_H_
 
 #define 	VERSION_HYPERSCRIPT	    "3.9.4"
-#define 	VERSION_BUILD		    "171024"
-#define 	VERSION_HYPERSCRIPT_BUILD   "3.9.4-171024"
+#define 	VERSION_BUILD		    "180308"
+#define 	VERSION_HYPERSCRIPT_BUILD   "3.9.4-180308"
 
 #define		MAX_STACK_DEPTH		128  		    /* HyperScript stack */
 #define		MAX_EXPRESSION		MAX_STACK_DEPTH * 2 /* Twice the expression length */

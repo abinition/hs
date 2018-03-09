@@ -2550,7 +2550,7 @@ sData* gHyp_env_mergeData ( sData *pDst,
                         strncpy ( yearStr, vmsTimeStamp+7,4 ) ;
                         yearStr[4] = '\0' ;
                         strncpy ( dayStr, vmsTimeStamp, 2 ) ;
-                        dayStr[3] = '\0' ;
+                        dayStr[2] = '\0' ;
                         if (dayStr[0] == ' ' ) dayStr[0] = '0' ;
                         month = ( strstr ( months, monthStr ) - months )/ 4 ;
                         sprintf (timeStamp,
@@ -2789,7 +2789,7 @@ sData* gHyp_env_mergeData ( sData *pDst,
                         strncpy ( yearStr, vmsTimeStamp+7,4 ) ;
                         yearStr[4] = '\0' ;
                         strncpy ( dayStr, vmsTimeStamp, 2 ) ;
-                        dayStr[3] = '\0' ;
+                        dayStr[2] = '\0' ;
                         if (dayStr[0] == ' ' ) dayStr[0] = '0' ;
                         month = ( strstr ( months, monthStr ) - months )/ 4 ;
                         sprintf (timeStamp,

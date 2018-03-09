@@ -3419,7 +3419,7 @@ void gHyp_sql_datetime ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 			strncpy ( yearStr, vmsTimeStamp+7,4 ) ;
 			yearStr[4] = '\0' ;
 			strncpy ( dayStr, vmsTimeStamp, 2 ) ;
-			dayStr[3] = '\0' ;
+			dayStr[2] = '\0' ;
 			if (dayStr[0] == ' ' ) dayStr[0] = '0' ;
 			month = ( strstr ( months, monthStr ) - months )/ 4 ;
 			sprintf (timeStamp,
@@ -3473,7 +3473,7 @@ void gHyp_sql_datetime ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
                         strncpy ( yearStr, vmsTimeStamp+7,4 ) ;
                         yearStr[4] = '\0' ;
                         strncpy ( dayStr, vmsTimeStamp, 2 ) ;
-                        dayStr[3] = '\0' ;
+                        dayStr[2] = '\0' ;
                         if (dayStr[0] == ' ' ) dayStr[0] = '0' ;
                         month = ( strstr ( months, monthStr ) - months )/ 4 ;
                         sprintf (timeStamp,
