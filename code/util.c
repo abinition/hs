@@ -1854,6 +1854,8 @@ int gHyp_util_parseString ( char *pStr )
 
 }
 
+
+
 int gHyp_util_unparseString ( char *pDstStr, 
                               char *pSrcStr,
                               int strLen,
@@ -2157,6 +2159,49 @@ int gHyp_util_trim ( char *target )
     *pStr-- = '\0' ;
 
   return (int)((pStr - target) + 1);
+}
+
+int gHyp_util_trim_n ( char *target, int n )
+{
+  /* Description:
+   *
+   *    Used for evvariant
+   *    Trim all trailing blanks and tabs from string
+   *    Replace \n with ' ', \0 with ' '
+   *
+   * Arguments:
+   *
+   *    target                          [R/W]
+   *    - string of length n
+   *    n  [R]
+   *    - length
+   *
+   * Return value:
+   *
+   *    length of string
+   *
+   */
+
+  char *pStr = target + n - 1 ;
+  int strLen ;
+
+  /* Remove unprintables (newline or carriage return) at end of line */
+  while ( pStr >= target && (*pStr < ' ' ) )
+    *pStr-- = '\0' ;
+
+  /* Remove whitespace at end of line */
+  while ( pStr >= target && (*pStr == ' ' || *pStr == '\t' ) )
+    *pStr-- = '\0' ;
+
+  strLen = (int)((pStr - target) + 1);
+  
+  /* Erase \n and \0 */
+  while ( pStr >= target ) {
+    if ( *pStr == '\0' || *pStr == '\n' ) *pStr = ' ' ;
+    *pStr-- ;
+  }
+
+  return strLen ;
 }
 
 int gHyp_util_trimWhiteSpace ( char *target )
@@ -2997,8 +3042,8 @@ sLOGICAL gHyp_util_maybeDouble ( char *token ) {
 
 
 	/* Check for overflow 
-	 * float 1.175494351 E – 38 to 3.402823466 E + 38
-	 * double 2.2250738585072014 E – 308 to 1.7976931348623158 E + 308
+	 * float 1.175494351 E ï¿½ 38 to 3.402823466 E + 38
+	 * double 2.2250738585072014 E ï¿½ 308 to 1.7976931348623158 E + 308
 	 * long double (same as double)
 	 */
 	maybeDouble = strspn ( token, "0123456789.eE+-" ) == strlen ( token ) ;

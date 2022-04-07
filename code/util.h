@@ -64,6 +64,7 @@ extern int		gHyp_util_parseString ( char* ) ;
 extern int		gHyp_util_unparseString ( char*, char*, int, int, sLOGICAL, sLOGICAL, sLOGICAL,char* ) ;
 extern void 		gHyp_util_strip ( char *, int ) ;
 extern int 		gHyp_util_trim ( char * ) ;
+extern int 		gHyp_util_trim_n ( char *, int ) ;
 extern int 		gHyp_util_trimWhiteSpace ( char * ) ;
 extern sLOGICAL		gHyp_util_openLog () ;
 extern sLOGICAL		gHyp_util_isLittleEndian() ;

@@ -14,15 +14,15 @@
 /*
  *  This program is dual-licensed: either;
  *
- *  Under the terms of the GNU General Public License version 3 as 
- *  published by the Free Software Foundation. For the terms of this 
+ *  Under the terms of the GNU General Public License version 3 as
+ *  published by the Free Software Foundation. For the terms of this
  *  license, see licenses/gplv3.md or <http://www.gnu.org/licenses/>;
  *
- *  Under the terms of the Commercial License as set out in 
+ *  Under the terms of the Commercial License as set out in
  *  licenses/commercial.md
  *
  *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of 
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License or Commerical License for more details.
  */
@@ -34,30 +34,30 @@
 
 /**********************	HYPERSCRIPT INTERFACE ********************************/
 
-#include "auto.h"	/* System Interface and Function Prototypes */
+#include "auto.h" /* System Interface and Function Prototypes */
 
 /**********************	EXTERNAL GLOBAL VARIABLES ****************************/
 
 /**********************	INTERNAL GLOBAL VARIABLES ****************************/
 
-static char gzStream[(MAX_INPUT_LENGTH*4)+1] ;
+static char gzStream[(MAX_INPUT_LENGTH * 4) + 1];
 
 /********************** INTERNAL OBJECT STRUCTURES ************************/
-#if defined ( AS_VMS ) && defined ( AS_PROMIS )  && defined ( AS_VMSCLOCK )
-#define PROMIS_DATE_OFFSET  946684800
+#if defined(AS_VMS) && defined(AS_PROMIS) && defined(AS_VMSCLOCK)
+#define PROMIS_DATE_OFFSET 946684800
 #ifdef __cplusplus
-extern "C" int sys$asctim ( int*, sDescr*, int(*)[2], int ) ;
-extern "C" int sys$gettim( int(*)[2] );
-extern "C" int Gut_Cnv32to64 ( int*,  int (*)[2]);
+extern "C" int sys$asctim(int *, sDescr *, int (*)[2], int);
+extern "C" int sys$gettim(int (*)[2]);
+extern "C" int Gut_Cnv32to64(int *, int (*)[2]);
 #else
-extern int sys$asctim ( int*, sDescr*, int (*)[2], int ) ;
-extern int sys$gettim( int(*)[2] );
-extern int Gut_Cnv32to64 ( int*,  int (*)[2]);
+extern int sys$asctim(int *, sDescr *, int (*)[2], int);
+extern int sys$gettim(int (*)[2]);
+extern int Gut_Cnv32to64(int *, int (*)[2]);
 #endif
 #endif
 /**********************	FUNCTION DEFINITIONS ********************************/
 
-void gHyp_env_count ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+void gHyp_env_count(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE)
 {
   /* Description:
    *
@@ -82,40 +82,41 @@ void gHyp_env_count ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
    *	07-Apr-96		Mike Bergsma
    *	- Q/A check and code review
    */
-  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
-  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+  sFrame *pFrame = gHyp_instance_frame(pAI);
+  sParse *pParse = gHyp_frame_parse(pFrame);
 
-  if ( isPARSE )
+  if (isPARSE)
 
-    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+    gHyp_parse_operand(pParse, pCode, pAI);
 
-  else {
+  else
+  {
 
-    sStack 
-      *pStack = gHyp_frame_stack ( pFrame ) ;
-    
+    sStack
+        *pStack = gHyp_frame_stack(pFrame);
+
     sData
-      *pData,
-      *pResult ;
+        *pData,
+        *pResult;
 
     int
-      argCount = gHyp_parse_argCount ( pParse ) ;
-    
-    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+        argCount = gHyp_parse_argCount(pParse);
 
-    if ( argCount != 1 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-    	"Invalid arguments. Usage: count ( variable )") ;
+    gHyp_instance_setStatus(pAI, STATUS_ACKNOWLEDGE);
 
-    pData = gHyp_stack_popLvalue ( pStack, pAI ) ;
+    if (argCount != 1)
+      gHyp_instance_error(pAI, STATUS_ARGUMENT,
+                          "Invalid arguments. Usage: count ( variable )");
+
+    pData = gHyp_stack_popLvalue(pStack, pAI);
     /*pData = gHyp_stack_popRdata ( pStack, pAI ) ;*/
-    pResult = gHyp_data_new ( NULL ) ;
-    gHyp_data_setInt ( pResult, gHyp_data_getCount ( pData ) ) ;
-    gHyp_stack_push ( pStack, pResult ) ;
-  }	
+    pResult = gHyp_data_new(NULL);
+    gHyp_data_setInt(pResult, gHyp_data_getCount(pData));
+    gHyp_stack_push(pStack, pResult);
+  }
 }
 
-
-void gHyp_env_debug ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+void gHyp_env_debug(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE)
 {
   /* Description:
    *
@@ -139,61 +140,66 @@ void gHyp_env_debug ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
    *	07-Apr-96		Mike Bergsma
    *	- Q/A check and code review
    */
-  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
-  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+  sFrame *pFrame = gHyp_instance_frame(pAI);
+  sParse *pParse = gHyp_frame_parse(pFrame);
 
-  if ( isPARSE )
+  if (isPARSE)
 
-    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+    gHyp_parse_operand(pParse, pCode, pAI);
 
-  else {
+  else
+  {
 
-    sStack 	
-      *pStack = gHyp_frame_stack ( pFrame ) ;
-    
+    sStack
+        *pStack = gHyp_frame_stack(pFrame);
+
     sData
-      *pData,
-      *pResult ;
-    
+        *pData,
+        *pResult;
+
     int
-      prevFlags=guDebugFlags,
-      debugFlags,
-      frameDepth=0,
-      argCount = gHyp_parse_argCount ( pParse ) ;
-    
-    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+        prevFlags = guDebugFlags,
+        debugFlags,
+        frameDepth = 0,
+        argCount = gHyp_parse_argCount(pParse);
 
-    if ( argCount > 1 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT,
-    	"Invalid arguments. Usage: debug ( [flags] )" ) ;
+    gHyp_instance_setStatus(pAI, STATUS_ACKNOWLEDGE);
 
+    if (argCount > 1)
+      gHyp_instance_error(pAI, STATUS_ARGUMENT,
+                          "Invalid arguments. Usage: debug ( [flags] )");
 
-    if ( argCount == 1 ) {
+    if (argCount == 1)
+    {
 
       /* Pop the value off of the stack	 */
-      pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
-      debugFlags = gHyp_data_getInt ( pData,
-				      gHyp_data_getSubScript ( pData ),
-				      TRUE ) ;  
-      
-      if ( debugFlags  < 0 || debugFlags > MAX_DEBUG_LEVEL ) {
-        gHyp_instance_warning ( pAI, STATUS_INVALID, "Invalid debug flags" ) ;
+      pData = gHyp_stack_popRvalue(pStack, pAI);
+      debugFlags = gHyp_data_getInt(pData,
+                                    gHyp_data_getSubScript(pData),
+                                    TRUE);
+
+      if (debugFlags < 0 || debugFlags > MAX_DEBUG_LEVEL)
+      {
+        gHyp_instance_warning(pAI, STATUS_INVALID, "Invalid debug flags");
       }
-      else {
-        guDebugFlags = debugFlags ;
+      else
+      {
+        guDebugFlags = debugFlags;
 
         /* If the FRAME debug flag is set, update the frame depth */
-	if ( guDebugFlags & DEBUG_FRAME ) frameDepth  = gHyp_frame_depth (pFrame) ;
+        if (guDebugFlags & DEBUG_FRAME)
+          frameDepth = gHyp_frame_depth(pFrame);
 
         /*gHyp_util_logDebug ( frameDepth, guDebugFlags,"debug: %u", guDebugFlags ) ;*/
       }
     }
-    pResult = gHyp_data_new(NULL) ;
-    gHyp_data_setInt ( pResult, prevFlags ) ;
-    gHyp_stack_push ( pStack, pResult ) ;
-  }	
+    pResult = gHyp_data_new(NULL);
+    gHyp_data_setInt(pResult, prevFlags);
+    gHyp_stack_push(pStack, pResult);
+  }
 }
 
-void gHyp_env_exists ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+void gHyp_env_exists(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE)
 {
   /* Description:
    *
@@ -217,47 +223,51 @@ void gHyp_env_exists ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
    *	07-Apr-96		Mike Bergsma
    *	- Q/A check and code review
    */
-  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
-  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+  sFrame *pFrame = gHyp_instance_frame(pAI);
+  sParse *pParse = gHyp_frame_parse(pFrame);
 
-  if ( isPARSE )
+  if (isPARSE)
 
-    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+    gHyp_parse_operand(pParse, pCode, pAI);
 
-  else {
+  else
+  {
 
     sStack
-      *pStack = gHyp_frame_stack ( pFrame ) ;
-    
+        *pStack = gHyp_frame_stack(pFrame);
+
     sData
-      *pResult,
-      *pData;
-    
+        *pResult,
+        *pData;
+
     int
-      argCount = gHyp_parse_argCount ( pParse ) ;
-    
-    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+        argCount = gHyp_parse_argCount(pParse);
 
-    if ( argCount != 1 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-	"Invalid arguments. Usage: exists ( variable )" ) ;
+    gHyp_instance_setStatus(pAI, STATUS_ACKNOWLEDGE);
 
-    pData = gHyp_stack_popLvalue ( pStack, pAI ) ;
-    pResult = gHyp_data_new (NULL) ;
+    if (argCount != 1)
+      gHyp_instance_error(pAI, STATUS_ARGUMENT,
+                          "Invalid arguments. Usage: exists ( variable )");
+
+    pData = gHyp_stack_popLvalue(pStack, pAI);
+    pResult = gHyp_data_new(NULL);
     /* Locate the variable */
 
-    if ( gHyp_data_getVariable ( pData ) ) {
-      gHyp_data_setBool ( pResult, TRUE ) ;
+    if (gHyp_data_getVariable(pData))
+    {
+      gHyp_data_setBool(pResult, TRUE);
     }
-    else {
-      gHyp_instance_setStatus ( pAI, STATUS_UNDEFINED ) ;
-      gHyp_data_setBool ( pResult, FALSE ) ;
+    else
+    {
+      gHyp_instance_setStatus(pAI, STATUS_UNDEFINED);
+      gHyp_data_setBool(pResult, FALSE);
     }
 
-    gHyp_stack_push ( pStack, pResult ) ;
-  }	
+    gHyp_stack_push(pStack, pResult);
+  }
 }
 
-void gHyp_env_exit ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+void gHyp_env_exit(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE)
 {
   /* Description:
    *
@@ -280,53 +290,57 @@ void gHyp_env_exit ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
    *	07-Apr-96		Mike Bergsma
    *	- Q/A check and code review
    */
-  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
-  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+  sFrame *pFrame = gHyp_instance_frame(pAI);
+  sParse *pParse = gHyp_frame_parse(pFrame);
 
-  if ( isPARSE )
+  if (isPARSE)
 
-    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+    gHyp_parse_operand(pParse, pCode, pAI);
 
-  else {
+  else
+  {
 
-    sStack 	*pStack = gHyp_frame_stack ( pFrame ) ;
-    sFrame 	*pFrame = gHyp_instance_frame ( pAI ) ;
-    int	   	argCount = gHyp_parse_argCount ( pParse ) ;
-    sData	*pData ;
-    
-    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+    sStack *pStack = gHyp_frame_stack(pFrame);
+    sFrame *pFrame = gHyp_instance_frame(pAI);
+    int argCount = gHyp_parse_argCount(pParse);
+    sData *pData;
 
-    if ( argCount > 1 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-    	"Invalid arguments. Usage: exit( [cond] )" ) ;
+    gHyp_instance_setStatus(pAI, STATUS_ACKNOWLEDGE);
 
-    if ( argCount == 1 ) {
+    if (argCount > 1)
+      gHyp_instance_error(pAI, STATUS_ARGUMENT,
+                          "Invalid arguments. Usage: exit( [cond] )");
+
+    if (argCount == 1)
+    {
       /* Pop the condition value off of the stack */
-      pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
-      giCondition = gHyp_data_getInt ( pData,
-				       gHyp_data_getSubScript ( pData ),
-				       TRUE ) ;
+      pData = gHyp_stack_popRvalue(pStack, pAI);
+      giCondition = gHyp_data_getInt(pData,
+                                     gHyp_data_getSubScript(pData),
+                                     TRUE);
     }
 
     /* If the method was invoked from a query, then send all replies */
-    while ( gHyp_instance_replyMessage (
-	       pAI,
-	       gHyp_frame_getMethodData(pFrame) ) ) ;
+    while (gHyp_instance_replyMessage(
+        pAI,
+        gHyp_frame_getMethodData(pFrame)))
+      ;
 
-    if ( guDebugFlags & DEBUG_FRAME )
-      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
-			   "frame: EXIT (longjmp to 0 from frame %d)",
-			   gHyp_frame_depth(pFrame) );
-    
+    if (guDebugFlags & DEBUG_FRAME)
+      gHyp_util_logDebug(FRAME_DEPTH_NULL, DEBUG_FRAME,
+                         "frame: EXIT (longjmp to 0 from frame %d)",
+                         gHyp_frame_depth(pFrame));
+
     /* Flush the stack and clear the frame */
-    gHyp_stack_flush ( pStack ) ;
-    gHyp_frame_reset ( pFrame ) ;
-    
+    gHyp_stack_flush(pStack);
+    gHyp_frame_reset(pFrame);
+
     /* Exit and Quit */
-    longjmp ( gsJmpStack[0], COND_ERROR ) ;
+    longjmp(gsJmpStack[0], COND_ERROR);
   }
 }
 
-void gHyp_env_quit ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+void gHyp_env_quit(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE)
 {
   /* Description:
    *
@@ -347,48 +361,51 @@ void gHyp_env_quit ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
    * Modifications:
    *
    */
-  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
-  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+  sFrame *pFrame = gHyp_instance_frame(pAI);
+  sParse *pParse = gHyp_frame_parse(pFrame);
 
-  if ( isPARSE )
+  if (isPARSE)
 
-    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+    gHyp_parse_operand(pParse, pCode, pAI);
 
-  else {
+  else
+  {
 
-    sStack 	*pStack = gHyp_frame_stack ( pFrame ) ;
-    sFrame 	*pFrame = gHyp_instance_frame ( pAI ) ;
-    int	   	argCount = gHyp_parse_argCount ( pParse ) ;
-    sData	*pData ;
-    
-    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+    sStack *pStack = gHyp_frame_stack(pFrame);
+    sFrame *pFrame = gHyp_instance_frame(pAI);
+    int argCount = gHyp_parse_argCount(pParse);
+    sData *pData;
 
-    if ( argCount > 1 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-    	"Invalid arguments. Usage: quit( [cond] )" ) ;
+    gHyp_instance_setStatus(pAI, STATUS_ACKNOWLEDGE);
 
-    if ( argCount == 1 ) {
+    if (argCount > 1)
+      gHyp_instance_error(pAI, STATUS_ARGUMENT,
+                          "Invalid arguments. Usage: quit( [cond] )");
+
+    if (argCount == 1)
+    {
       /* Pop the condition value off of the stack */
-      pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
-      giCondition = gHyp_data_getInt ( pData,
-				       gHyp_data_getSubScript ( pData ),
-				       TRUE ) ;
+      pData = gHyp_stack_popRvalue(pStack, pAI);
+      giCondition = gHyp_data_getInt(pData,
+                                     gHyp_data_getSubScript(pData),
+                                     TRUE);
     }
 
-    if ( guDebugFlags & DEBUG_FRAME )
-      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME,
-			   "frame: QUIT (longjmp to 0 from frame %d)",
-			   gHyp_frame_depth(pFrame) );
-    
+    if (guDebugFlags & DEBUG_FRAME)
+      gHyp_util_logDebug(FRAME_DEPTH_NULL, DEBUG_FRAME,
+                         "frame: QUIT (longjmp to 0 from frame %d)",
+                         gHyp_frame_depth(pFrame));
+
     /* Flush the stack and clear the frame */
-    gHyp_stack_flush ( pStack ) ;
-    gHyp_frame_reset ( pFrame ) ;
-    
+    gHyp_stack_flush(pStack);
+    gHyp_frame_reset(pFrame);
+
     /* Quit */
-    longjmp ( gsJmpStack[0], COND_ERROR ) ;
+    longjmp(gsJmpStack[0], COND_ERROR);
   }
 }
 
-void gHyp_env_idle ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+void gHyp_env_idle(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE)
 {
   /* Description:
    *
@@ -411,212 +428,217 @@ void gHyp_env_idle ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
    *	07-Apr-96		Mike Bergsma
    *	- Q/A check and code review
    */
-  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
-  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+  sFrame *pFrame = gHyp_instance_frame(pAI);
+  sParse *pParse = gHyp_frame_parse(pFrame);
 
-  if ( isPARSE )
+  if (isPARSE)
 
-    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+    gHyp_parse_operand(pParse, pCode, pAI);
 
-  else {
+  else
+  {
 
-    int	
-      argCount = gHyp_parse_argCount ( pParse ) ;
-    
+    int
+        argCount = gHyp_parse_argCount(pParse);
+
     sConcept
-      *pConcept ;
+        *pConcept;
 
-    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+    gHyp_instance_setStatus(pAI, STATUS_ACKNOWLEDGE);
 
-    if ( argCount > 0 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-    	"Invalid arguments. Usage: idle ( )" ) ;
+    if (argCount > 0)
+      gHyp_instance_error(pAI, STATUS_ARGUMENT,
+                          "Invalid arguments. Usage: idle ( )");
 
-    /* Idle */    
-    gHyp_instance_setState ( pAI, STATE_IDLE ) ;
-    gHyp_frame_setState ( pFrame, STATE_IDLE ) ;
-    /* Set index back one to be at the right spot for gHyp_parse_completeExpression */ 
-    gHyp_frame_setHypIndex ( pFrame, gHyp_frame_getHypIndex(pFrame) - 1 ) ;
-    gHyp_parse_restoreExprRank ( pParse ) ;
+    /* Idle */
+    gHyp_instance_setState(pAI, STATE_IDLE);
+    gHyp_frame_setState(pFrame, STATE_IDLE);
+    /* Set index back one to be at the right spot for gHyp_parse_completeExpression */
+    gHyp_frame_setHypIndex(pFrame, gHyp_frame_getHypIndex(pFrame) - 1);
+    gHyp_parse_restoreExprRank(pParse);
 
     /* If we are the parent, we may turn-off "return to stdIn".*/
-    pConcept = gHyp_instance_getConcept(pAI) ;
-    if ( gHyp_concept_getConceptInstance ( pConcept ) == pAI ) 
-      gHyp_concept_setReturnToStdIn ( pConcept, FALSE ) ;
+    pConcept = gHyp_instance_getConcept(pAI);
+    if (gHyp_concept_getConceptInstance(pConcept) == pAI)
+      gHyp_concept_setReturnToStdIn(pConcept, FALSE);
 
-    if ( guDebugFlags & DEBUG_FRAME )
-      gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME, 
-			   "frame: IDLE (longjmp to %d from frame %d)",
-			   giJmpRootLevel,gHyp_frame_depth(pFrame) ) ;
+    if (guDebugFlags & DEBUG_FRAME)
+      gHyp_util_logDebug(FRAME_DEPTH_NULL, DEBUG_FRAME,
+                         "frame: IDLE (longjmp to %d from frame %d)",
+                         giJmpRootLevel, gHyp_frame_depth(pFrame));
 
-    longjmp ( gsJmpStack[giJmpLevel=giJmpRootLevel], COND_SILENT) ;
-
+    longjmp(gsJmpStack[giJmpLevel = giJmpRootLevel], COND_SILENT);
   }
 }
 
-void lHyp_env_instantiate ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE, sLOGICAL fork ) 
+void lHyp_env_instantiate(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE, sLOGICAL fork)
 {
-  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
-  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+  sFrame *pFrame = gHyp_instance_frame(pAI);
+  sParse *pParse = gHyp_frame_parse(pFrame);
 
-  if ( isPARSE )
+  if (isPARSE)
 
-    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+    gHyp_parse_operand(pParse, pCode, pAI);
 
-  else {
+  else
+  {
 
-    sStack 	
-      *pStack = gHyp_frame_stack ( pFrame ) ;
-    
+    sStack
+        *pStack = gHyp_frame_stack(pFrame);
+
     char
-      value[VALUE_SIZE+1],
-      newInstance[VALUE_SIZE+1],
-      targetPath[TARGET_SIZE+1],
-      instance[INSTANCE_SIZE+1],
-      concept[OBJECT_SIZE+1],
-      parent[OBJECT_SIZE+1],
-      root[OBJECT_SIZE+1],
-      host[HOST_SIZE+1] ;
-    
+        value[VALUE_SIZE + 1],
+        newInstance[VALUE_SIZE + 1],
+        targetPath[TARGET_SIZE + 1],
+        instance[INSTANCE_SIZE + 1],
+        concept[OBJECT_SIZE + 1],
+        parent[OBJECT_SIZE + 1],
+        root[OBJECT_SIZE + 1],
+        host[HOST_SIZE + 1];
+
     sData
-      *pData;
+        *pData;
 
     sConcept
-      *pConcept ;
+        *pConcept;
 
     sInstance
-      *pAInew ;
+        *pAInew;
 
     int
-      n,
-      argCount = gHyp_parse_argCount ( pParse ) ;
-    
-    if ( argCount > 1 ) {
-      if ( fork )
-	gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-	  "Invalid arguments. Usage: instantiate ( [name] )" ) ;
-        else
-	  gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-	    "Invalid arguments. Usage: instantiation ( [name] )" ) ;
+        n,
+        argCount = gHyp_parse_argCount(pParse);
+
+    if (argCount > 1)
+    {
+      if (fork)
+        gHyp_instance_error(pAI, STATUS_ARGUMENT,
+                            "Invalid arguments. Usage: instantiate ( [name] )");
+      else
+        gHyp_instance_error(pAI, STATUS_ARGUMENT,
+                            "Invalid arguments. Usage: instantiation ( [name] )");
     }
 
-    if ( argCount == 1 ) {
-  
-      pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
-      n = gHyp_data_getStr ( pData, 
-			     value, 
-			     VALUE_SIZE,
-			     gHyp_data_getSubScript(pData),
-			     TRUE ) ;
-      gHyp_util_lowerCase ( value, n ) ;
+    if (argCount == 1)
+    {
 
-      if ( !strchr ( value, '/' ) ) 
-	sprintf ( newInstance, "%s#%s%s", value, gzConcept, gzRoot ) ;
-      else 
-	strcpy ( newInstance, value ) ;
-    }	
+      pData = gHyp_stack_popRvalue(pStack, pAI);
+      n = gHyp_data_getStr(pData,
+                           value,
+                           VALUE_SIZE,
+                           gHyp_data_getSubScript(pData),
+                           TRUE);
+      gHyp_util_lowerCase(value, n);
+
+      if (!strchr(value, '/'))
+        sprintf(newInstance, "%s#%s%s", value, gzConcept, gzRoot);
+      else
+        strcpy(newInstance, value);
+    }
     else
       /* No argument. Generate random instance name */
-      sprintf ( newInstance, "%s#%s%s", gHyp_util_random8(), gzConcept, gzRoot ) ;
-      
-    gHyp_util_breakTarget ( newInstance, instance, concept, parent, root, host ) ;
-    sprintf ( targetPath, "%s#%s%s", instance, concept, root ) ;
-    pConcept = gHyp_instance_getConcept(pAI) ;
+      sprintf(newInstance, "%s#%s%s", gHyp_util_random8(), gzConcept, gzRoot);
+
+    gHyp_util_breakTarget(newInstance, instance, concept, parent, root, host);
+    sprintf(targetPath, "%s#%s%s", instance, concept, root);
+    pConcept = gHyp_instance_getConcept(pAI);
 
     /* Make sure we're the parent instance */
-    if ( pAI != gHyp_concept_getConceptInstance ( pConcept ) ) {
+    if (pAI != gHyp_concept_getConceptInstance(pConcept))
+    {
 
-      gHyp_instance_warning ( 
-	  pAI, STATUS_REJECTED, 
-	  "Instantiate to %s not allowed from %s since this is not the parent concept",
-	  targetPath, gHyp_instance_getTargetId(pAI) ) ;
-
+      gHyp_instance_warning(
+          pAI, STATUS_REJECTED,
+          "Instantiate to %s not allowed from %s since this is not the parent concept",
+          targetPath, gHyp_instance_getTargetId(pAI));
     }
-    else if ( gHyp_concept_getNamedInstance ( gHyp_instance_getConcept(pAI),
-					      instance ) ) {
-      gHyp_instance_warning ( pAI,
-			      STATUS_TARGET, 
-			      "Instance %s already created",
-			      instance ) ;
-
+    else if (gHyp_concept_getNamedInstance(gHyp_instance_getConcept(pAI),
+                                           instance))
+    {
+      gHyp_instance_warning(pAI,
+                            STATUS_TARGET,
+                            "Instance %s already created",
+                            instance);
     }
-    else if ( !fork ) {
+    else if (!fork)
+    {
 
       /* Just create the new instance */
-      gHyp_concept_instantiate (  gHyp_instance_getConcept(pAI), 
-				  pAI,
-				  instance,
-				  root,
-				  FALSE,	/* Don't swap the frames */
-				  FALSE,	/* Don't swap the data */
-				  TRUE ) ;	/* Do reset */
+      gHyp_concept_instantiate(gHyp_instance_getConcept(pAI),
+                               pAI,
+                               instance,
+                               root,
+                               FALSE, /* Don't swap the frames */
+                               FALSE, /* Don't swap the data */
+                               TRUE); /* Do reset */
     }
-    else {    
-      
+    else
+    {
+
       /* Create the new instance name from the parent */
 
       /* If the method was invoked from a query, then send all replies */
-      while ( gHyp_instance_replyMessage (
-	       pAI,
-	       gHyp_frame_getMethodData(pFrame) ) ) ;
+      while (gHyp_instance_replyMessage(
+          pAI,
+          gHyp_frame_getMethodData(pFrame)))
+        ;
 
-      pAInew = gHyp_concept_instantiate (  pConcept, 
-					   pAI,
-					   instance,
-					   root,
-					   TRUE,	/* Swap the frames */
-					   TRUE,	/* Swap the data */
-					   FALSE ) ;	/* Do not reset */
+      pAInew = gHyp_concept_instantiate(pConcept,
+                                        pAI,
+                                        instance,
+                                        root,
+                                        TRUE,   /* Swap the frames */
+                                        TRUE,   /* Swap the data */
+                                        FALSE); /* Do not reset */
 
       /* The new instance now has the frame once owned by the concept instance and
        * the concept instance now has a new frame.  However, the _main_ methodData of
        * both frames has been swapped, so that the concept instance still has its
-       * global variables and its own _main_. 
+       * global variables and its own _main_.
        *
        * pAI is still the concept instance, but pFrame, pParse, pStack are owned
        * by pAInew.
        *
        */
       /* Nope * gHyp_instance_swapDevices ( pAInew, pAI ) ; */
-      gHyp_instance_setgpAImain ( pAI ) ;
-      gHyp_instance_setgpAI ( pAInew ) ;
+      gHyp_instance_setgpAImain(pAI);
+      gHyp_instance_setgpAI(pAInew);
 
-      /* Set index back one to be at the right spot for gHyp_parse_completeExpression */ 
-      gHyp_frame_setHypIndex ( pFrame, gHyp_frame_getHypIndex(pFrame) - 1 ) ;
-      gHyp_parse_restoreExprRank ( pParse ) ;
+      /* Set index back one to be at the right spot for gHyp_parse_completeExpression */
+      gHyp_frame_setHypIndex(pFrame, gHyp_frame_getHypIndex(pFrame) - 1);
+      gHyp_parse_restoreExprRank(pParse);
 
-      gHyp_instance_pushSTATUS ( pAI, pStack ) ;
-      	
-      if ( !gHyp_instance_isEND ( pAI ) && gHyp_frame_depth (pFrame) > 1 )
-	gHyp_concept_setReturnToStdIn ( pConcept, FALSE ) ;
+      gHyp_instance_pushSTATUS(pAI, pStack);
 
-      else if ( gHyp_concept_returnToStdIn ( pConcept ) )
-	gHyp_util_logWarning( "Parent concept is not at eof" ) ;
+      if (!gHyp_instance_isEND(pAI) && gHyp_frame_depth(pFrame) > 1)
+        gHyp_concept_setReturnToStdIn(pConcept, FALSE);
 
-      gHyp_instance_reset ( pAI, STATE_IDLE, TRUE ) ;
+      else if (gHyp_concept_returnToStdIn(pConcept))
+        gHyp_util_logWarning("Parent concept is not at eof");
 
-      giJmpRootLevel=1;
-      if ( guDebugFlags & DEBUG_FRAME )
-        gHyp_util_logDebug ( FRAME_DEPTH_NULL, DEBUG_FRAME, 
-			   "frame: Instantiate (longjmp to %d from frame %d)",
-			   giJmpRootLevel,gHyp_frame_depth(pFrame) ) ;
-      longjmp ( gsJmpStack[giJmpLevel=giJmpRootLevel], COND_NORMAL ) ;
+      gHyp_instance_reset(pAI, STATE_IDLE, TRUE);
 
+      giJmpRootLevel = 1;
+      if (guDebugFlags & DEBUG_FRAME)
+        gHyp_util_logDebug(FRAME_DEPTH_NULL, DEBUG_FRAME,
+                           "frame: Instantiate (longjmp to %d from frame %d)",
+                           giJmpRootLevel, gHyp_frame_depth(pFrame));
+      longjmp(gsJmpStack[giJmpLevel = giJmpRootLevel], COND_NORMAL);
     }
-    gHyp_instance_pushSTATUS ( pAI, pStack ) ;
+    gHyp_instance_pushSTATUS(pAI, pStack);
   }
 }
-void gHyp_env_instantiate ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+void gHyp_env_instantiate(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE)
 {
-  lHyp_env_instantiate ( pAI,pCode,isPARSE,TRUE); 
+  lHyp_env_instantiate(pAI, pCode, isPARSE, TRUE);
 }
 
-void gHyp_env_instantiation ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+void gHyp_env_instantiation(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE)
 {
-  lHyp_env_instantiate ( pAI,pCode,isPARSE,FALSE); 
+  lHyp_env_instantiate(pAI, pCode, isPARSE, FALSE);
 }
 
-
-void gHyp_env_undef ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+void gHyp_env_undef(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE)
 {
   /* Description:
    *
@@ -640,48 +662,48 @@ void gHyp_env_undef ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
    *	07-Apr-96		Mike Bergsma
    *	- Q/A check and code review
    */
-  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
-  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+  sFrame *pFrame = gHyp_instance_frame(pAI);
+  sParse *pParse = gHyp_frame_parse(pFrame);
 
-  if ( isPARSE )
+  if (isPARSE)
 
-    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+    gHyp_parse_operand(pParse, pCode, pAI);
 
-  else {
+  else
+  {
 
-    sStack 	
-      *pStack = gHyp_frame_stack ( pFrame ) ;
+    sStack
+        *pStack = gHyp_frame_stack(pFrame);
 
     sData
-      *pVariable,
-      *pData ;
-    
+        *pVariable,
+        *pData;
+
     int
-      argCount = gHyp_parse_argCount ( pParse ) ;
-   	
-    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+        argCount = gHyp_parse_argCount(pParse);
 
-    if ( argCount != 1 ) 
-      gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-			    "Invalid arguments. Usage: undef ( variable )" ) ;
+    gHyp_instance_setStatus(pAI, STATUS_ACKNOWLEDGE);
 
-    pData = gHyp_stack_popLvalue ( pStack, pAI ) ;
+    if (argCount != 1)
+      gHyp_instance_error(pAI, STATUS_ARGUMENT,
+                          "Invalid arguments. Usage: undef ( variable )");
 
-    if ( (pVariable = gHyp_data_getVariable ( pData ) ) ) 
-      
-      gHyp_frame_deleteVariable ( pAI, pFrame, gHyp_data_getLabel ( pVariable ) ) ;
-    
+    pData = gHyp_stack_popLvalue(pStack, pAI);
+
+    if ((pVariable = gHyp_data_getVariable(pData)))
+
+      gHyp_frame_deleteVariable(pAI, pFrame, gHyp_data_getLabel(pVariable));
+
     else
-      gHyp_instance_warning ( pAI, STATUS_UNDEFINED, "Cannot undef '%s'",
-			      gHyp_data_getLabel ( pData ) ) ;
-    gHyp_instance_pushSTATUS ( pAI, pStack ) ;
+      gHyp_instance_warning(pAI, STATUS_UNDEFINED, "Cannot undef '%s'",
+                            gHyp_data_getLabel(pData));
+    gHyp_instance_pushSTATUS(pAI, pStack);
 
-    return ;
+    return;
   }
 }
 
-
-void gHyp_env_hashed ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+void gHyp_env_hashed(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE)
 {
   /* Description:
    *
@@ -703,47 +725,49 @@ void gHyp_env_hashed ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
    * Modifications:
    *
    */
-  sFrame	
-    *pFrame = gHyp_instance_frame ( pAI ) ;
+  sFrame
+      *pFrame = gHyp_instance_frame(pAI);
 
   sParse
-    *pParse = gHyp_frame_parse ( pFrame ) ;
+      *pParse = gHyp_frame_parse(pFrame);
 
-  if ( isPARSE )
-  
-    gHyp_parse_operand ( pParse, pCode, pAI ) ;
-    
-  else {
- 
+  if (isPARSE)
+
+    gHyp_parse_operand(pParse, pCode, pAI);
+
+  else
+  {
+
     sStack
-      *pStack = gHyp_frame_stack ( pFrame ) ;
-    
+        *pStack = gHyp_frame_stack(pFrame);
+
     sData
-      *pVariable,
-      *pData ;
-    
+        *pVariable,
+        *pData;
+
     int
-      argCount = gHyp_parse_argCount ( pParse ) ;
-    	
-    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+        argCount = gHyp_parse_argCount(pParse);
 
-    if ( argCount != 1 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-	"Invalid arguments. Usage: hashed ( variable )" ) ;
+    gHyp_instance_setStatus(pAI, STATUS_ACKNOWLEDGE);
 
-    pData = gHyp_stack_popLvalue ( pStack, pAI ) ;
+    if (argCount != 1)
+      gHyp_instance_error(pAI, STATUS_ARGUMENT,
+                          "Invalid arguments. Usage: hashed ( variable )");
+
+    pData = gHyp_stack_popLvalue(pStack, pAI);
 
     /* Locate the variable */
-    if ( (pVariable = gHyp_data_getVariable ( pData )) )
-      gHyp_data_setHashed ( pVariable, TRUE ) ;
-    
+    if ((pVariable = gHyp_data_getVariable(pData)))
+      gHyp_data_setHashed(pVariable, TRUE);
+
     else
-      gHyp_instance_warning ( pAI, STATUS_UNDEFINED, "Cannot hash '%s'",
-			      gHyp_data_getLabel ( pData ) ) ;
-    gHyp_instance_pushSTATUS ( pAI, pStack ) ;
+      gHyp_instance_warning(pAI, STATUS_UNDEFINED, "Cannot hash '%s'",
+                            gHyp_data_getLabel(pData));
+    gHyp_instance_pushSTATUS(pAI, pStack);
   }
 }
 
-void gHyp_env_unhashed ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+void gHyp_env_unhashed(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE)
 {
   /* Description:
    *
@@ -765,43 +789,45 @@ void gHyp_env_unhashed ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
    * Modifications:
    *
    */
-  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
-  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+  sFrame *pFrame = gHyp_instance_frame(pAI);
+  sParse *pParse = gHyp_frame_parse(pFrame);
 
-  if ( isPARSE )
-  
-    gHyp_parse_operand ( pParse, pCode, pAI ) ;
-    
-  else {
- 
+  if (isPARSE)
+
+    gHyp_parse_operand(pParse, pCode, pAI);
+
+  else
+  {
+
     sStack
-      *pStack = gHyp_frame_stack ( pFrame ) ;
+        *pStack = gHyp_frame_stack(pFrame);
 
     sData
-      *pVariable,
-      *pData ;
+        *pVariable,
+        *pData;
 
-    int	
-      argCount = gHyp_parse_argCount ( pParse ) ;
-    	
-    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+    int
+        argCount = gHyp_parse_argCount(pParse);
 
-    if ( argCount != 1 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-	"Invalid arguments. Usage: unhashed ( variable )" ) ;
+    gHyp_instance_setStatus(pAI, STATUS_ACKNOWLEDGE);
 
-    pData = gHyp_stack_popLvalue ( pStack, pAI ) ;
+    if (argCount != 1)
+      gHyp_instance_error(pAI, STATUS_ARGUMENT,
+                          "Invalid arguments. Usage: unhashed ( variable )");
+
+    pData = gHyp_stack_popLvalue(pStack, pAI);
 
     /* Locate the variable */
-    if ( (pVariable = gHyp_data_getVariable ( pData )) )
-      gHyp_data_setHashed ( pVariable, FALSE ) ;
+    if ((pVariable = gHyp_data_getVariable(pData)))
+      gHyp_data_setHashed(pVariable, FALSE);
     else
-      gHyp_instance_warning ( pAI, STATUS_UNDEFINED, "Cannot unhash '%s'",
-			      gHyp_data_getLabel ( pData ) ) ;
-    gHyp_instance_pushSTATUS ( pAI, pStack ) ;
+      gHyp_instance_warning(pAI, STATUS_UNDEFINED, "Cannot unhash '%s'",
+                            gHyp_data_getLabel(pData));
+    gHyp_instance_pushSTATUS(pAI, pStack);
   }
 }
 
-void gHyp_env_local ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+void gHyp_env_local(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE)
 {
   /* Description:
    *
@@ -823,66 +849,72 @@ void gHyp_env_local ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
    * Modifications:
    *
    */
-  sFrame	
-    *pFrame = gHyp_instance_frame ( pAI ) ;
+  sFrame
+      *pFrame = gHyp_instance_frame(pAI);
 
   sParse
-    *pParse = gHyp_frame_parse ( pFrame ) ;
+      *pParse = gHyp_frame_parse(pFrame);
 
-  if ( isPARSE )
-  
-    gHyp_parse_operand ( pParse, pCode, pAI ) ;
-    
-  else {
- 
-    sStack 	
-      *pStack = gHyp_frame_stack ( pFrame ) ;
+  if (isPARSE)
+
+    gHyp_parse_operand(pParse, pCode, pAI);
+
+  else
+  {
+
+    sStack
+        *pStack = gHyp_frame_stack(pFrame);
 
     sData
-      *pData,
-      *pVariable,
-      *pLocalVariable ;
+        *pData,
+        *pVariable,
+        *pLocalVariable;
 
     char
-      *pVarStr ;
+        *pVarStr;
 
     int
-      argCount = gHyp_parse_argCount ( pParse ) ;	
+        argCount = gHyp_parse_argCount(pParse);
 
-    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+    gHyp_instance_setStatus(pAI, STATUS_ACKNOWLEDGE);
 
-    if ( argCount > 1 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-	"Invalid arguments. Usage: local ( [variable] )" ) ;
+    if (argCount > 1)
+      gHyp_instance_error(pAI, STATUS_ARGUMENT,
+                          "Invalid arguments. Usage: local ( [variable] )");
 
-    if ( argCount == 1 ) {
-      
+    if (argCount == 1)
+    {
+
       /* Pop the variable off of the stack */
-      pData = gHyp_stack_popLvalue ( pStack, pAI ) ;
-      if ( (pVariable = gHyp_data_getVariable ( pData ) ) && pVariable != pData ) {
-	
-	pVarStr = gHyp_data_getLabel ( pVariable ) ;
-	pLocalVariable = gHyp_frame_findLocalVariable ( pFrame, pVarStr ) ;
-	if ( pVariable != pLocalVariable ) {
-	  /* Variable does not exist in local scope */
-	  if ( pLocalVariable ) gHyp_frame_deleteLocalVariable ( pFrame, pVarStr ) ;	  
-	  gHyp_data_detach ( pVariable ) ;
-	  gHyp_data_append( gHyp_frame_getMethodData(pFrame),pVariable);
-	}
+      pData = gHyp_stack_popLvalue(pStack, pAI);
+      if ((pVariable = gHyp_data_getVariable(pData)) && pVariable != pData)
+      {
+
+        pVarStr = gHyp_data_getLabel(pVariable);
+        pLocalVariable = gHyp_frame_findLocalVariable(pFrame, pVarStr);
+        if (pVariable != pLocalVariable)
+        {
+          /* Variable does not exist in local scope */
+          if (pLocalVariable)
+            gHyp_frame_deleteLocalVariable(pFrame, pVarStr);
+          gHyp_data_detach(pVariable);
+          gHyp_data_append(gHyp_frame_getMethodData(pFrame), pVariable);
+        }
       }
       else
-	gHyp_instance_error ( pAI, 
-			      STATUS_UNDEFINED,
-			      "Variable '%s' does not exist or is a temporary variable",
-			      gHyp_data_getLabel ( pData ) ) ;
+        gHyp_instance_error(pAI,
+                            STATUS_UNDEFINED,
+                            "Variable '%s' does not exist or is a temporary variable",
+                            gHyp_data_getLabel(pData));
     }
     else
-      gHyp_frame_setGlobalScope ( pFrame, FALSE ) ;
+      gHyp_frame_setGlobalScope(pFrame, FALSE);
 
-    gHyp_instance_pushSTATUS ( pAI, pStack ) ;
+    gHyp_instance_pushSTATUS(pAI, pStack);
   }
 }
 
-void gHyp_env_global ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+void gHyp_env_global(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE)
 {
   /* Description:
    *
@@ -904,62 +936,68 @@ void gHyp_env_global ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
    * Modifications:
    *
    */
-  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
-  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+  sFrame *pFrame = gHyp_instance_frame(pAI);
+  sParse *pParse = gHyp_frame_parse(pFrame);
 
-  if ( isPARSE )
-  
-    gHyp_parse_operand ( pParse, pCode, pAI ) ;
-    
-  else {
- 
-    sStack 	
-      *pStack = gHyp_frame_stack ( pFrame ) ;
+  if (isPARSE)
+
+    gHyp_parse_operand(pParse, pCode, pAI);
+
+  else
+  {
+
+    sStack
+        *pStack = gHyp_frame_stack(pFrame);
 
     sData
-      *pData,
-      *pVariable,
-      *pRootVariable ;
+        *pData,
+        *pVariable,
+        *pRootVariable;
 
     char
-      *pVarStr ;
+        *pVarStr;
 
     int
-      argCount = gHyp_parse_argCount ( pParse ) ;
-	
-    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+        argCount = gHyp_parse_argCount(pParse);
 
-    if ( argCount > 1 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-	"Invalid arguments. Usage: global ( [variable] )" ) ;
+    gHyp_instance_setStatus(pAI, STATUS_ACKNOWLEDGE);
 
-    if ( argCount == 1 ) {
+    if (argCount > 1)
+      gHyp_instance_error(pAI, STATUS_ARGUMENT,
+                          "Invalid arguments. Usage: global ( [variable] )");
+
+    if (argCount == 1)
+    {
 
       /* Pop the variable off of the stack */
-      pData = gHyp_stack_popLvalue ( pStack, pAI ) ;
-      if ( (pVariable = gHyp_data_getVariable ( pData ) ) && pVariable != pData ) { 
-	pVarStr = gHyp_data_getLabel ( pVariable ) ;
-	pRootVariable = gHyp_frame_findRootVariable ( pFrame, pVarStr ) ;
-	if ( pVariable != pRootVariable ) {
-	  /* Variable does not exist in global scope  */
-	  if ( pRootVariable ) gHyp_frame_deleteRootVariable ( pAI, pFrame, pVarStr ) ;	  
-	  gHyp_data_detach ( pVariable ) ;
-	  gHyp_data_append( gHyp_frame_getRootMethodData(pFrame),pVariable);
-	}
+      pData = gHyp_stack_popLvalue(pStack, pAI);
+      if ((pVariable = gHyp_data_getVariable(pData)) && pVariable != pData)
+      {
+        pVarStr = gHyp_data_getLabel(pVariable);
+        pRootVariable = gHyp_frame_findRootVariable(pFrame, pVarStr);
+        if (pVariable != pRootVariable)
+        {
+          /* Variable does not exist in global scope  */
+          if (pRootVariable)
+            gHyp_frame_deleteRootVariable(pAI, pFrame, pVarStr);
+          gHyp_data_detach(pVariable);
+          gHyp_data_append(gHyp_frame_getRootMethodData(pFrame), pVariable);
+        }
       }
       else
-	gHyp_instance_error ( pAI, 
-			      STATUS_UNDEFINED,
-			      "Variable '%s' does not exist or is a temporary variable",
-			      gHyp_data_getLabel ( pData ) ) ; 
+        gHyp_instance_error(pAI,
+                            STATUS_UNDEFINED,
+                            "Variable '%s' does not exist or is a temporary variable",
+                            gHyp_data_getLabel(pData));
     }
     else
-      gHyp_frame_setGlobalScope ( pFrame, TRUE ) ;
+      gHyp_frame_setGlobalScope(pFrame, TRUE);
 
-    gHyp_instance_pushSTATUS ( pAI, pStack ) ;
+    gHyp_instance_pushSTATUS(pAI, pStack);
   }
 }
 
-void gHyp_env_next ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+void gHyp_env_next(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE)
 {
   /* Description:
    *
@@ -980,42 +1018,44 @@ void gHyp_env_next ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
    * Modifications:
    *
    */
-  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
-  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+  sFrame *pFrame = gHyp_instance_frame(pAI);
+  sParse *pParse = gHyp_frame_parse(pFrame);
 
-  if ( isPARSE )
-  
-    gHyp_parse_operand ( pParse, pCode, pAI ) ;
-    
-  else {
- 
+  if (isPARSE)
+
+    gHyp_parse_operand(pParse, pCode, pAI);
+
+  else
+  {
+
     sStack
-      *pStack = gHyp_frame_stack ( pFrame ) ;
+        *pStack = gHyp_frame_stack(pFrame);
 
     sData
-      *pData,
-      *pVariable ;
+        *pData,
+        *pVariable;
 
     int
-      argCount = gHyp_parse_argCount ( pParse ) ;
-    
-    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+        argCount = gHyp_parse_argCount(pParse);
 
-    if ( argCount != 1 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-	"Invalid arguments. Usage: next ( variable )" ) ;
+    gHyp_instance_setStatus(pAI, STATUS_ACKNOWLEDGE);
 
-    pData = gHyp_stack_popLvalue ( pStack, pAI ) ;
+    if (argCount != 1)
+      gHyp_instance_error(pAI, STATUS_ARGUMENT,
+                          "Invalid arguments. Usage: next ( variable )");
 
-    if ( (pVariable = gHyp_data_getVariable ( pData ) ) ) 
-      gHyp_data_next ( pVariable ) ;
+    pData = gHyp_stack_popLvalue(pStack, pAI);
+
+    if ((pVariable = gHyp_data_getVariable(pData)))
+      gHyp_data_next(pVariable);
     else
-      gHyp_instance_warning ( pAI, STATUS_UNDEFINED, "Cannot do next on '%s'",
-			      gHyp_data_getLabel ( pData ) ) ;
-    gHyp_instance_pushSTATUS ( pAI, pStack ) ;
+      gHyp_instance_warning(pAI, STATUS_UNDEFINED, "Cannot do next on '%s'",
+                            gHyp_data_getLabel(pData));
+    gHyp_instance_pushSTATUS(pAI, pStack);
   }
 }
 
-void gHyp_env_prev ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+void gHyp_env_prev(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE)
 {
   /* Description:
    *
@@ -1036,249 +1076,262 @@ void gHyp_env_prev ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
    * Modifications:
    *
    */
-  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
-  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+  sFrame *pFrame = gHyp_instance_frame(pAI);
+  sParse *pParse = gHyp_frame_parse(pFrame);
 
-  if ( isPARSE )
-  
-    gHyp_parse_operand ( pParse, pCode, pAI ) ;
-    
-  else {
- 
+  if (isPARSE)
+
+    gHyp_parse_operand(pParse, pCode, pAI);
+
+  else
+  {
+
     sStack
-      *pStack = gHyp_frame_stack ( pFrame ) ;
-    
+        *pStack = gHyp_frame_stack(pFrame);
+
     sData
-      *pData,
-      *pVariable ;
-    
+        *pData,
+        *pVariable;
+
     int
-      argCount = gHyp_parse_argCount ( pParse ) ;
-    
-    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+        argCount = gHyp_parse_argCount(pParse);
 
-    if ( argCount != 1 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-	"Invalid arguments. Usage: prev ( variable )" ) ;
+    gHyp_instance_setStatus(pAI, STATUS_ACKNOWLEDGE);
 
-    pData = gHyp_stack_popLvalue ( pStack, pAI ) ;
+    if (argCount != 1)
+      gHyp_instance_error(pAI, STATUS_ARGUMENT,
+                          "Invalid arguments. Usage: prev ( variable )");
 
-    if ( (pVariable = gHyp_data_getVariable ( pData ) ) )
-      gHyp_data_prev ( pVariable ) ;
+    pData = gHyp_stack_popLvalue(pStack, pAI);
+
+    if ((pVariable = gHyp_data_getVariable(pData)))
+      gHyp_data_prev(pVariable);
     else
-      gHyp_instance_warning ( pAI, STATUS_UNDEFINED, "Cannot do prev on '%s'",
-			      gHyp_data_getLabel ( pData ) ) ;
-    gHyp_instance_pushSTATUS ( pAI, pStack ) ;
+      gHyp_instance_warning(pAI, STATUS_UNDEFINED, "Cannot do prev on '%s'",
+                            gHyp_data_getLabel(pData));
+    gHyp_instance_pushSTATUS(pAI, pStack);
   }
 }
 
-static sData* lHyp_env_map ( sData *pDst,
-		      char  **ppStream,
-		      char  **ppAnchor,
-		      char  **ppEndOfStream,
-		      sData *pStreamData,
-		      sData **ppValue,
-		      int   *pContextSrc,
-		      int   ss,
-		      sLOGICAL  isVectorSrc,
-		      sInstance *pAI,
-		      sLOGICAL  isLittleEndian,
-		      int sss )
+static sData *lHyp_env_map(sData *pDst,
+                           char **ppStream,
+                           char **ppAnchor,
+                           char **ppEndOfStream,
+                           sData *pStreamData,
+                           sData **ppValue,
+                           int *pContextSrc,
+                           int ss,
+                           sLOGICAL isVectorSrc,
+                           sInstance *pAI,
+                           sLOGICAL isLittleEndian,
+                           int sss)
 {
-  sData	
-    *pResult,
-    *pData,
-    *pValue,
-    *pDstValue,
-    *pNextDstValue,
-    *pVariable ;
+  sData
+      *pResult,
+      *pData,
+      *pValue,
+      *pDstValue,
+      *pNextDstValue,
+      *pVariable;
 
   char
-    *pStream = *ppStream,
-    *pAnchor = *ppAnchor,
-    *pBuf,
-    value[VALUE_SIZE+1] ;
+      *pStream = *ppStream,
+      *pAnchor = *ppAnchor,
+      *pBuf,
+      value[VALUE_SIZE + 1];
 
   int
-    i,j,
-    numElements,
-    n,
-    streamLen=0,
-    dstDataLen,
-    contextDst,
-    sdv=-1,
-    ssd ;
+      i,
+      j,
+      numElements,
+      n,
+      streamLen = 0,
+      dstDataLen,
+      contextDst,
+      sdv = -1,
+      ssd;
 
   sLOGICAL
-    isVectorDst ;
+      isVectorDst;
 
   sBYTE
-    dstDataType,
-    dstTokenType ;
-  
-  sEndian 
-    endian ;
+      dstDataType,
+      dstTokenType;
 
-  dstTokenType = gHyp_data_getTokenType ( pDst ) ;
-  dstDataType =  gHyp_data_getDataType ( pDst ) ;
-  dstDataLen = gHyp_data_dataLen ( pDst ) ;
+  sEndian
+      endian;
+
+  dstTokenType = gHyp_data_getTokenType(pDst);
+  dstDataType = gHyp_data_getDataType(pDst);
+  dstDataLen = gHyp_data_dataLen(pDst);
 
   /* When mapping to a HS int, long, or ulong, this is
-   * always 32 bits (4 bytes).  
+   * always 32 bits (4 bytes).
    * In the case where the compile sets a long/ulong/int at 64 bits,
    * we must override and say its really 4 bytes!!!
    */
 #ifdef AS_UNIX
-  if (	dstDataType == TYPE_INTEGER ||
-	dstDataType == TYPE_LONG ||
-	dstDataType == TYPE_ULONG )
-    dstDataLen = sizeof ( int32_t ) ;
+  if (dstDataType == TYPE_INTEGER ||
+      dstDataType == TYPE_LONG ||
+      dstDataType == TYPE_ULONG)
+    dstDataLen = sizeof(int32_t);
 #endif
 
-  isVectorDst = ( dstTokenType == TOKEN_VARIABLE && dstDataType > TYPE_STRING ) ;
-  ssd = gHyp_data_getSubScript ( pDst ) ; 
-  pNextDstValue = pDst ;
-  contextDst = -1 ;
-  pDstValue = NULL ;
+  isVectorDst = (dstTokenType == TOKEN_VARIABLE && dstDataType > TYPE_STRING);
+  ssd = gHyp_data_getSubScript(pDst);
+  pNextDstValue = pDst;
+  contextDst = -1;
+  pDstValue = NULL;
 
   /* Create a result */
-  pResult = gHyp_data_new ( gHyp_data_getLabel ( pDst ) ) ;
+  pResult = gHyp_data_new(gHyp_data_getLabel(pDst));
 
   /* Get more stream data if needed */
-  pStream = gHyp_util_readStream (	pStream, pAnchor, ppEndOfStream,
-					&streamLen, pStreamData, 
-					ppValue, pContextSrc, ss, isVectorSrc, 
-					NULL ) ;
-  *ppStream = pStream ;
+  pStream = gHyp_util_readStream(pStream, pAnchor, ppEndOfStream,
+                                 &streamLen, pStreamData,
+                                 ppValue, pContextSrc, ss, isVectorSrc,
+                                 NULL);
+  *ppStream = pStream;
 
+  if (isVectorDst)
+  {
 
-  if ( isVectorDst ) {
+    numElements = gHyp_data_getCount(pDst);
+    gHyp_data_newVector(pResult,
+                        dstDataType,
+                        numElements,
+                        gHyp_data_isDynamic(pDst));
 
-    numElements = gHyp_data_getCount ( pDst ) ;
-    gHyp_data_newVector ( pResult, 
-			  dstDataType, 
-			  numElements,
-			  gHyp_data_isDynamic ( pDst ) ) ;
+    for (j = 0; j < numElements; j++)
+    {
 
+      if (!pStream)
+        return pResult;
+      if (!isLittleEndian)
+      {
 
-    for ( j=0; j<numElements; j++ ) {
-
-      if ( !pStream) return pResult ;
-      if ( !isLittleEndian ) {
-
-	pBuf = pStream ;
-        for ( i=dstDataLen-1; i>=0; i-- ) endian.x.b[i] = *pBuf++ ;
-        gHyp_data_setVectorRaw ( pResult, 
-			       &endian.x.b, 
-			       j ) ;
+        pBuf = pStream;
+        for (i = dstDataLen - 1; i >= 0; i--)
+          endian.x.b[i] = *pBuf++;
+        gHyp_data_setVectorRaw(pResult,
+                               &endian.x.b,
+                               j);
       }
       else
-	gHyp_data_setVectorRaw ( pResult, 
-  			       pStream, 
-			       j ) ;
-      pStream += dstDataLen ;
-      *ppStream = pStream ;
+        gHyp_data_setVectorRaw(pResult,
+                               pStream,
+                               j);
+      pStream += dstDataLen;
+      *ppStream = pStream;
 
       /* Get more stream data if needed */
-      pStream = gHyp_util_readStream (	pStream, pAnchor, ppEndOfStream,
-					&streamLen, pStreamData, 
-					ppValue, pContextSrc, ss, isVectorSrc, 
-					NULL ) ;
-      *ppStream = pStream ;
+      pStream = gHyp_util_readStream(pStream, pAnchor, ppEndOfStream,
+                                     &streamLen, pStreamData,
+                                     ppValue, pContextSrc, ss, isVectorSrc,
+                                     NULL);
+      *ppStream = pStream;
     }
-    return pResult ;
+    return pResult;
   }
 
-  if ( !pStream ) return pResult ;
+  if (!pStream)
+    return pResult;
 
-  while ( 1 ) {
+  while (1)
+  {
 
-    if ( pNextDstValue ) {
+    if (pNextDstValue)
+    {
 
       /* This is either the start of the scan, or there was a previous value.
        * Get the next value of the destination.
        */
-      pNextDstValue = gHyp_data_nextValue ( pDst, 
-					    pDstValue, 
-					    &contextDst,
-					    ssd ) ;
-      if ( contextDst == -2 ) {
-	gHyp_instance_error ( 
-          pAI, STATUS_BOUNDS, 
-	  "Destination subscript is out of bounds in map()");
+      pNextDstValue = gHyp_data_nextValue(pDst,
+                                          pDstValue,
+                                          &contextDst,
+                                          ssd);
+      if (contextDst == -2)
+      {
+        gHyp_instance_error(
+            pAI, STATUS_BOUNDS,
+            "Destination subscript is out of bounds in map()");
       }
 
-      if ( isVectorDst ) 
-	sdv = contextDst ;
+      if (isVectorDst)
+        sdv = contextDst;
       else
-	sdv = 0 ;
+        sdv = 0;
     }
 
     /* Get the next destination value. */
-    pDstValue = pNextDstValue ;
+    pDstValue = pNextDstValue;
     /* if ( pDstValue ) gHyp_util_debug ( "Next dst value at %d for %d is %s",contextDst,sdv,gHyp_data_print ( pDstValue )) ;*/
 
     /* If there is no more source or destination values, we're done. */
-    if ( !pDstValue ) break ;
+    if (!pDstValue)
+      break;
 
-    dstDataType = gHyp_data_dataType ( pDstValue ) ;
-    dstTokenType = gHyp_data_tokenType ( pDstValue ) ;
-    dstDataLen = gHyp_data_dataLen ( pDstValue ) ;
+    dstDataType = gHyp_data_dataType(pDstValue);
+    dstTokenType = gHyp_data_tokenType(pDstValue);
+    dstDataLen = gHyp_data_dataLen(pDstValue);
 
-    if ( dstTokenType != TOKEN_VARIABLE ) {
-       
+    if (dstTokenType != TOKEN_VARIABLE)
+    {
+
       /* Skip - just keep literals and constants and references */
-      pValue = gHyp_data_copy ( pDstValue ) ;
-      gHyp_data_append ( pResult, pValue ) ;
-      pStream += dstDataLen ;
-      *ppStream = pStream ;
-    
+      pValue = gHyp_data_copy(pDstValue);
+      gHyp_data_append(pResult, pValue);
+      pStream += dstDataLen;
+      *ppStream = pStream;
     }
-    else {
-      
-      if ( dstDataType == TYPE_STRING ) {
+    else
+    {
 
-	/* Replace destination values with that from the source. */
-	pVariable = gHyp_data_new ( gHyp_data_getLabel ( pDstValue ) ) ;
-	pValue = gHyp_data_new ( NULL ) ;
-	n = MIN ( streamLen, VALUE_SIZE ) ;
-	n = MIN ( n, (int) strlen ( pStream ) ) ;
+      if (dstDataType == TYPE_STRING)
+      {
 
-	memcpy ( value, (const char*) pStream, n ) ;
-	value[n] = '\0' ;
-	gHyp_data_setStr_n ( pValue, value, n ) ;
-	gHyp_data_append ( pVariable, pValue ) ;
-	gHyp_data_append ( pResult, pVariable ) ;	
+        /* Replace destination values with that from the source. */
+        pVariable = gHyp_data_new(gHyp_data_getLabel(pDstValue));
+        pValue = gHyp_data_new(NULL);
+        n = MIN(streamLen, VALUE_SIZE);
+        n = MIN(n, (int)strlen(pStream));
 
-	pStream += n ;
-	*ppStream = pStream ;
+        memcpy(value, (const char *)pStream, n);
+        value[n] = '\0';
+        gHyp_data_setStr_n(pValue, value, n);
+        gHyp_data_append(pVariable, pValue);
+        gHyp_data_append(pResult, pVariable);
 
+        pStream += n;
+        *ppStream = pStream;
       }
-      else {
-	
-	pData = lHyp_env_map (	pDstValue,
-				ppStream,
-				ppAnchor,
-				ppEndOfStream,
-				pStreamData,
-		      		ppValue,
-				pContextSrc,
-				ss,
-				isVectorSrc,
-		      		pAI,
-			        isLittleEndian,
-				sdv ) ;
-	  	
-	pStream = *ppStream ;
+      else
+      {
 
-	gHyp_data_append ( pResult, pData ) ;
+        pData = lHyp_env_map(pDstValue,
+                             ppStream,
+                             ppAnchor,
+                             ppEndOfStream,
+                             pStreamData,
+                             ppValue,
+                             pContextSrc,
+                             ss,
+                             isVectorSrc,
+                             pAI,
+                             isLittleEndian,
+                             sdv);
+
+        pStream = *ppStream;
+
+        gHyp_data_append(pResult, pData);
       }
-    } 
-  }  
+    }
+  }
 
-  return pResult ;
+  return pResult;
 }
 
-void gHyp_env_map ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+void gHyp_env_map(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE)
 {
   /* Description:
    *
@@ -1299,79 +1352,83 @@ void gHyp_env_map ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
    * Modifications:
    *
    */
-  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
-  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+  sFrame *pFrame = gHyp_instance_frame(pAI);
+  sParse *pParse = gHyp_frame_parse(pFrame);
 
-  if ( isPARSE )
-  
-    gHyp_parse_operand ( pParse, pCode, pAI ) ;
-    
-  else {
- 
-    sStack 	
-      *pStack = gHyp_frame_stack ( pFrame ) ;
+  if (isPARSE)
+
+    gHyp_parse_operand(pParse, pCode, pAI);
+
+  else
+  {
+
+    sStack
+        *pStack = gHyp_frame_stack(pFrame);
 
     sData
-      *pValue,
-      *pSrc,
-      *pSrcData,
-      *pDstData,
-      *pDst,
-      *pResult ;
+        *pValue,
+        *pSrc,
+        *pSrcData,
+        *pDstData,
+        *pDst,
+        *pResult;
 
     char
-      *pStream,
-      *pAnchor,
-      *pEndOfStream ;
+        *pStream,
+        *pAnchor,
+        *pEndOfStream;
 
     int
-      ss,
-      contextSrc,
-      argCount = gHyp_parse_argCount ( pParse ) ;
-    
+        ss,
+        contextSrc,
+        argCount = gHyp_parse_argCount(pParse);
+
     sLOGICAL
-      isVectorSrc,
-      isLittleEndian = gHyp_util_isLittleEndian() ;
+        isVectorSrc,
+        isLittleEndian = gHyp_util_isLittleEndian();
 
-    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+    gHyp_instance_setStatus(pAI, STATUS_ACKNOWLEDGE);
 
-    if ( argCount != 2 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-	"Invalid arguments. Usage: map ( destination, source )" ) ;
+    if (argCount != 2)
+      gHyp_instance_error(pAI, STATUS_ARGUMENT,
+                          "Invalid arguments. Usage: map ( destination, source )");
 
-    pSrc = gHyp_stack_popRdata ( pStack, pAI ) ;
-    pSrcData = gHyp_data_getVariable ( pSrc ) ;
-    if ( !pSrcData ) pSrcData = pSrc ;
-    
-    pDst = gHyp_stack_popRdata ( pStack, pAI ) ;
-    pDstData = gHyp_data_getVariable ( pDst ) ;
-    if ( !pDstData ) pDstData = pDst ;
+    pSrc = gHyp_stack_popRdata(pStack, pAI);
+    pSrcData = gHyp_data_getVariable(pSrc);
+    if (!pSrcData)
+      pSrcData = pSrc;
 
-    gzStream[0] = '\0' ;
-    pStream = gzStream ;
-    pAnchor = pStream ;	
-    pEndOfStream = pStream ;
-    pValue = NULL ;
-    contextSrc = -1 ;
-    ss = gHyp_data_getSubScript ( pSrcData ) ;
-    isVectorSrc = ( gHyp_data_getDataType ( pSrcData ) > TYPE_STRING ) ;
-    pResult = lHyp_env_map (  pDstData,
-			      &pStream,
-			      &pAnchor,
-			      &pEndOfStream,
-			      pSrcData,
-			      &pValue,
-			      &contextSrc,
-			      ss,
-			      isVectorSrc,
-			      pAI,
-			      isLittleEndian,
-			      0) ;
+    pDst = gHyp_stack_popRdata(pStack, pAI);
+    pDstData = gHyp_data_getVariable(pDst);
+    if (!pDstData)
+      pDstData = pDst;
 
-    gHyp_stack_push ( pStack, pResult ) ;
+    gzStream[0] = '\0';
+    pStream = gzStream;
+    pAnchor = pStream;
+    pEndOfStream = pStream;
+    pValue = NULL;
+    contextSrc = -1;
+    ss = gHyp_data_getSubScript(pSrcData);
+    isVectorSrc = (gHyp_data_getDataType(pSrcData) > TYPE_STRING);
+    pResult = lHyp_env_map(pDstData,
+                           &pStream,
+                           &pAnchor,
+                           &pEndOfStream,
+                           pSrcData,
+                           &pValue,
+                           &contextSrc,
+                           ss,
+                           isVectorSrc,
+                           pAI,
+                           isLittleEndian,
+                           0);
+
+    gHyp_stack_push(pStack, pResult);
   }
 }
 
-void gHyp_env_secs_map ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+void gHyp_env_secs_map(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE)
 {
   /* Description:
    *
@@ -1392,372 +1449,400 @@ void gHyp_env_secs_map ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
    * Modifications:
    *
    */
-  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
-  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+  sFrame *pFrame = gHyp_instance_frame(pAI);
+  sParse *pParse = gHyp_frame_parse(pFrame);
 
-  if ( isPARSE )
-  
-    gHyp_parse_operand ( pParse, pCode, pAI ) ;
-    
-  else {
- 
-    sStack 	
-      *pStack = gHyp_frame_stack ( pFrame ) ;
+  if (isPARSE)
+
+    gHyp_parse_operand(pParse, pCode, pAI);
+
+  else
+  {
+
+    sStack
+        *pStack = gHyp_frame_stack(pFrame);
 
     sData
-      *pValue,
-      *pSrc,
-      *pSrcData,
-      *pDstData,
-      *pDst,
-      *pResult ;
+        *pValue,
+        *pSrc,
+        *pSrcData,
+        *pDstData,
+        *pDst,
+        *pResult;
 
     char
-      *pStream,
-      *pAnchor,
-      *pEndOfStream ;
+        *pStream,
+        *pAnchor,
+        *pEndOfStream;
 
     int
-      ss,
-      contextSrc,
-      argCount = gHyp_parse_argCount ( pParse ) ;
-    
+        ss,
+        contextSrc,
+        argCount = gHyp_parse_argCount(pParse);
+
     sLOGICAL
-      isVectorSrc,
-      /* SECS is big Endian, so if we are little Endian, we must swap bytes */ 
-      isLittleEndian = ( gHyp_util_isLittleEndian() ? 0 : 1 ) ;
+        isVectorSrc,
+        /* SECS is big Endian, so if we are little Endian, we must swap bytes */
+        isLittleEndian = (gHyp_util_isLittleEndian() ? 0 : 1);
 
-    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+    gHyp_instance_setStatus(pAI, STATUS_ACKNOWLEDGE);
 
-    if ( argCount != 2 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-	"Invalid arguments. Usage: secs_map ( destination, source )" ) ;
+    if (argCount != 2)
+      gHyp_instance_error(pAI, STATUS_ARGUMENT,
+                          "Invalid arguments. Usage: secs_map ( destination, source )");
 
-    pSrc = gHyp_stack_popRdata ( pStack, pAI ) ;
-    pSrcData = gHyp_data_getVariable ( pSrc ) ;
-    if ( !pSrcData ) pSrcData = pSrc ;
-    
-    pDst = gHyp_stack_popRdata ( pStack, pAI ) ;
-    pDstData = gHyp_data_getVariable ( pDst ) ;
-    if ( !pDstData ) pDstData = pDst ;
+    pSrc = gHyp_stack_popRdata(pStack, pAI);
+    pSrcData = gHyp_data_getVariable(pSrc);
+    if (!pSrcData)
+      pSrcData = pSrc;
 
-    gzStream[0] = '\0' ;
-    pStream = gzStream ;
-    pAnchor = pStream ;	
-    pEndOfStream = pStream ;
-    pValue = NULL ;
-    contextSrc = -1 ;
-    ss = gHyp_data_getSubScript ( pSrcData ) ;
-    isVectorSrc = ( gHyp_data_getDataType ( pSrcData ) > TYPE_STRING ) ;
-    pResult = lHyp_env_map (  pDstData,
-			      &pStream,
-			      &pAnchor,
-			      &pEndOfStream,
-			      pSrcData,
-			      &pValue,
-			      &contextSrc,
-			      ss,
-			      isVectorSrc,
-			      pAI,
-			      isLittleEndian,
-			      0) ;
+    pDst = gHyp_stack_popRdata(pStack, pAI);
+    pDstData = gHyp_data_getVariable(pDst);
+    if (!pDstData)
+      pDstData = pDst;
 
-    gHyp_stack_push ( pStack, pResult ) ;
+    gzStream[0] = '\0';
+    pStream = gzStream;
+    pAnchor = pStream;
+    pEndOfStream = pStream;
+    pValue = NULL;
+    contextSrc = -1;
+    ss = gHyp_data_getSubScript(pSrcData);
+    isVectorSrc = (gHyp_data_getDataType(pSrcData) > TYPE_STRING);
+    pResult = lHyp_env_map(pDstData,
+                           &pStream,
+                           &pAnchor,
+                           &pEndOfStream,
+                           pSrcData,
+                           &pValue,
+                           &contextSrc,
+                           ss,
+                           isVectorSrc,
+                           pAI,
+                           isLittleEndian,
+                           0);
+
+    gHyp_stack_push(pStack, pResult);
   }
 }
 
-static void lHyp_env_unmap ( sData *pResult, 
-			     sData *pParent, 
-			     int parentContext,
-			     sLOGICAL isLittleEndian ) 
+static void lHyp_env_unmap(sData *pResult,
+                           sData *pParent,
+                           int parentContext,
+                           sLOGICAL isLittleEndian)
 {
- 
+
   sData
-    *pData,
-    *pValue,
-    *pValue2 ;
+      *pData,
+      *pValue,
+      *pValue2;
 
   int
-    j,
-    n,
-    bufferLen,
-    maxLen,
-    ss,
-    context ;
+      j,
+      n,
+      bufferLen,
+      maxLen,
+      ss,
+      context;
 
   sLOGICAL
-    isParentVector ;
+      isParentVector;
 
   char
-    *pBuf,
-    value[VALUE_SIZE+1],
-    buffer[INTERNAL_VALUE_SIZE+1],
-    *pBuffer ;
-
+      *pBuf,
+      value[VALUE_SIZE + 1],
+      buffer[INTERNAL_VALUE_SIZE + 1],
+      *pBuffer;
 
   sBYTE
-    parentTokenType,
-    parentDataType ;
+      parentTokenType,
+      parentDataType;
 
   sEndian
-    endian ;
+      endian;
 
-  char	       	
-    sb,
-    sc ;
+  char
+      sb,
+      sc;
 
   unsigned char
-    ub, 
-    uc,
-    bo,
-    bi ;
+      ub,
+      uc,
+      bo,
+      bi;
 
-  pValue = NULL ;
-  n = 0 ;
-  pBuf = buffer ;
+  pValue = NULL;
+  n = 0;
+  pBuf = buffer;
 
-  parentTokenType = gHyp_data_tokenType ( pParent ) ;
-  parentDataType = gHyp_data_dataType ( pParent ) ;
-  isParentVector = ( parentDataType > TYPE_STRING ) ;
+  parentTokenType = gHyp_data_tokenType(pParent);
+  parentDataType = gHyp_data_dataType(pParent);
+  isParentVector = (parentDataType > TYPE_STRING);
 
-  switch ( parentTokenType ) {
+  switch (parentTokenType)
+  {
 
-    case TOKEN_REFERENCE :
-    case TOKEN_UNIDENTIFIED : 
-    
-      pBuffer = gHyp_data_getLabel ( pParent ),
-      bufferLen = strlen ( pBuffer ) ;
+  case TOKEN_REFERENCE:
+  case TOKEN_UNIDENTIFIED:
 
-      while ( bufferLen > 0 ) {
+    pBuffer = gHyp_data_getLabel(pParent),
+    bufferLen = strlen(pBuffer);
 
-	maxLen = MIN ( bufferLen, INTERNAL_VALUE_SIZE ) ;
+    while (bufferLen > 0)
+    {
 
-	if ( n + maxLen > INTERNAL_VALUE_SIZE ) {
-	  pValue2 = gHyp_data_new ( NULL ) ;
-	  gHyp_data_setStr_n ( pValue2, buffer, n ) ;
-	  gHyp_data_append ( pResult, pValue2 ) ;
-	  n = 0 ;
-	  pBuf = buffer ;
-	}
+      maxLen = MIN(bufferLen, INTERNAL_VALUE_SIZE);
 
-	memcpy ( pBuf, pBuffer, maxLen ) ;
-	n += maxLen ;
-	pBuf += maxLen ;
-
-	pBuffer += maxLen ;
-	bufferLen -= maxLen ;
-
-      }
-      break ;
-    
-    case TOKEN_LITERAL : 
-
-      if ( n > 0 ) {
-        pValue2 = gHyp_data_new ( NULL ) ;
-        gHyp_data_setStr_n ( pValue2, buffer, n ) ;
-        gHyp_data_append ( pResult, pValue2 ) ;
-	n = 0 ;
-	pBuf = buffer ;
-      }
-      
-      n = gHyp_data_getStr (	pParent, 
-	 			value, 
-				VALUE_SIZE,
-				0,
-				FALSE ) ;
-      pValue2 = gHyp_data_new ( NULL ) ;
-      gHyp_data_setStr_n ( pValue2, value, n  ) ;
-      gHyp_data_append ( pResult, pValue2 ) ;
-      n = 0 ;
-      pBuf = buffer ;
-
-      break ;
-    
-    case TOKEN_VARIABLE :
-    
-      if ( parentContext == -1 ) {
- 
-	/* Non-subscripted, print out all the variable's values */ 
-	pData = NULL ;
-	context = -1 ;
-	ss = -1 ;
-	while ( (pData = gHyp_data_nextValue ( pParent, 
-					       pData, 
-					       &context,
-					       ss ))) {
-
-	  if ( isParentVector ) {
-
-	    lHyp_env_unmap ( pResult, pData, context, isLittleEndian ) ;
-	  }
-	  else {
-
-	    lHyp_env_unmap ( pResult, pData, -1, isLittleEndian ) ;
-	  }
-	  
-	}
-	break ;
-      }
-      /* Fall through to TOKEN_CONSTANT */
-
-    case TOKEN_CONSTANT :
-
-      pBuf = buffer ;
-      n = 0 ;
-      switch ( parentDataType ) {
-
-	case TYPE_BYTE :
-	  sb = (char) gHyp_data_getRaw ( pParent, parentContext, isParentVector ) ;
-	  *pBuf++ = sb ;
-	  n = 1 ;
-	  break ;
-	  
-	case TYPE_CHAR :
-	case TYPE_ATTR :
-	  sc = (char) gHyp_data_getRaw ( pParent, parentContext, isParentVector ) ;
-	  *pBuf++ = sc ;
-	  n = 1 ;
-	  break ;
-	  
-	case TYPE_UBYTE :
-	  ub = (unsigned char) gHyp_data_getRaw ( pParent, parentContext, isParentVector ) ;
-	  *pBuf++ = ub ;
-	  n = 1 ;
-	  break ;
-	  
-	case TYPE_UCHAR :
-	  uc = (unsigned char) gHyp_data_getRaw ( pParent, parentContext, isParentVector ) ;
-	  *pBuf++ = uc ;
-	  n = 1 ;
-	  break ;
-	  
-	case TYPE_BOOLEAN :
-	  bo = (unsigned char) gHyp_data_getRaw ( pParent, parentContext, isParentVector ) ;
-	  *pBuf++ = bo ;
-	  n = 1 ;
-	  break ;
-	  
-	case TYPE_BINARY :
-	  bi = (unsigned char) gHyp_data_getRaw ( pParent, parentContext, isParentVector ) ;
-	  *pBuf++ = bi ;
-	  n = 1 ;
-	  break ;
-	  
-	case TYPE_HEX :
-	  endian.x.ul = 
-	    (unsigned long) gHyp_data_getRaw ( pParent, parentContext, isParentVector ) ;
-	  if ( !isLittleEndian ) 
-	    for ( j=3; j>=0; j-- ) *pBuf++ = endian.x.b[j] ; 
-	  else
-	    for ( j=0; j<4; j++ ) *pBuf++ = endian.x.b[j] ;
-	  n = 4 ;
-	  break ;
-	  
-	case TYPE_OCTAL :
-	  endian.x.ul = 
-	    (unsigned long) gHyp_data_getRaw ( pParent, parentContext, isParentVector ) ;
-	  if ( !isLittleEndian ) 
-	    for ( j=3; j>=0; j-- ) *pBuf++ = endian.x.b[j] ; 
-	  else
-	    for ( j=0; j<4; j++ ) *pBuf++ = endian.x.b[j] ;
-	  n = 4 ;
-	  break ;
-	  
-	case TYPE_UNICODE :
-	  endian.x.us = 
-	    (unsigned short) gHyp_data_getRaw ( pParent, parentContext, isParentVector ) ;
-	  if ( !isLittleEndian ) 
-	    for ( j=1; j>=0; j-- ) *pBuf++ = endian.x.b[j] ; 
-	  else
-	    for ( j=0; j<2; j++ ) *pBuf++ = endian.x.b[j] ;
-	  n = 2 ;
-	  break ;
-	  
-	case TYPE_SHORT :
-	  endian.x.ss = 
-	    (short) gHyp_data_getRaw ( pParent, parentContext, isParentVector ) ;
-	  if ( !isLittleEndian ) 
-	    for ( j=1; j>=0; j-- ) *pBuf++ = endian.x.b[j] ; 
-	  else
-	    for ( j=0; j<2; j++ ) *pBuf++ = endian.x.b[j] ;
-	  n = 2 ;
-	  break ;
-	  
-	case TYPE_USHORT :
-	  endian.x.us = 
-	    (unsigned short) gHyp_data_getRaw ( pParent, parentContext, isParentVector ) ;
-	  if ( !isLittleEndian ) 
-	    for ( j=1; j>=0; j-- ) *pBuf++ = endian.x.b[j] ; 
-	  else
-	    for ( j=0; j<2; j++ ) *pBuf++ = endian.x.b[j] ;
-	  n = 2 ;
-	  break ;
-	  
-	case TYPE_INTEGER :
-	case TYPE_LONG :
-	  endian.x.sl = 
-	  (long) gHyp_data_getRaw ( pParent, parentContext, isParentVector ) ;
-	  /*(long) gHyp_data_getInt ( pParent, parentContext, isParentVector ) ;*/
-	  if ( !isLittleEndian ) 
-	    for ( j=3; j>=0; j-- ) *pBuf++ = endian.x.b[j] ; 
-	  else
-	    for ( j=0; j<4; j++ ) *pBuf++ = endian.x.b[j] ;
-	  n = 4 ;
-	  break ;
-	  
-	case TYPE_ULONG :
-	  endian.x.ul = 
-	    (unsigned long) gHyp_data_getRaw ( pParent, parentContext, isParentVector ) ;
-	  if ( !isLittleEndian ) 
-	    for ( j=3; j>=0; j-- ) *pBuf++ = endian.x.b[j] ; 
-	  else
-	    for ( j=0; j<4; j++ ) *pBuf++ = endian.x.b[j] ;
-	  n = 4 ;
-	  break ;
-	  
-	case TYPE_FLOAT :
-	  endian.x.f = 
-	    /*(float) gHyp_data_getDouble ( pParent, parentContext, isParentVector ) ;*/
-	    (float) gHyp_data_getRaw ( pParent, parentContext, isParentVector ) ;
-	  if ( !isLittleEndian ) 
-	    for ( j=3; j>=0; j-- ) *pBuf++ = endian.x.b[j] ; 
-	  else
-	    for ( j=0; j<4; j++ ) *pBuf++ = endian.x.b[j] ;
-	  n = 4 ;
-
-	  break ;
-	  
-	case TYPE_DOUBLE :
-	  endian.x.d = 
-	    /*(double) gHyp_data_getDouble ( pParent, parentContext, isParentVector ) ;*/
-	    (double) gHyp_data_getRaw ( pParent, parentContext, isParentVector ) ;
-	  if ( !isLittleEndian ) 
-	    for ( j=7; j>=0; j-- ) *pBuf++ = endian.x.b[j] ; 
-	  else
-	    for ( j=0; j<8; j++ ) *pBuf++ = endian.x.b[j] ;
-	  n = 8 ;
-	  break ;
+      if (n + maxLen > INTERNAL_VALUE_SIZE)
+      {
+        pValue2 = gHyp_data_new(NULL);
+        gHyp_data_setStr_n(pValue2, buffer, n);
+        gHyp_data_append(pResult, pValue2);
+        n = 0;
+        pBuf = buffer;
       }
 
-      pValue2 = gHyp_data_new ( NULL ) ;
-      gHyp_data_setStr_n ( pValue2, buffer, n ) ;
-      gHyp_data_append ( pResult, pValue2 ) ;
-      n = 0 ;
-      pBuf = buffer ;
+      memcpy(pBuf, pBuffer, maxLen);
+      n += maxLen;
+      pBuf += maxLen;
 
-      break ;
+      pBuffer += maxLen;
+      bufferLen -= maxLen;
+    }
+    break;
 
+  case TOKEN_LITERAL:
+
+    if (n > 0)
+    {
+      pValue2 = gHyp_data_new(NULL);
+      gHyp_data_setStr_n(pValue2, buffer, n);
+      gHyp_data_append(pResult, pValue2);
+      n = 0;
+      pBuf = buffer;
+    }
+
+    n = gHyp_data_getStr(pParent,
+                         value,
+                         VALUE_SIZE,
+                         0,
+                         FALSE);
+    pValue2 = gHyp_data_new(NULL);
+    gHyp_data_setStr_n(pValue2, value, n);
+    gHyp_data_append(pResult, pValue2);
+    n = 0;
+    pBuf = buffer;
+
+    break;
+
+  case TOKEN_VARIABLE:
+
+    if (parentContext == -1)
+    {
+
+      /* Non-subscripted, print out all the variable's values */
+      pData = NULL;
+      context = -1;
+      ss = -1;
+      while ((pData = gHyp_data_nextValue(pParent,
+                                          pData,
+                                          &context,
+                                          ss)))
+      {
+
+        if (isParentVector)
+        {
+
+          lHyp_env_unmap(pResult, pData, context, isLittleEndian);
+        }
+        else
+        {
+
+          lHyp_env_unmap(pResult, pData, -1, isLittleEndian);
+        }
+      }
+      break;
+    }
+    /* Fall through to TOKEN_CONSTANT */
+
+  case TOKEN_CONSTANT:
+
+    pBuf = buffer;
+    n = 0;
+    switch (parentDataType)
+    {
+
+    case TYPE_BYTE:
+      sb = (char)gHyp_data_getRaw(pParent, parentContext, isParentVector);
+      *pBuf++ = sb;
+      n = 1;
+      break;
+
+    case TYPE_CHAR:
+    case TYPE_ATTR:
+      sc = (char)gHyp_data_getRaw(pParent, parentContext, isParentVector);
+      *pBuf++ = sc;
+      n = 1;
+      break;
+
+    case TYPE_UBYTE:
+      ub = (unsigned char)gHyp_data_getRaw(pParent, parentContext, isParentVector);
+      *pBuf++ = ub;
+      n = 1;
+      break;
+
+    case TYPE_UCHAR:
+      uc = (unsigned char)gHyp_data_getRaw(pParent, parentContext, isParentVector);
+      *pBuf++ = uc;
+      n = 1;
+      break;
+
+    case TYPE_BOOLEAN:
+      bo = (unsigned char)gHyp_data_getRaw(pParent, parentContext, isParentVector);
+      *pBuf++ = bo;
+      n = 1;
+      break;
+
+    case TYPE_BINARY:
+      bi = (unsigned char)gHyp_data_getRaw(pParent, parentContext, isParentVector);
+      *pBuf++ = bi;
+      n = 1;
+      break;
+
+    case TYPE_HEX:
+      endian.x.ul =
+          (unsigned long)gHyp_data_getRaw(pParent, parentContext, isParentVector);
+      if (!isLittleEndian)
+        for (j = 3; j >= 0; j--)
+          *pBuf++ = endian.x.b[j];
+      else
+        for (j = 0; j < 4; j++)
+          *pBuf++ = endian.x.b[j];
+      n = 4;
+      break;
+
+    case TYPE_OCTAL:
+      endian.x.ul =
+          (unsigned long)gHyp_data_getRaw(pParent, parentContext, isParentVector);
+      if (!isLittleEndian)
+        for (j = 3; j >= 0; j--)
+          *pBuf++ = endian.x.b[j];
+      else
+        for (j = 0; j < 4; j++)
+          *pBuf++ = endian.x.b[j];
+      n = 4;
+      break;
+
+    case TYPE_UNICODE:
+      endian.x.us =
+          (unsigned short)gHyp_data_getRaw(pParent, parentContext, isParentVector);
+      if (!isLittleEndian)
+        for (j = 1; j >= 0; j--)
+          *pBuf++ = endian.x.b[j];
+      else
+        for (j = 0; j < 2; j++)
+          *pBuf++ = endian.x.b[j];
+      n = 2;
+      break;
+
+    case TYPE_SHORT:
+      endian.x.ss =
+          (short)gHyp_data_getRaw(pParent, parentContext, isParentVector);
+      if (!isLittleEndian)
+        for (j = 1; j >= 0; j--)
+          *pBuf++ = endian.x.b[j];
+      else
+        for (j = 0; j < 2; j++)
+          *pBuf++ = endian.x.b[j];
+      n = 2;
+      break;
+
+    case TYPE_USHORT:
+      endian.x.us =
+          (unsigned short)gHyp_data_getRaw(pParent, parentContext, isParentVector);
+      if (!isLittleEndian)
+        for (j = 1; j >= 0; j--)
+          *pBuf++ = endian.x.b[j];
+      else
+        for (j = 0; j < 2; j++)
+          *pBuf++ = endian.x.b[j];
+      n = 2;
+      break;
+
+    case TYPE_INTEGER:
+    case TYPE_LONG:
+      endian.x.sl =
+          (long)gHyp_data_getRaw(pParent, parentContext, isParentVector);
+      /*(long) gHyp_data_getInt ( pParent, parentContext, isParentVector ) ;*/
+      if (!isLittleEndian)
+        for (j = 3; j >= 0; j--)
+          *pBuf++ = endian.x.b[j];
+      else
+        for (j = 0; j < 4; j++)
+          *pBuf++ = endian.x.b[j];
+      n = 4;
+      break;
+
+    case TYPE_ULONG:
+      endian.x.ul =
+          (unsigned long)gHyp_data_getRaw(pParent, parentContext, isParentVector);
+      if (!isLittleEndian)
+        for (j = 3; j >= 0; j--)
+          *pBuf++ = endian.x.b[j];
+      else
+        for (j = 0; j < 4; j++)
+          *pBuf++ = endian.x.b[j];
+      n = 4;
+      break;
+
+    case TYPE_FLOAT:
+      endian.x.f =
+          /*(float) gHyp_data_getDouble ( pParent, parentContext, isParentVector ) ;*/
+          (float)gHyp_data_getRaw(pParent, parentContext, isParentVector);
+      if (!isLittleEndian)
+        for (j = 3; j >= 0; j--)
+          *pBuf++ = endian.x.b[j];
+      else
+        for (j = 0; j < 4; j++)
+          *pBuf++ = endian.x.b[j];
+      n = 4;
+
+      break;
+
+    case TYPE_DOUBLE:
+      endian.x.d =
+          /*(double) gHyp_data_getDouble ( pParent, parentContext, isParentVector ) ;*/
+          (double)gHyp_data_getRaw(pParent, parentContext, isParentVector);
+      if (!isLittleEndian)
+        for (j = 7; j >= 0; j--)
+          *pBuf++ = endian.x.b[j];
+      else
+        for (j = 0; j < 8; j++)
+          *pBuf++ = endian.x.b[j];
+      n = 8;
+      break;
+    }
+
+    pValue2 = gHyp_data_new(NULL);
+    gHyp_data_setStr_n(pValue2, buffer, n);
+    gHyp_data_append(pResult, pValue2);
+    n = 0;
+    pBuf = buffer;
+
+    break;
   }
-  if ( n > 0 ) {
-    pValue2 = gHyp_data_new ( NULL ) ;
-    gHyp_data_setStr_n ( pValue2, buffer, n ) ;
-    gHyp_data_append ( pResult, pValue2 ) ;
-    n = 0 ;
-    pBuf = buffer ;
+  if (n > 0)
+  {
+    pValue2 = gHyp_data_new(NULL);
+    gHyp_data_setStr_n(pValue2, buffer, n);
+    gHyp_data_append(pResult, pValue2);
+    n = 0;
+    pBuf = buffer;
   }
-  return ;
+  return;
 }
 
-void gHyp_env_unmap ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+void gHyp_env_unmap(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE)
 {
   /* Description:
    *
@@ -1778,53 +1863,55 @@ void gHyp_env_unmap ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
    * Modifications:
    *
    */
-  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
-  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+  sFrame *pFrame = gHyp_instance_frame(pAI);
+  sParse *pParse = gHyp_frame_parse(pFrame);
 
-  if ( isPARSE )
-  
-    gHyp_parse_operand ( pParse, pCode, pAI ) ;
-    
-  else {
- 
-    sStack 	
-      *pStack = gHyp_frame_stack ( pFrame ) ;
+  if (isPARSE)
+
+    gHyp_parse_operand(pParse, pCode, pAI);
+
+  else
+  {
+
+    sStack
+        *pStack = gHyp_frame_stack(pFrame);
 
     sData
-      *pVariable,
-      *pData,
-      *pResult ;
+        *pVariable,
+        *pData,
+        *pResult;
 
     int
-      ss,
-      context,
-      argCount = gHyp_parse_argCount ( pParse ) ;
+        ss,
+        context,
+        argCount = gHyp_parse_argCount(pParse);
 
     sLOGICAL
-      isLittleEndian = gHyp_util_isLittleEndian() ;
+        isLittleEndian = gHyp_util_isLittleEndian();
 
-    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+    gHyp_instance_setStatus(pAI, STATUS_ACKNOWLEDGE);
 
-    if ( argCount != 1 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-	"Invalid arguments. Usage: unmap ( source )" ) ;
+    if (argCount != 1)
+      gHyp_instance_error(pAI, STATUS_ARGUMENT,
+                          "Invalid arguments. Usage: unmap ( source )");
 
-    pData = gHyp_stack_popRdata ( pStack, pAI ) ;
-    if ( (pVariable = gHyp_data_getVariable ( pData ) ) )
-      pData = pVariable ;
+    pData = gHyp_stack_popRdata(pStack, pAI);
+    if ((pVariable = gHyp_data_getVariable(pData)))
+      pData = pVariable;
 
-    context = -1 ;
-    ss = gHyp_data_getSubScript ( pData ) ;
-    pResult = gHyp_data_new ( "_unmap_" ) ;
-    lHyp_env_unmap (	pResult,
-	  		pData,
-			ss,
-			isLittleEndian) ;
+    context = -1;
+    ss = gHyp_data_getSubScript(pData);
+    pResult = gHyp_data_new("_unmap_");
+    lHyp_env_unmap(pResult,
+                   pData,
+                   ss,
+                   isLittleEndian);
 
-    gHyp_stack_push ( pStack, pResult ) ;
+    gHyp_stack_push(pStack, pResult);
   }
 }
 
-void gHyp_env_secs_unmap ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+void gHyp_env_secs_unmap(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE)
 {
   /* Description:
    *
@@ -1845,54 +1932,56 @@ void gHyp_env_secs_unmap ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
    * Modifications:
    *
    */
-  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
-  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+  sFrame *pFrame = gHyp_instance_frame(pAI);
+  sParse *pParse = gHyp_frame_parse(pFrame);
 
-  if ( isPARSE )
-  
-    gHyp_parse_operand ( pParse, pCode, pAI ) ;
-    
-  else {
- 
-    sStack 	
-      *pStack = gHyp_frame_stack ( pFrame ) ;
+  if (isPARSE)
+
+    gHyp_parse_operand(pParse, pCode, pAI);
+
+  else
+  {
+
+    sStack
+        *pStack = gHyp_frame_stack(pFrame);
 
     sData
-      *pVariable,
-      *pData,
-      *pResult ;
+        *pVariable,
+        *pData,
+        *pResult;
 
     int
-      ss,
-      context,
-      argCount = gHyp_parse_argCount ( pParse ) ;
+        ss,
+        context,
+        argCount = gHyp_parse_argCount(pParse);
 
     sLOGICAL
-      /* SECS is big Endian, so if we are little Endian, we must swap bytes */ 
-      isLittleEndian = ( gHyp_util_isLittleEndian() ? 0 : 1 ) ;
+        /* SECS is big Endian, so if we are little Endian, we must swap bytes */
+        isLittleEndian = (gHyp_util_isLittleEndian() ? 0 : 1);
 
-    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+    gHyp_instance_setStatus(pAI, STATUS_ACKNOWLEDGE);
 
-    if ( argCount != 1 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-	"Invalid arguments. Usage: secs_unmap ( source )" ) ;
+    if (argCount != 1)
+      gHyp_instance_error(pAI, STATUS_ARGUMENT,
+                          "Invalid arguments. Usage: secs_unmap ( source )");
 
-    pData = gHyp_stack_popRdata ( pStack, pAI ) ;
-    if ( (pVariable = gHyp_data_getVariable ( pData ) ) )
-      pData = pVariable ;
+    pData = gHyp_stack_popRdata(pStack, pAI);
+    if ((pVariable = gHyp_data_getVariable(pData)))
+      pData = pVariable;
 
-    context = -1 ;
-    ss = gHyp_data_getSubScript ( pData ) ;
-    pResult = gHyp_data_new ( "_secs_unmap_" ) ;
-    lHyp_env_unmap (	pResult,
-	  		pData,
-			ss,
-			isLittleEndian) ;
+    context = -1;
+    ss = gHyp_data_getSubScript(pData);
+    pResult = gHyp_data_new("_secs_unmap_");
+    lHyp_env_unmap(pResult,
+                   pData,
+                   ss,
+                   isLittleEndian);
 
-    gHyp_stack_push ( pStack, pResult ) ;
+    gHyp_stack_push(pStack, pResult);
   }
 }
 
-void gHyp_env_merge ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+void gHyp_env_merge(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE)
 {
   /* Description:
    *
@@ -1913,76 +2002,83 @@ void gHyp_env_merge ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
    * Modifications:
    *
    */
-  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
-  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+  sFrame *pFrame = gHyp_instance_frame(pAI);
+  sParse *pParse = gHyp_frame_parse(pFrame);
 
-  if ( isPARSE )
-  
-    gHyp_parse_operand ( pParse, pCode, pAI ) ;
-    
-  else {
- 
-    sStack 	
-      *pStack = gHyp_frame_stack ( pFrame ) ;
+  if (isPARSE)
+
+    gHyp_parse_operand(pParse, pCode, pAI);
+
+  else
+  {
+
+    sStack
+        *pStack = gHyp_frame_stack(pFrame);
 
     sData
-      *pSrcData,
-      *pDstData,
-      *pVariable,
-      *pData,
-      *pResult ;
+        *pSrcData,
+        *pDstData,
+        *pVariable,
+        *pData,
+        *pResult;
 
     sLOGICAL
-      autoIncrement=FALSE ;
+        autoIncrement = FALSE;
 
     int
-      argCount = gHyp_parse_argCount ( pParse ) ;
-    
-    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+        argCount = gHyp_parse_argCount(pParse);
 
-    if ( argCount != 2 && argCount != 3 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-	"Invalid arguments. Usage: merge ( destination, source[, autoIncrement] )" ) ;
+    gHyp_instance_setStatus(pAI, STATUS_ACKNOWLEDGE);
 
-    if ( argCount == 3 ) {
-      pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
-      autoIncrement = gHyp_data_getBool ( pData,
-					  gHyp_data_getSubScript ( pData  ),
-					  TRUE ) ;
+    if (argCount != 2 && argCount != 3)
+      gHyp_instance_error(pAI, STATUS_ARGUMENT,
+                          "Invalid arguments. Usage: merge ( destination, source[, autoIncrement] )");
+
+    if (argCount == 3)
+    {
+      pData = gHyp_stack_popRvalue(pStack, pAI);
+      autoIncrement = gHyp_data_getBool(pData,
+                                        gHyp_data_getSubScript(pData),
+                                        TRUE);
     }
-    pSrcData = gHyp_stack_popRdata ( pStack, pAI ) ;
-    pDstData = gHyp_stack_popRdata ( pStack, pAI ) ;
-    pResult = gHyp_env_mergeData ( pDstData, pSrcData, pAI, 0, autoIncrement, FALSE, FALSE, FALSE, NULL, 0 ) ;
+    pSrcData = gHyp_stack_popRdata(pStack, pAI);
+    pDstData = gHyp_stack_popRdata(pStack, pAI);
+    pResult = gHyp_env_mergeData(pDstData, pSrcData, pAI, 0, autoIncrement, FALSE, FALSE, FALSE, NULL, 0);
 
-    if ( gHyp_parse_exprCount ( pParse ) == 0 ) {
+    if (gHyp_parse_exprCount(pParse) == 0)
+    {
 
-      if ( gHyp_data_tokenType ( pResult ) == TOKEN_VARIABLE ) {
+      if (gHyp_data_tokenType(pResult) == TOKEN_VARIABLE)
+      {
 
-        pVariable = gHyp_frame_findVariable ( pAI, pFrame, gHyp_data_getLabel ( pResult ) ) ;
-	if ( pVariable ) {
-	  /* Variable already exists. Just move the new values into place */
-	  gHyp_data_deleteValues ( pVariable ) ;
-	  gHyp_data_moveValues ( pVariable, pResult ) ;
-	  gHyp_data_delete ( pResult ) ;
-	  pResult = NULL ;
-	}
-	else 
-	  gHyp_data_append( gHyp_frame_getMethodData(pFrame),pResult ) ;
+        pVariable = gHyp_frame_findVariable(pAI, pFrame, gHyp_data_getLabel(pResult));
+        if (pVariable)
+        {
+          /* Variable already exists. Just move the new values into place */
+          gHyp_data_deleteValues(pVariable);
+          gHyp_data_moveValues(pVariable, pResult);
+          gHyp_data_delete(pResult);
+          pResult = NULL;
+        }
+        else
+          gHyp_data_append(gHyp_frame_getMethodData(pFrame), pResult);
 
-	pResult = NULL ;
+        pResult = NULL;
       }
-      else {
-	gHyp_instance_warning ( pAI, STATUS_INVALID, "Cannot create variable from '%s'",
-			      gHyp_data_getLabel ( pResult ) ) ;
+      else
+      {
+        gHyp_instance_warning(pAI, STATUS_INVALID, "Cannot create variable from '%s'",
+                              gHyp_data_getLabel(pResult));
       }
     }
-    if ( pResult ) 
-      gHyp_stack_push ( pStack, pResult ) ;
+    if (pResult)
+      gHyp_stack_push(pStack, pResult);
     else
-      gHyp_instance_pushSTATUS ( pAI, pStack ) ;
+      gHyp_instance_pushSTATUS(pAI, pStack);
   }
 }
 
-void gHyp_env_sjm ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+void gHyp_env_sjm(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE)
 {
   /* Description:
    *
@@ -2003,251 +2099,264 @@ void gHyp_env_sjm ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
    * Modifications:
    *
    */
-  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
-  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+  sFrame *pFrame = gHyp_instance_frame(pAI);
+  sParse *pParse = gHyp_frame_parse(pFrame);
 
-  if ( isPARSE )
-  
-    gHyp_parse_operand ( pParse, pCode, pAI ) ;
-    
-  else {
- 
-    sStack 	
-      *pStack = gHyp_frame_stack ( pFrame ) ;
+  if (isPARSE)
+
+    gHyp_parse_operand(pParse, pCode, pAI);
+
+  else
+  {
+
+    sStack
+        *pStack = gHyp_frame_stack(pFrame);
 
     sData
-      *pData,
-      *pSrcData,
-      *pDstData,
-      *pVariable,
-      *pResult ;
+        *pData,
+        *pSrcData,
+        *pDstData,
+        *pVariable,
+        *pResult;
 
     int
-      arrayCount = 0,
-      argCount = gHyp_parse_argCount ( pParse ) ;
-    
-    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+        arrayCount = 0,
+        argCount = gHyp_parse_argCount(pParse);
 
-    if ( argCount != 2 && argCount != 3 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-	"Invalid arguments. Usage: sjm ( destination, source [, arrayCount] )" ) ;
+    gHyp_instance_setStatus(pAI, STATUS_ACKNOWLEDGE);
 
-    if ( argCount == 3 ) {
-      pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
-      arrayCount = gHyp_data_getInt ( pData,
-				      gHyp_data_getSubScript ( pData ),
-				      TRUE ) ;  
+    if (argCount != 2 && argCount != 3)
+      gHyp_instance_error(pAI, STATUS_ARGUMENT,
+                          "Invalid arguments. Usage: sjm ( destination, source [, arrayCount] )");
+
+    if (argCount == 3)
+    {
+      pData = gHyp_stack_popRvalue(pStack, pAI);
+      arrayCount = gHyp_data_getInt(pData,
+                                    gHyp_data_getSubScript(pData),
+                                    TRUE);
     }
 
-    pSrcData = gHyp_stack_popRdata ( pStack, pAI ) ;
-    pDstData = gHyp_stack_popRdata ( pStack, pAI ) ;
+    pSrcData = gHyp_stack_popRdata(pStack, pAI);
+    pDstData = gHyp_stack_popRdata(pStack, pAI);
 
-    pResult = gHyp_env_mergeData ( pDstData, pSrcData, pAI, 
-					0, 
-					FALSE,	/* Not data merge */
-					FALSE,	/* Not msg merge */
-					TRUE,	/* SMART MERGE */
-					FALSE,  /* SMART MERGE 2 */
-					NULL,	/* no tmp */
-					arrayCount	/* Truncation */
-					) ;
+    pResult = gHyp_env_mergeData(pDstData, pSrcData, pAI,
+                                 0,
+                                 FALSE,     /* Not data merge */
+                                 FALSE,     /* Not msg merge */
+                                 TRUE,      /* SMART MERGE */
+                                 FALSE,     /* SMART MERGE 2 */
+                                 NULL,      /* no tmp */
+                                 arrayCount /* Truncation */
+    );
 
-    if ( gHyp_parse_exprCount ( pParse ) == 0 ) {
+    if (gHyp_parse_exprCount(pParse) == 0)
+    {
 
-      if ( gHyp_data_tokenType ( pResult ) == TOKEN_VARIABLE ) {
+      if (gHyp_data_tokenType(pResult) == TOKEN_VARIABLE)
+      {
 
-        pVariable = gHyp_frame_findVariable ( pAI, pFrame, gHyp_data_getLabel ( pResult ) ) ;
-	if ( pVariable ) {
-	  /* Variable already exists. Just move the new values into place */
-	  gHyp_data_deleteValues ( pVariable ) ;
-	  gHyp_data_moveValues ( pVariable, pResult ) ;
-	  gHyp_data_delete ( pResult ) ;
-	  pResult = NULL ;
-	}
-	else 
-	  gHyp_data_append( gHyp_frame_getMethodData(pFrame),pResult ) ;
+        pVariable = gHyp_frame_findVariable(pAI, pFrame, gHyp_data_getLabel(pResult));
+        if (pVariable)
+        {
+          /* Variable already exists. Just move the new values into place */
+          gHyp_data_deleteValues(pVariable);
+          gHyp_data_moveValues(pVariable, pResult);
+          gHyp_data_delete(pResult);
+          pResult = NULL;
+        }
+        else
+          gHyp_data_append(gHyp_frame_getMethodData(pFrame), pResult);
 
-	pResult = NULL ;
+        pResult = NULL;
       }
-      else {
-	gHyp_instance_warning ( pAI, STATUS_INVALID, "Cannot create variable from '%s'",
-			      gHyp_data_getLabel ( pResult ) ) ;
+      else
+      {
+        gHyp_instance_warning(pAI, STATUS_INVALID, "Cannot create variable from '%s'",
+                              gHyp_data_getLabel(pResult));
       }
     }
-    if ( pResult ) 
-      gHyp_stack_push ( pStack, pResult ) ;
+    if (pResult)
+      gHyp_stack_push(pStack, pResult);
     else
-      gHyp_instance_pushSTATUS ( pAI, pStack ) ;
+      gHyp_instance_pushSTATUS(pAI, pStack);
   }
 }
 
-sData* gHyp_env_mergeData ( sData *pDst, 
-			    sData *pSrc,
-			    sInstance *pAI,
-			    int counter,
-			    sLOGICAL isDataMerge,
-			    sLOGICAL isMsgMerge,
-			    sLOGICAL isSmartMerge,
-			    sLOGICAL isSmartMerge2,
-			    sData *pTmp,
-			    int arrayCount ) {
+sData *gHyp_env_mergeData(sData *pDst,
+                          sData *pSrc,
+                          sInstance *pAI,
+                          int counter,
+                          sLOGICAL isDataMerge,
+                          sLOGICAL isMsgMerge,
+                          sLOGICAL isSmartMerge,
+                          sLOGICAL isSmartMerge2,
+                          sData *pTmp,
+                          int arrayCount)
+{
 
-  sData	
-    *pResult,
-    *pToken,
-    *pValue,
-    *pValue2,
-    *pData,
-    *pData2,
-    *pSrcValue,
-    *pDstValue,
-    *pNextSrcValue,
-    *pNextDstValue,
-    *pLastDstValue,
-    *pVariable ;
+  sData
+      *pResult,
+      *pToken,
+      *pValue,
+      *pValue2,
+      *pData,
+      *pData2,
+      *pSrcValue,
+      *pDstValue,
+      *pNextSrcValue,
+      *pNextDstValue,
+      *pLastDstValue,
+      *pVariable;
 
   sFrame
-    *pFrame = gHyp_instance_frame ( pAI ) ;
+      *pFrame = gHyp_instance_frame(pAI);
 
   int
-    context,
-    context2,
-    contextSrc,
-    contextDst,
-    n,
-    ssv=-1,
-    sdv=-1,
-    ss,
-    ss2,
-    sss,
-    ssd,
-    count,
-    countDst,
-    countSrc,
-    countResult,
-    counter2,
-    labelLen,
-    hypIndex,
-    lineCount=0,
-    contentLength ;
+      context,
+      context2,
+      contextSrc,
+      contextDst,
+      n,
+      ssv = -1,
+      sdv = -1,
+      ss,
+      ss2,
+      sss,
+      ssd,
+      count,
+      countDst,
+      countSrc,
+      countResult,
+      counter2,
+      labelLen,
+      hypIndex,
+      lineCount = 0,
+      contentLength;
 
   sLOGICAL
-    isVector,
-    isVectorDst,
-    isVectorSrc,
-    isDynamicDst,
-    isDynamicSrc,
-    isDynamicResult,
-    doDereference = FALSE,
-    firstPass=TRUE;
+      isVector,
+      isVectorDst,
+      isVectorSrc,
+      isDynamicDst,
+      isDynamicSrc,
+      isDynamicResult,
+      doDereference = FALSE,
+      firstPass = TRUE;
 
   sBYTE
-    dstDataType,
-    srcDataType,
-    srcTokenType,
-    dstTokenType ;
+      dstDataType,
+      srcDataType,
+      srcTokenType,
+      dstTokenType;
 
   char
-    *pStr,
-    *pStream,
-    *pLabel,
-    value[VALUE_SIZE+1],
-    value2[VALUE_SIZE+1],
-    timeStamp[SQL_DATETIME_SIZE+1] ;
+      *pStr,
+      *pStream,
+      *pLabel,
+      value[VALUE_SIZE + 1],
+      value2[VALUE_SIZE + 1],
+      timeStamp[SQL_DATETIME_SIZE + 1];
 
-  time_t ts ;
-  
-  struct tm *pstm ;
-  
-#if defined ( AS_VMS ) && defined ( AS_PROMIS ) && defined ( AS_VMSCLOCK )
-		char vmsTimeStamp[24];
-		int vms_time[2];
-		int timelen ;
-  		makeDSCs ( vmsTimeStamp_d, vmsTimeStamp ) ;
-  		int promis_time,ret ;
-		char* months="JAN/FEB/MAR/APR/MAY/JUN/JUL/AUG/SEP/OCT/NOV/DEC/" ;
-		int month ;
-		char monthStr[4] ;
-		char yearStr[5] ;
-		char timeStr[9] ;
-		char dayStr[3] ;
+  time_t ts;
+
+  struct tm *pstm;
+
+#if defined(AS_VMS) && defined(AS_PROMIS) && defined(AS_VMSCLOCK)
+  char vmsTimeStamp[24];
+  int vms_time[2];
+  int timelen;
+  makeDSCs(vmsTimeStamp_d, vmsTimeStamp);
+  int promis_time, ret;
+  char *months = "JAN/FEB/MAR/APR/MAY/JUN/JUL/AUG/SEP/OCT/NOV/DEC/";
+  int month;
+  char monthStr[4];
+  char yearStr[5];
+  char timeStr[9];
+  char dayStr[3];
 #endif
 
   sHyp
-    *pHyp = gHyp_frame_getHyp ( pFrame ) ;
+      *pHyp = gHyp_frame_getHyp(pFrame);
 
-  hypIndex = gHyp_hyp_getHypCount ( pHyp ) ;
-  srcTokenType = gHyp_data_getTokenType ( pSrc ) ;
-  dstTokenType = gHyp_data_getTokenType ( pDst ) ;
-  srcDataType = gHyp_data_getDataType ( pSrc ) ;
-  dstDataType = gHyp_data_getDataType ( pDst ) ;
+  hypIndex = gHyp_hyp_getHypCount(pHyp);
+  srcTokenType = gHyp_data_getTokenType(pSrc);
+  dstTokenType = gHyp_data_getTokenType(pDst);
+  srcDataType = gHyp_data_getDataType(pSrc);
+  dstDataType = gHyp_data_getDataType(pDst);
 
-  isVectorSrc = ( srcTokenType == TOKEN_VARIABLE && 
-		  srcDataType > TYPE_STRING ) ;
-  isVectorDst = ( dstTokenType ==  TOKEN_VARIABLE &&
-		  dstDataType > TYPE_STRING ) ;
+  isVectorSrc = (srcTokenType == TOKEN_VARIABLE &&
+                 srcDataType > TYPE_STRING);
+  isVectorDst = (dstTokenType == TOKEN_VARIABLE &&
+                 dstDataType > TYPE_STRING);
 
-  isDynamicSrc = gHyp_data_isDynamic ( pSrc ) ;
-  isDynamicDst = gHyp_data_isDynamic ( pDst ) ;
+  isDynamicSrc = gHyp_data_isDynamic(pSrc);
+  isDynamicDst = gHyp_data_isDynamic(pDst);
 
-  countSrc = gHyp_data_getCount ( pSrc ) ;
-  countDst = gHyp_data_getCount ( pDst ) ;
+  countSrc = gHyp_data_getCount(pSrc);
+  countDst = gHyp_data_getCount(pDst);
 
-  if ( !isDynamicDst ) {
-    countResult = countDst ;
-    isDynamicResult = FALSE ;
+  if (!isDynamicDst)
+  {
+    countResult = countDst;
+    isDynamicResult = FALSE;
   }
-  else {
-    countResult = countSrc ;
-    isDynamicResult = isDynamicSrc ;
+  else
+  {
+    countResult = countSrc;
+    isDynamicResult = isDynamicSrc;
   }
 
   /* Create the result */
-  if ( isDataMerge && counter > 0 ) {
-    sprintf ( value, "%s%d", 
-	      gHyp_data_getLabel ( pDst ),
-	      counter++ ) ;
+  if (isDataMerge && counter > 0)
+  {
+    sprintf(value, "%s%d",
+            gHyp_data_getLabel(pDst),
+            counter++);
   }
   else
-    strcpy ( value,  gHyp_data_getLabel ( pDst ) );
-  
-   
-  if ( isVectorDst ) {
-    pResult = gHyp_data_new ( value ) ;
-    gHyp_data_newVector ( pResult, 
-			  dstDataType, 
-			  countResult,
-			  isDynamicResult ) ;
+    strcpy(value, gHyp_data_getLabel(pDst));
+
+  if (isVectorDst)
+  {
+    pResult = gHyp_data_new(value);
+    gHyp_data_newVector(pResult,
+                        dstDataType,
+                        countResult,
+                        isDynamicResult);
   }
-  else {
-    pResult = gHyp_data_new ( NULL ) ;
-    gHyp_data_setVariable ( pResult, value, dstDataType );
+  else
+  {
+    pResult = gHyp_data_new(NULL);
+    gHyp_data_setVariable(pResult, value, dstDataType);
   }
 
   /* Merge values of pSrc into pDst, going in parallel. */
-  pSrcValue = NULL ;
-  pDstValue = NULL ;
-  pNextSrcValue = pSrc ;
-  pNextDstValue = pDst ;
-  pLastDstValue = NULL ;
-  sss = gHyp_data_getSubScript ( pSrc ) ; 
-  contextSrc = -1 ;
-  ssd = gHyp_data_getSubScript ( pDst ) ; 
-  contextDst = -1 ;
-  count = 0 ;
+  pSrcValue = NULL;
+  pDstValue = NULL;
+  pNextSrcValue = pSrc;
+  pNextDstValue = pDst;
+  pLastDstValue = NULL;
+  sss = gHyp_data_getSubScript(pSrc);
+  contextSrc = -1;
+  ssd = gHyp_data_getSubScript(pDst);
+  contextDst = -1;
+  count = 0;
 
-  while ( 1 ) {
-    
+  while (1)
+  {
+
     /* The logic for merging is as follows:
      *
      * 1. The source values are merged into destination values, in parallel.
-     *    
-     *    If there are more source values than destination values, then 
+     *
+     *    If there are more source values than destination values, then
      *    if the destination has a fixed size, the values are truncated,
      *    otherwise the values are appended.  If there
      *    are more destination values than source values, then the extra
      *    destination values are not changed.
      *    If the destination is a vector, then all source values will have
-     *    to merge into the vector slots. 
+     *    to merge into the vector slots.
      *    If the destination is a list, then the source values will have
      *    to merge into the list locations.
      *	  If the count of a list destination variable is one,
@@ -2257,39 +2366,43 @@ sData* gHyp_env_mergeData ( sData *pDst,
      *    then the destination element is replaced entirely by the source
      *    value at that point.
      * 4. If the destination element is an undefined variable, i.e. an
-     *    UNIDENTIFIED variable, then a new destination variable is 
+     *    UNIDENTIFIED variable, then a new destination variable is
      *    created with the contents of the source, whatever that may be.
      * 5. If the destination element is a variable, then the merge procedure
-     *    is done recursively on the values of the destination element and 
-     *    the values of the source element.   
+     *    is done recursively on the values of the destination element and
+     *    the values of the source element.
      */
 
-    if ( pNextDstValue ) {
+    if (pNextDstValue)
+    {
       /* This is either the start of the scan, or there was a previous value.
        * Get the next value of the destination.
        */
-      pLastDstValue = pNextDstValue ;
-      pNextDstValue = gHyp_data_nextValue ( pDst, 
-					    pDstValue, 
-					    &contextDst,
-					    ssd ) ;
-      if ( contextDst == -2 ) {
-	gHyp_data_delete ( pResult ) ;
-	if ( pTmp ) gHyp_data_delete ( pTmp ) ;
-	gHyp_instance_error ( 
-          pAI, STATUS_BOUNDS, 
-	  "Destination subscript is out of bounds in merge()");
+      pLastDstValue = pNextDstValue;
+      pNextDstValue = gHyp_data_nextValue(pDst,
+                                          pDstValue,
+                                          &contextDst,
+                                          ssd);
+      if (contextDst == -2)
+      {
+        gHyp_data_delete(pResult);
+        if (pTmp)
+          gHyp_data_delete(pTmp);
+        gHyp_instance_error(
+            pAI, STATUS_BOUNDS,
+            "Destination subscript is out of bounds in merge()");
       }
-      if ( isVectorDst ) 
-        sdv = contextDst ;
+      if (isVectorDst)
+        sdv = contextDst;
       else
-	sdv = 0 ;
+        sdv = 0;
     }
 
     /* Get the next destination value. */
-    pDstValue = pNextDstValue ;
+    pDstValue = pNextDstValue;
 
-    if ( pNextSrcValue ) {
+    if (pNextSrcValue)
+    {
       /* This is either the start of the scan, or there was a previous value.
        * Get the next value from the source data.
        */
@@ -2297,651 +2410,727 @@ sData* gHyp_env_mergeData ( sData *pDst,
       /* If this is a smart merge, then get the source value that
        * has the same name as the destination value
        */
-      if ( isSmartMerge && pDstValue /*&& gHyp_data_getTokenType ( pDstValue ) == TOKEN_VARIABLE */ ) {
-	pNextSrcValue = gHyp_data_getChildByName ( pSrc, gHyp_data_getLabel ( pDstValue ) ) ;
-	ssv = 0 ;
+      if (isSmartMerge && pDstValue /*&& gHyp_data_getTokenType ( pDstValue ) == TOKEN_VARIABLE */)
+      {
+        pNextSrcValue = gHyp_data_getChildByName(pSrc, gHyp_data_getLabel(pDstValue));
+        ssv = 0;
       }
-      else {
-	pNextSrcValue = gHyp_data_nextValue ( pSrc, 
-					      pSrcValue,
-					      &contextSrc,
-					      sss ) ;
-	if ( contextSrc == -2 ) {
-	  gHyp_data_delete ( pResult ) ;
+      else
+      {
+        pNextSrcValue = gHyp_data_nextValue(pSrc,
+                                            pSrcValue,
+                                            &contextSrc,
+                                            sss);
+        if (contextSrc == -2)
+        {
+          gHyp_data_delete(pResult);
 
-	  if ( pTmp ) gHyp_data_delete ( pTmp ) ;
-	  gHyp_instance_error ( pAI, STATUS_BOUNDS, 
-			      "Source subscript is out of bounds in merge()");
-	}
-        if ( isVectorSrc ) 
-  	  ssv = contextSrc ;
-	else
-	  ssv = 0 ;
+          if (pTmp)
+            gHyp_data_delete(pTmp);
+          gHyp_instance_error(pAI, STATUS_BOUNDS,
+                              "Source subscript is out of bounds in merge()");
+        }
+        if (isVectorSrc)
+          ssv = contextSrc;
+        else
+          ssv = 0;
       }
     }
 
-
     /* Get the next source value. */
-    pSrcValue = pNextSrcValue ;
-    
-    
+    pSrcValue = pNextSrcValue;
+
     /* Done when all values exhausted */
-    if ( !pSrcValue && !pDstValue ) break ;
+    if (!pSrcValue && !pDstValue)
+      break;
 
     /* Done if the destination is not dynamic and the count is exceeded */
-    if ( !isDynamicResult && count >= countResult ) break ;
-    count++ ;
+    if (!isDynamicResult && count >= countResult)
+      break;
+    count++;
 
-    if ( !pSrcValue ) {
+    if (!pSrcValue)
+    {
 
       /*gHyp_util_debug ( "No source value" ) ;*/
-      if ( gHyp_data_getTokenType ( pDstValue )  == TOKEN_REFERENCE ) {
-              
-	/* Create the result */
-	if ( countDst == 1 && countSrc > 1 && isDataMerge ) {
-	  if ( counter == 0 ) counter = 1 ;
-	  sprintf ( value, "%s%d", gHyp_data_getLabel ( pDstValue ), counter++ ) ;
-	}
-	else
-	  strcpy ( value, gHyp_data_getLabel ( pDstValue ) ) ;
+      if (gHyp_data_getTokenType(pDstValue) == TOKEN_REFERENCE)
+      {
 
-	/* Create new empty list variable */
-	pVariable = gHyp_data_new ( value ) ;
+        /* Create the result */
+        if (countDst == 1 && countSrc > 1 && isDataMerge)
+        {
+          if (counter == 0)
+            counter = 1;
+          sprintf(value, "%s%d", gHyp_data_getLabel(pDstValue), counter++);
+        }
+        else
+          strcpy(value, gHyp_data_getLabel(pDstValue));
+
+        /* Create new empty list variable */
+        pVariable = gHyp_data_new(value);
       }
 
       else
         /* No more source values, keep remaining destination values*/
-        pVariable = gHyp_data_copyAll ( pDstValue ) ;
-      
-      gHyp_data_append ( pResult, pVariable ) ;
-      continue ;
+        pVariable = gHyp_data_copyAll(pDstValue);
+
+      gHyp_data_append(pResult, pVariable);
+      continue;
     }
-    
-    srcDataType = gHyp_data_getDataType ( pSrcValue ) ;
-    srcTokenType = gHyp_data_getTokenType ( pSrcValue ) ;
-    pLabel = gHyp_data_getLabel ( pSrcValue ) ;
-    labelLen = strlen ( pLabel ) ;
 
-    if ( isMsgMerge &&
-         !gHyp_load_isKey ( pLabel ) && 
-	 gHyp_util_getToken_okDot  ( pLabel ) != labelLen &&
-         gHyp_util_getToken_okDash ( pLabel ) != labelLen ) {
+    srcDataType = gHyp_data_getDataType(pSrcValue);
+    srcTokenType = gHyp_data_getTokenType(pSrcValue);
+    pLabel = gHyp_data_getLabel(pSrcValue);
+    labelLen = strlen(pLabel);
 
+    if (isMsgMerge &&
+        !gHyp_load_isKey(pLabel) &&
+        gHyp_util_getToken_okDot(pLabel) != labelLen &&
+        gHyp_util_getToken_okDash(pLabel) != labelLen)
+    {
 
       /* SPECIAL CASE:  Merge called from instance_consumeMessage. */
-      doDereference = TRUE ;	
+      doDereference = TRUE;
 
-      if ( firstPass ) {
-	/*gHyp_util_debug("## { ");*/
-        pStream = gHyp_load_fromStream ( pAI, pHyp, "{", lineCount++ ) ;
-        if ( !pStream || *pStream ) {
-          gHyp_hyp_setHypCount ( pHyp, hypIndex ) ;
-  	  if ( pTmp ) gHyp_data_delete ( pTmp ) ;
-          gHyp_instance_error ( pAI,
-			    STATUS_UNDEFINED,
-			    "Failed to load HyperScript segment (merge) '{'" ) ;
-	}
-        firstPass = FALSE ;
+      if (firstPass)
+      {
+        /*gHyp_util_debug("## { ");*/
+        pStream = gHyp_load_fromStream(pAI, pHyp, "{", lineCount++);
+        if (!pStream || *pStream)
+        {
+          gHyp_hyp_setHypCount(pHyp, hypIndex);
+          if (pTmp)
+            gHyp_data_delete(pTmp);
+          gHyp_instance_error(pAI,
+                              STATUS_UNDEFINED,
+                              "Failed to load HyperScript segment (merge) '{'");
+        }
+        firstPass = FALSE;
       }
-      
-      if ( pDstValue ) {
 
-	/*gHyp_util_debug("## merge ( ");*/
-        pStream = gHyp_load_fromStream ( pAI, pHyp, "merge ( ", lineCount++ ) ;
-        if ( !pStream || *pStream ) {
-          gHyp_hyp_setHypCount ( pHyp, hypIndex ) ;
-	  if ( pTmp ) gHyp_data_delete ( pTmp ) ;
-          gHyp_instance_error ( pAI,
-			    STATUS_UNDEFINED,
-			    "Failed to load HyperScript segment (merge) 'merge ( '" ) ;
-	}
-	contentLength = 0 ;
-        pValue = gHyp_fileio_describeData ( pAI, pDstValue, ' ', FALSE, FALSE, &contentLength ) ;
-        pToken = NULL ;
-        ss = -1 ;
-        context = -1 ;
-        while ( (pToken = gHyp_data_nextValue ( pValue, 
-					        pToken, 
-					        &context,
-					        ss ) ) ) {
-      
+      if (pDstValue)
+      {
+
+        /*gHyp_util_debug("## merge ( ");*/
+        pStream = gHyp_load_fromStream(pAI, pHyp, "merge ( ", lineCount++);
+        if (!pStream || *pStream)
+        {
+          gHyp_hyp_setHypCount(pHyp, hypIndex);
+          if (pTmp)
+            gHyp_data_delete(pTmp);
+          gHyp_instance_error(pAI,
+                              STATUS_UNDEFINED,
+                              "Failed to load HyperScript segment (merge) 'merge ( '");
+        }
+        contentLength = 0;
+        pValue = gHyp_fileio_describeData(pAI, pDstValue, ' ', FALSE, FALSE, &contentLength);
+        pToken = NULL;
+        ss = -1;
+        context = -1;
+        while ((pToken = gHyp_data_nextValue(pValue,
+                                             pToken,
+                                             &context,
+                                             ss)))
+        {
+
           /* Get the value, as a string */
-          n = gHyp_data_getStr_nonulls ( pToken, 
-			     value, 
-			     VALUE_SIZE, 
-			     context, 
-			     FALSE ) ;
-          pStr = value ;
+          n = gHyp_data_getStr_nonulls(pToken,
+                                       value,
+                                       VALUE_SIZE,
+                                       context,
+                                       FALSE);
+          pStr = value;
 
           /* Add the code segment to the stream */
-	  /*gHyp_util_debug("## %s",pStr);*/
-          pStream = gHyp_load_fromStream ( pAI, pHyp, pStr, lineCount++ ) ;
-          if ( !pStream || *pStream ) {
-	    gHyp_hyp_setHypCount ( pHyp, hypIndex ) ;
-  	    if ( pTmp ) gHyp_data_delete ( pTmp ) ;
-	    gHyp_instance_error ( pAI,
-			      STATUS_UNDEFINED,
-			      "Failed to load HyperScript code segment (merge) '%s'",
-			      pStr ) ;
-	  }
-	}
-        gHyp_data_delete ( pValue ) ;
+          /*gHyp_util_debug("## %s",pStr);*/
+          pStream = gHyp_load_fromStream(pAI, pHyp, pStr, lineCount++);
+          if (!pStream || *pStream)
+          {
+            gHyp_hyp_setHypCount(pHyp, hypIndex);
+            if (pTmp)
+              gHyp_data_delete(pTmp);
+            gHyp_instance_error(pAI,
+                                STATUS_UNDEFINED,
+                                "Failed to load HyperScript code segment (merge) '%s'",
+                                pStr);
+          }
+        }
+        gHyp_data_delete(pValue);
 
-	/*gHyp_util_debug("## , ");*/
-        pStream = gHyp_load_fromStream ( pAI, pHyp, ",", lineCount++ ) ;
-        if ( !pStream || *pStream ) {
-          gHyp_hyp_setHypCount ( pHyp, hypIndex ) ;
-  	  if ( pTmp ) gHyp_data_delete ( pTmp ) ;
-          gHyp_instance_error ( pAI,
-			    STATUS_UNDEFINED,
-			    "Failed to load HyperScript segment (merge) ' , '" ) ;
-	}
-
+        /*gHyp_util_debug("## , ");*/
+        pStream = gHyp_load_fromStream(pAI, pHyp, ",", lineCount++);
+        if (!pStream || *pStream)
+        {
+          gHyp_hyp_setHypCount(pHyp, hypIndex);
+          if (pTmp)
+            gHyp_data_delete(pTmp);
+          gHyp_instance_error(pAI,
+                              STATUS_UNDEFINED,
+                              "Failed to load HyperScript segment (merge) ' , '");
+        }
       }
 
       /* Insert the source value(s), its already been described. */
       /*gHyp_util_debug("## %s ",pLabel );*/
-      pStream = gHyp_load_fromStream ( pAI, pHyp, pLabel, lineCount++ ) ;
-      if ( !pStream || *pStream ) {
-        gHyp_hyp_setHypCount ( pHyp, hypIndex ) ;
-	if ( pTmp ) gHyp_data_delete ( pTmp ) ;
-        gHyp_instance_error ( pAI,
-			    STATUS_UNDEFINED,
-			    "Failed to load HyperScript segment label (merge) '%s'", pLabel ) ;
+      pStream = gHyp_load_fromStream(pAI, pHyp, pLabel, lineCount++);
+      if (!pStream || *pStream)
+      {
+        gHyp_hyp_setHypCount(pHyp, hypIndex);
+        if (pTmp)
+          gHyp_data_delete(pTmp);
+        gHyp_instance_error(pAI,
+                            STATUS_UNDEFINED,
+                            "Failed to load HyperScript segment label (merge) '%s'", pLabel);
       }
 
-      pToken = NULL ;
-      ss = -1 ;
-      context = -1 ;
-      while ( (pToken = gHyp_data_nextValue ( pSrcValue, 
-					      pToken, 
-					      &context,
-					      ss ) ) ) {
-      
+      pToken = NULL;
+      ss = -1;
+      context = -1;
+      while ((pToken = gHyp_data_nextValue(pSrcValue,
+                                           pToken,
+                                           &context,
+                                           ss)))
+      {
+
         /* Get the value, as a string */
-        n = gHyp_data_getStr_nonulls ( pToken, 
-				value, 
-				VALUE_SIZE, 
-				context, 
-				FALSE ) ;
-        pStr = value ;
+        n = gHyp_data_getStr_nonulls(pToken,
+                                     value,
+                                     VALUE_SIZE,
+                                     context,
+                                     FALSE);
+        pStr = value;
 
         /* Add the code segment to the stream */
-	/*gHyp_util_debug("## %s",pStr);*/
-        pStream = gHyp_load_fromStream ( pAI, pHyp, pStr, lineCount++ ) ;
-        if ( !pStream || *pStream ) {
-	  gHyp_hyp_setHypCount ( pHyp, hypIndex ) ;
-  	  if ( pTmp ) gHyp_data_delete ( pTmp ) ;
-	  gHyp_instance_error ( pAI,
-			      STATUS_UNDEFINED,
-			      "Failed to load HyperScript segment (merge) '%s'",
-			      pStr ) ;
-	}
+        /*gHyp_util_debug("## %s",pStr);*/
+        pStream = gHyp_load_fromStream(pAI, pHyp, pStr, lineCount++);
+        if (!pStream || *pStream)
+        {
+          gHyp_hyp_setHypCount(pHyp, hypIndex);
+          if (pTmp)
+            gHyp_data_delete(pTmp);
+          gHyp_instance_error(pAI,
+                              STATUS_UNDEFINED,
+                              "Failed to load HyperScript segment (merge) '%s'",
+                              pStr);
+        }
       }
 
-      if ( pDstValue ) {
+      if (pDstValue)
+      {
 
-	/*gHyp_util_debug("## )");*/
-        pStream = gHyp_load_fromStream ( pAI, pHyp, ")", lineCount++ ) ;
+        /*gHyp_util_debug("## )");*/
+        pStream = gHyp_load_fromStream(pAI, pHyp, ")", lineCount++);
 
-        if ( !pStream || *pStream ) {
-          gHyp_hyp_setHypCount ( pHyp, hypIndex ) ;
-	  if ( pTmp ) gHyp_data_delete ( pTmp ) ;
-          gHyp_instance_error ( pAI,
-			    STATUS_UNDEFINED,
-			    "Failed to load HyperScript segment (merge) ')'" ) ;
-	} 
-
+        if (!pStream || *pStream)
+        {
+          gHyp_hyp_setHypCount(pHyp, hypIndex);
+          if (pTmp)
+            gHyp_data_delete(pTmp);
+          gHyp_instance_error(pAI,
+                              STATUS_UNDEFINED,
+                              "Failed to load HyperScript segment (merge) ')'");
+        }
       }
 
       /*gHyp_util_debug("## ;");*/
-      pStream = gHyp_load_fromStream ( pAI, pHyp, ";", lineCount++ ) ;
+      pStream = gHyp_load_fromStream(pAI, pHyp, ";", lineCount++);
 
-      if ( !pStream || *pStream ) {
-        gHyp_hyp_setHypCount ( pHyp, hypIndex ) ;
-	if ( pTmp ) gHyp_data_delete ( pTmp ) ;
-        gHyp_instance_error ( pAI,
-		    STATUS_UNDEFINED,
-			    "Failed to load HyperScript segment (merge) ';'" ) ;
-      } 
+      if (!pStream || *pStream)
+      {
+        gHyp_hyp_setHypCount(pHyp, hypIndex);
+        if (pTmp)
+          gHyp_data_delete(pTmp);
+        gHyp_instance_error(pAI,
+                            STATUS_UNDEFINED,
+                            "Failed to load HyperScript segment (merge) ';'");
+      }
 
-      continue ;
-    }    
+      continue;
+    }
 
-    
-    if ( pDstValue ) {
-      
+    if (pDstValue)
+    {
+
       /*gHyp_util_debug ( "Dst value %s exists",gHyp_data_getLabel(pDstValue) ) ;*/
       /* Destination and source values exist */
-      dstDataType = gHyp_data_getDataType ( pDstValue ) ;
-      dstTokenType = gHyp_data_getTokenType ( pDstValue ) ;
+      dstDataType = gHyp_data_getDataType(pDstValue);
+      dstTokenType = gHyp_data_getTokenType(pDstValue);
 
-      if ( isVectorDst ) {
+      if (isVectorDst)
+      {
 
-	/* Replace destination vector element with that from source. */
-	gHyp_data_setVector ( pResult, 
-			      pSrcValue, 
-			      sdv,
-			      ssv,
-			      isVectorSrc ) ;
-
+        /* Replace destination vector element with that from source. */
+        gHyp_data_setVector(pResult,
+                            pSrcValue,
+                            sdv,
+                            ssv,
+                            isVectorSrc);
       }
-      else if ( dstTokenType == TOKEN_CONSTANT || 
-		dstTokenType == TOKEN_LITERAL ) {
- 
-	/* Replace destination element constant/literal with that from source*/
-	if ( isVectorSrc ) {
+      else if (dstTokenType == TOKEN_CONSTANT ||
+               dstTokenType == TOKEN_LITERAL)
+      {
 
-		if ( isSmartMerge2 && 
-			dstTokenType == TOKEN_LITERAL &&
-			srcTokenType == TOKEN_VARIABLE &&
-			   srcDataType == TYPE_LONG ) {
+        /* Replace destination element constant/literal with that from source*/
+        if (isVectorSrc)
+        {
 
-			ts = gHyp_data_getRaw ( pSrcValue, ssv, TRUE  ) ;
-	                pstm = localtime ( &ts ) ;
-#if defined( AS_VMS ) && defined ( AS_PROMIS ) && defined ( AS_VMSCLOCK )
-			promis_time = (int) ts - PROMIS_DATE_OFFSET + pstm->tm_gmtoff + (pstm->tm_isdst?0:3600);
-			ret =Gut_Cnv32to64 ( &promis_time, &vms_time);
-			ret =sys$asctim( &timelen, &vmsTimeStamp_d, &vms_time, 0 ) ;
-                        strncpy ( monthStr, vmsTimeStamp+3, 3 ) ;
-                        monthStr[3] = '\0;' ;
-                        strncpy ( timeStr, vmsTimeStamp+12,8 ) ;
-                        timeStr[8] = '\0;' ;
-                        strncpy ( yearStr, vmsTimeStamp+7,4 ) ;
-                        yearStr[4] = '\0' ;
-                        strncpy ( dayStr, vmsTimeStamp, 2 ) ;
-                        dayStr[2] = '\0' ;
-                        if (dayStr[0] == ' ' ) dayStr[0] = '0' ;
-                        month = ( strstr ( months, monthStr ) - months )/ 4 ;
-                        sprintf (timeStamp,
-                                "%s-%02d-%s %s",
-                                yearStr,month+1,dayStr,timeStr );
+          if (isSmartMerge2 &&
+              dstTokenType == TOKEN_LITERAL &&
+              srcTokenType == TOKEN_VARIABLE &&
+              srcDataType == TYPE_LONG)
+          {
+
+            ts = gHyp_data_getRaw(pSrcValue, ssv, TRUE);
+            pstm = localtime(&ts);
+#if defined(AS_VMS) && defined(AS_PROMIS) && defined(AS_VMSCLOCK)
+            promis_time = (int)ts - PROMIS_DATE_OFFSET + pstm->tm_gmtoff + (pstm->tm_isdst ? 0 : 3600);
+            ret = Gut_Cnv32to64(&promis_time, &vms_time);
+            ret = sys$asctim(&timelen, &vmsTimeStamp_d, &vms_time, 0);
+            strncpy(monthStr, vmsTimeStamp + 3, 3);
+            monthStr[3] = '\0;';
+            strncpy(timeStr, vmsTimeStamp + 12, 8);
+            timeStr[8] = '\0;';
+            strncpy(yearStr, vmsTimeStamp + 7, 4);
+            yearStr[4] = '\0';
+            strncpy(dayStr, vmsTimeStamp, 2);
+            dayStr[2] = '\0';
+            if (dayStr[0] == ' ')
+              dayStr[0] = '0';
+            month = (strstr(months, monthStr) - months) / 4;
+            sprintf(timeStamp,
+                    "%s-%02d-%s %s",
+                    yearStr, month + 1, dayStr, timeStr);
 
 #else
-			if ( !pstm || pstm->tm_year > 138 ) {
-			  strcpy ( timeStamp, " " ) ;
-			}
-			else {
-			  sprintf ( timeStamp, 
-				"%04d-%02d-%02d %02d:%02d:%02d", 
-				pstm->tm_year+1900, pstm->tm_mon+1, pstm->tm_mday,
-				pstm->tm_hour, pstm->tm_min, pstm->tm_sec ) ;
-			}
+            if (!pstm || pstm->tm_year > 138)
+            {
+              strcpy(timeStamp, " ");
+            }
+            else
+            {
+              sprintf(timeStamp,
+                      "%04d-%02d-%02d %02d:%02d:%02d",
+                      pstm->tm_year + 1900, pstm->tm_mon + 1, pstm->tm_mday,
+                      pstm->tm_hour, pstm->tm_min, pstm->tm_sec);
+            }
 #endif
-			pValue = gHyp_data_new ( NULL ) ;
-			gHyp_data_setStr ( pValue, timeStamp ) ;
+            pValue = gHyp_data_new(NULL);
+            gHyp_data_setStr(pValue, timeStamp);
+          }
+          else
+          {
 
-		}
-		else {
-      
-		  pValue = gHyp_data_new ( NULL ) ;
-		  gHyp_data_newConstant ( pValue, 
-					  srcDataType, 
-					  pSrcValue, 
-					  ssv ) ;
-		}
-	}
-	else 
-	  pValue = gHyp_data_copyAll ( pSrcValue ) ;
+            pValue = gHyp_data_new(NULL);
+            gHyp_data_newConstant(pValue,
+                                  srcDataType,
+                                  pSrcValue,
+                                  ssv);
+          }
+        }
+        else
+          pValue = gHyp_data_copyAll(pSrcValue);
 
-	gHyp_data_append ( pResult, pValue ) ;
+        gHyp_data_append(pResult, pValue);
       }
 
-      else if ( dstTokenType == TOKEN_REFERENCE ) {
+      else if (dstTokenType == TOKEN_REFERENCE)
+      {
 
         /* Create the result */
-	if ( countDst == 1 && countSrc > 1 && isDataMerge ) {
-	  if ( counter == 0 ) counter = 1 ;
-	  sprintf ( value, "%s%d", gHyp_data_getLabel ( pDstValue ), counter++ ) ;
-	}
-	else
-	  strcpy ( value, gHyp_data_getLabel ( pDstValue ) ) ;
+        if (countDst == 1 && countSrc > 1 && isDataMerge)
+        {
+          if (counter == 0)
+            counter = 1;
+          sprintf(value, "%s%d", gHyp_data_getLabel(pDstValue), counter++);
+        }
+        else
+          strcpy(value, gHyp_data_getLabel(pDstValue));
 
-	/* Destination is just am empty label */
-	if ( srcTokenType == TOKEN_VARIABLE || srcTokenType == TOKEN_REFERENCE ) {
+        /* Destination is just am empty label */
+        if (srcTokenType == TOKEN_VARIABLE || srcTokenType == TOKEN_REFERENCE)
+        {
 
-	  if ( srcTokenType == TOKEN_REFERENCE ) {
-	    /*
-	    pValue = gHyp_frame_getVariable ( gHyp_instance_frame(pAI), pAI, pSrcValue ) ;
-	    */
-	    pVariable = gHyp_data_new ( value ) ;
-	    pValue = gHyp_data_new ( NULL ) ;
-	    gHyp_data_setReference (  pValue, 
-				      gHyp_data_getLabel(pSrcValue), 
-				      NULL ) ;
-	    gHyp_data_append ( pVariable, pValue ) ;
-	  }
-	  else {
-	    /* Make copy of source data, then rename it. */
-	    pVariable = gHyp_data_copyAll ( pSrcValue ) ;
-	  }
-	  gHyp_data_setLabel ( pVariable, value ) ;
-	  gHyp_data_append ( pResult, pVariable ) ;
-	}
-	else {
+          if (srcTokenType == TOKEN_REFERENCE)
+          {
+            /*
+            pValue = gHyp_frame_getVariable ( gHyp_instance_frame(pAI), pAI, pSrcValue ) ;
+            */
+            pVariable = gHyp_data_new(value);
+            pValue = gHyp_data_new(NULL);
+            gHyp_data_setReference(pValue,
+                                   gHyp_data_getLabel(pSrcValue),
+                                   NULL);
+            gHyp_data_append(pVariable, pValue);
+          }
+          else
+          {
+            /* Make copy of source data, then rename it. */
+            pVariable = gHyp_data_copyAll(pSrcValue);
+          }
+          gHyp_data_setLabel(pVariable, value);
+          gHyp_data_append(pResult, pVariable);
+        }
+        else
+        {
 
-	  /* Create new variable, then insert contents of source */
-	  pVariable = gHyp_data_new ( NULL ) ;
-	  gHyp_data_setVariable (pVariable, value, srcDataType);
-	  if ( srcDataType > TYPE_STRING )
-	     gHyp_data_setVector ( pVariable, 
-				   pSrcValue, 
-				   0,
-				   ssv,
-				   isVectorSrc ) ;
-	  else
-	    gHyp_data_copyValues ( pVariable, pSrcValue ) ;
-	  
-	  gHyp_data_append ( pResult, pVariable ) ;
-	}
+          /* Create new variable, then insert contents of source */
+          pVariable = gHyp_data_new(NULL);
+          gHyp_data_setVariable(pVariable, value, srcDataType);
+          if (srcDataType > TYPE_STRING)
+            gHyp_data_setVector(pVariable,
+                                pSrcValue,
+                                0,
+                                ssv,
+                                isVectorSrc);
+          else
+            gHyp_data_copyValues(pVariable, pSrcValue);
+
+          gHyp_data_append(pResult, pVariable);
+        }
       }
-      else {
+      else
+      {
 
-	/* Destination must be VARIABLE LIST or STRING */
-	
-	/*
-	 *gHyp_util_debug(  "Destination %s, count=%d",
-			    gHyp_data_print(pDstValue),
-			    gHyp_data_getCount ( pDstValue )) ;
-	 *gHyp_util_debug(  "Source %s, count=%d",
-			    gHyp_data_print(pSrcValue),
-			    gHyp_data_getCount ( pSrcValue )) ;
-	 */
+        /* Destination must be VARIABLE LIST or STRING */
 
-	/* If source is empty but the destination variable 
-	 * has a default value, then don't change the destination.
-	 */
-	
-	if ( gHyp_data_getCount ( pSrcValue ) == 0 &&
-	     gHyp_data_getCount ( pDstValue ) > 0 ) {
-	  
-	  /* Keep destination values. */
-	  pVariable = gHyp_data_new ( gHyp_data_getLabel ( pDstValue ) ) ;
-	  gHyp_data_copyValues ( pVariable, pDstValue ) ;
-	  gHyp_data_append ( pResult, pVariable ) ;
-	}
-	else if ( isVectorSrc ) {
-	    
-	  pValue = gHyp_data_new ( NULL ) ;
-	  gHyp_data_newConstant ( pValue, 
-				  srcDataType, 
-				  pSrcValue, 
-				  ssv ) ;
-	  gHyp_data_append ( pResult, pValue ) ;
-	}  
-	else {
+        /*
+         *gHyp_util_debug(  "Destination %s, count=%d",
+                gHyp_data_print(pDstValue),
+                gHyp_data_getCount ( pDstValue )) ;
+         *gHyp_util_debug(  "Source %s, count=%d",
+                gHyp_data_print(pSrcValue),
+                gHyp_data_getCount ( pSrcValue )) ;
+         */
 
-	  /* Destination is a list or string variable and source is a list or string */
-	  if ( countDst == 1 && countSrc > 1 && isDataMerge ) 
-	    counter2 = 1 ;
-	  else
-	    counter2 = 0 ;
+        /* If source is empty but the destination variable
+         * has a default value, then don't change the destination.
+         */
 
-	  pData = gHyp_env_mergeData (	pDstValue,
-					pSrcValue,
-					pAI,
-					counter2,
-					isDataMerge,
-					FALSE,
-					FALSE,
-					isSmartMerge,
-					NULL,
-					0 ) ;
+        if (gHyp_data_getCount(pSrcValue) == 0 &&
+            gHyp_data_getCount(pDstValue) > 0)
+        {
 
+          /* Keep destination values. */
+          pVariable = gHyp_data_new(gHyp_data_getLabel(pDstValue));
+          gHyp_data_copyValues(pVariable, pDstValue);
+          gHyp_data_append(pResult, pVariable);
+        }
+        else if (isVectorSrc)
+        {
 
-	  if ( dstDataType == TYPE_STRING ) {
+          pValue = gHyp_data_new(NULL);
+          gHyp_data_newConstant(pValue,
+                                srcDataType,
+                                pSrcValue,
+                                ssv);
+          gHyp_data_append(pResult, pValue);
+        }
+        else
+        {
 
-	    isVector = (gHyp_data_getDataType( pData ) > TYPE_STRING ) ;
-	    pValue = NULL ;
-	    ss = -1 ; 
-	    context = -1 ;
+          /* Destination is a list or string variable and source is a list or string */
+          if (countDst == 1 && countSrc > 1 && isDataMerge)
+            counter2 = 1;
+          else
+            counter2 = 0;
 
-	    /* Make a copy of just the top level variable */
-	    pData2 = gHyp_data_copy ( pData ) ;
+          pData = gHyp_env_mergeData(pDstValue,
+                                     pSrcValue,
+                                     pAI,
+                                     counter2,
+                                     isDataMerge,
+                                     FALSE,
+                                     FALSE,
+                                     isSmartMerge,
+                                     NULL,
+                                     0);
 
-	    /* Add all pData's contents in str format */
-	    while ( (pValue = gHyp_data_nextValue ( pData, 
-						    pValue, 
-						    &context,
-						    ss ) ) ) {
-	      n = gHyp_data_getStr (  pValue,
-	      			      value, 
-				      VALUE_SIZE, 
-				      context, 
-				      isVector ) ;
-	      pValue2 = gHyp_data_new ( NULL ) ;
-	      gHyp_data_setStr_n ( pValue2, value, n ) ;
-	      gHyp_data_append ( pData2, pValue2 ) ;
-	    }
-	    
-	    gHyp_data_delete ( pData ) ;
-	    pData = pData2 ;
-	  }
+          if (dstDataType == TYPE_STRING)
+          {
 
-	  gHyp_data_append ( pResult, pData ) ;
-	  
-	}
+            isVector = (gHyp_data_getDataType(pData) > TYPE_STRING);
+            pValue = NULL;
+            ss = -1;
+            context = -1;
+
+            /* Make a copy of just the top level variable */
+            pData2 = gHyp_data_copy(pData);
+
+            /* Add all pData's contents in str format */
+            while ((pValue = gHyp_data_nextValue(pData,
+                                                 pValue,
+                                                 &context,
+                                                 ss)))
+            {
+              n = gHyp_data_getStr(pValue,
+                                   value,
+                                   VALUE_SIZE,
+                                   context,
+                                   isVector);
+              pValue2 = gHyp_data_new(NULL);
+              gHyp_data_setStr_n(pValue2, value, n);
+              gHyp_data_append(pData2, pValue2);
+            }
+
+            gHyp_data_delete(pData);
+            pData = pData2;
+          }
+
+          gHyp_data_append(pResult, pData);
+        }
       }
     }
-    else {
+    else
+    {
 
       /*gHyp_util_debug ( "No dest value, smart=%d, but still some source",isSmartMerge ) ;*/
-      if ( isSmartMerge ) break ;
+      if (isSmartMerge)
+        break;
 
       /* No more destination values, but still some source values */
-      if ( isVectorDst ) {
+      if (isVectorDst)
+      {
 
-	/* Replace destination vector element with that from source. */
-	gHyp_data_setVector ( pResult, 
-			      pSrcValue, 
-			      sdv++,
-			      ssv,
-			      isVectorSrc ) ;
+        /* Replace destination vector element with that from source. */
+        gHyp_data_setVector(pResult,
+                            pSrcValue,
+                            sdv++,
+                            ssv,
+                            isVectorSrc);
       }
-      else {
+      else
+      {
 
-	/* List or constant or literal or reference destination.*/
+        /* List or constant or literal or reference destination.*/
 
-	if ( countDst == 1 && pLastDstValue &&
-	     dstTokenType == TOKEN_VARIABLE &&
-	     dstDataType <= TYPE_STRING ) {
+        if (countDst == 1 && pLastDstValue &&
+            dstTokenType == TOKEN_VARIABLE &&
+            dstDataType <= TYPE_STRING)
+        {
 
-	  /* If the destination count is 1 and the destination is a list variable,
-	   * then append the source values to the destination values. 
-	   */
-	  if ( isDataMerge ) 
-	    counter2 = contextSrc+1 ;
-	  else
-	    counter2 = 0 ;
+          /* If the destination count is 1 and the destination is a list variable,
+           * then append the source values to the destination values.
+           */
+          if (isDataMerge)
+            counter2 = contextSrc + 1;
+          else
+            counter2 = 0;
 
-	  gHyp_data_append ( pResult, 
-			     gHyp_env_mergeData (  pLastDstValue,
-						   pSrcValue,
-						   pAI,
-						   counter2,
-						   isDataMerge,
-						   FALSE,
-						   FALSE,
-						   FALSE,
-						   NULL,
-						   0));
-	}
-	else {
+          gHyp_data_append(pResult,
+                           gHyp_env_mergeData(pLastDstValue,
+                                              pSrcValue,
+                                              pAI,
+                                              counter2,
+                                              isDataMerge,
+                                              FALSE,
+                                              FALSE,
+                                              FALSE,
+                                              NULL,
+                                              0));
+        }
+        else
+        {
 
-	  /* Source is a list/vector and destination is either a CONSTANT,LITERAL,or REFERENCE*/
-	  if ( isVectorSrc ) {
-	    
-    	    if ( isSmartMerge2 && 
-		 dstTokenType == TOKEN_LITERAL &&
-		 srcTokenType == TOKEN_VARIABLE &&
-		 srcDataType == TYPE_LONG ) {
+          /* Source is a list/vector and destination is either a CONSTANT,LITERAL,or REFERENCE*/
+          if (isVectorSrc)
+          {
 
-	      ts = gHyp_data_getRaw ( pSrcValue, ssv, TRUE  ) ;
-	      pstm = localtime ( &ts ) ;
-#if defined( AS_VMS ) && defined ( AS_PROMIS ) && defined ( AS_VMSCLOCK )
-			promis_time = (int) ts - PROMIS_DATE_OFFSET + pstm->tm_gmtoff + (pstm->tm_isdst?0:3600);
-			ret =Gut_Cnv32to64 ( &promis_time, &vms_time);
-			ret =sys$asctim( &timelen, &vmsTimeStamp_d, &vms_time, 0 ) ;
-                        strncpy ( monthStr, vmsTimeStamp+3, 3 ) ;
-                        monthStr[3] = '\0;' ;
-                        strncpy ( timeStr, vmsTimeStamp+12,8 ) ;
-                        timeStr[8] = '\0;' ;
-                        strncpy ( yearStr, vmsTimeStamp+7,4 ) ;
-                        yearStr[4] = '\0' ;
-                        strncpy ( dayStr, vmsTimeStamp, 2 ) ;
-                        dayStr[2] = '\0' ;
-                        if (dayStr[0] == ' ' ) dayStr[0] = '0' ;
-                        month = ( strstr ( months, monthStr ) - months )/ 4 ;
-                        sprintf (timeStamp,
-                                "%s-%02d-%s %s",
-                                yearStr,month+1,dayStr,timeStr );
+            if (isSmartMerge2 &&
+                dstTokenType == TOKEN_LITERAL &&
+                srcTokenType == TOKEN_VARIABLE &&
+                srcDataType == TYPE_LONG)
+            {
+
+              ts = gHyp_data_getRaw(pSrcValue, ssv, TRUE);
+              pstm = localtime(&ts);
+#if defined(AS_VMS) && defined(AS_PROMIS) && defined(AS_VMSCLOCK)
+              promis_time = (int)ts - PROMIS_DATE_OFFSET + pstm->tm_gmtoff ;
+              ret = Gut_Cnv32to64(&promis_time, &vms_time);
+              ret = sys$asctim(&timelen, &vmsTimeStamp_d, &vms_time, 0);
+              strncpy(monthStr, vmsTimeStamp + 3, 3);
+              monthStr[3] = '\0;';
+              strncpy(timeStr, vmsTimeStamp + 12, 8);
+              timeStr[8] = '\0;';
+              strncpy(yearStr, vmsTimeStamp + 7, 4);
+              yearStr[4] = '\0';
+              strncpy(dayStr, vmsTimeStamp, 2);
+              dayStr[2] = '\0';
+              if (dayStr[0] == ' ')
+                dayStr[0] = '0';
+              month = (strstr(months, monthStr) - months) / 4;
+              sprintf(timeStamp,
+                      "%s-%02d-%s %s",
+                      yearStr, month + 1, dayStr, timeStr);
 
 #else
-	      pstm = localtime ( &ts ) ;
-	      if ( !pstm || pstm->tm_year > 138 ) {
-		strcpy ( timeStamp, " " ) ;
-	      }
-	      else {
-		sprintf ( timeStamp, 
-			"%04d-%02d-%02d %02d:%02d:%02d", 
-			pstm->tm_year+1900, pstm->tm_mon+1, pstm->tm_mday,
-			pstm->tm_hour, pstm->tm_min, pstm->tm_sec ) ;
-	      }
+              pstm = localtime(&ts);
+              if (!pstm || pstm->tm_year > 138)
+              {
+                strcpy(timeStamp, " ");
+              }
+              else
+              {
+                sprintf(timeStamp,
+                        "%04d-%02d-%02d %02d:%02d:%02d",
+                        pstm->tm_year + 1900, pstm->tm_mon + 1, pstm->tm_mday,
+                        pstm->tm_hour, pstm->tm_min, pstm->tm_sec);
+              }
 #endif
-	      pValue = gHyp_data_new ( NULL ) ;
-	      gHyp_data_setStr ( pValue, timeStamp ) ;
+              pValue = gHyp_data_new(NULL);
+              gHyp_data_setStr(pValue, timeStamp);
+            }
+            else
+            {
+              pValue = gHyp_data_new(NULL);
+              gHyp_data_newConstant(pValue,
+                                    srcDataType,
+                                    pSrcValue,
+                                    ssv);
+            }
+          }
+          else
+          {
 
-	    }
-	    else {
-	      pValue = gHyp_data_new ( NULL ) ;
-	      gHyp_data_newConstant ( pValue, 
-				    srcDataType, 
-				    pSrcValue, 
-				    ssv ) ;
-	    }
-	  }
-	  else {
+            if (dstTokenType == TOKEN_REFERENCE)
+            {
 
-	    if ( dstTokenType == TOKEN_REFERENCE ) {
+              /* Create the result */
+              if (countDst == 1 && countSrc > 1 && isDataMerge)
+              {
+                if (counter == 0)
+                  counter = 1;
+                sprintf(value, "%s%d", gHyp_data_getLabel(pLastDstValue), counter++);
+              }
+              else
+                strcpy(value, gHyp_data_getLabel(pLastDstValue));
 
-	      /* Create the result */
-	      if ( countDst == 1 && countSrc > 1 && isDataMerge ) {
-	        if ( counter == 0 ) counter = 1 ;
-		sprintf ( value, "%s%d", gHyp_data_getLabel ( pLastDstValue ), counter++ ) ;
-	      }
-	      else
-		strcpy ( value, gHyp_data_getLabel ( pLastDstValue ) ) ;
+              /* Destination is just am empty label */
+              if (srcTokenType == TOKEN_VARIABLE)
+              {
 
-	      /* Destination is just am empty label */
-	      if ( srcTokenType == TOKEN_VARIABLE ) {
+                /* Make copy of source data, then rename it. */
+                pValue = gHyp_data_copyAll(pSrcValue);
+                gHyp_data_setLabel(pValue, value);
+                gHyp_data_append(pResult, pValue);
+              }
+              else
+              {
 
-		/* Make copy of source data, then rename it. */
-		pValue = gHyp_data_copyAll ( pSrcValue ) ;
-		gHyp_data_setLabel ( pValue, value ) ;
-		gHyp_data_append ( pResult, pValue ) ;
-	      }
-	      else {
-
-		/* Create new variable, then insert contents of source */
-		pValue = gHyp_data_new ( NULL ) ;
-		gHyp_data_setVariable (pValue, value, srcDataType);
-		if ( srcDataType > TYPE_STRING )
-		  gHyp_data_setVector ( pValue, 
-		  			pSrcValue, 
-					sdv,
-					ssv,
-					isVectorSrc ) ;
-		else
-		  gHyp_data_copyValues ( pValue, pSrcValue ) ;
-	      }
-	    }
-	    else {
-	      /* Copy first, then append. */
-	      pValue = gHyp_data_copyAll ( pSrcValue ) ;
-	    }
-	  }
-	  gHyp_data_append ( pResult, pValue ) ;
-	}
+                /* Create new variable, then insert contents of source */
+                pValue = gHyp_data_new(NULL);
+                gHyp_data_setVariable(pValue, value, srcDataType);
+                if (srcDataType > TYPE_STRING)
+                  gHyp_data_setVector(pValue,
+                                      pSrcValue,
+                                      sdv,
+                                      ssv,
+                                      isVectorSrc);
+                else
+                  gHyp_data_copyValues(pValue, pSrcValue);
+              }
+            }
+            else
+            {
+              /* Copy first, then append. */
+              pValue = gHyp_data_copyAll(pSrcValue);
+            }
+          }
+          gHyp_data_append(pResult, pValue);
+        }
       }
     }
   }
 
-  if ( isSmartMerge ) {
-    /* Get rid of NULLs and trailing ghost characters, and truncate the array if requested. 
+  if (isSmartMerge)
+  {
+    /* Get rid of NULLs and trailing ghost characters, and truncate the array if requested.
 
-	list events.'evvariant'[ACTL_EVCOUNT];
-	   for (ic=0;ic<ACTL_EVCOUNT;ic++) {
-	    tmp = pack trim events.'evvariant'[ic] ;
-	    if ( tmp == "" ) tmp = " ";
-	    events.'evvariant'[ic] = tmp ;
-	  }
+  list events.'evvariant'[ACTL_EVCOUNT];
+     for (ic=0;ic<ACTL_EVCOUNT;ic++) {
+      tmp = pack trim events.'evvariant'[ic] ;
+      if ( tmp == "" ) tmp = " ";
+      events.'evvariant'[ic] = tmp ;
+    }
 
     */
     /*if ( arrayCount > 0 ) {*/
-      ss = -1 ; 
-      context = -1 ;
-      pData = NULL ;
-      while ( (pData = gHyp_data_nextValue ( pResult, 
-						    pData, 
-						    &context,
-						    ss ) ) ) {
+    ss = -1;
+    context = -1;
+    pData = NULL;
+    while ((pData = gHyp_data_nextValue(pResult,
+                                        pData,
+                                        &context,
+                                        ss)))
+    {
 
-	if ( gHyp_data_getDataType( pData ) <= TYPE_STRING ) {
+      if (gHyp_data_getDataType(pData) <= TYPE_STRING)
+      {
 
-	  ss2 = -1 ; 
-	  context2 = -1 ;
-	  pValue = NULL ;
-	  while ( (pValue = gHyp_data_nextValue ( pData, 
-							    pValue, 
-							    &context2,
-							    ss2 ))) {
-			
-	    n = gHyp_data_getStr ( pValue, 
-							     value, 
-							     MAX_INPUT_LENGTH, 
-							     context2, 
-							     FALSE ) ;
-	    pStr = value ;
-	    memcpy ( value2, pStr, n ) ;
-	    value2[n] = '\0' ;
-	    n = gHyp_util_parseString ( value2 ) ;
-	    value2[n] = '\0' ;
-	    n = gHyp_util_trim ( value2 ) ;
-	    if ( arrayCount > 0 && n == 0 ) { value2[0] = ' ' ; n = 1 ; }
-	    value2[n] = '\0' ;
-	    gHyp_data_setStr ( pValue, value2 ) ;
-				}
+        ss2 = -1;
+        context2 = -1;
+        pValue = NULL;
+        while ((pValue = gHyp_data_nextValue(pData,
+                                             pValue,
+                                             &context2,
+                                             ss2)))
+        {
 
-	}
-	if ( arrayCount > 0 ) {
-	  gHyp_data_setSize ( pData, arrayCount ) ; 
-	}
+          n = gHyp_data_getStr(pValue,
+                               value,
+                               MAX_INPUT_LENGTH,
+                               context2,
+                               FALSE);
+          pStr = value;
+          memcpy(value2, pStr, n);
+          value2[n] = '\0';
+          /*
+          n = gHyp_util_parseString(value2);
+          value2[n] = '\0';
+          n = gHyp_util_trim(value2);
+          */
+          n = gHyp_util_trim_n(value2,n);
+          if (arrayCount > 0 && n == 0)
+          {
+            value2[0] = ' ';
+            n = 1;
+          }
+          value2[n] = '\0';
+          gHyp_data_setStr(pValue, value2);
+        }
       }
+      if (arrayCount > 0)
+      {
+        gHyp_data_setSize(pData, arrayCount);
+      }
+    }
     /*}*/
   }
 
-  if ( doDereference ) {
+  if (doDereference)
+  {
 
     /*gHyp_util_debug("## } ");*/
-    pStream = gHyp_load_fromStream ( pAI, pHyp, "}", lineCount++ ) ;
-    if ( !pStream || *pStream ) {
-      gHyp_hyp_setHypCount ( pHyp, hypIndex ) ;
-      if ( pTmp ) gHyp_data_delete ( pTmp ) ;
-      gHyp_instance_error ( pAI,
-			    STATUS_UNDEFINED,
-			    "Failed to load HyperScript segment (merge) '}'" ) ;
+    pStream = gHyp_load_fromStream(pAI, pHyp, "}", lineCount++);
+    if (!pStream || *pStream)
+    {
+      gHyp_hyp_setHypCount(pHyp, hypIndex);
+      if (pTmp)
+        gHyp_data_delete(pTmp);
+      gHyp_instance_error(pAI,
+                          STATUS_UNDEFINED,
+                          "Failed to load HyperScript segment (merge) '}'");
     }
-    gHyp_frame_setGlobalFlag ( pFrame, FRAME_GLOBAL_MSGARGS ) ;
+    gHyp_frame_setGlobalFlag(pFrame, FRAME_GLOBAL_MSGARGS);
     /*gHyp_util_debug("Deref from merge");*/
-    gHyp_instance_setDerefHandler ( pAI, 
-				    hypIndex, 
-				    pHyp ) ; 
+    gHyp_instance_setDerefHandler(pAI,
+                                  hypIndex,
+                                  pHyp);
   }
 
-  return pResult ;
+  return pResult;
 }
 
-void gHyp_env_sort ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+void gHyp_env_sort(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE)
 {
   /* Description:
    *
@@ -2964,47 +3153,49 @@ void gHyp_env_sort ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
    *
    */
   sFrame
-    *pFrame = gHyp_instance_frame ( pAI ) ;
-  
+      *pFrame = gHyp_instance_frame(pAI);
+
   sParse
-    *pParse = gHyp_frame_parse ( pFrame ) ;
+      *pParse = gHyp_frame_parse(pFrame);
 
-  if ( isPARSE )
-  
-    gHyp_parse_operand ( pParse, pCode, pAI ) ;
-    
-  else {
- 
+  if (isPARSE)
+
+    gHyp_parse_operand(pParse, pCode, pAI);
+
+  else
+  {
+
     sStack
-      *pStack = gHyp_frame_stack ( pFrame ) ;
-    
+        *pStack = gHyp_frame_stack(pFrame);
+
     sData
-      *pVariable,
-      *pData ;
-    
+        *pVariable,
+        *pData;
+
     int
-      argCount = gHyp_parse_argCount ( pParse ) ;
-    
-    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+        argCount = gHyp_parse_argCount(pParse);
 
-    if ( argCount != 1 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-	"Invalid arguments. Usage: sort ( variable )" ) ;
+    gHyp_instance_setStatus(pAI, STATUS_ACKNOWLEDGE);
 
-    pData = gHyp_stack_popLvalue ( pStack, pAI ) ;
- 
+    if (argCount != 1)
+      gHyp_instance_error(pAI, STATUS_ARGUMENT,
+                          "Invalid arguments. Usage: sort ( variable )");
+
+    pData = gHyp_stack_popLvalue(pStack, pAI);
+
     /* Locate the variable */
-    if ( (pVariable = gHyp_data_getVariable ( pData )) &&
-         gHyp_data_getDataType ( pVariable ) < TYPE_BYTE )
-      gHyp_sort_sort ( pVariable ) ;
+    if ((pVariable = gHyp_data_getVariable(pData)) &&
+        gHyp_data_getDataType(pVariable) < TYPE_BYTE)
+      gHyp_sort_sort(pVariable);
     else
-      gHyp_instance_warning ( pAI, STATUS_UNDEFINED, "Cannot sort non-list variable '%s'",
-			      gHyp_data_getLabel ( pData ) ) ;
-      
-    gHyp_instance_pushSTATUS ( pAI, pStack ) ;
+      gHyp_instance_warning(pAI, STATUS_UNDEFINED, "Cannot sort non-list variable '%s'",
+                            gHyp_data_getLabel(pData));
+
+    gHyp_instance_pushSTATUS(pAI, pStack);
   }
 }
 
-void gHyp_env_reverse ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+void gHyp_env_reverse(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE)
 {
   /* Description:
    *
@@ -3027,47 +3218,49 @@ void gHyp_env_reverse ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
    *
    */
   sFrame
-    *pFrame = gHyp_instance_frame ( pAI ) ;
-  
+      *pFrame = gHyp_instance_frame(pAI);
+
   sParse
-    *pParse = gHyp_frame_parse ( pFrame ) ;
+      *pParse = gHyp_frame_parse(pFrame);
 
-  if ( isPARSE )
-  
-    gHyp_parse_operand ( pParse, pCode, pAI ) ;
-    
-  else {
- 
+  if (isPARSE)
+
+    gHyp_parse_operand(pParse, pCode, pAI);
+
+  else
+  {
+
     sStack
-      *pStack = gHyp_frame_stack ( pFrame ) ;
-    
+        *pStack = gHyp_frame_stack(pFrame);
+
     sData
-      *pVariable,
-      *pData ;
-    
+        *pVariable,
+        *pData;
+
     int
-      argCount = gHyp_parse_argCount ( pParse ) ;
+        argCount = gHyp_parse_argCount(pParse);
 
-    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+    gHyp_instance_setStatus(pAI, STATUS_ACKNOWLEDGE);
 
-    if ( argCount != 1 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-	"Invalid arguments. Usage: reverse ( variable )" ) ;
+    if (argCount != 1)
+      gHyp_instance_error(pAI, STATUS_ARGUMENT,
+                          "Invalid arguments. Usage: reverse ( variable )");
 
-    pData = gHyp_stack_popLvalue ( pStack, pAI ) ;
+    pData = gHyp_stack_popLvalue(pStack, pAI);
 
     /* Locate the variable */
-    if ( (pVariable = gHyp_data_getVariable ( pData )) &&
-         gHyp_data_getDataType ( pVariable ) < TYPE_BYTE )
-      gHyp_sort_reverse ( pVariable ) ;
+    if ((pVariable = gHyp_data_getVariable(pData)) &&
+        gHyp_data_getDataType(pVariable) < TYPE_BYTE)
+      gHyp_sort_reverse(pVariable);
     else
-      gHyp_instance_warning ( pAI, STATUS_UNDEFINED, "Cannot reverse non-list variable '%s'",
-			      gHyp_data_getLabel ( pData ) ) ;
-      
-    gHyp_instance_pushSTATUS ( pAI, pStack ) ;
+      gHyp_instance_warning(pAI, STATUS_UNDEFINED, "Cannot reverse non-list variable '%s'",
+                            gHyp_data_getLabel(pData));
+
+    gHyp_instance_pushSTATUS(pAI, pStack);
   }
 }
 
-void gHyp_env_insert ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+void gHyp_env_insert(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE)
 {
   /* Description:
    *
@@ -3088,69 +3281,75 @@ void gHyp_env_insert ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
    * Modifications:
    *
    */
-  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
-  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+  sFrame *pFrame = gHyp_instance_frame(pAI);
+  sParse *pParse = gHyp_frame_parse(pFrame);
 
-  if ( isPARSE )
-  
-    gHyp_parse_operand ( pParse, pCode, pAI ) ;
-    
-  else {
- 
+  if (isPARSE)
+
+    gHyp_parse_operand(pParse, pCode, pAI);
+
+  else
+  {
+
     sStack
-      *pStack = gHyp_frame_stack ( pFrame ) ;
-    
+        *pStack = gHyp_frame_stack(pFrame);
+
     sData
-      *pDst,
-      *pSrc,
-      *pVariable,
-      *pSrcVariable;
-    
+        *pDst,
+        *pSrc,
+        *pVariable,
+        *pSrcVariable;
+
     int
-      argCount = gHyp_parse_argCount ( pParse ) ;
+        argCount = gHyp_parse_argCount(pParse);
 
-    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+    gHyp_instance_setStatus(pAI, STATUS_ACKNOWLEDGE);
 
-    if ( argCount != 2 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-	"Invalid arguments. Usage: insert ( destination, source )" ) ;
+    if (argCount != 2)
+      gHyp_instance_error(pAI, STATUS_ARGUMENT,
+                          "Invalid arguments. Usage: insert ( destination, source )");
 
-    pSrc = gHyp_stack_popRdata2 ( pStack, pAI ) ;
-    pDst = gHyp_stack_popLvalue ( pStack, pAI ) ;
-    
+    pSrc = gHyp_stack_popRdata2(pStack, pAI);
+    pDst = gHyp_stack_popLvalue(pStack, pAI);
+
     /* Make sure the destination is a list variable */
-    if ( (pVariable = gHyp_data_getVariable ( pDst )) &&
-	 pVariable != pDst &&
-	 gHyp_data_dataType ( pVariable ) < TYPE_BYTE ) {
+    if ((pVariable = gHyp_data_getVariable(pDst)) &&
+        pVariable != pDst &&
+        gHyp_data_dataType(pVariable) < TYPE_BYTE)
+    {
 
-      if ( (pSrcVariable = gHyp_data_getVariable ( pSrc ) ) ) {
+      if ((pSrcVariable = gHyp_data_getVariable(pSrc)))
+      {
 
-	if ( gHyp_data_isSibling ( pSrcVariable, pVariable ) ) {
-          gHyp_data_delete ( pSrc ) ;
-	  gHyp_instance_error ( pAI, 
-			    STATUS_INVALID, 
-			    "Cannot insert a variable into itself" ) ;
-	}
+        if (gHyp_data_isSibling(pSrcVariable, pVariable))
+        {
+          gHyp_data_delete(pSrc);
+          gHyp_instance_error(pAI,
+                              STATUS_INVALID,
+                              "Cannot insert a variable into itself");
+        }
 
-	gHyp_data_detach ( pSrcVariable ) ;
-	if ( pSrc != pSrcVariable ) gHyp_data_delete ( pSrc ) ;
-	pSrc = pSrcVariable ;
-
+        gHyp_data_detach(pSrcVariable);
+        if (pSrc != pSrcVariable)
+          gHyp_data_delete(pSrc);
+        pSrc = pSrcVariable;
       }
-      gHyp_data_insert ( pVariable, pSrc ) ;
+      gHyp_data_insert(pVariable, pSrc);
     }
-    else {
-      gHyp_data_delete ( pSrc ) ;
-      gHyp_instance_error ( pAI,
-			    STATUS_INVALID, 
-			    "'%s' is not a list variable, or is a temporary variable",
-			    gHyp_data_getLabel ( pDst ) ) ;
+    else
+    {
+      gHyp_data_delete(pSrc);
+      gHyp_instance_error(pAI,
+                          STATUS_INVALID,
+                          "'%s' is not a list variable, or is a temporary variable",
+                          gHyp_data_getLabel(pDst));
     }
 
-    gHyp_instance_pushSTATUS ( pAI, pStack ) ;
+    gHyp_instance_pushSTATUS(pAI, pStack);
   }
 }
 
-void gHyp_env_insertbefore ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+void gHyp_env_insertbefore(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE)
 {
   /* Description:
    *
@@ -3171,69 +3370,75 @@ void gHyp_env_insertbefore ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
    * Modifications:
    *
    */
-  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
-  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+  sFrame *pFrame = gHyp_instance_frame(pAI);
+  sParse *pParse = gHyp_frame_parse(pFrame);
 
-  if ( isPARSE )
-  
-    gHyp_parse_operand ( pParse, pCode, pAI ) ;
-    
-  else {
- 
+  if (isPARSE)
+
+    gHyp_parse_operand(pParse, pCode, pAI);
+
+  else
+  {
+
     sStack
-      *pStack = gHyp_frame_stack ( pFrame ) ;
-    
+        *pStack = gHyp_frame_stack(pFrame);
+
     sData
-      *pDst,
-      *pSrc,
-      *pVariable,
-      *pSrcVariable;
-    
+        *pDst,
+        *pSrc,
+        *pVariable,
+        *pSrcVariable;
+
     int
-      argCount = gHyp_parse_argCount ( pParse ) ;
+        argCount = gHyp_parse_argCount(pParse);
 
-    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+    gHyp_instance_setStatus(pAI, STATUS_ACKNOWLEDGE);
 
-    if ( argCount != 2 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-	"Invalid arguments. Usage: insertbefore ( sibling, source )" ) ;
+    if (argCount != 2)
+      gHyp_instance_error(pAI, STATUS_ARGUMENT,
+                          "Invalid arguments. Usage: insertbefore ( sibling, source )");
 
-    pSrc = gHyp_stack_popRdata2 ( pStack, pAI ) ;
-    pDst = gHyp_stack_popLvalue ( pStack, pAI ) ;
-    
+    pSrc = gHyp_stack_popRdata2(pStack, pAI);
+    pDst = gHyp_stack_popLvalue(pStack, pAI);
+
     /* Make sure the destination is a list variable */
-    if ( (pVariable = gHyp_data_getVariable ( pDst )) &&
-	 pVariable != pDst &&
-	 gHyp_data_dataType ( pVariable ) < TYPE_BYTE ) {
+    if ((pVariable = gHyp_data_getVariable(pDst)) &&
+        pVariable != pDst &&
+        gHyp_data_dataType(pVariable) < TYPE_BYTE)
+    {
 
-      if ( (pSrcVariable = gHyp_data_getVariable ( pSrc ) ) ) {
+      if ((pSrcVariable = gHyp_data_getVariable(pSrc)))
+      {
 
-	if ( gHyp_data_isSibling ( pSrcVariable, pVariable ) ) {
-          gHyp_data_delete ( pSrc ) ;
-	  gHyp_instance_error ( pAI, 
-			    STATUS_INVALID, 
-			    "Cannot insert a variable into itself" ) ;
-	}
+        if (gHyp_data_isSibling(pSrcVariable, pVariable))
+        {
+          gHyp_data_delete(pSrc);
+          gHyp_instance_error(pAI,
+                              STATUS_INVALID,
+                              "Cannot insert a variable into itself");
+        }
 
-	gHyp_data_detach ( pSrcVariable ) ;
-	if ( pSrc != pSrcVariable ) gHyp_data_delete ( pSrc ) ;
-	pSrc = pSrcVariable ;
-
+        gHyp_data_detach(pSrcVariable);
+        if (pSrc != pSrcVariable)
+          gHyp_data_delete(pSrc);
+        pSrc = pSrcVariable;
       }
-      gHyp_data_insertbefore ( pVariable, pSrc ) ;
+      gHyp_data_insertbefore(pVariable, pSrc);
     }
-    else {
-      gHyp_data_delete ( pSrc ) ;
-      gHyp_instance_error ( pAI,
-			    STATUS_INVALID, 
-			    "'%s' is not a list variable, or is a temporary variable",
-			    gHyp_data_getLabel ( pDst ) ) ;
+    else
+    {
+      gHyp_data_delete(pSrc);
+      gHyp_instance_error(pAI,
+                          STATUS_INVALID,
+                          "'%s' is not a list variable, or is a temporary variable",
+                          gHyp_data_getLabel(pDst));
     }
 
-    gHyp_instance_pushSTATUS ( pAI, pStack ) ;
+    gHyp_instance_pushSTATUS(pAI, pStack);
   }
 }
 
-void gHyp_env_insertafter ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+void gHyp_env_insertafter(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE)
 {
   /* Description:
    *
@@ -3254,70 +3459,75 @@ void gHyp_env_insertafter ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
    * Modifications:
    *
    */
-  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
-  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+  sFrame *pFrame = gHyp_instance_frame(pAI);
+  sParse *pParse = gHyp_frame_parse(pFrame);
 
-  if ( isPARSE )
-  
-    gHyp_parse_operand ( pParse, pCode, pAI ) ;
-    
-  else {
- 
+  if (isPARSE)
+
+    gHyp_parse_operand(pParse, pCode, pAI);
+
+  else
+  {
+
     sStack
-      *pStack = gHyp_frame_stack ( pFrame ) ;
-    
+        *pStack = gHyp_frame_stack(pFrame);
+
     sData
-      *pDst,
-      *pSrc,
-      *pVariable,
-      *pSrcVariable;
-    
+        *pDst,
+        *pSrc,
+        *pVariable,
+        *pSrcVariable;
+
     int
-      argCount = gHyp_parse_argCount ( pParse ) ;
+        argCount = gHyp_parse_argCount(pParse);
 
-    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+    gHyp_instance_setStatus(pAI, STATUS_ACKNOWLEDGE);
 
-    if ( argCount != 2 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-	"Invalid arguments. Usage: insertafter ( sibling, source )" ) ;
+    if (argCount != 2)
+      gHyp_instance_error(pAI, STATUS_ARGUMENT,
+                          "Invalid arguments. Usage: insertafter ( sibling, source )");
 
-    pSrc = gHyp_stack_popRdata2 ( pStack, pAI ) ;
-    pDst = gHyp_stack_popLvalue ( pStack, pAI ) ;
-    
+    pSrc = gHyp_stack_popRdata2(pStack, pAI);
+    pDst = gHyp_stack_popLvalue(pStack, pAI);
+
     /* Make sure the destination is a list variable */
-    if ( (pVariable = gHyp_data_getVariable ( pDst )) &&
-	 pVariable != pDst &&
-	 gHyp_data_dataType ( pVariable ) < TYPE_BYTE ) {
+    if ((pVariable = gHyp_data_getVariable(pDst)) &&
+        pVariable != pDst &&
+        gHyp_data_dataType(pVariable) < TYPE_BYTE)
+    {
 
-      if ( (pSrcVariable = gHyp_data_getVariable ( pSrc ) ) ) {
+      if ((pSrcVariable = gHyp_data_getVariable(pSrc)))
+      {
 
-	if ( gHyp_data_isSibling ( pSrcVariable, pVariable ) ) {
-          gHyp_data_delete ( pSrc ) ;
-	  gHyp_instance_error ( pAI, 
-			    STATUS_INVALID, 
-			    "Cannot insert a variable into itself" ) ;
-	}
+        if (gHyp_data_isSibling(pSrcVariable, pVariable))
+        {
+          gHyp_data_delete(pSrc);
+          gHyp_instance_error(pAI,
+                              STATUS_INVALID,
+                              "Cannot insert a variable into itself");
+        }
 
-	gHyp_data_detach ( pSrcVariable ) ;
-	if ( pSrc != pSrcVariable ) gHyp_data_delete ( pSrc ) ;
-	pSrc = pSrcVariable ;
-
+        gHyp_data_detach(pSrcVariable);
+        if (pSrc != pSrcVariable)
+          gHyp_data_delete(pSrc);
+        pSrc = pSrcVariable;
       }
-      gHyp_data_insertafter ( pVariable, pSrc ) ;
+      gHyp_data_insertafter(pVariable, pSrc);
     }
-    else {
-      gHyp_data_delete ( pSrc ) ;
-      gHyp_instance_error ( pAI,
-			    STATUS_INVALID, 
-			    "'%s' is not a list variable, or is a temporary variable",
-			    gHyp_data_getLabel ( pDst ) ) ;
+    else
+    {
+      gHyp_data_delete(pSrc);
+      gHyp_instance_error(pAI,
+                          STATUS_INVALID,
+                          "'%s' is not a list variable, or is a temporary variable",
+                          gHyp_data_getLabel(pDst));
     }
 
-    gHyp_instance_pushSTATUS ( pAI, pStack ) ;
+    gHyp_instance_pushSTATUS(pAI, pStack);
   }
 }
 
-
-void gHyp_env_append ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+void gHyp_env_append(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE)
 {
   /* Description:
    *
@@ -3338,70 +3548,77 @@ void gHyp_env_append ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
    * Modifications:
    *
    */
-  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
-  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+  sFrame *pFrame = gHyp_instance_frame(pAI);
+  sParse *pParse = gHyp_frame_parse(pFrame);
 
-  if ( isPARSE )
-  
-    gHyp_parse_operand ( pParse, pCode, pAI ) ;
-    
-  else {
- 
+  if (isPARSE)
+
+    gHyp_parse_operand(pParse, pCode, pAI);
+
+  else
+  {
+
     sStack
-      *pStack = gHyp_frame_stack ( pFrame ) ;
-    
+        *pStack = gHyp_frame_stack(pFrame);
+
     sData
-      *pDst,
-      *pSrc,
-      *pVariable,
-      *pSrcVariable ;
-    
+        *pDst,
+        *pSrc,
+        *pVariable,
+        *pSrcVariable;
+
     int
-      argCount = gHyp_parse_argCount ( pParse ) ;
+        argCount = gHyp_parse_argCount(pParse);
 
-    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+    gHyp_instance_setStatus(pAI, STATUS_ACKNOWLEDGE);
 
-    if ( argCount != 2 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-	"Invalid arguments. Usage: status = append ( destination, source )" ) ;
+    if (argCount != 2)
+      gHyp_instance_error(pAI, STATUS_ARGUMENT,
+                          "Invalid arguments. Usage: status = append ( destination, source )");
 
-    pSrc = gHyp_stack_popRdata2 ( pStack, pAI ) ;
-    pDst = gHyp_stack_popLvalue ( pStack, pAI ) ;
+    pSrc = gHyp_stack_popRdata2(pStack, pAI);
+    pDst = gHyp_stack_popLvalue(pStack, pAI);
 
     /* Make sure the destination is a list variable */
-    if ( (pVariable = gHyp_data_getVariable ( pDst )) &&
-	 pVariable != pDst &&
-	 gHyp_data_dataType ( pVariable ) < TYPE_BYTE ) {
+    if ((pVariable = gHyp_data_getVariable(pDst)) &&
+        pVariable != pDst &&
+        gHyp_data_dataType(pVariable) < TYPE_BYTE)
+    {
 
-      if ( (pSrcVariable = gHyp_data_getVariable ( pSrc )) ) {
+      if ((pSrcVariable = gHyp_data_getVariable(pSrc)))
+      {
 
-	/* Variable exists */
-	if ( gHyp_data_isSibling ( pSrcVariable, pVariable ))  {
-          gHyp_data_delete ( pSrc ) ;
-	  gHyp_instance_error ( pAI, 
-			    STATUS_INVALID, 
-			    "Cannot append variable to itself" ) ;
-	}
+        /* Variable exists */
+        if (gHyp_data_isSibling(pSrcVariable, pVariable))
+        {
+          gHyp_data_delete(pSrc);
+          gHyp_instance_error(pAI,
+                              STATUS_INVALID,
+                              "Cannot append variable to itself");
+        }
 
-	gHyp_data_detach ( pSrcVariable ) ;
-	if ( pSrc != pSrcVariable ) gHyp_data_delete ( pSrc ) ;
-	pSrc = pSrcVariable ;
+        gHyp_data_detach(pSrcVariable);
+        if (pSrc != pSrcVariable)
+          gHyp_data_delete(pSrc);
+        pSrc = pSrcVariable;
       }
 
-      gHyp_data_append ( pVariable, pSrc ) ;
+      gHyp_data_append(pVariable, pSrc);
     }
-    else {
-      gHyp_data_delete ( pSrc ) ;
-      gHyp_instance_error ( pAI, 
-			    STATUS_INVALID, 
-			    "'%s' is not a list or str variable, or is a temporary variable",
-			    gHyp_data_getLabel ( pDst ) ) ;
-     }
+    else
+    {
+      gHyp_data_delete(pSrc);
+      gHyp_instance_error(pAI,
+                          STATUS_INVALID,
+                          "'%s' is not a list or str variable, or is a temporary variable",
+                          gHyp_data_getLabel(pDst));
+    }
 
-    gHyp_instance_pushSTATUS ( pAI, pStack ) ;
+    gHyp_instance_pushSTATUS(pAI, pStack);
   }
 }
 
-void gHyp_env_remove ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+void gHyp_env_remove(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE)
 {
   /* Description:
    *
@@ -3422,101 +3639,112 @@ void gHyp_env_remove ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
    * Modifications:
    *
    */
-  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
-  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+  sFrame *pFrame = gHyp_instance_frame(pAI);
+  sParse *pParse = gHyp_frame_parse(pFrame);
 
-  if ( isPARSE )
-  
-    gHyp_parse_operand ( pParse, pCode, pAI ) ;
-    
-  else {
- 
+  if (isPARSE)
+
+    gHyp_parse_operand(pParse, pCode, pAI);
+
+  else
+  {
+
     sStack
-      *pStack = gHyp_frame_stack ( pFrame ) ;
-    
+        *pStack = gHyp_frame_stack(pFrame);
+
     sData
-      *pData,
-      *pVariable,
-      *pResult=NULL ;
+        *pData,
+        *pVariable,
+        *pResult = NULL;
 
     sLOGICAL
-      isVariable ;
-    
+        isVariable;
+
     int
-      argCount = gHyp_parse_argCount ( pParse ) ;
+        argCount = gHyp_parse_argCount(pParse);
 
-    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+    gHyp_instance_setStatus(pAI, STATUS_ACKNOWLEDGE);
 
-    if ( argCount != 1 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-	"Invalid arguments. Usage: value = remove ( variable )" ) ;
+    if (argCount != 1)
+      gHyp_instance_error(pAI, STATUS_ARGUMENT,
+                          "Invalid arguments. Usage: value = remove ( variable )");
 
-    pData = gHyp_stack_popLvalue ( pStack, pAI ) ;
+    pData = gHyp_stack_popLvalue(pStack, pAI);
 
     /* Make sure the argument is a list variable */
-    if ( (pVariable = gHyp_data_getVariable ( pData )) &&
-	  gHyp_data_dataType ( pVariable ) < TYPE_BYTE ) {
+    if ((pVariable = gHyp_data_getVariable(pData)) &&
+        gHyp_data_dataType(pVariable) < TYPE_BYTE)
+    {
 
-      pResult = gHyp_data_getFirst ( pVariable ) ;
+      pResult = gHyp_data_getFirst(pVariable);
 
-      if ( pResult ) {
+      if (pResult)
+      {
 
-        isVariable = ( gHyp_data_tokenType ( pResult ) == TOKEN_VARIABLE ) ;
-	if ( isVariable )
-          pVariable = gHyp_frame_findVariable ( pAI, pFrame, 
-					    gHyp_data_getLabel ( pResult ) ) ;
+        isVariable = (gHyp_data_tokenType(pResult) == TOKEN_VARIABLE);
+        if (isVariable)
+          pVariable = gHyp_frame_findVariable(pAI, pFrame,
+                                              gHyp_data_getLabel(pResult));
         else
-	  pVariable = NULL ;
+          pVariable = NULL;
 
- 	if ( gHyp_parse_exprCount ( pParse ) == 0 ) {
+        if (gHyp_parse_exprCount(pParse) == 0)
+        {
 
- 	  if ( pVariable ) {
+          if (pVariable)
+          {
 
-	    /* Variable already exists. */
-	    gHyp_data_detach ( pResult ) ;
- 	    gHyp_data_deleteValues ( pVariable ) ;
-	    gHyp_data_moveValues ( pVariable, pResult ) ;
-	    gHyp_data_delete ( pResult ) ;
-	    pResult = NULL ;
-	  }
-	  else if ( isVariable ) {
-	    /* Create new variable */
-	    pVariable = gHyp_data_detach ( pResult ) ;
-	    gHyp_data_append( gHyp_frame_getMethodData(pFrame),pVariable ) ;
-	    pResult = NULL ;
- 	  }
-	  else {
-	    gHyp_instance_warning ( pAI, STATUS_INVALID, 
-				   "Cannot create variable from '%s'",
-				    gHyp_data_getLabel ( pResult ) ) ;
-	    gHyp_data_detach ( pResult ) ;
-	  }
-	}
-        else {
-	  gHyp_data_detach ( pResult ) ;
-	}
+            /* Variable already exists. */
+            gHyp_data_detach(pResult);
+            gHyp_data_deleteValues(pVariable);
+            gHyp_data_moveValues(pVariable, pResult);
+            gHyp_data_delete(pResult);
+            pResult = NULL;
+          }
+          else if (isVariable)
+          {
+            /* Create new variable */
+            pVariable = gHyp_data_detach(pResult);
+            gHyp_data_append(gHyp_frame_getMethodData(pFrame), pVariable);
+            pResult = NULL;
+          }
+          else
+          {
+            gHyp_instance_warning(pAI, STATUS_INVALID,
+                                  "Cannot create variable from '%s'",
+                                  gHyp_data_getLabel(pResult));
+            gHyp_data_detach(pResult);
+          }
+        }
+        else
+        {
+          gHyp_data_detach(pResult);
+        }
       }
-      else {
-	gHyp_instance_warning ( pAI, 
-			      STATUS_BOUNDS, 
-			      "No value to remove from '%s'",
-			      gHyp_data_getLabel ( pVariable ) ) ;
+      else
+      {
+        gHyp_instance_warning(pAI,
+                              STATUS_BOUNDS,
+                              "No value to remove from '%s'",
+                              gHyp_data_getLabel(pVariable));
       }
     }
-    else {
-      gHyp_instance_error ( pAI, 
-			      STATUS_INVALID, 
-			      "'%s' is not a list or str variable",
-			      gHyp_data_getLabel ( pData ) ) ;    
-    }
-
-    if ( pResult ) 
-      gHyp_stack_push ( pStack, pResult ) ;
     else
-      gHyp_instance_pushSTATUS ( pAI, pStack ) ;
+    {
+      gHyp_instance_error(pAI,
+                          STATUS_INVALID,
+                          "'%s' is not a list or str variable",
+                          gHyp_data_getLabel(pData));
+    }
+
+    if (pResult)
+      gHyp_stack_push(pStack, pResult);
+    else
+      gHyp_instance_pushSTATUS(pAI, pStack);
   }
 }
 
-void gHyp_env_chop ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+void gHyp_env_chop(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE)
 {
   /* Description:
    *
@@ -3537,102 +3765,112 @@ void gHyp_env_chop ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
    * Modifications:
    *
    */
-  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
-  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+  sFrame *pFrame = gHyp_instance_frame(pAI);
+  sParse *pParse = gHyp_frame_parse(pFrame);
 
-  if ( isPARSE )
-  
-    gHyp_parse_operand ( pParse, pCode, pAI ) ;
-    
-  else {
- 
+  if (isPARSE)
+
+    gHyp_parse_operand(pParse, pCode, pAI);
+
+  else
+  {
+
     sStack
-      *pStack = gHyp_frame_stack ( pFrame ) ;
-    
+        *pStack = gHyp_frame_stack(pFrame);
+
     sData
-      *pData,
-      *pVariable,
-      *pResult=NULL ;
+        *pData,
+        *pVariable,
+        *pResult = NULL;
 
     sLOGICAL
-      isVariable ;
-    
+        isVariable;
+
     int
-      argCount = gHyp_parse_argCount ( pParse ) ;
+        argCount = gHyp_parse_argCount(pParse);
 
-    if ( argCount != 1 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-	"Invalid arguments. Usage: value = chop ( variable )" ) ;
+    if (argCount != 1)
+      gHyp_instance_error(pAI, STATUS_ARGUMENT,
+                          "Invalid arguments. Usage: value = chop ( variable )");
 
-    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+    gHyp_instance_setStatus(pAI, STATUS_ACKNOWLEDGE);
 
-     pData = gHyp_stack_popLvalue ( pStack, pAI ) ;
+    pData = gHyp_stack_popLvalue(pStack, pAI);
 
     /* Make sure the argument is a list variable */
-    if ( (pVariable = gHyp_data_getVariable ( pData )) &&
-	  gHyp_data_dataType ( pVariable ) < TYPE_BYTE ) {
+    if ((pVariable = gHyp_data_getVariable(pData)) &&
+        gHyp_data_dataType(pVariable) < TYPE_BYTE)
+    {
 
+      pResult = gHyp_data_getLast(pVariable);
 
-      pResult = gHyp_data_getLast ( pVariable ) ;
+      if (pResult)
+      {
 
-      if ( pResult ) {
-
-        isVariable = ( gHyp_data_tokenType ( pResult ) == TOKEN_VARIABLE ) ;
-	if ( isVariable )
-          pVariable = gHyp_frame_findVariable ( pAI, pFrame, 
-					    gHyp_data_getLabel ( pResult ) ) ;
+        isVariable = (gHyp_data_tokenType(pResult) == TOKEN_VARIABLE);
+        if (isVariable)
+          pVariable = gHyp_frame_findVariable(pAI, pFrame,
+                                              gHyp_data_getLabel(pResult));
         else
-	  pVariable = NULL ;
+          pVariable = NULL;
 
- 	if ( gHyp_parse_exprCount ( pParse ) == 0 ) {
+        if (gHyp_parse_exprCount(pParse) == 0)
+        {
 
- 	  if ( pVariable ) {
+          if (pVariable)
+          {
 
-	    /* Variable already exists. */
-	    gHyp_data_detach ( pResult ) ;
-	    gHyp_data_deleteValues ( pVariable ) ;
-	    gHyp_data_moveValues ( pVariable, pResult ) ;
-	    gHyp_data_delete ( pResult ) ;
-	    pResult = NULL ;
-	  }
-	  else if ( isVariable ) {
-	    /* Create new variable */
-	    pVariable = gHyp_data_detach ( pResult ) ;
-	    gHyp_data_append( gHyp_frame_getMethodData(pFrame),pVariable ) ;
-	    pResult = NULL ;
- 	  }
-	  else {
-	    gHyp_data_detach ( pResult ) ;
-	    gHyp_instance_warning ( pAI, STATUS_INVALID, 
-				   "Cannot create variable from '%s'",
-				    gHyp_data_getLabel ( pResult ) ) ;
-	  }
-	}
-        else {
-	  gHyp_data_detach ( pResult ) ;
-	}
+            /* Variable already exists. */
+            gHyp_data_detach(pResult);
+            gHyp_data_deleteValues(pVariable);
+            gHyp_data_moveValues(pVariable, pResult);
+            gHyp_data_delete(pResult);
+            pResult = NULL;
+          }
+          else if (isVariable)
+          {
+            /* Create new variable */
+            pVariable = gHyp_data_detach(pResult);
+            gHyp_data_append(gHyp_frame_getMethodData(pFrame), pVariable);
+            pResult = NULL;
+          }
+          else
+          {
+            gHyp_data_detach(pResult);
+            gHyp_instance_warning(pAI, STATUS_INVALID,
+                                  "Cannot create variable from '%s'",
+                                  gHyp_data_getLabel(pResult));
+          }
+        }
+        else
+        {
+          gHyp_data_detach(pResult);
+        }
       }
-      else {
-	gHyp_instance_warning ( pAI, 
-			      STATUS_BOUNDS, 
-			      "No value to remove from '%s'",
-			      gHyp_data_getLabel ( pVariable ) ) ;
+      else
+      {
+        gHyp_instance_warning(pAI,
+                              STATUS_BOUNDS,
+                              "No value to remove from '%s'",
+                              gHyp_data_getLabel(pVariable));
       }
     }
-    else {
-      gHyp_instance_error ( pAI, 
-			      STATUS_INVALID, 
-			      "'%s' is not a list or str variable",
-			      gHyp_data_getLabel ( pData ) ) ;    
-    }
-
-    if ( pResult ) 
-      gHyp_stack_push ( pStack, pResult ) ;
     else
-      gHyp_instance_pushSTATUS ( pAI, pStack ) ;
+    {
+      gHyp_instance_error(pAI,
+                          STATUS_INVALID,
+                          "'%s' is not a list or str variable",
+                          gHyp_data_getLabel(pData));
+    }
+
+    if (pResult)
+      gHyp_stack_push(pStack, pResult);
+    else
+      gHyp_instance_pushSTATUS(pAI, pStack);
   }
 }
 
-void gHyp_env_detach ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+void gHyp_env_detach(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE)
 {
   /* Description:
    *
@@ -3653,121 +3891,134 @@ void gHyp_env_detach ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
    * Modifications:
    *
    */
-  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
-  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+  sFrame *pFrame = gHyp_instance_frame(pAI);
+  sParse *pParse = gHyp_frame_parse(pFrame);
 
-  if ( isPARSE )
-  
-    gHyp_parse_operand ( pParse, pCode, pAI ) ;
-    
-  else {
- 
+  if (isPARSE)
+
+    gHyp_parse_operand(pParse, pCode, pAI);
+
+  else
+  {
+
     sStack
-      *pStack = gHyp_frame_stack ( pFrame ) ;
+        *pStack = gHyp_frame_stack(pFrame);
 
     sData
-      *pData,
-      *pVariable,
-      *pResult=NULL ;
-    
+        *pData,
+        *pVariable,
+        *pResult = NULL;
+
     sLOGICAL
-      isVariable ;
+        isVariable;
 
     int
-      ss,
-      argCount = gHyp_parse_argCount ( pParse ) ;
+        ss,
+        argCount = gHyp_parse_argCount(pParse);
 
-    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+    gHyp_instance_setStatus(pAI, STATUS_ACKNOWLEDGE);
 
-    if ( argCount != 1 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-	"Invalid arguments. Usage: detach ( variable )" ) ;
+    if (argCount != 1)
+      gHyp_instance_error(pAI, STATUS_ARGUMENT,
+                          "Invalid arguments. Usage: detach ( variable )");
 
-    pData = gHyp_stack_popRdata ( pStack, pAI ) ;
-    ss = gHyp_data_getSubScript ( pData ) ;
-    if ( ss == -1 )
-      pResult = gHyp_data_getVariable ( pData ) ;
+    pData = gHyp_stack_popRdata(pStack, pAI);
+    ss = gHyp_data_getSubScript(pData);
+    if (ss == -1)
+      pResult = gHyp_data_getVariable(pData);
     else
-      pResult = gHyp_data_getValue ( pData, ss, TRUE) ;
+      pResult = gHyp_data_getValue(pData, ss, TRUE);
 
     /* If the detach function is used without a return argument, the variable detached
      * is created in the current methodData scope.
      */
-    if ( pResult ) {
+    if (pResult)
+    {
 
-      isVariable = ( gHyp_data_tokenType ( pResult ) == TOKEN_VARIABLE ) ;
+      isVariable = (gHyp_data_tokenType(pResult) == TOKEN_VARIABLE);
 
-      if ( isVariable )
-        pVariable = gHyp_frame_findVariable ( pAI, pFrame, 
-					    gHyp_data_getLabel ( pResult ) ) ;
+      if (isVariable)
+        pVariable = gHyp_frame_findVariable(pAI, pFrame,
+                                            gHyp_data_getLabel(pResult));
       else
-	pVariable = NULL ;
-      
-      if ( gHyp_parse_exprCount ( pParse ) == 0 ) {
+        pVariable = NULL;
+
+      if (gHyp_parse_exprCount(pParse) == 0)
+      {
 
         /* Detach as variable */
 
-        if ( isVariable && pData != pResult ) {
-	  
-	  /* We are detaching a variable */
-	  if ( pVariable ) {
+        if (isVariable && pData != pResult)
+        {
 
-	    /* Variable of the same name already exists */
-	    if ( pVariable == pResult ) {
-	      /* Variable detaching itself - do not destroy variable!  */
-	      pResult = gHyp_data_new ( gHyp_data_getLabel ( pResult ) ) ;
-	      gHyp_data_moveValues ( pResult, pVariable ) ;
-	    }
-	    else {
-	      /* Move new values into existing variable */
-	      gHyp_data_detach ( pResult ) ;
-	      gHyp_data_deleteValues ( pVariable ) ;
-	      gHyp_data_moveValues ( pVariable, pResult ) ;
-	      gHyp_data_delete ( pResult ) ;
-	      pResult = NULL ;
-	    }
-	  }
-	  else {
-	    /* Create new variable */
-	    pVariable = gHyp_data_detach ( pResult ) ;
-	    gHyp_data_append( gHyp_frame_getMethodData(pFrame),pVariable ) ;
-	    pResult = NULL ;
-	  }
-	}
-      	else {
-	  gHyp_data_detach ( pResult ) ;
-	  gHyp_instance_warning ( pAI, STATUS_INVALID, "Cannot create variable from '%s'",
-			      gHyp_data_getLabel ( pResult ) ) ;
-	}
+          /* We are detaching a variable */
+          if (pVariable)
+          {
+
+            /* Variable of the same name already exists */
+            if (pVariable == pResult)
+            {
+              /* Variable detaching itself - do not destroy variable!  */
+              pResult = gHyp_data_new(gHyp_data_getLabel(pResult));
+              gHyp_data_moveValues(pResult, pVariable);
+            }
+            else
+            {
+              /* Move new values into existing variable */
+              gHyp_data_detach(pResult);
+              gHyp_data_deleteValues(pVariable);
+              gHyp_data_moveValues(pVariable, pResult);
+              gHyp_data_delete(pResult);
+              pResult = NULL;
+            }
+          }
+          else
+          {
+            /* Create new variable */
+            pVariable = gHyp_data_detach(pResult);
+            gHyp_data_append(gHyp_frame_getMethodData(pFrame), pVariable);
+            pResult = NULL;
+          }
+        }
+        else
+        {
+          gHyp_data_detach(pResult);
+          gHyp_instance_warning(pAI, STATUS_INVALID, "Cannot create variable from '%s'",
+                                gHyp_data_getLabel(pResult));
+        }
       }
-      else {
+      else
+      {
 
-      	/* Detach for expression */
-        if ( isVariable && pVariable == pResult ) {
-	  /* Variable detaching itself - do not destroy variable!  */
-	  pResult = gHyp_data_new ( gHyp_data_getLabel ( pResult ) ) ;
-	  gHyp_data_moveValues ( pResult, pVariable ) ;
-	}
-	else {
-	  gHyp_data_detach ( pResult ) ;
-	}
+        /* Detach for expression */
+        if (isVariable && pVariable == pResult)
+        {
+          /* Variable detaching itself - do not destroy variable!  */
+          pResult = gHyp_data_new(gHyp_data_getLabel(pResult));
+          gHyp_data_moveValues(pResult, pVariable);
+        }
+        else
+        {
+          gHyp_data_detach(pResult);
+        }
       }
     }
-    else {
-      gHyp_instance_warning ( pAI, 
-			      STATUS_BOUNDS, 
-			      "No value to detach from '%s'",
-			      gHyp_data_getLabel ( pData ) ) ;    
-    }
-
-    if ( pResult )
-      gHyp_stack_push ( pStack, pResult ) ;
     else
-      gHyp_instance_pushSTATUS ( pAI, pStack ) ;
+    {
+      gHyp_instance_warning(pAI,
+                            STATUS_BOUNDS,
+                            "No value to detach from '%s'",
+                            gHyp_data_getLabel(pData));
+    }
+
+    if (pResult)
+      gHyp_stack_push(pStack, pResult);
+    else
+      gHyp_instance_pushSTATUS(pAI, pStack);
   }
 }
 
-
-void gHyp_env_quiet ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+void gHyp_env_quiet(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE)
 {
   /* Description:
    *
@@ -3788,46 +4039,48 @@ void gHyp_env_quiet ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
    * Modifications:
    *
    */
-  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
-  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+  sFrame *pFrame = gHyp_instance_frame(pAI);
+  sParse *pParse = gHyp_frame_parse(pFrame);
 
-  if ( isPARSE )
+  if (isPARSE)
 
-    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+    gHyp_parse_operand(pParse, pCode, pAI);
 
-  else {
-    
+  else
+  {
+
     sStack
-      *pStack = gHyp_frame_stack ( pFrame ) ;
+        *pStack = gHyp_frame_stack(pFrame);
     int
-      argCount = gHyp_parse_argCount ( pParse ) ;
+        argCount = gHyp_parse_argCount(pParse);
     sData
-      *pData ;
-    
-    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+        *pData;
 
-    if ( argCount > 1 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-    	"Invalid arguments. Usage: quiet ( boolean )" ) ;
+    gHyp_instance_setStatus(pAI, STATUS_ACKNOWLEDGE);
 
+    if (argCount > 1)
+      gHyp_instance_error(pAI, STATUS_ARGUMENT,
+                          "Invalid arguments. Usage: quiet ( boolean )");
 
-    if ( argCount == 1 ) {
+    if (argCount == 1)
+    {
       /* Pop the value off of the stack	 */
-      pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
-      if ( gHyp_data_getBool ( pData,
-			       gHyp_data_getSubScript ( pData ),
-			       TRUE )  )
-	guRunFlags |= RUN_QUIET ;
+      pData = gHyp_stack_popRvalue(pStack, pAI);
+      if (gHyp_data_getBool(pData,
+                            gHyp_data_getSubScript(pData),
+                            TRUE))
+        guRunFlags |= RUN_QUIET;
       else
-	guRunFlags &= ~RUN_QUIET ;
+        guRunFlags &= ~RUN_QUIET;
     }
     else
-      guRunFlags |= RUN_QUIET ;
-    
-    gHyp_instance_pushSTATUS ( pAI, pStack ) ;
+      guRunFlags |= RUN_QUIET;
+
+    gHyp_instance_pushSTATUS(pAI, pStack);
   }
 }
 
-void gHyp_env_verify ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+void gHyp_env_verify(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE)
 {
   /* Description:
    *
@@ -3848,50 +4101,50 @@ void gHyp_env_verify ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
    * Modifications:
    *
    */
-  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
-  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+  sFrame *pFrame = gHyp_instance_frame(pAI);
+  sParse *pParse = gHyp_frame_parse(pFrame);
 
-  if ( isPARSE )
+  if (isPARSE)
 
-    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+    gHyp_parse_operand(pParse, pCode, pAI);
 
-  else {
+  else
+  {
 
     sStack
-      *pStack = gHyp_frame_stack ( pFrame ) ;
-    
+        *pStack = gHyp_frame_stack(pFrame);
+
     int
-      argCount = gHyp_parse_argCount ( pParse ) ;
-    
+        argCount = gHyp_parse_argCount(pParse);
+
     sData
-      *pData ;
-    
-    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+        *pData;
 
-    if ( argCount > 1 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-    	"Invalid arguments. Usage: verify ( boolean )" ) ;
+    gHyp_instance_setStatus(pAI, STATUS_ACKNOWLEDGE);
 
+    if (argCount > 1)
+      gHyp_instance_error(pAI, STATUS_ARGUMENT,
+                          "Invalid arguments. Usage: verify ( boolean )");
 
-    if ( argCount == 1 ) {
+    if (argCount == 1)
+    {
       /* Pop the value off of the stack	 */
-      pData = gHyp_stack_popRvalue ( pStack, pAI ) ;
-      if ( gHyp_data_getBool ( pData,
-			       gHyp_data_getSubScript ( pData ),
-			       TRUE )  )
-	guRunFlags |= RUN_VERIFY ;
+      pData = gHyp_stack_popRvalue(pStack, pAI);
+      if (gHyp_data_getBool(pData,
+                            gHyp_data_getSubScript(pData),
+                            TRUE))
+        guRunFlags |= RUN_VERIFY;
       else
-	guRunFlags &= ~RUN_VERIFY ;
+        guRunFlags &= ~RUN_VERIFY;
     }
     else
-      guRunFlags |= RUN_VERIFY ;
+      guRunFlags |= RUN_VERIFY;
 
-    gHyp_instance_pushSTATUS ( pAI, pStack ) ;
+    gHyp_instance_pushSTATUS(pAI, pStack);
   }
 }
 
-
-
-void gHyp_env_version ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+void gHyp_env_version(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE)
 {
   /* Description:
    *
@@ -3912,31 +4165,32 @@ void gHyp_env_version ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
    * Modifications:
    *
    */
-  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
-  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+  sFrame *pFrame = gHyp_instance_frame(pAI);
+  sParse *pParse = gHyp_frame_parse(pFrame);
 
-  if ( isPARSE )
+  if (isPARSE)
 
-    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+    gHyp_parse_operand(pParse, pCode, pAI);
 
-  else {
+  else
+  {
 
-    sStack 	*pStack = gHyp_frame_stack ( pFrame ) ;
-    int	   	argCount = gHyp_parse_argCount ( pParse ) ;
-    sData	*pResult ;
-   
-    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
-    if ( argCount != 0 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-    			   "Invalid arguments. Usage: version ( )" ) ;
+    sStack *pStack = gHyp_frame_stack(pFrame);
+    int argCount = gHyp_parse_argCount(pParse);
+    sData *pResult;
 
-    pResult = gHyp_data_new ( NULL ) ;
-    gHyp_data_setStr ( pResult, VERSION_HYPERSCRIPT_BUILD ) ; 
-    gHyp_stack_push ( pStack, pResult ) ;
+    gHyp_instance_setStatus(pAI, STATUS_ACKNOWLEDGE);
+    if (argCount != 0)
+      gHyp_instance_error(pAI, STATUS_ARGUMENT,
+                          "Invalid arguments. Usage: version ( )");
+
+    pResult = gHyp_data_new(NULL);
+    gHyp_data_setStr(pResult, VERSION_HYPERSCRIPT_BUILD);
+    gHyp_stack_push(pStack, pResult);
   }
 }
 
-
-void gHyp_env_env ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+void gHyp_env_env(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE)
 {
   /* Description:
    *
@@ -3957,42 +4211,42 @@ void gHyp_env_env ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
    * Modifications:
    *
    */
-  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
-  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+  sFrame *pFrame = gHyp_instance_frame(pAI);
+  sParse *pParse = gHyp_frame_parse(pFrame);
 
-  if ( isPARSE )
+  if (isPARSE)
 
-    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+    gHyp_parse_operand(pParse, pCode, pAI);
 
-  else {
+  else
+  {
 
-    sStack 	*pStack = gHyp_frame_stack ( pFrame ) ;
-    int	   	argCount = gHyp_parse_argCount ( pParse ) ;
-    sData	*pResult ;
-   
-    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
-    if ( argCount != 0 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-    			   "Invalid arguments. Usage: env ( )" ) ;
+    sStack *pStack = gHyp_frame_stack(pFrame);
+    int argCount = gHyp_parse_argCount(pParse);
+    sData *pResult;
 
-    pResult = gHyp_data_new ( NULL ) ;
+    gHyp_instance_setStatus(pAI, STATUS_ACKNOWLEDGE);
+    if (argCount != 0)
+      gHyp_instance_error(pAI, STATUS_ARGUMENT,
+                          "Invalid arguments. Usage: env ( )");
+
+    pResult = gHyp_data_new(NULL);
 
 #ifdef AS_VMS
-    gHyp_data_setStr ( pResult, "VMS" ) ; 
-#elif defined ( AS_WINDOWS )
-    gHyp_data_setStr ( pResult, "WINDOWS" ) ; 
-#elif defined ( AS_UNIX )
-    gHyp_data_setStr ( pResult, "UNIX" ) ; 
+    gHyp_data_setStr(pResult, "VMS");
+#elif defined(AS_WINDOWS)
+    gHyp_data_setStr(pResult, "WINDOWS");
+#elif defined(AS_UNIX)
+    gHyp_data_setStr(pResult, "UNIX");
 #else
-    gHyp_data_setStr ( pResult, "MAC" ) ; 
+    gHyp_data_setStr(pResult, "MAC");
 #endif
 
-    gHyp_stack_push ( pStack, pResult ) ;
+    gHyp_stack_push(pStack, pResult);
   }
 }
 
-
-
-void gHyp_env_localhost ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+void gHyp_env_localhost(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE)
 {
   /* Description:
    *
@@ -4013,30 +4267,32 @@ void gHyp_env_localhost ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
    * Modifications:
    *
    */
-  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
-  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+  sFrame *pFrame = gHyp_instance_frame(pAI);
+  sParse *pParse = gHyp_frame_parse(pFrame);
 
-  if ( isPARSE )
+  if (isPARSE)
 
-    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+    gHyp_parse_operand(pParse, pCode, pAI);
 
-  else {
+  else
+  {
 
-    sStack 	*pStack = gHyp_frame_stack ( pFrame ) ;
-    int	   	argCount = gHyp_parse_argCount ( pParse ) ;
-    sData	*pResult ;
-   
-    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
-    if ( argCount != 0 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-    			   "Invalid arguments. Usage: localhost ( )" ) ;
+    sStack *pStack = gHyp_frame_stack(pFrame);
+    int argCount = gHyp_parse_argCount(pParse);
+    sData *pResult;
 
-    pResult = gHyp_data_new ( NULL ) ;
-    gHyp_data_setStr ( pResult, gzLocalHost ) ; 
-    gHyp_stack_push ( pStack, pResult ) ;
+    gHyp_instance_setStatus(pAI, STATUS_ACKNOWLEDGE);
+    if (argCount != 0)
+      gHyp_instance_error(pAI, STATUS_ARGUMENT,
+                          "Invalid arguments. Usage: localhost ( )");
+
+    pResult = gHyp_data_new(NULL);
+    gHyp_data_setStr(pResult, gzLocalHost);
+    gHyp_stack_push(pStack, pResult);
   }
 }
 
-void gHyp_env_localaddr ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+void gHyp_env_localaddr(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE)
 {
   /* Description:
    *
@@ -4057,30 +4313,32 @@ void gHyp_env_localaddr ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
    * Modifications:
    *
    */
-  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
-  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+  sFrame *pFrame = gHyp_instance_frame(pAI);
+  sParse *pParse = gHyp_frame_parse(pFrame);
 
-  if ( isPARSE )
+  if (isPARSE)
 
-    gHyp_parse_operand ( pParse, pCode, pAI ) ;
+    gHyp_parse_operand(pParse, pCode, pAI);
 
-  else {
+  else
+  {
 
-    sStack 	*pStack = gHyp_frame_stack ( pFrame ) ;
-    int	   	argCount = gHyp_parse_argCount ( pParse ) ;
-    sData	*pResult ;
-   
-    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
-    if ( argCount != 0 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-    			   "Invalid arguments. Usage: localaddr ( )" ) ;
+    sStack *pStack = gHyp_frame_stack(pFrame);
+    int argCount = gHyp_parse_argCount(pParse);
+    sData *pResult;
 
-    pResult = gHyp_data_new ( NULL ) ;
-    gHyp_data_setStr ( pResult, gzLocalAddr ) ; 
-    gHyp_stack_push ( pStack, pResult ) ;
+    gHyp_instance_setStatus(pAI, STATUS_ACKNOWLEDGE);
+    if (argCount != 0)
+      gHyp_instance_error(pAI, STATUS_ARGUMENT,
+                          "Invalid arguments. Usage: localaddr ( )");
+
+    pResult = gHyp_data_new(NULL);
+    gHyp_data_setStr(pResult, gzLocalAddr);
+    gHyp_stack_push(pStack, pResult);
   }
 }
 
-void gHyp_env_appendval ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+void gHyp_env_appendval(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE)
 {
   /* Description:
    *
@@ -4101,97 +4359,105 @@ void gHyp_env_appendval ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
    * Modifications:
    *
    */
-  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
-  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+  sFrame *pFrame = gHyp_instance_frame(pAI);
+  sParse *pParse = gHyp_frame_parse(pFrame);
 
-  if ( isPARSE )
-  
-    gHyp_parse_operand ( pParse, pCode, pAI ) ;
-    
-  else {
- 
+  if (isPARSE)
+
+    gHyp_parse_operand(pParse, pCode, pAI);
+
+  else
+  {
+
     sStack
-      *pStack = gHyp_frame_stack ( pFrame ) ;
-    
+        *pStack = gHyp_frame_stack(pFrame);
+
     sData
-      *pDst,
-      *pSrc,
-      *pVariable,
-      *pValue,
-      *pValue2 ;
-    
+        *pDst,
+        *pSrc,
+        *pVariable,
+        *pValue,
+        *pValue2;
+
     sLOGICAL
-      isVector ;
+        isVector;
 
     sBYTE
-      dataType ;
+        dataType;
 
     int
-      maxCount,
-      context,
-      ss,
-      argCount = gHyp_parse_argCount ( pParse ) ;
+        maxCount,
+        context,
+        ss,
+        argCount = gHyp_parse_argCount(pParse);
 
-    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+    gHyp_instance_setStatus(pAI, STATUS_ACKNOWLEDGE);
 
-    if ( argCount != 2 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-	"Invalid arguments. Usage: status = appendval ( destination, sourceval )" ) ;
+    if (argCount != 2)
+      gHyp_instance_error(pAI, STATUS_ARGUMENT,
+                          "Invalid arguments. Usage: status = appendval ( destination, sourceval )");
 
-    pSrc = gHyp_stack_popRdata ( pStack, pAI ) ;
-    pDst = gHyp_stack_popLvalue ( pStack, pAI ) ;
+    pSrc = gHyp_stack_popRdata(pStack, pAI);
+    pDst = gHyp_stack_popLvalue(pStack, pAI);
 
     /* Make sure the destination is a list variable */
-    if ( (pVariable = gHyp_data_getVariable ( pDst )) &&
-	 pVariable != pDst &&
-	 gHyp_data_dataType ( pVariable ) < TYPE_BYTE ) {
+    if ((pVariable = gHyp_data_getVariable(pDst)) &&
+        pVariable != pDst &&
+        gHyp_data_dataType(pVariable) < TYPE_BYTE)
+    {
 
-      pValue = NULL ;
-      ss = gHyp_data_getSubScript ( pSrc ) ;
-      context = -1 ;
-      isVector = ( gHyp_data_getDataType (pSrc) > TYPE_STRING ) ;
-      dataType = gHyp_data_getDataType ( pSrc ) ;
-      maxCount = gHyp_data_getCount ( pSrc ) ;
-      while ( maxCount-- && 
-	      (pValue = gHyp_data_nextValue ( pSrc, 
-					     pValue, 
-					     &context,
-					     ss ))) {
+      pValue = NULL;
+      ss = gHyp_data_getSubScript(pSrc);
+      context = -1;
+      isVector = (gHyp_data_getDataType(pSrc) > TYPE_STRING);
+      dataType = gHyp_data_getDataType(pSrc);
+      maxCount = gHyp_data_getCount(pSrc);
+      while (maxCount-- &&
+             (pValue = gHyp_data_nextValue(pSrc,
+                                           pValue,
+                                           &context,
+                                           ss)))
+      {
 
-	if ( isVector ) {
-      
-	  pValue2 = gHyp_data_new ( NULL ) ;
-	  gHyp_data_newConstant ( pValue2, 
-				  dataType, 
-				  pSrc, 
-				  context ) ;
-	}
-	else {
-	  /* Copy first, then append. */
-	  pValue2 = gHyp_data_copyAll ( pValue ) ;
+        if (isVector)
+        {
+
+          pValue2 = gHyp_data_new(NULL);
+          gHyp_data_newConstant(pValue2,
+                                dataType,
+                                pSrc,
+                                context);
+        }
+        else
+        {
+          /* Copy first, then append. */
+          pValue2 = gHyp_data_copyAll(pValue);
 
           /* We need to also copy over any objects, like a method definition. */
           /*gHyp_data_copyObject ( pValue2, pValue ) ;*/
-	}
-	gHyp_data_append ( pDst, pValue2 ) ;
+        }
+        gHyp_data_append(pDst, pValue2);
       }
-      if ( context == -2 ) {
-	gHyp_instance_error ( pAI, STATUS_BOUNDS, 
-			      "Subscript is out of bounds in value for appendval") ;
+      if (context == -2)
+      {
+        gHyp_instance_error(pAI, STATUS_BOUNDS,
+                            "Subscript is out of bounds in value for appendval");
       }
     }
-    else {
-      gHyp_data_delete ( pSrc ) ;
-      gHyp_instance_error ( pAI, 
-			    STATUS_INVALID, 
-			    "'%s' is not a list or str variable, or is a temporary variable",
-			    gHyp_data_getLabel ( pDst ) ) ;
-     }
+    else
+    {
+      gHyp_data_delete(pSrc);
+      gHyp_instance_error(pAI,
+                          STATUS_INVALID,
+                          "'%s' is not a list or str variable, or is a temporary variable",
+                          gHyp_data_getLabel(pDst));
+    }
 
-    gHyp_instance_pushSTATUS ( pAI, pStack ) ;
+    gHyp_instance_pushSTATUS(pAI, pStack);
   }
 }
 
-void gHyp_env_insertval ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+void gHyp_env_insertval(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE)
 {
   /* Description:
    *
@@ -4212,103 +4478,111 @@ void gHyp_env_insertval ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
    * Modifications:
    *
    */
-  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
-  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+  sFrame *pFrame = gHyp_instance_frame(pAI);
+  sParse *pParse = gHyp_frame_parse(pFrame);
 
-  if ( isPARSE )
-  
-    gHyp_parse_operand ( pParse, pCode, pAI ) ;
-    
-  else {
- 
+  if (isPARSE)
+
+    gHyp_parse_operand(pParse, pCode, pAI);
+
+  else
+  {
+
     sStack
-      *pStack = gHyp_frame_stack ( pFrame ) ;
-    
+        *pStack = gHyp_frame_stack(pFrame);
+
     sData
-      *pDst,
-      *pSrc,
-      *pVariable,
-      *pValue,
-      *pValue2 ;
-    
+        *pDst,
+        *pSrc,
+        *pVariable,
+        *pValue,
+        *pValue2;
+
     sLOGICAL
-      isVector ;
+        isVector;
 
     sBYTE
-      dataType ;
+        dataType;
 
     int
-      maxCount,
-      context,
-      ss,
-      argCount = gHyp_parse_argCount ( pParse ) ;
+        maxCount,
+        context,
+        ss,
+        argCount = gHyp_parse_argCount(pParse);
 
-    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+    gHyp_instance_setStatus(pAI, STATUS_ACKNOWLEDGE);
 
-    if ( argCount != 2 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-	"Invalid arguments. Usage: status = insertval ( destination, sourceval )" ) ;
+    if (argCount != 2)
+      gHyp_instance_error(pAI, STATUS_ARGUMENT,
+                          "Invalid arguments. Usage: status = insertval ( destination, sourceval )");
 
-    pSrc = gHyp_stack_popRdata ( pStack, pAI ) ;
-    pDst = gHyp_stack_popLvalue ( pStack, pAI ) ;
+    pSrc = gHyp_stack_popRdata(pStack, pAI);
+    pDst = gHyp_stack_popLvalue(pStack, pAI);
 
     /* Make sure the destination is a list variable */
-    if ( (pVariable = gHyp_data_getVariable ( pDst )) &&
-	 pVariable != pDst &&
-	 gHyp_data_dataType ( pVariable ) < TYPE_BYTE ) {
+    if ((pVariable = gHyp_data_getVariable(pDst)) &&
+        pVariable != pDst &&
+        gHyp_data_dataType(pVariable) < TYPE_BYTE)
+    {
 
-      pValue = NULL ;
-      ss = gHyp_data_getSubScript ( pSrc ) ;
-      context = -1 ;
-      isVector = ( gHyp_data_getDataType (pSrc) > TYPE_STRING ) ;
-      dataType = gHyp_data_getDataType ( pSrc ) ;
-      maxCount = gHyp_data_getCount ( pSrc ) ;
-      while ( maxCount-- &&
-	      (pValue = gHyp_data_nextValue ( pSrc, 
-					     pValue, 
-					     &context,
-					     ss ))) {
+      pValue = NULL;
+      ss = gHyp_data_getSubScript(pSrc);
+      context = -1;
+      isVector = (gHyp_data_getDataType(pSrc) > TYPE_STRING);
+      dataType = gHyp_data_getDataType(pSrc);
+      maxCount = gHyp_data_getCount(pSrc);
+      while (maxCount-- &&
+             (pValue = gHyp_data_nextValue(pSrc,
+                                           pValue,
+                                           &context,
+                                           ss)))
+      {
 
-	if ( isVector ) {
-      
-	  pValue2 = gHyp_data_new ( NULL ) ;
-	  gHyp_data_newConstant ( pValue2, 
-				  dataType, 
-				  pSrc, 
-				  context ) ;
-	}
-	else {
-	  /* Copy first, then insert. */
-	  pValue2 = gHyp_data_copyAll ( pValue ) ;
+        if (isVector)
+        {
+
+          pValue2 = gHyp_data_new(NULL);
+          gHyp_data_newConstant(pValue2,
+                                dataType,
+                                pSrc,
+                                context);
+        }
+        else
+        {
+          /* Copy first, then insert. */
+          pValue2 = gHyp_data_copyAll(pValue);
 
           /* We need to also copy over any objects, like a method definition. */
           /*gHyp_data_copyObject ( pValue2, pValue ) ;*/
-	}
-	gHyp_data_insert ( pDst, pValue2 ) ;
+        }
+        gHyp_data_insert(pDst, pValue2);
       }
-      if ( context == -2 ) {
-	gHyp_instance_error ( pAI, STATUS_BOUNDS, 
-			      "Subscript is out of bounds in value for insertval") ;
+      if (context == -2)
+      {
+        gHyp_instance_error(pAI, STATUS_BOUNDS,
+                            "Subscript is out of bounds in value for insertval");
       }
     }
-    else {
-      gHyp_data_delete ( pSrc ) ;
-      gHyp_instance_error ( pAI, 
-			    STATUS_INVALID, 
-			    "'%s' is not a list or str variable, or is a temporary variable",
-			    gHyp_data_getLabel ( pDst ) ) ;
-     }
+    else
+    {
+      gHyp_data_delete(pSrc);
+      gHyp_instance_error(pAI,
+                          STATUS_INVALID,
+                          "'%s' is not a list or str variable, or is a temporary variable",
+                          gHyp_data_getLabel(pDst));
+    }
 
-    gHyp_instance_pushSTATUS ( pAI, pStack ) ;
+    gHyp_instance_pushSTATUS(pAI, pStack);
   }
 }
 
-void gHyp_env_node_name ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+void gHyp_env_node_name(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE)
 {
-	/* Description:
+  /* Description:
    *
    *	PARSE or EXECUTE the built-in function: node_name ( node )
    *  Returns the name (variable label) of node
-   *  
+   *
    *
    * Arguments:
    *
@@ -4325,53 +4599,56 @@ void gHyp_env_node_name ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
    * Modifications:
    *
    */
-  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
-  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+  sFrame *pFrame = gHyp_instance_frame(pAI);
+  sParse *pParse = gHyp_frame_parse(pFrame);
 
-  if ( isPARSE )
-  
-    gHyp_parse_operand ( pParse, pCode, pAI ) ;
-    
-  else {
- 
+  if (isPARSE)
+
+    gHyp_parse_operand(pParse, pCode, pAI);
+
+  else
+  {
+
     sStack
-      *pStack = gHyp_frame_stack ( pFrame ) ;
+        *pStack = gHyp_frame_stack(pFrame);
 
     sData
-      *pData,
-      *pResult ;
+        *pData,
+        *pResult;
 
     int
-      argCount = gHyp_parse_argCount ( pParse ) ;
-          
-    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+        argCount = gHyp_parse_argCount(pParse);
 
-    if ( argCount != 1 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-	  "Invalid arguments. Usage: node_name ( node )" ) ;
-    
-    pData = gHyp_stack_popLvalue ( pStack, pAI ) ;    
-    
+    gHyp_instance_setStatus(pAI, STATUS_ACKNOWLEDGE);
+
+    if (argCount != 1)
+      gHyp_instance_error(pAI, STATUS_ARGUMENT,
+                          "Invalid arguments. Usage: node_name ( node )");
+
+    pData = gHyp_stack_popLvalue(pStack, pAI);
+
     /* warn if argument is not a node, it still works though */
-    if( gHyp_data_getDataType ( pData ) != TYPE_LIST ) {
-      gHyp_instance_warning ( pAI, STATUS_INVALID, 
-		"%s is not a node, node_* functions are intended to be used with arguments of type list",
-		gHyp_data_getLabel( pData ) ) ;
+    if (gHyp_data_getDataType(pData) != TYPE_LIST)
+    {
+      gHyp_instance_warning(pAI, STATUS_INVALID,
+                            "%s is not a node, node_* functions are intended to be used with arguments of type list",
+                            gHyp_data_getLabel(pData));
     }
 
-    pResult = gHyp_data_new ( NULL ) ;
-    gHyp_data_setStr ( pResult, gHyp_data_getLabel( gHyp_data_getVariable( pData ) ) ) ;
-    gHyp_stack_push ( pStack, pResult ) ;   
+    pResult = gHyp_data_new(NULL);
+    gHyp_data_setStr(pResult, gHyp_data_getLabel(gHyp_data_getVariable(pData)));
+    gHyp_stack_push(pStack, pResult);
   }
 }
 
-void gHyp_env_node_parent ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+void gHyp_env_node_parent(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE)
 {
-	/* Description:
+  /* Description:
    *
    *	PARSE or EXECUTE the built-in function: node_parent ( node )
    *  Returns the label of the parent of node, returns an empy string
    *  if node has no parent
-   *  
+   *
    *
    * Arguments:
    *
@@ -4388,82 +4665,88 @@ void gHyp_env_node_parent ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
    * Modifications:
    *
    */
-  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
-  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+  sFrame *pFrame = gHyp_instance_frame(pAI);
+  sParse *pParse = gHyp_frame_parse(pFrame);
 
-  if ( isPARSE )
-  
-    gHyp_parse_operand ( pParse, pCode, pAI ) ;
-    
-  else {
- 
+  if (isPARSE)
+
+    gHyp_parse_operand(pParse, pCode, pAI);
+
+  else
+  {
+
     sStack
-      *pStack = gHyp_frame_stack ( pFrame ) ;
+        *pStack = gHyp_frame_stack(pFrame);
 
     sData
-      *pData,
-      *pParent,
-      *pResult ;
-      
+        *pData,
+        *pParent,
+        *pResult;
+
     char
-      buffer[VALUE_SIZE+1],
-      *pBuffer,
-      ss[TAG_INDEX_BUFLEN] ;
+        buffer[VALUE_SIZE + 1],
+        *pBuffer,
+        ss[TAG_INDEX_BUFLEN];
 
     int
-      argCount = gHyp_parse_argCount ( pParse ),
-      i ;
-          
-    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+        argCount = gHyp_parse_argCount(pParse),
+        i;
 
-    if ( argCount != 1 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-	  "Invalid arguments. Usage: node_parent ( node )" ) ;
-    
-    pData = gHyp_stack_popLvalue ( pStack, pAI ) ;
-    pParent = gHyp_data_getParent( pData ) ;
-    pResult = gHyp_data_new ( NULL ) ;
-    
+    gHyp_instance_setStatus(pAI, STATUS_ACKNOWLEDGE);
+
+    if (argCount != 1)
+      gHyp_instance_error(pAI, STATUS_ARGUMENT,
+                          "Invalid arguments. Usage: node_parent ( node )");
+
+    pData = gHyp_stack_popLvalue(pStack, pAI);
+    pParent = gHyp_data_getParent(pData);
+    pResult = gHyp_data_new(NULL);
+
     /* warn if argument is not a node, it still works though */
-    if( gHyp_data_getDataType ( pData ) != TYPE_LIST ) {
-      gHyp_instance_warning ( pAI, STATUS_INVALID, 
-		"%s is not a node, node_* functions are intended to be used with arguments of type list",
-		gHyp_data_getLabel( pData ) ) ;
+    if (gHyp_data_getDataType(pData) != TYPE_LIST)
+    {
+      gHyp_instance_warning(pAI, STATUS_INVALID,
+                            "%s is not a node, node_* functions are intended to be used with arguments of type list",
+                            gHyp_data_getLabel(pData));
     }
- 
+
     /* if label of pData matches variable label of pData, then it's a root node with no parent */
-    if ( strcmp( gHyp_data_getLabel( pData ), gHyp_data_getLabel( gHyp_data_getVariable( pData ) ) ) == 0 ) {
-      gHyp_instance_warning ( pAI, STATUS_INVALID, 
-		"%s has no parent, it is a root node", gHyp_data_getLabel( pData ) ) ;			
+    if (strcmp(gHyp_data_getLabel(pData), gHyp_data_getLabel(gHyp_data_getVariable(pData))) == 0)
+    {
+      gHyp_instance_warning(pAI, STATUS_INVALID,
+                            "%s has no parent, it is a root node", gHyp_data_getLabel(pData));
       /* return an empty string */
-      gHyp_data_setStr ( pResult, "" ) ;
+      gHyp_data_setStr(pResult, "");
     }
-    else {
-	  /* copy label to buffer */
-	  pBuffer = buffer;
-	  strcpy( pBuffer , gHyp_data_getLabel(pData) );
-      pBuffer += strlen( gHyp_data_getLabel(pData) ) ; 
+    else
+    {
+      /* copy label to buffer */
+      pBuffer = buffer;
+      strcpy(pBuffer, gHyp_data_getLabel(pData));
+      pBuffer += strlen(gHyp_data_getLabel(pData));
       /*  check for curly bracketed index and remove it*/
-	  if( (i = gHyp_data_getTagIndex( pData )) ) {
-        sprintf( ss, "{%d}", i ) ;
-      	pBuffer -= strlen( ss ) ;
-      } 
+      if ((i = gHyp_data_getTagIndex(pData)))
+      {
+        sprintf(ss, "{%d}", i);
+        pBuffer -= strlen(ss);
+      }
       /* subtract variable label + 3 character for the 2 "'" and the 1 dot (.) */
-      pBuffer -= (3 + strlen( gHyp_data_getLabel( gHyp_data_getVariable(pData) ) ) ) ;
+      pBuffer -= (3 + strlen(gHyp_data_getLabel(gHyp_data_getVariable(pData))));
       /* add a null terminator */
-      strcpy( pBuffer, "\0" );
-      gHyp_data_setStr ( pResult, buffer ) ;
+      strcpy(pBuffer, "\0");
+      gHyp_data_setStr(pResult, buffer);
     }
-    gHyp_stack_push ( pStack, pResult ) ;
+    gHyp_stack_push(pStack, pResult);
   }
 }
 
-void gHyp_env_node_root ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+void gHyp_env_node_root(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE)
 {
-	/* Description:
+  /* Description:
    *
    *	PARSE or EXECUTE the built-in function: node_root ( node )
    *  Returns the label of the root of the tree in which node exists
-   *  
+   *
    *
    * Arguments:
    *
@@ -4480,83 +4763,87 @@ void gHyp_env_node_root ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
    * Modifications:
    *
    */
-  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
-  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+  sFrame *pFrame = gHyp_instance_frame(pAI);
+  sParse *pParse = gHyp_frame_parse(pFrame);
 
-  if ( isPARSE )
-  
-    gHyp_parse_operand ( pParse, pCode, pAI ) ;
-    
-  else {
- 
+  if (isPARSE)
+
+    gHyp_parse_operand(pParse, pCode, pAI);
+
+  else
+  {
+
     sStack
-      *pStack = gHyp_frame_stack ( pFrame ) ;
+        *pStack = gHyp_frame_stack(pFrame);
 
     sData
-      *pData,
-      *pAncestor,
-      *pResult ;
-      
+        *pData,
+        *pAncestor,
+        *pResult;
+
     char
-      buffer[VALUE_SIZE+1],
-      *pBuffer,
-      ss[TAG_INDEX_BUFLEN] ;
+        buffer[VALUE_SIZE + 1],
+        *pBuffer,
+        ss[TAG_INDEX_BUFLEN];
 
     int
-      argCount = gHyp_parse_argCount ( pParse ),
-      i ;
-          
-    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+        argCount = gHyp_parse_argCount(pParse),
+        i;
 
-    if ( argCount != 1 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-	  "Invalid arguments. Usage: node_root ( node )" ) ;
-    
-    pData = gHyp_stack_popLvalue ( pStack, pAI ) ;
-	  pResult = gHyp_data_new ( NULL ) ;
+    gHyp_instance_setStatus(pAI, STATUS_ACKNOWLEDGE);
+
+    if (argCount != 1)
+      gHyp_instance_error(pAI, STATUS_ARGUMENT,
+                          "Invalid arguments. Usage: node_root ( node )");
+
+    pData = gHyp_stack_popLvalue(pStack, pAI);
+    pResult = gHyp_data_new(NULL);
 
     /* warn if argument is not a node, it still works though */
-    if( gHyp_data_getDataType ( pData ) != TYPE_LIST ) {
-      gHyp_instance_warning ( pAI, STATUS_INVALID, 
-		"%s is not a node, node_* functions are intended to be used with arguments of type list",
-		gHyp_data_getLabel( pData ) ) ;
+    if (gHyp_data_getDataType(pData) != TYPE_LIST)
+    {
+      gHyp_instance_warning(pAI, STATUS_INVALID,
+                            "%s is not a node, node_* functions are intended to be used with arguments of type list",
+                            gHyp_data_getLabel(pData));
     }
     /* copy label of node to buffer and set pointer */
     pBuffer = buffer;
-    strcpy( pBuffer , gHyp_data_getLabel(pData) );
-    pBuffer += strlen( gHyp_data_getLabel(pData) ) ;
+    strcpy(pBuffer, gHyp_data_getLabel(pData));
+    pBuffer += strlen(gHyp_data_getLabel(pData));
     pAncestor = pData;
     /* step up the hierarchy until we reach the root*/
-    while ( strcmp( gHyp_data_getLabel( gHyp_data_getParent( pAncestor ) ), "_main_" ) != 0 )
+    while (strcmp(gHyp_data_getLabel(gHyp_data_getParent(pAncestor)), "_main_") != 0)
     {
       /*
-      *gHyp_util_debug("buffer: %s", buffer);
-      *gHyp_util_debug("node parent: %s", gHyp_data_getLabel( gHyp_data_getVariable( pAncestor )) ) ;
-      */
+       *gHyp_util_debug("buffer: %s", buffer);
+       *gHyp_util_debug("node parent: %s", gHyp_data_getLabel( gHyp_data_getVariable( pAncestor )) ) ;
+       */
       /*  check for curly bracketed index on the end and remove it*/
-      if( (i = gHyp_data_getTagIndex( pAncestor )) ) {
-        sprintf( ss, "{%d}", i ) ;
-      	pBuffer -= strlen( ss ) ;
+      if ((i = gHyp_data_getTagIndex(pAncestor)))
+      {
+        sprintf(ss, "{%d}", i);
+        pBuffer -= strlen(ss);
       }
-	  /* subtract node's variable label + 3 characters for the 2 "'" and the 1 dot (.) */ 
-	  pBuffer -= (3 + strlen( gHyp_data_getLabel( gHyp_data_getVariable( pAncestor ) ) ) );
-      pAncestor = gHyp_data_getParent( pAncestor );  
+      /* subtract node's variable label + 3 characters for the 2 "'" and the 1 dot (.) */
+      pBuffer -= (3 + strlen(gHyp_data_getLabel(gHyp_data_getVariable(pAncestor))));
+      pAncestor = gHyp_data_getParent(pAncestor);
     }
     /* add a null  terminator */
-    strcpy( pBuffer, "\0" );
+    strcpy(pBuffer, "\0");
     /* push the string to the stack */
-    gHyp_data_setStr ( pResult, buffer ) ;
-	gHyp_stack_push ( pStack, pResult ) ;
+    gHyp_data_setStr(pResult, buffer);
+    gHyp_stack_push(pStack, pResult);
   }
 }
 
-void gHyp_env_node_firstchild ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+void gHyp_env_node_firstchild(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE)
 {
-	/* Description:
+  /* Description:
    *
    *	PARSE or EXECUTE the built-in function: node_firstchild ( node )
    *  Returns the label of the first child of node or an empty string
    *  if no child is present.
-   *  
+   *
    *
    * Arguments:
    *
@@ -4573,82 +4860,86 @@ void gHyp_env_node_firstchild ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
    * Modifications:
    *
    */
-  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
-  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+  sFrame *pFrame = gHyp_instance_frame(pAI);
+  sParse *pParse = gHyp_frame_parse(pFrame);
 
-  if ( isPARSE )
-  
-    gHyp_parse_operand ( pParse, pCode, pAI ) ;
-    
-  else {
- 
+  if (isPARSE)
+
+    gHyp_parse_operand(pParse, pCode, pAI);
+
+  else
+  {
+
     sStack
-      *pStack = gHyp_frame_stack ( pFrame ) ;
+        *pStack = gHyp_frame_stack(pFrame);
 
     sData
-      *pData,
-      *pChild,
-      *pResult ;
+        *pData,
+        *pChild,
+        *pResult;
 
     char
-      buffer[VALUE_SIZE+1],
-      *pBuffer ;
+        buffer[VALUE_SIZE + 1],
+        *pBuffer;
 
     int
-      argCount = gHyp_parse_argCount ( pParse ) ;
-          
-    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+        argCount = gHyp_parse_argCount(pParse);
 
-    if ( argCount != 1 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-	  "Invalid arguments. Usage: node_firstchild ( node )" ) ;
-    
-    pData = gHyp_stack_popLvalue ( pStack, pAI ) ;
-    pResult = gHyp_data_new ( NULL ) ;
+    gHyp_instance_setStatus(pAI, STATUS_ACKNOWLEDGE);
+
+    if (argCount != 1)
+      gHyp_instance_error(pAI, STATUS_ARGUMENT,
+                          "Invalid arguments. Usage: node_firstchild ( node )");
+
+    pData = gHyp_stack_popLvalue(pStack, pAI);
+    pResult = gHyp_data_new(NULL);
 
     /* warn if argument is not a node, it still works though */
-    if( gHyp_data_getDataType ( pData ) != TYPE_LIST ) {
-      gHyp_instance_warning ( pAI, STATUS_INVALID, 
-		"%s is not a node, node_* functions are intended to be used with arguments of type list",
-		gHyp_data_getLabel( pData ) ) ;
-    }
-    
-    if( (pChild = gHyp_data_getFirstNode( pData )) )
+    if (gHyp_data_getDataType(pData) != TYPE_LIST)
     {
-      pBuffer = buffer;
-      
-      /* copy old label to buffer */
-      strcpy( pBuffer , gHyp_data_getLabel(pData) );
-      pBuffer += strlen( gHyp_data_getLabel(pData) ) ;
-      /* stick the child's label  onto the end */
-      strcpy( pBuffer, ".'");
-      pBuffer += 2;
-      strcpy( pBuffer, gHyp_data_getLabel( pChild ) );
-      pBuffer += strlen( gHyp_data_getLabel( pChild ) );
-      strcpy( pBuffer, "'");
-      pBuffer += 1 ;
-      /* no need to check if a curly bracketed index is needed cause its the first child */
-  
-	      /* gHyp_util_debug("New String: %s", buffer ); */
-      
-      /* push the string to the stack */
-      gHyp_data_setStr ( pResult, buffer ) ;
-    }
-    else {  /* only leaves were found */       
-      gHyp_data_setStr ( pResult, "" ) ;
+      gHyp_instance_warning(pAI, STATUS_INVALID,
+                            "%s is not a node, node_* functions are intended to be used with arguments of type list",
+                            gHyp_data_getLabel(pData));
     }
 
-    gHyp_stack_push ( pStack, pResult ) ;
+    if ((pChild = gHyp_data_getFirstNode(pData)))
+    {
+      pBuffer = buffer;
+
+      /* copy old label to buffer */
+      strcpy(pBuffer, gHyp_data_getLabel(pData));
+      pBuffer += strlen(gHyp_data_getLabel(pData));
+      /* stick the child's label  onto the end */
+      strcpy(pBuffer, ".'");
+      pBuffer += 2;
+      strcpy(pBuffer, gHyp_data_getLabel(pChild));
+      pBuffer += strlen(gHyp_data_getLabel(pChild));
+      strcpy(pBuffer, "'");
+      pBuffer += 1;
+      /* no need to check if a curly bracketed index is needed cause its the first child */
+
+      /* gHyp_util_debug("New String: %s", buffer ); */
+
+      /* push the string to the stack */
+      gHyp_data_setStr(pResult, buffer);
+    }
+    else
+    { /* only leaves were found */
+      gHyp_data_setStr(pResult, "");
+    }
+
+    gHyp_stack_push(pStack, pResult);
   }
 }
 
-void gHyp_env_node_lastchild ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+void gHyp_env_node_lastchild(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE)
 {
-	/* Description:
+  /* Description:
    *
    *	PARSE or EXECUTE the built-in function: node_lastchild ( node )
    *  Returns the label of the last child of node or an empty string
    *  if no child is present.
-   *  
+   *
    *
    * Arguments:
    *
@@ -4665,82 +4956,88 @@ void gHyp_env_node_lastchild ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
    * Modifications:
    *
    */
-  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
-  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+  sFrame *pFrame = gHyp_instance_frame(pAI);
+  sParse *pParse = gHyp_frame_parse(pFrame);
 
-  if ( isPARSE )
-  
-    gHyp_parse_operand ( pParse, pCode, pAI ) ;
-    
-  else {
- 
+  if (isPARSE)
+
+    gHyp_parse_operand(pParse, pCode, pAI);
+
+  else
+  {
+
     sStack
-      *pStack = gHyp_frame_stack ( pFrame ) ;
+        *pStack = gHyp_frame_stack(pFrame);
 
     sData
-      *pData,
-      *pChild,
-      *pResult ;
+        *pData,
+        *pChild,
+        *pResult;
 
     char
-      buffer[VALUE_SIZE+1],
-      *pBuffer ;
+        buffer[VALUE_SIZE + 1],
+        *pBuffer;
 
     int
-      argCount = gHyp_parse_argCount ( pParse ),
-      i ;
-          
-    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+        argCount = gHyp_parse_argCount(pParse),
+        i;
 
-    if ( argCount != 1 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-	  "Invalid arguments. Usage: node_lastchild ( node )" ) ;
-    
-    pData = gHyp_stack_popLvalue ( pStack, pAI ) ;
-    pResult = gHyp_data_new ( NULL ) ;
+    gHyp_instance_setStatus(pAI, STATUS_ACKNOWLEDGE);
+
+    if (argCount != 1)
+      gHyp_instance_error(pAI, STATUS_ARGUMENT,
+                          "Invalid arguments. Usage: node_lastchild ( node )");
+
+    pData = gHyp_stack_popLvalue(pStack, pAI);
+    pResult = gHyp_data_new(NULL);
 
     /* warn if argument is not a node, it still works though */
-    if( gHyp_data_getDataType ( pData ) != TYPE_LIST ) {
-      gHyp_instance_warning ( pAI, STATUS_INVALID, 
-		"%s is not a node, node_* functions are intended to be used with arguments of type list",
-		gHyp_data_getLabel( pData ) ) ;
+    if (gHyp_data_getDataType(pData) != TYPE_LIST)
+    {
+      gHyp_instance_warning(pAI, STATUS_INVALID,
+                            "%s is not a node, node_* functions are intended to be used with arguments of type list",
+                            gHyp_data_getLabel(pData));
     }
 
-    if( (pChild = gHyp_data_getLastNode( pData )) ) {
+    if ((pChild = gHyp_data_getLastNode(pData)))
+    {
 
       pBuffer = buffer;
       /* copy old label to buffer */
-      strcpy( pBuffer , gHyp_data_getLabel(pData) );
-      pBuffer += strlen( gHyp_data_getLabel(pData) ) ;
+      strcpy(pBuffer, gHyp_data_getLabel(pData));
+      pBuffer += strlen(gHyp_data_getLabel(pData));
       /* stick the child's label  onto the end */
-      strcpy( pBuffer, ".'");
+      strcpy(pBuffer, ".'");
       pBuffer += 2;
-      strcpy( pBuffer, gHyp_data_getLabel( pChild ) );
-      pBuffer += strlen( gHyp_data_getLabel( pChild ) );
-      strcpy( pBuffer, "'");
-      pBuffer += 1 ;
+      strcpy(pBuffer, gHyp_data_getLabel(pChild));
+      pBuffer += strlen(gHyp_data_getLabel(pChild));
+      strcpy(pBuffer, "'");
+      pBuffer += 1;
       /* check if a curly bracketed index is needed */
-      if ( (i = gHyp_data_getTagIndex( pChild )) ) {
+      if ((i = gHyp_data_getTagIndex(pChild)))
+      {
         /* stick the curly index ending onto it */
-        sprintf ( pBuffer, "{%d}", i ) ;
+        sprintf(pBuffer, "{%d}", i);
       }
       /* gHyp_util_debug("New String: %s", buffer ); */
-      gHyp_data_setStr ( pResult, buffer ) ;
+      gHyp_data_setStr(pResult, buffer);
     }
-    else { /* no child found */
-  	  gHyp_data_setStr ( pResult, "" ) ;
-	  }
-    gHyp_stack_push ( pStack, pResult ) ;  
+    else
+    { /* no child found */
+      gHyp_data_setStr(pResult, "");
+    }
+    gHyp_stack_push(pStack, pResult);
   }
 }
 
-void gHyp_env_node_nextsibling ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+void gHyp_env_node_nextsibling(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE)
 {
-	/* Description:
+  /* Description:
    *
    *	PARSE or EXECUTE the built-in function: node_nextsibling ( node )
    *  Returns the label of the next sibling of node or an empty string
    *  if no next sibling is present.
-   *  
+   *
    *
    * Arguments:
    *
@@ -4757,88 +5054,95 @@ void gHyp_env_node_nextsibling ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE 
    * Modifications:
    *
    */
-  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
-  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+  sFrame *pFrame = gHyp_instance_frame(pAI);
+  sParse *pParse = gHyp_frame_parse(pFrame);
 
-  if ( isPARSE )
-  
-    gHyp_parse_operand ( pParse, pCode, pAI ) ;
-    
-  else {
- 
+  if (isPARSE)
+
+    gHyp_parse_operand(pParse, pCode, pAI);
+
+  else
+  {
+
     sStack
-      *pStack = gHyp_frame_stack ( pFrame ) ;
+        *pStack = gHyp_frame_stack(pFrame);
 
     sData
-      *pData,
-      *pSibling,
-      *pResult ;
+        *pData,
+        *pSibling,
+        *pResult;
 
     char
-      buffer[VALUE_SIZE+1],
-      *pBuffer ,
-      ss[TAG_INDEX_BUFLEN] ;
+        buffer[VALUE_SIZE + 1],
+        *pBuffer,
+        ss[TAG_INDEX_BUFLEN];
 
     int
-      argCount = gHyp_parse_argCount ( pParse ),
-      i ;
-          
-    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+        argCount = gHyp_parse_argCount(pParse),
+        i;
 
-    if ( argCount != 1 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-	  "Invalid arguments. Usage: node_nextsibling ( node )" ) ;
-    
-    pData = gHyp_stack_popLvalue ( pStack, pAI ) ;
-    pResult = gHyp_data_new ( NULL ) ;
+    gHyp_instance_setStatus(pAI, STATUS_ACKNOWLEDGE);
+
+    if (argCount != 1)
+      gHyp_instance_error(pAI, STATUS_ARGUMENT,
+                          "Invalid arguments. Usage: node_nextsibling ( node )");
+
+    pData = gHyp_stack_popLvalue(pStack, pAI);
+    pResult = gHyp_data_new(NULL);
 
     /* warn if argument is not a node, it still works though */
-    if( gHyp_data_getDataType ( pData ) != TYPE_LIST ) {
-      gHyp_instance_warning ( pAI, STATUS_INVALID,
-	  "%s is not a node, node_* functions are intended to be used with arguments of type list",
-	  gHyp_data_getLabel( pData ) ) ;
+    if (gHyp_data_getDataType(pData) != TYPE_LIST)
+    {
+      gHyp_instance_warning(pAI, STATUS_INVALID,
+                            "%s is not a node, node_* functions are intended to be used with arguments of type list",
+                            gHyp_data_getLabel(pData));
     }
-    if ( (pSibling = gHyp_data_getNextNode( pData )) ) {
+    if ((pSibling = gHyp_data_getNextNode(pData)))
+    {
       pBuffer = buffer;
       /* copy label to buffer */
-      strcpy( pBuffer , gHyp_data_getLabel(pData) );     
-      pBuffer += strlen( gHyp_data_getLabel(pData) ) ;
+      strcpy(pBuffer, gHyp_data_getLabel(pData));
+      pBuffer += strlen(gHyp_data_getLabel(pData));
       /*  check for curly bracketed index on the end and remove it*/
-      if( (i = gHyp_data_getTagIndex( pData )) ) {
-        sprintf( ss, "{%d}", i ) ;
-      	pBuffer -= strlen( ss ) ;
+      if ((i = gHyp_data_getTagIndex(pData)))
+      {
+        sprintf(ss, "{%d}", i);
+        pBuffer -= strlen(ss);
       }
       /* subtract variable label + 1 character for the ending "'" */
-      pBuffer -= (1 + strlen( gHyp_data_getLabel( gHyp_data_getVariable(pData) ) ) );
+      pBuffer -= (1 + strlen(gHyp_data_getLabel(gHyp_data_getVariable(pData))));
       /* stick the new label ending onto it */
-      strcpy( pBuffer, gHyp_data_getLabel( pSibling ) );
-      pBuffer += strlen( gHyp_data_getLabel( pSibling ) );
-      strcpy( pBuffer, "'");
-      pBuffer += 1 ;
+      strcpy(pBuffer, gHyp_data_getLabel(pSibling));
+      pBuffer += strlen(gHyp_data_getLabel(pSibling));
+      strcpy(pBuffer, "'");
+      pBuffer += 1;
       /* check if a curly bracketed index is needed */
-      if ( (i = gHyp_data_getTagIndex( pSibling )) ) {
+      if ((i = gHyp_data_getTagIndex(pSibling)))
+      {
         /* stick the curly index ending onto it */
-        sprintf ( pBuffer, "{%d}", i ) ;
+        sprintf(pBuffer, "{%d}", i);
       }
       /* gHyp_util_debug("Buffer String: %s", buffer ); */
       /* push the string to the stack */
-      gHyp_data_setStr ( pResult, buffer ) ;
-    } 
-    else { 
-      /* return an empty string */
-      gHyp_data_setStr ( pResult, "" ) ;
+      gHyp_data_setStr(pResult, buffer);
     }
-    gHyp_stack_push ( pStack, pResult ) ;  
+    else
+    {
+      /* return an empty string */
+      gHyp_data_setStr(pResult, "");
+    }
+    gHyp_stack_push(pStack, pResult);
   }
 }
 
-void gHyp_env_node_prevsibling ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+void gHyp_env_node_prevsibling(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE)
 {
-	/* Description:
+  /* Description:
    *
    *	PARSE or EXECUTE the built-in function: node_prevsibling ( node )
    *  Returns the label of the previous sibling of node or an empty string
    *  if no next sibling is present.
-   *  
+   *
    *
    * Arguments:
    *
@@ -4855,88 +5159,95 @@ void gHyp_env_node_prevsibling ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE 
    * Modifications:
    *
    */
-  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
-  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+  sFrame *pFrame = gHyp_instance_frame(pAI);
+  sParse *pParse = gHyp_frame_parse(pFrame);
 
-  if ( isPARSE )
-  
-    gHyp_parse_operand ( pParse, pCode, pAI ) ;
-    
-  else {
- 
+  if (isPARSE)
+
+    gHyp_parse_operand(pParse, pCode, pAI);
+
+  else
+  {
+
     sStack
-      *pStack = gHyp_frame_stack ( pFrame ) ;
+        *pStack = gHyp_frame_stack(pFrame);
 
     sData
-      *pData,
-      *pSibling,
-      *pResult ;
+        *pData,
+        *pSibling,
+        *pResult;
 
     char
-      buffer[VALUE_SIZE+1],
-      *pBuffer,
-      ss[TAG_INDEX_BUFLEN] ;
+        buffer[VALUE_SIZE + 1],
+        *pBuffer,
+        ss[TAG_INDEX_BUFLEN];
 
     int
-      argCount = gHyp_parse_argCount ( pParse ),
-      i ;
-          
-    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+        argCount = gHyp_parse_argCount(pParse),
+        i;
 
-    if ( argCount != 1 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-	  "Invalid arguments. Usage: node_prevsibling ( node )" ) ;
-    
-    pData = gHyp_stack_popLvalue ( pStack, pAI ) ;
-    pResult = gHyp_data_new ( NULL ) ;
+    gHyp_instance_setStatus(pAI, STATUS_ACKNOWLEDGE);
+
+    if (argCount != 1)
+      gHyp_instance_error(pAI, STATUS_ARGUMENT,
+                          "Invalid arguments. Usage: node_prevsibling ( node )");
+
+    pData = gHyp_stack_popLvalue(pStack, pAI);
+    pResult = gHyp_data_new(NULL);
 
     /* warn if argument is not a node, it still works though */
-    if( gHyp_data_getDataType ( pData ) != TYPE_LIST ) {
-        gHyp_instance_warning ( pAI, STATUS_INVALID, 
-	    "%s is not a node, node_* functions are intended to be used with arguments of type list",
-	    gHyp_data_getLabel( pData ) ) ;
+    if (gHyp_data_getDataType(pData) != TYPE_LIST)
+    {
+      gHyp_instance_warning(pAI, STATUS_INVALID,
+                            "%s is not a node, node_* functions are intended to be used with arguments of type list",
+                            gHyp_data_getLabel(pData));
     }
-    if ( (pSibling = gHyp_data_getPrevNode ( pData )) ) { 
+    if ((pSibling = gHyp_data_getPrevNode(pData)))
+    {
       pBuffer = buffer;
       /* copy old label to buffer */
-      strcpy( pBuffer , gHyp_data_getLabel(pData) );
-      pBuffer += strlen( gHyp_data_getLabel(pData) ) ;
+      strcpy(pBuffer, gHyp_data_getLabel(pData));
+      pBuffer += strlen(gHyp_data_getLabel(pData));
       /*  check for curly bracketed index and remove it*/
-      if( (i = gHyp_data_getTagIndex( pData )) ) {
-        sprintf( ss, "{%d}", i ) ;
-      	pBuffer -= strlen( ss ) ;
+      if ((i = gHyp_data_getTagIndex(pData)))
+      {
+        sprintf(ss, "{%d}", i);
+        pBuffer -= strlen(ss);
       }
       /* subtract variable label + 1 character for the ending "'" */
-      pBuffer -= (1 + strlen( gHyp_data_getLabel( gHyp_data_getVariable(pData) ) ) );
+      pBuffer -= (1 + strlen(gHyp_data_getLabel(gHyp_data_getVariable(pData))));
       /* stick the new label ending onto it */
-      strcpy( pBuffer, gHyp_data_getLabel( pSibling ) );
-      pBuffer += strlen( gHyp_data_getLabel( pSibling ) );
-      strcpy( pBuffer, "'");
-      pBuffer += 1 ;
+      strcpy(pBuffer, gHyp_data_getLabel(pSibling));
+      pBuffer += strlen(gHyp_data_getLabel(pSibling));
+      strcpy(pBuffer, "'");
+      pBuffer += 1;
       /* check if a curly bracketed index is needed */
-      if ( (i = gHyp_data_getTagIndex( pSibling )) ) {
+      if ((i = gHyp_data_getTagIndex(pSibling)))
+      {
         /* stick the curly index ending onto it */
-        sprintf ( pBuffer, "{%d}", i ) ;
+        sprintf(pBuffer, "{%d}", i);
       }
       /* gHyp_util_debug("Buffer String: %s", buffer ); */
       /* push the string to the stack */
-      gHyp_data_setStr ( pResult, buffer ) ;
+      gHyp_data_setStr(pResult, buffer);
     }
-    else { /* return an empty string */
-      gHyp_data_setStr ( pResult, "" ) ;
+    else
+    { /* return an empty string */
+      gHyp_data_setStr(pResult, "");
     }
-    gHyp_stack_push ( pStack, pResult ) ;   
+    gHyp_stack_push(pStack, pResult);
   }
 }
 
-void gHyp_env_node_nextfirstcousin ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+void gHyp_env_node_nextfirstcousin(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE)
 {
-	/* Description:
+  /* Description:
    *
    *	PARSE or EXECUTE the built-in function: node_nextfirstcousin ( node )
    *  Returns the label of the next first cousin of node
    *  (the first child of the node's parent's next sibling)
    *  or an empty string if no next first cousin is present.
-   *  
+   *
    *
    * Arguments:
    *
@@ -4953,124 +5264,134 @@ void gHyp_env_node_nextfirstcousin ( sInstance *pAI, sCode *pCode, sLOGICAL isPA
    * Modifications:
    *
    */
-  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
-  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+  sFrame *pFrame = gHyp_instance_frame(pAI);
+  sParse *pParse = gHyp_frame_parse(pFrame);
 
-  if ( isPARSE )
-  
-    gHyp_parse_operand ( pParse, pCode, pAI ) ;
-    
-  else {
- 
+  if (isPARSE)
+
+    gHyp_parse_operand(pParse, pCode, pAI);
+
+  else
+  {
+
     sStack
-      *pStack = gHyp_frame_stack ( pFrame ) ;
+        *pStack = gHyp_frame_stack(pFrame);
 
     sData
-      *pData,
-      *pParent,
-      *pUncle,
-      *pCousin,
-      *pResult ;
+        *pData,
+        *pParent,
+        *pUncle,
+        *pCousin,
+        *pResult;
 
     char
-      buffer[VALUE_SIZE+1],
-      *pBuffer,
-      ss[TAG_INDEX_BUFLEN] ;
+        buffer[VALUE_SIZE + 1],
+        *pBuffer,
+        ss[TAG_INDEX_BUFLEN];
 
     int
-      argCount = gHyp_parse_argCount ( pParse ),
-      i ;
-          
-    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+        argCount = gHyp_parse_argCount(pParse),
+        i;
 
-    if ( argCount != 1 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-	  "Invalid arguments. Usage: node_nextfirstcousin ( node )" ) ;
-    
-    pData = gHyp_stack_popLvalue ( pStack, pAI ) ;
-	  pResult = gHyp_data_new ( NULL ) ;
+    gHyp_instance_setStatus(pAI, STATUS_ACKNOWLEDGE);
+
+    if (argCount != 1)
+      gHyp_instance_error(pAI, STATUS_ARGUMENT,
+                          "Invalid arguments. Usage: node_nextfirstcousin ( node )");
+
+    pData = gHyp_stack_popLvalue(pStack, pAI);
+    pResult = gHyp_data_new(NULL);
 
     /* warn if argument is not a node, it still works though */
-    if( gHyp_data_getDataType ( pData ) != TYPE_LIST ) {
-      gHyp_instance_warning ( pAI, STATUS_INVALID, 
-		"%s is not a node, node_* functions are intended to be used with arguments of type list",
-		gHyp_data_getLabel( pData ) ) ;
+    if (gHyp_data_getDataType(pData) != TYPE_LIST)
+    {
+      gHyp_instance_warning(pAI, STATUS_INVALID,
+                            "%s is not a node, node_* functions are intended to be used with arguments of type list",
+                            gHyp_data_getLabel(pData));
     }
 
-    pParent = gHyp_data_getParent( pData );
-    
-    if ( strcmp( gHyp_data_getLabel( pParent ), "_main_" ) )
-    {  
-	  /* make sure pParent has a next sibling and that it is not the first of the list (wrap around) */
-      if ( (pUncle = gHyp_data_getNextNode( pParent )) )
+    pParent = gHyp_data_getParent(pData);
+
+    if (strcmp(gHyp_data_getLabel(pParent), "_main_"))
+    {
+      /* make sure pParent has a next sibling and that it is not the first of the list (wrap around) */
+      if ((pUncle = gHyp_data_getNextNode(pParent)))
       {
-      	/* gHyp_util_debug("Next uncle found: %s", gHyp_data_getLabel( pUncle ) ); */
-        if ( (pCousin = gHyp_data_getFirstNode( pUncle )) ) { 
-  	      /* gHyp_util_debug("Next cousin Found: %s", gHyp_data_getLabel( pCousin ) ); */	  	
-		  pBuffer = buffer;
-	      /* copy node's label to buffer */
-	      strcpy( pBuffer , gHyp_data_getLabel(pData) );
-	      pBuffer += strlen( gHyp_data_getLabel(pData) ) ;
-	      /*  check for curly bracketed index and remove it*/
-	      if( (i = gHyp_data_getTagIndex( pData )) ) {
-            sprintf( ss, "{%d}", i ) ;
-      	    pBuffer -= strlen( ss ) ;
-          } 
-	      /* subtract child label (and the quotes and dot) */
-	      pBuffer -= (3 + strlen( gHyp_data_getLabel( gHyp_data_getVariable(pData) ) ) );
-	      /*  check for parent's curly bracketed index and remove it*/
-	      if( (i = gHyp_data_getTagIndex( pParent )) ) {
-            sprintf( ss, "{%d}", i ) ;
-      	    pBuffer -= strlen( ss ) ;
+        /* gHyp_util_debug("Next uncle found: %s", gHyp_data_getLabel( pUncle ) ); */
+        if ((pCousin = gHyp_data_getFirstNode(pUncle)))
+        {
+          /* gHyp_util_debug("Next cousin Found: %s", gHyp_data_getLabel( pCousin ) ); */
+          pBuffer = buffer;
+          /* copy node's label to buffer */
+          strcpy(pBuffer, gHyp_data_getLabel(pData));
+          pBuffer += strlen(gHyp_data_getLabel(pData));
+          /*  check for curly bracketed index and remove it*/
+          if ((i = gHyp_data_getTagIndex(pData)))
+          {
+            sprintf(ss, "{%d}", i);
+            pBuffer -= strlen(ss);
           }
-		  /* subtract parent label (and the ending quote mark) */
-		  pBuffer -= (1 + strlen( gHyp_data_getLabel( pParent ) ) );
-	      /* add uncle's label */
-	      strcpy( pBuffer, gHyp_data_getLabel( pUncle ) );
-	      pBuffer += strlen( gHyp_data_getLabel( pUncle ) );
-	      strcpy( pBuffer, "'.'");
-	      pBuffer += 3;
-	      /* add cousin's label */
-	      strcpy( pBuffer, gHyp_data_getLabel( pCousin ) );
-	      pBuffer += strlen( gHyp_data_getLabel( pCousin ) );
-	      strcpy( pBuffer, "'");
-		  pBuffer += 1 ;
-	      /* check if a curly bracketed index is needed */
-	      if ( (i = gHyp_data_getTagIndex( pCousin )) ) {
-	        /* stick the curly index ending onto it */
-	        sprintf ( pBuffer, "{%d}", i ) ;
-	      }
-	      /* gHyp_util_debug("Buffer String: %s", buffer ); */
-	      gHyp_data_setStr ( pResult, buffer ) ;
-		}
-        else { /* no cousin node found */
-          gHyp_data_setStr ( pResult, "" ) ;
+          /* subtract child label (and the quotes and dot) */
+          pBuffer -= (3 + strlen(gHyp_data_getLabel(gHyp_data_getVariable(pData))));
+          /*  check for parent's curly bracketed index and remove it*/
+          if ((i = gHyp_data_getTagIndex(pParent)))
+          {
+            sprintf(ss, "{%d}", i);
+            pBuffer -= strlen(ss);
+          }
+          /* subtract parent label (and the ending quote mark) */
+          pBuffer -= (1 + strlen(gHyp_data_getLabel(pParent)));
+          /* add uncle's label */
+          strcpy(pBuffer, gHyp_data_getLabel(pUncle));
+          pBuffer += strlen(gHyp_data_getLabel(pUncle));
+          strcpy(pBuffer, "'.'");
+          pBuffer += 3;
+          /* add cousin's label */
+          strcpy(pBuffer, gHyp_data_getLabel(pCousin));
+          pBuffer += strlen(gHyp_data_getLabel(pCousin));
+          strcpy(pBuffer, "'");
+          pBuffer += 1;
+          /* check if a curly bracketed index is needed */
+          if ((i = gHyp_data_getTagIndex(pCousin)))
+          {
+            /* stick the curly index ending onto it */
+            sprintf(pBuffer, "{%d}", i);
+          }
+          /* gHyp_util_debug("Buffer String: %s", buffer ); */
+          gHyp_data_setStr(pResult, buffer);
+        }
+        else
+        { /* no cousin node found */
+          gHyp_data_setStr(pResult, "");
           /* gHyp_util_debug("No next cousin node found"); */
         }
       }
-      else { /* no uncle found */
-      	gHyp_data_setStr ( pResult, "" ) ;
-      	/* gHyp_util_debug("No next uncle found"); */
+      else
+      { /* no uncle found */
+        gHyp_data_setStr(pResult, "");
+        /* gHyp_util_debug("No next uncle found"); */
       }
     }
-    else { /* no parent found */
-      gHyp_instance_warning ( pAI, STATUS_INVALID, 
-					"%s has no cousin, it is a root node", gHyp_data_getLabel( pData ) ) ;
-    	gHyp_data_setStr ( pResult, "" ) ;
-    	/* gHyp_util_debug("No parent found"); */
+    else
+    { /* no parent found */
+      gHyp_instance_warning(pAI, STATUS_INVALID,
+                            "%s has no cousin, it is a root node", gHyp_data_getLabel(pData));
+      gHyp_data_setStr(pResult, "");
+      /* gHyp_util_debug("No parent found"); */
     }
-    gHyp_stack_push ( pStack, pResult ) ;           
+    gHyp_stack_push(pStack, pResult);
   }
 }
 
-void gHyp_env_node_prevlastcousin ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+void gHyp_env_node_prevlastcousin(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE)
 {
-	/* Description:
+  /* Description:
    *
    *	PARSE or EXECUTE the built-in function: node_prevsibling ( node )
    *  Returns the label of the previous last cousin of node
    *  (the last child of the node's parent's previous sibling )
-   *  or an empty string if no previous last cousin is present.  
-   *  
+   *  or an empty string if no previous last cousin is present.
+   *
    *
    * Arguments:
    *
@@ -5087,117 +5408,127 @@ void gHyp_env_node_prevlastcousin ( sInstance *pAI, sCode *pCode, sLOGICAL isPAR
    * Modifications:
    *
    */
-  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
-  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+  sFrame *pFrame = gHyp_instance_frame(pAI);
+  sParse *pParse = gHyp_frame_parse(pFrame);
 
-  if ( isPARSE )
-  
-    gHyp_parse_operand ( pParse, pCode, pAI ) ;
-    
-  else {
- 
+  if (isPARSE)
+
+    gHyp_parse_operand(pParse, pCode, pAI);
+
+  else
+  {
+
     sStack
-      *pStack = gHyp_frame_stack ( pFrame ) ;
+        *pStack = gHyp_frame_stack(pFrame);
 
     sData
-      *pData,
-      *pParent,
-      *pUncle,
-      *pCousin,
-      *pResult ;
+        *pData,
+        *pParent,
+        *pUncle,
+        *pCousin,
+        *pResult;
 
     char
-      buffer[VALUE_SIZE+1],
-      *pBuffer,
-      ss[TAG_INDEX_BUFLEN] ;
+        buffer[VALUE_SIZE + 1],
+        *pBuffer,
+        ss[TAG_INDEX_BUFLEN];
 
     int
-      argCount = gHyp_parse_argCount ( pParse ),
-      i ;
-          
-    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+        argCount = gHyp_parse_argCount(pParse),
+        i;
 
-    if ( argCount != 1 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-	  "Invalid arguments. Usage: node_prevlastcousin ( node )" ) ;
-    
-    pData = gHyp_stack_popLvalue ( pStack, pAI ) ;
-	  pResult = gHyp_data_new ( NULL ) ;
+    gHyp_instance_setStatus(pAI, STATUS_ACKNOWLEDGE);
+
+    if (argCount != 1)
+      gHyp_instance_error(pAI, STATUS_ARGUMENT,
+                          "Invalid arguments. Usage: node_prevlastcousin ( node )");
+
+    pData = gHyp_stack_popLvalue(pStack, pAI);
+    pResult = gHyp_data_new(NULL);
 
     /* warn if argument is not a node, it still works though */
-    if( gHyp_data_getDataType ( pData ) != TYPE_LIST ) {
-      gHyp_instance_warning ( pAI, STATUS_INVALID, 
-		"%s is not a node, node_* functions are intended to be used with arguments of type list",
-		gHyp_data_getLabel( pData ) ) ;
+    if (gHyp_data_getDataType(pData) != TYPE_LIST)
+    {
+      gHyp_instance_warning(pAI, STATUS_INVALID,
+                            "%s is not a node, node_* functions are intended to be used with arguments of type list",
+                            gHyp_data_getLabel(pData));
     }
 
-    pParent = gHyp_data_getParent( pData );
-    
-    if ( strcmp( gHyp_data_getLabel( pParent ), "_main_" ) )
-    { 
-	  /* make sure pParent has a previous sibling and that it is not the first of the list (wrap around) */
-      if ( (pUncle = gHyp_data_getPrevNode( pParent )) )
+    pParent = gHyp_data_getParent(pData);
+
+    if (strcmp(gHyp_data_getLabel(pParent), "_main_"))
+    {
+      /* make sure pParent has a previous sibling and that it is not the first of the list (wrap around) */
+      if ((pUncle = gHyp_data_getPrevNode(pParent)))
       {
-      	/* gHyp_util_debug("Previous uncle found: %s", gHyp_data_getLabel( pUncle ) ); */
-        if ( (pCousin = gHyp_data_getLastNode( pUncle )) ) {
-  		  /* gHyp_util_debug("Next cousin Found: %s", gHyp_data_getLabel( pCousin ) ); */	  	
-		  pBuffer = buffer;
-	      /* copy node's label to buffer */
-	      strcpy( pBuffer , gHyp_data_getLabel(pData) );
-	      pBuffer += strlen( gHyp_data_getLabel(pData) ) ;
-	      /*  check for curly bracketed index and remove it*/
-	      if( (i = gHyp_data_getTagIndex( pData )) ) {
-            sprintf( ss, "{%d}", i ) ;
-      	    pBuffer -= strlen( ss ) ;
+        /* gHyp_util_debug("Previous uncle found: %s", gHyp_data_getLabel( pUncle ) ); */
+        if ((pCousin = gHyp_data_getLastNode(pUncle)))
+        {
+          /* gHyp_util_debug("Next cousin Found: %s", gHyp_data_getLabel( pCousin ) ); */
+          pBuffer = buffer;
+          /* copy node's label to buffer */
+          strcpy(pBuffer, gHyp_data_getLabel(pData));
+          pBuffer += strlen(gHyp_data_getLabel(pData));
+          /*  check for curly bracketed index and remove it*/
+          if ((i = gHyp_data_getTagIndex(pData)))
+          {
+            sprintf(ss, "{%d}", i);
+            pBuffer -= strlen(ss);
           }
-	      /* subtract child label (and the quotes and dot) */
-	      pBuffer -= (3 + strlen( gHyp_data_getLabel( gHyp_data_getVariable(pData) ) ) );
-	      /*  check for parent's curly bracketed index and remove it*/
-	      if( (i = gHyp_data_getTagIndex( pParent )) ) {
-            sprintf( ss, "{%d}", i ) ;
-      	    pBuffer -= strlen( ss ) ;
+          /* subtract child label (and the quotes and dot) */
+          pBuffer -= (3 + strlen(gHyp_data_getLabel(gHyp_data_getVariable(pData))));
+          /*  check for parent's curly bracketed index and remove it*/
+          if ((i = gHyp_data_getTagIndex(pParent)))
+          {
+            sprintf(ss, "{%d}", i);
+            pBuffer -= strlen(ss);
           }
-		  /* subtract parent label (and the ending quote mark) */
-		  pBuffer -= (1 + strlen( gHyp_data_getLabel( pParent ) ) );
-	      /* add uncle's label */
-	      strcpy( pBuffer, gHyp_data_getLabel( pUncle ) );
-	      pBuffer += strlen( gHyp_data_getLabel( pUncle ) );
-	      strcpy( pBuffer, "'.'");
-	      pBuffer += 3;
-	      /* add cousin's label */
-	      strcpy( pBuffer, gHyp_data_getLabel( pCousin ) );
-	      pBuffer += strlen( gHyp_data_getLabel( pCousin ) );
-	      strcpy( pBuffer, "'");
-	      pBuffer += 1 ;
-	      /* check if a curly bracketed index is needed */
-	      if ( (i = gHyp_data_getTagIndex( pCousin )) ) {
-	        /* stick the curly index ending onto it */
-	        sprintf ( pBuffer, "{%d}", i ) ;
-	      }
-	      /* gHyp_util_debug("Buffer String: %s", buffer ); */
-	      
-	      gHyp_data_setStr ( pResult, buffer ) ;
-	    }
-		else { /* no cousin found at all */
-          gHyp_data_setStr ( pResult, "" ) ;
-	      /* gHyp_util_debug("No previous cousin nodes found"); */
-		}
+          /* subtract parent label (and the ending quote mark) */
+          pBuffer -= (1 + strlen(gHyp_data_getLabel(pParent)));
+          /* add uncle's label */
+          strcpy(pBuffer, gHyp_data_getLabel(pUncle));
+          pBuffer += strlen(gHyp_data_getLabel(pUncle));
+          strcpy(pBuffer, "'.'");
+          pBuffer += 3;
+          /* add cousin's label */
+          strcpy(pBuffer, gHyp_data_getLabel(pCousin));
+          pBuffer += strlen(gHyp_data_getLabel(pCousin));
+          strcpy(pBuffer, "'");
+          pBuffer += 1;
+          /* check if a curly bracketed index is needed */
+          if ((i = gHyp_data_getTagIndex(pCousin)))
+          {
+            /* stick the curly index ending onto it */
+            sprintf(pBuffer, "{%d}", i);
+          }
+          /* gHyp_util_debug("Buffer String: %s", buffer ); */
+
+          gHyp_data_setStr(pResult, buffer);
+        }
+        else
+        { /* no cousin found at all */
+          gHyp_data_setStr(pResult, "");
+          /* gHyp_util_debug("No previous cousin nodes found"); */
+        }
       }
-      else { /* no uncle found */
-      	gHyp_data_setStr ( pResult, "" ) ;
-      	/* gHyp_util_debug("No previous uncle found"); */
+      else
+      { /* no uncle found */
+        gHyp_data_setStr(pResult, "");
+        /* gHyp_util_debug("No previous uncle found"); */
       }
     }
-    else { /* no parent found */
-      gHyp_instance_warning ( pAI, STATUS_INVALID, 
-		"%s has no cousin, it is a root node", gHyp_data_getLabel( pData ) ) ;
-    	gHyp_data_setStr ( pResult, "" ) ;
-    	/* gHyp_util_debug("No parent found"); */
+    else
+    { /* no parent found */
+      gHyp_instance_warning(pAI, STATUS_INVALID,
+                            "%s has no cousin, it is a root node", gHyp_data_getLabel(pData));
+      gHyp_data_setStr(pResult, "");
+      /* gHyp_util_debug("No parent found"); */
     }
-    gHyp_stack_push ( pStack, pResult ) ;           
+    gHyp_stack_push(pStack, pResult);
   }
 }
 
-void gHyp_env_node_getnodebyattr ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+void gHyp_env_node_getnodebyattr(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE)
 {
 
   /* Description:
@@ -5205,7 +5536,7 @@ void gHyp_env_node_getnodebyattr ( sInstance *pAI, sCode *pCode, sLOGICAL isPARS
    *  PARSE or EXECUTE the built-in function: node_getnodebyattr ( node, name, value )
    *  Returns the label of the first child of node that contains an attribute
    *  of specified name and value or an empty string if no child is present.
-   *  
+   *
    *
    * Arguments:
    *
@@ -5222,103 +5553,107 @@ void gHyp_env_node_getnodebyattr ( sInstance *pAI, sCode *pCode, sLOGICAL isPARS
    * Modifications:
    *
    */
-  sFrame	*pFrame = gHyp_instance_frame ( pAI ) ;
-  sParse	*pParse = gHyp_frame_parse ( pFrame ) ;
+  sFrame *pFrame = gHyp_instance_frame(pAI);
+  sParse *pParse = gHyp_frame_parse(pFrame);
 
-  if ( isPARSE )
-  
-    gHyp_parse_operand ( pParse, pCode, pAI ) ;
-    
-  else {
- 
+  if (isPARSE)
+
+    gHyp_parse_operand(pParse, pCode, pAI);
+
+  else
+  {
+
     sStack
-      *pStack = gHyp_frame_stack ( pFrame ) ;
+        *pStack = gHyp_frame_stack(pFrame);
 
     sData
-      *pData,
-      *pAttrVal,
-      *pAttrVar,
-      *pChild,
-      *pResult ;
+        *pData,
+        *pAttrVal,
+        *pAttrVar,
+        *pChild,
+        *pResult;
 
     char
-      buffer[VALUE_SIZE+1],
-      *pBuffer,
-      tempBuffer[VALUE_SIZE+1],
-      valueBuffer[VALUE_SIZE+1] ;
+        buffer[VALUE_SIZE + 1],
+        *pBuffer,
+        tempBuffer[VALUE_SIZE + 1],
+        valueBuffer[VALUE_SIZE + 1];
 
     int
-      n,
-      argCount = gHyp_parse_argCount ( pParse ),
-      i ;
-          
-    gHyp_instance_setStatus ( pAI, STATUS_ACKNOWLEDGE ) ;
+        n,
+        argCount = gHyp_parse_argCount(pParse),
+        i;
 
-    if ( argCount != 3 ) gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-	  "Invalid arguments. Usage: node_getnodebyattr ( node, attr_name, attr_value )" ) ;
-  
-    pAttrVal = gHyp_stack_popRvalue( pStack, pAI ) ;
-    pAttrVar = gHyp_stack_popRvalue( pStack, pAI ) ;
-    pData = gHyp_stack_popLvalue ( pStack, pAI ) ;
-    pResult = gHyp_data_new ( NULL ) ;
+    gHyp_instance_setStatus(pAI, STATUS_ACKNOWLEDGE);
+
+    if (argCount != 3)
+      gHyp_instance_error(pAI, STATUS_ARGUMENT,
+                          "Invalid arguments. Usage: node_getnodebyattr ( node, attr_name, attr_value )");
+
+    pAttrVal = gHyp_stack_popRvalue(pStack, pAI);
+    pAttrVar = gHyp_stack_popRvalue(pStack, pAI);
+    pData = gHyp_stack_popLvalue(pStack, pAI);
+    pResult = gHyp_data_new(NULL);
 
     /* error if argument are of wrong type */
-    if( gHyp_data_getDataType( pData ) != TYPE_LIST ||
-        gHyp_data_getDataType( pAttrVar ) != TYPE_STRING ||
-        gHyp_data_getDataType( pAttrVal ) != TYPE_STRING ) 
-      gHyp_instance_error ( pAI, STATUS_ARGUMENT, 
-	  "Invalid argument types. Usage: node_getnodebyattr ( node, attr_name, attr_value )" ) ;
+    if (gHyp_data_getDataType(pData) != TYPE_LIST ||
+        gHyp_data_getDataType(pAttrVar) != TYPE_STRING ||
+        gHyp_data_getDataType(pAttrVal) != TYPE_STRING)
+      gHyp_instance_error(pAI, STATUS_ARGUMENT,
+                          "Invalid argument types. Usage: node_getnodebyattr ( node, attr_name, attr_value )");
 
     /* Get the value of the third argument */
-    n = gHyp_data_getStr (  pAttrVal, 
-			    buffer, 
-			    VALUE_SIZE,
-			    gHyp_data_getSubScript(pAttrVal),
-			    TRUE ) ;
-    buffer[n] = '\0' ;
+    n = gHyp_data_getStr(pAttrVal,
+                         buffer,
+                         VALUE_SIZE,
+                         gHyp_data_getSubScript(pAttrVal),
+                         TRUE);
+    buffer[n] = '\0';
 
-    if( (pChild = gHyp_data_getNodeByAttr( pData,
-                                           gHyp_data_getLabel(pAttrVar),
-                                           buffer,
-                                           valueBuffer )) ) {                               	     
-      /*generate the ancestory chain back up to pData*/  
-      tempBuffer[0] = '\0' ;				      
-      while( pChild != gHyp_data_getVariable( pData ) ) {
-      	pBuffer = buffer; 
-      	/* gHyp_util_debug("current ancestor: %s\n", gHyp_data_getLabel( pChild ) ); */
-      	strcpy( pBuffer, ".'");
+    if ((pChild = gHyp_data_getNodeByAttr(pData,
+                                          gHyp_data_getLabel(pAttrVar),
+                                          buffer,
+                                          valueBuffer)))
+    {
+      /*generate the ancestory chain back up to pData*/
+      tempBuffer[0] = '\0';
+      while (pChild != gHyp_data_getVariable(pData))
+      {
+        pBuffer = buffer;
+        /* gHyp_util_debug("current ancestor: %s\n", gHyp_data_getLabel( pChild ) ); */
+        strcpy(pBuffer, ".'");
         pBuffer += 2;
-        strcpy( pBuffer, gHyp_data_getLabel( pChild ) );
-        pBuffer += strlen( gHyp_data_getLabel( pChild ) );
-        strcpy( pBuffer, "'");
-        pBuffer += 1 ;
+        strcpy(pBuffer, gHyp_data_getLabel(pChild));
+        pBuffer += strlen(gHyp_data_getLabel(pChild));
+        strcpy(pBuffer, "'");
+        pBuffer += 1;
         /* check if a curly bracketed index is needed */
-        if ( (i = gHyp_data_getTagIndex( pChild )) ) {
-          sprintf ( pBuffer, "{%d}", i ) ;
+        if ((i = gHyp_data_getTagIndex(pChild)))
+        {
+          sprintf(pBuffer, "{%d}", i);
         }
-      	/* gHyp_util_debug("current ancestor: %s\n", buffer ) ; */
-        strcat( buffer, tempBuffer) ;
-        strcpy( tempBuffer, buffer) ;
+        /* gHyp_util_debug("current ancestor: %s\n", buffer ) ; */
+        strcat(buffer, tempBuffer);
+        strcpy(tempBuffer, buffer);
         /* gHyp_util_debug("current ancestry chain: %s\n", tempBuffer ) ; */
-      	pChild = gHyp_data_getParent( pChild );
-      }                           	
+        pChild = gHyp_data_getParent(pChild);
+      }
       /* prepend root name to the ancestry chain */
-      strcpy( buffer , gHyp_data_getLabel(pData) );
-      strcat( buffer, tempBuffer );
+      strcpy(buffer, gHyp_data_getLabel(pData));
+      strcat(buffer, tempBuffer);
       /* gHyp_util_debug("New String: %s", buffer ); */
       /* push the string to the stack */
-      gHyp_data_setStr ( pResult, buffer ) ;
+      gHyp_data_setStr(pResult, buffer);
     }
-    else {  /* no match found */       
-      gHyp_data_setStr ( pResult, "" ) ;
+    else
+    { /* no match found */
+      gHyp_data_setStr(pResult, "");
     }
-    gHyp_stack_push ( pStack, pResult ) ;
+    gHyp_stack_push(pStack, pResult);
   }
 }
 
-
-void gHyp_env_node_getnodebyname ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE ) 
+void gHyp_env_node_getnodebyname(sInstance *pAI, sCode *pCode, sLOGICAL isPARSE)
 {
   /* YET TO BE COMPLETED */
 }
-

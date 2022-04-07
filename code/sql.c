@@ -3463,7 +3463,7 @@ void gHyp_sql_datetime ( sInstance *pAI, sCode *pCode, sLOGICAL isPARSE )
 				ts = gHyp_data_getRaw ( pValue, context, TRUE  ) ;	
 	                        pstm = localtime ( &ts ) ;
 #if defined( AS_VMS ) && defined ( AS_PROMIS ) && defined ( AS_VMSCLOCK )
-			promis_time = (int) ts - PROMIS_DATE_OFFSET + pstm->tm_gmtoff + (pstm->tm_isdst?0:3600);
+			promis_time = (int) ts - PROMIS_DATE_OFFSET + pstm->tm_gmtoff ;
 			ret =Gut_Cnv32to64 ( &promis_time, &vms_time);
 			ret =sys$asctim( &timelen, &vmsTimeStamp_d, &vms_time, 0 ) ;
                         strncpy ( monthStr, vmsTimeStamp+3, 3 ) ;
